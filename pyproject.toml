@@ -1,0 +1,38 @@
+[project]
+name = "coulomb"
+version = "0.1.0"
+description = "Framework for simulating electrochemical cell systems, such as water electrolyzers and fuel cells. "
+authors = [
+    { name = "Pedro Affonso Nobrega", email = "pedro.affonso_nobrega@minesparis.psl.eu" },
+]
+maintainers = [
+    { name = "Pedro Affonso Nobrega", email = "pedro.affonso_nobrega@minesparis.psl.eu" },
+]
+license = { file = "LICENCE.md" }
+readme = "README.md"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering :: Physics",
+]
+requires-python = ">=3.10,<4.0.0"
+
+dependencies = [
+    "pandas",
+    "pytest",
+    "pytest-cov",
+    "notebook",
+    "sphinx"
+]
+
+[build-system]
+requires = ["setuptools >= 61.0", "wheel", "Cython", "numpy"]
+build-backend = "setuptools.build_meta"
+

@@ -1,0 +1,18 @@
+name : coulomb
+channels:
+  - anaconda
+  - conda-forge
+dependencies :
+  - python=3.12
+  - pandas
+  - pandoc
+  - pip
+  - pip :
+    - cython
+    - pytest
+    - pytest-cov
+    - sphinx
+    - notebook
+    - pylint
+    - sphinx-autoapi
+    - nbsphinx

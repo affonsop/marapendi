@@ -1,0 +1,6 @@
+.. _fibonacci:
+
+Fibonacci sequence
+==================
+
+
