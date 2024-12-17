@@ -17,3 +17,6 @@ def test_water_dynamic_viscosity():
 
 def test_water_saturation_concentration():
     assert np.isclose(cb.water_saturation_concentration(298.15), 3167 / (8.3145e3 * 298.15), 1e-2)
+
+def test_water_density():
+    assert np.isclose(cb.water_density(), 997., 1e-3)

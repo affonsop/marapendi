@@ -77,3 +77,20 @@ def water_dynamic_viscosity(temperature=300):
     """
     h2o.TQ = temperature, 0  # Set temperature and vapor quality
     return h2o.viscosity
+
+def water_density(temperature=300): 
+    """
+    Calculate the density of water at a given temperature.
+
+    Parameters:
+    -----------
+    temperature : float, optional, default=300
+        Temperature in Kelvin (K). Default is 300 K.
+
+    Returns:
+    --------
+    float
+        Density of water in Pascal-seconds (kg/m³).
+    """
+    h2o.TQ = temperature, 0 
+    return h2o.density
