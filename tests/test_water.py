@@ -20,3 +20,6 @@ def test_water_saturation_concentration():
 
 def test_water_density():
     assert np.isclose(cb.water_density(), 997., 1e-3)
+
+def test_water_molar_volume():
+    assert np.isclose(cb.water_molar_volume(), 18 / 997., 1e-3)
