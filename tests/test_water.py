@@ -1,5 +1,10 @@
 import coulomb as cb
 import numpy as np
+import pytest
+
+@pytest.fixture 
+def water(): 
+    return cb.WaterProperties(300) 
 
 def test_water_saturation_pressure():
     assert np.isclose(cb.water_saturation_pressure(298.15),   3167, 1e-2)
@@ -23,3 +28,12 @@ def test_water_density():
 
 def test_water_molar_volume():
     assert np.isclose(cb.water_molar_volume(), 18.015 / 997., 1e-3)
+
+def test_water_properties_class(water): 
+    water.density == cb.water_density(300.)
+    for temperature in [300., 353.15]:
+        water.set_temperature(temperature)
+        assert water.density == cb.water_density(temperature)
+        assert water.molar_volume == cb.water_molar_volume(temperature)
+        assert water.dynamic_viscosity == cb.water_dynamic_viscosity(temperature)   
+        assert water.saturation_pressure == cb.water_saturation_pressure(temperature) 
