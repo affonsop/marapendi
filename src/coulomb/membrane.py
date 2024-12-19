@@ -10,17 +10,51 @@ from coulomb.tools import calculate_arrhenius_term
 class HydrogenPermeationModel:
     """
     A dataclass representing the properties of membrane hydrogen permeability model.
+    
+    For details, see Trinke et al. (2016)
+    
+    Attributes:
+    -----------
+    permeability_reference_temperature : float = 333.15
+        The reference temperature for reference permeability coefficients in K. 
+    permeability_reference_water_vol_fraction: float = 0.37
+        The reference water volume fraction for reference permeability coefficients (n.d.). 
+    reference_diffusion_permeability_coefficient: float = 2.95e-17
+        Reference hydrogen diffusion permeability coefficient in kmol/(m.s.Pa). 
+    diffusion_permeability_activation_energy: float = 27e6
+        Diffusion permeability activation energy in J/kmol. 
+    reference_convection_permeability_coefficient: float = 9.01e-24
+        Reference hydrogen convection permeability coefficient in kmol/(m.s.Pa). 
+    convection_permeability_activation_energy: float = 2.7e6
+        Convection permeability activation energy in J/kmol.   
+    interface_resistance: float = 1.6e12
+        Interface resistance in (m.s.Pa)/kmol.
+    permeability_correction_factor: float = 1.
+        A correction factor to the permeation flux that can be fitted. 
+
+    Methods:
+    --------
+    calculate_permeability_coefficient(self, temperature, pressure_difference):
+        Calculate the effective hydrogen permeability coefficient
+    permeation_flux(membrane_thickness, partial_pressure_h2, temperature, 
+                    pressure_difference, water_vol_fraction): 
+        Calculate the hydrogen permeation flux through the membrane.
+
+    References:
+    -----------
+    Kang, Z., Pak, M. & Bender, G. Int. J. Hydrogen Energy 46, 15161–15167 (2021).
+    Trinke, P. et al. J. Electrochem. Soc. 163, F3164–F3170 (2016).
     """
 
     # Default values from table II in Trinke et al. (2016)
     permeability_reference_temperature: float = 333.15
-    reference_diffusion_permeability_coefficient: float = 2.95e-14
+    reference_diffusion_permeability_coefficient: float = 2.95e-17
     diffusion_permeability_activation_energy: float = 27e6
-    reference_convection_permeability_coefficient: float = 9.01e-21
+    reference_convection_permeability_coefficient: float = 9.01e-24
     convection_permeability_activation_energy: float = 2.7e6
     permeability_reference_water_vol_fraction: float = 0.37
-    h2_interface_resistance: float = 1.6e9
-    h2_permeability_correction_factor: float = 1.
+    interface_resistance: float = 1.6e12
+    permeability_correction_factor: float = 1.
 
     def calculate_permeability_coefficient(self, temperature, pressure_difference):
         """
@@ -91,9 +125,6 @@ class HydrogenPermeationModel:
 
         partial_pressure_h2 : float
             The partial pressure of hydrogen in Pascals (Pa).
-        
-        hydrogen_permeability : float
-            The hydrogen permeability in mol·m/(s·Pa).
 
         temperature : float
             The temperature in K. 
@@ -105,13 +136,10 @@ class HydrogenPermeationModel:
         water_vol_fraction : float
             The membrane water volume fraction. 
 
-        correction_factor : float
-            A fitted correction factor to account for deviation from reference parameters. 
-
         Returns:
         --------
         float
-            The hydrogen permeation flux in mol/(m²·s).
+            The hydrogen permeation flux in kmol/(m²·s).
 
         References:
         -----------
@@ -119,19 +147,20 @@ class HydrogenPermeationModel:
         Trinke, P. et al. J. Electrochem. Soc. 163, F3164–F3170 (2016).
         """
 
-        h2_permeability_coefficient = self.calculate_permeability_coefficient(
+        permeability_coefficient = self.calculate_permeability_coefficient(
             temperature,
             pressure_difference
         )
 
         # The interface resistance is set to reproduce (within 10%) results from Kang et al. (2021).
         # A formal parameter estimation would be better.
-        h2_permeability_resistance = (membrane_thickness / h2_permeability_coefficient +
-                                        self.h2_interface_resistance)
+        h2_permeability_resistance = (membrane_thickness / permeability_coefficient +
+                                        self.interface_resistance)
 
         return (partial_pressure_h2 / h2_permeability_resistance  *
                     water_vol_fraction  / self.permeability_reference_water_vol_fraction *
-                    self.h2_permeability_correction_factor)
+                    self.permeability_correction_factor)
+
 
 @dataclass
 class Membrane:
@@ -197,7 +226,7 @@ class Membrane:
             The water content of the membrane, defined as the number of moles of water 
             per equivalent of the membrane.
         water_molar_volume : float
-            The molar volume of water in m³/mol.
+            The molar volume of water in m³/kmol.
 
         Returns:
         --------
@@ -221,9 +250,6 @@ class Membrane:
         -----------
         partial_pressure_h2 : float
             The partial pressure of hydrogen in Pascals (Pa).
-        
-        hydrogen_permeability : float
-            The hydrogen permeability in mol·m/(s·Pa).
 
         temperature : float
             The temperature in K. 
@@ -238,7 +264,7 @@ class Membrane:
         Returns:
         --------
         float
-            The hydrogen permeation flux in mol/(m²·s).
+            The hydrogen permeation flux in kmol/(m²·s).
         """
 
         return self.h2_permeation_model.permeation_flux(self.thickness,

@@ -24,10 +24,10 @@ def test_membrane_hydrogen_permeability(thick_membrane, thin_membrane):
     partial_pressure_h2 = 98100 # Pa
     temperature = 298.15 # K
     
-    for pressure_difference, h2_crossover_flux in [(0, 0.0069e-3), (5 * 6895, 0.0085e-3)]:
+    for pressure_difference, h2_crossover_flux in [(0, 0.0069e-6), (5 * 6895, 0.0085e-6)]:
         assert np.isclose(thick_membrane.hydrogen_permeation_flux(partial_pressure_h2 + pressure_difference, temperature, pressure_difference, water_vol_fraction), 
                           h2_crossover_flux, 0.1)
 
-    for pressure_difference, h2_crossover_flux in [(0, 0.0229e-3), (5 * 6895, 0.0306e-3)]:
+    for pressure_difference, h2_crossover_flux in [(0, 0.0229e-6), (5 * 6895, 0.0306e-6)]:
         assert np.isclose(thin_membrane.hydrogen_permeation_flux(partial_pressure_h2 + pressure_difference, temperature, pressure_difference, water_vol_fraction), 
                           h2_crossover_flux, 0.1)
