@@ -128,6 +128,17 @@ class GasComposition:
         """
         return self.gas.T
 
+    def vapor_pressure(self) -> float:
+        """
+        Get the current vapor partial pressure in the gas mixture.
+
+        Returns:
+        --------
+        float
+            Vapor partial pressure in Pa.
+        """
+        return self.gas.X[-1] * self.gas.P
+
     def set_composition(self, dry_o2_mole_fraction: float, dry_h2_mole_fraction: float, relative_humidity: float):
         """
         Set the composition of the gas mixture.
