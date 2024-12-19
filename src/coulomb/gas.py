@@ -4,7 +4,7 @@ Module providing a class to handle gas composition and properties.
 from dataclasses import dataclass
 import numpy as np
 import cantera as ct
-from coulomb.water import water_saturation_pressure 
+from coulomb.water import water_saturation_pressure
 
 gas = ct.Solution("gri30.yaml")
 selected_species = [sp for sp in gas.species() if sp.name in ("O2", "N2", "H2", "H2O")]
@@ -59,9 +59,12 @@ class GasComposition:
             Pressure of the gas mixture in Pascals (Pa).
         """
         self.gas = ct.Solution(thermo='ideal-gas', species=selected_species, reactions=[])
+        
         self.relative_humidity = 0
         self.saturation_pressure = water_saturation_pressure(temperature)
+        
         self.set_temperature_and_pressure(temperature, pressure)
+        self.set_composition(1,0,0)
 
     def set_pressure(self, new_pressure: float):
         """
@@ -149,5 +152,6 @@ class GasComposition:
             0  # Placeholder for water vapor, updated below
         ])
         h2o_mole_fraction = relative_humidity * self.saturation_pressure / self.gas.P
-        self.gas.X = dry_mole_fractions * (1 - h2o_mole_fraction) + np.array([0, 0, 0, h2o_mole_fraction])
+        self.gas.TPX = self.gas.T, self.gas.P, dry_mole_fractions * (1 - h2o_mole_fraction) + np.array([0, 0, 0, h2o_mole_fraction])
         self.relative_humidity = relative_humidity
+      
