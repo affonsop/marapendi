@@ -7,7 +7,8 @@ import cantera as ct
 from coulomb.water import water_saturation_pressure
 
 gas = ct.Solution("gri30.yaml")
-selected_species = [sp for sp in gas.species() if sp.name in ("O2", "N2", "H2", "H2O")]
+selected_species_dict = {sp.name: sp for sp in gas.species() if sp.name in ("O2", "N2", "H2", "H2O")} 
+selected_species = [selected_species_dict[sp] for sp in ("O2", "N2", "H2", "H2O")]
 
 class GasComposition:
     """
@@ -58,7 +59,7 @@ class GasComposition:
         pressure : float, optional, default=1e5
             Pressure of the gas mixture in Pascals (Pa).
         """
-        self.gas = ct.Solution(thermo='ideal-gas', species=selected_species, reactions=[])
+        self.gas = ct.Solution(thermo='ideal-gas', species=selected_species, reactions=[], transport_model="mixture-averaged")
         
         self.relative_humidity = 0
         self.saturation_pressure = water_saturation_pressure(temperature)

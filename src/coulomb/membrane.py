@@ -2,10 +2,11 @@
 Module providing a membrane class intended to be the base class for different membrane models. 
 """
 from dataclasses import dataclass, field
-
+import numpy as np
+import cantera as ct 
 
 from coulomb.tools import calculate_arrhenius_term
-
+from coulomb.water import water_saturation_concentration
 @dataclass
 class HydrogenPermeationModel:
     """
@@ -161,6 +162,116 @@ class HydrogenPermeationModel:
                     water_vol_fraction  / self.permeability_reference_water_vol_fraction *
                     self.permeability_correction_factor)
 
+@dataclass
+class MembraneWaterBalanceModel:
+    reference_water_chemical_diffusion_coefficient: float = 4.3e-10
+    reference_temperature: float = 303.15
+    water_diffusivity_activation_energy: float = 28e6
+    # Eq. 31b in Ferrara et al. (2018), equal to 0.2 for Nafion and water contents above 5
+    # This assumption tends to overestimate water diffusivity and therefore backdiffusion for 
+    # dry membranes. 
+    gamma_function_ferrara: float = 0.2 
+    absorption_coefficient: float = 3e-4
+                                
+
+    def wet_chemical_diffusion_coefficient(self, temperature):
+        # Corresponds to D_chem^T in Ferrara et al. (2018)
+        return (self.reference_water_chemical_diffusion_coefficient *
+                calculate_arrhenius_term(self.water_diffusivity_activation_energy,
+                                         temperature,
+                                         self.reference_temperature))
+    
+    def water_diffusivity(self, temperature):
+        # According to Ferrara et al. (2018)
+        return self.wet_chemical_diffusion_coefficient(temperature) / self.gamma_function_ferrara 
+    
+    def electroosmotic_drag_speed(self, temperature, current_density, membrane):
+        return (0.02 * temperature - 3.86) / 22.5 * current_density / ct.faraday / membrane.dry_concentration
+    
+    def peclet_number(self, temperature, current_density, membrane):
+        return self.electroosmotic_drag_speed(temperature, current_density, membrane) * membrane.dry_thickness / self.water_diffusivity(temperature)
+    
+    def biot_number(self, absorption_coefficient, temperature, membrane):
+        return absorption_coefficient * membrane.dry_thickness / self.water_diffusivity(temperature)
+    
+    def water_balance(self, cell):
+        k_v = 5e-3
+        k_int = self.absorption_coefficient 
+        self.k_v_int = k_v * k_int / (k_v + k_int)
+
+        for side in (cell.ca, cell.an):
+            side.rh_at_cl_without_crossover = (side.ch.gas.vapor_pressure() / side.cl.gas.saturation_pressure +
+                                               (cell.current_density / (2*ct.faraday) / k_v if side == cell.ca else 0))
+            side.ch.equiv_water_content = cell.membrane.equilibrium_water_content(
+                side.rh_at_cl_without_crossover 
+            )
+            side.membrane_interface_water_content_derivative = cell.membrane.equilibrium_water_content_derivative(
+                side.rh_at_cl_without_crossover
+            )
+            side.membrane_absorption_coefficient_lmbd = (self.k_v_int / 
+                                                         cell.membrane.equilibrium_water_content_derivative(side.rh_at_cl_without_crossover))
+            
+            side.membrane_biot_number =  (1 if side == cell.ca else -1) * self.biot_number(
+                side.membrane_absorption_coefficient_lmbd,
+                cell.membrane.temperature,
+                cell.membrane
+            )
+        u_d = self.electroosmotic_drag_speed(cell.membrane.temperature, cell.current_density, cell.membrane)
+        nondim_vapor_transport_resistance = u_d / k_v / water_saturation_concentration(cell.membrane.temperature)
+        cell.membrane.peclet = self.peclet_number(cell.membrane.temperature, cell.current_density, cell.membrane)
+        xi = np.linspace(0,np.ones_like(cell.current_density),10)
+        
+        self.water_content_profile = membrane_water_profile(xi,
+                               cell.ca.ch.equiv_water_content,
+                               cell.an.ch.equiv_water_content,
+                               nondim_vapor_transport_resistance,
+                               cell.an.membrane_biot_number,
+                               cell.ca.membrane_biot_number,
+                               cell.membrane.peclet)
+        print(cell.membrane.peclet)
+        return self.water_content_profile
+    
+    def cathode_absorption_flux(self, cell): 
+        lmbd_ca = self.water_content_profile[-1,:]
+        return (cell.ca.membrane_absorption_coefficient_lmbd * (cell.ca.ch.equiv_water_content - lmbd_ca) +
+                -self.electroosmotic_drag_speed(cell.membrane.temperature, cell.current_density, cell.membrane) * lmbd_ca * self.k_v_int / self.absorption_coefficient) * cell.membrane.dry_concentration
+
+def membrane_water_profile(xi, equiv_lmbd_ca_ch, equiv_lmbd_an_ch, k_v, biot_an, biot_ca, peclet):
+    """
+    Calculate membrane water profile for constant water absorption and diffusivity coefficients.
+    Based on the work of Ferrara et al. (2018), with an extension to consider interface resitances 
+    (Biot numbers for cathode and anode) and vapor transport resistance between the channel and the
+    catalyst layer.     
+
+    Parameters:
+    -----------
+    xi : float
+        Non-dimensinal membrane thickness, between 0 (anode) and 1 (cathode). 
+    equiv_lmbd_ca_ch : float
+        Equivalent membrane water content corresponding to the RH at
+        the cathode channel calculated at the catalyst layer temperature.
+    equiv_lmbd_ca_ch : float
+        Equivalent membrane water content corresponding to the RH at
+        the anode channel calculated at the catalyst layer temperature.
+    k_v : float
+        Non-dimensional vapor transport resistance. 
+    biot_ca : float
+        Biot number relating water absorption/desorption at the cathode 
+        side and diffusion in the bulk membrane. 
+    biot_an : float
+        Biot number relating water absorption/desorption at the cathode 
+        side and diffusion in the bulk membrane.
+    peclet : float
+        Peclet number relating electroosmotic drag to water diffusion.
+    """
+    exp_peclet = np.exp(peclet)
+
+    A = np.exp(peclet * xi) + peclet/biot_an - 1
+    B = peclet/biot_ca*exp_peclet + peclet/biot_an + (1+k_v)*(exp_peclet-1)
+    C = (1-k_v)*peclet/biot_ca*exp_peclet + (1+k_v)*peclet/biot_an + (1-k_v**2)*(exp_peclet-1)
+
+    return (A * (equiv_lmbd_ca_ch - equiv_lmbd_an_ch) + equiv_lmbd_an_ch * B)/C
+    
 
 @dataclass
 class Membrane:
@@ -182,9 +293,9 @@ class Membrane:
 
     Computed Attributes:
     --------------------
-    membrane_concentration : float
+    dry_concentration : float
         Concentration of the membrane in mol/m³, computed during initialization.
-    membrane_molar_volume : float
+    dry_molar_volume : float
         Molar volume of the membrane in m³/mol, computed during initialization.
 
     Methods:
@@ -194,24 +305,20 @@ class Membrane:
 
     hydrogen_permeation_flux(partial_pressure_h2, hydrogen_permeability):
         Calculate the hydrogen permeation flux through the membrane.
-
-    References:
-    -----------
-    Kang, Z., Pak, M. & Bender, G. Int. J. Hydrogen Energy 46, 15161–15167 (2021).
-    Trinke, P. et al. J. Electrochem. Soc. 163, F3164–F3170 (2016).
     """
 
     equivalent_weight: float = 1.1e3
     density: float = 1980.
-    thickness: float = 25e-6
+    dry_thickness: float = 25e-6
     h2_permeation_model: HydrogenPermeationModel = field(default_factory=HydrogenPermeationModel)
+    water_balance_model: MembraneWaterBalanceModel = field(default_factory=MembraneWaterBalanceModel)
 
     def __post_init__(self):
         """
         Compute derived properties of the membrane after initialization.
         """
-        self.membrane_concentration = self.density / self.equivalent_weight  # mol/m³
-        self.membrane_molar_volume = 1. / self.membrane_concentration  # m³/mol
+        self.dry_concentration = self.density / self.equivalent_weight  # mol/m³
+        self.dry_molar_volume = 1. / self.dry_concentration  # m³/mol
 
 
 
@@ -234,7 +341,7 @@ class Membrane:
             The volume fraction of water in the membrane.
         """
         membrane_water_molar_volume = water_molar_volume * water_content
-        return membrane_water_molar_volume / (self.membrane_molar_volume +
+        return membrane_water_molar_volume / (self.dry_molar_volume +
                                                membrane_water_molar_volume)
 
     def hydrogen_permeation_flux(self,
@@ -267,8 +374,14 @@ class Membrane:
             The hydrogen permeation flux in kmol/(m²·s).
         """
 
-        return self.h2_permeation_model.permeation_flux(self.thickness,
+        return self.h2_permeation_model.permeation_flux(self.dry_thickness,
                                                         partial_pressure_h2,
                                                         temperature,
                                                         pressure_difference,
                                                         water_vol_fraction)
+    
+    def equilibrium_water_content(self, rh):
+        return (0.043 + 17.18 * rh - 39.85 * rh**2 + 36 * rh**3)
+
+    def equilibrium_water_content_derivative(self,rh): 
+        return (17.18 - 79.70 * rh + 108 * rh**2)

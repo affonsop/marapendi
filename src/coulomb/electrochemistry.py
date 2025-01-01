@@ -129,7 +129,7 @@ class ElectrochemicalReaction:
     -----------
     reference_exchange_current_density : float
         The reference exchange current density in Amperes per square meter (A/m²).
-    activation_energy : float, optional, default=0.0
+    activation_energy : float, optional, default=0.0741
         The activation energy of the reaction in Joules (J/kmol). 
     reaction_order : float, optional, default=1.0
         The reaction order with respect to the reactant activity (dimensionless).
@@ -161,11 +161,11 @@ class ElectrochemicalReaction:
     ...     charge_transfer_coeff=0.5
     ... )
     """
-    reference_exchange_current_density: float
-    activation_energy: float = 0.
-    reaction_order: float = 1.
-    reference_activity: float = 1.
-    reference_temperature: float = 300.
+    reference_exchange_current_density: float = 0.0741
+    activation_energy: float = 67.e6
+    reaction_order: float = 0.54
+    reference_activity: float = 1.e5
+    reference_temperature: float = 353.15
     number_of_electrons: int = 2
     charge_transfer_coeff: float = 0.5
 

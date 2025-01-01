@@ -35,5 +35,5 @@ def test_water_properties_class(water):
         water.set_temperature(temperature)
         assert water.density == cb.water_density(temperature)
         assert water.molar_volume == cb.water_molar_volume(temperature)
-        assert water.dynamic_viscosity == cb.water_dynamic_viscosity(temperature)   
-        assert water.saturation_pressure == cb.water_saturation_pressure(temperature) 
+        assert water.dynamic_viscosity == cb.water_dynamic_viscosity(temperature)
+        assert water.saturation_pressure == cb.water_saturation_pressure(temperature)
