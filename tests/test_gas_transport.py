@@ -36,7 +36,6 @@ def gas():
     gc.set_composition(0.2, 0, 0)
     return gc
 
-
 def test_gas_flow_rate(fc): 
     o2_molar_consumption = fc.current_density * fc.cell_number * fc.cell_area / (4 * ct.faraday)
     o2_molar_flow_rate = fc.ca.ch.inlet_stoichiometry * o2_molar_consumption 

@@ -7,6 +7,7 @@ import cantera as ct
 
 from coulomb.tools import calculate_arrhenius_term
 from coulomb.water import water_saturation_concentration
+
 @dataclass
 class HydrogenPermeationModel:
     """

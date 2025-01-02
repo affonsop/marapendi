@@ -1,7 +1,6 @@
 """
 Module providing a class to handle gas composition and properties. 
 """
-from dataclasses import dataclass
 import numpy as np
 import cantera as ct
 from coulomb.water import water_saturation_pressure
