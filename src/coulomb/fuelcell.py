@@ -3,10 +3,12 @@ Module providing a fuel cell class intended to be the base class for different f
 """
 from dataclasses import dataclass, field
 import numpy as np 
+import cantera as ct
 
 from .electrochemistry import ElectrochemicalReaction, calculate_reversible_cell_voltage
-from .gas import GasComposition
+from .gas import GasComposition, index_h2, index_o2, species_indexes
 from .membrane import Membrane
+
 
 @dataclass 
 class ChannelConditions:  
@@ -39,13 +41,66 @@ class ChannelConditions:
 class CellComponent: 
     temperature: float = 300.
 
+
+
+@dataclass
+class GasTransportResistanceModel:
+    water_saturation_exponent: float = 3.0
+
+    def water_saturation_correction(self, water_saturation): 
+        return (1 - water_saturation) ** self.water_saturation_exponent 
+    
+    def molecular_diffusion_effective_length(self, layer, water_saturation=0): 
+        return layer.thickness / layer.effective_gas_diffusion_ratio / self.water_saturation_correction(water_saturation)
+    
+    def molecular_diffusion_resistance(self, layer, diffusion_coefficient, water_saturation=0): 
+        return self.molecular_diffusion_effective_length(layer, water_saturation) / diffusion_coefficient
+    
+    def knudsen_diffusivity(self,layer, temperature, molecular_weight): 
+        return layer.pore_diameter / 3 * np.sqrt(8 * ct.gas_constant * temperature / molecular_weight / np.pi)
+    
+    def total_diffusion_resistance(self, layer, temperature, diffusion_coefficient, molecular_weight, water_saturation=0):
+        return self.molecular_diffusion_resistance(layer, diffusion_coefficient, water_saturation) + layer.thickness / self.knudsen_diffusivity(layer, temperature, molecular_weight)
+
+
+    
 @dataclass
 class PorousLayer(CellComponent):
+    thickness: float = 1e-3
     gas: GasComposition = field(default_factory=GasComposition)
-    
+    effective_gas_diffusion_ratio: float = 1
+    pore_diameter: float=1e12 
+    transport_resistance_model: GasTransportResistanceModel = field(default_factory=GasTransportResistanceModel)
+
     def __post_init__(self): 
         self.gas.set_temperature(self.temperature)
 
+    def get_o2_mole_fraction(self):
+        return self.gas.gas.X[index_o2]
+    
+    def get_h2_mole_fraction(self):
+        return self.gas.gas.X[inedx_h2]
+    
+    def get_species_mole_fraction(self, species):
+        return self.gas.gas.X[species_indexes[species]] 
+    
+    def get_species_diffusion_coefficient(self, species): 
+        return self.gas.gas.mix_diff_coeffs_mole[species_indexes[species]]
+
+    def get_species_molecular_weight(self, species): 
+        return self.gas.gas.molecular_weights[species_indexes[species]]
+
+    def get_gas_temperature(self): 
+        return self.gas.gas.T
+
+    def calculate_transport_resistance(self, species='o2'): 
+        return self.transport_resistance_model.total_diffusion_resistance(
+            self, 
+            self.get_gas_temperature(), 
+            self.get_species_diffusion_coefficient(species), 
+            self.get_species_molecular_weight(species), 
+            water_saturation=0)
+    
 @dataclass 
 class ChannelTransportResistanceModel: 
     A_ch: float = 1.0
@@ -60,12 +115,10 @@ class ChannelTransportResistanceModel:
     def total_resistance(self, channel, diffusion_coefficient, volume_flow_rate): 
         return (self.molecular_diffusion_resistance(channel, diffusion_coefficient) +
                 self.convection_resistance(channel, volume_flow_rate)) 
-    
 
 @dataclass
-class GasFlowChannel(CellComponent):
-    gas: GasComposition = field(default_factory=GasComposition)
-    reactant: int = 0
+class GasFlowChannel(PorousLayer):
+    reactant: str = 'o2'
     inlet_stoichiometry: float = 0 
     inlet_gas_flow_rate: float = 0
     width: float = 1e-3
@@ -83,26 +136,19 @@ class GasFlowChannel(CellComponent):
         
     def set_inlet_stoichiometry(self, stoichiometry):
         self.inlet_stoichiometry = stoichiometry
-        
-    def get_o2_mole_fraction(self):
-        return self.gas.gas.X[0]
-    
-    def get_h2_mole_fraction(self):
-        return self.gas.gas.X[2]
 
     def get_reactant_mole_fraction(self): 
-        return self.gas.gas.X[self.reactant]
+        return self.gas.gas.X[species_indexes[self.reactant]]
     
+   
     def calculate_inlet_gas_flow_rate(self, reactant_consumption): 
         return self.inlet_stoichiometry * reactant_consumption / self.get_reactant_mole_fraction() * self.gas.gas.volume_mole
     
     def calculate_inlet_stochiometry(self, reactant_consumption): 
         return self.inlet_gas_flow_rate * self.get_reactant_mole_fraction() / self.gas.gas.volume_mole / reactant_consumption
+
     
-    def get_o2_diffusion_coefficient(self): 
-        return self.gas.gas.mix_diff_coeffs_mole[0]
-    
-    def get_transport_resistance(self, diffusion_coeff, volume_flow_rate): 
+    def calculate_transport_resistance(self, diffusion_coeff, volume_flow_rate): 
         return self.transport_resistance_model.total_resistance(self, diffusion_coeff, volume_flow_rate)
 
 

@@ -17,7 +17,18 @@ def fc():
     fc.ca.ch.gas.set_composition(0.02,0,0.62)
     fc.ca.ch.set_inlet_stoichiometry(2) 
     return fc
-    
+
+@pytest.fixture
+def toray_gdl_060(): 
+    lmbd = 0.86 # Data for figure 9 in Baker et al. (2009)
+    f = 1 + 0.803 * np.exp(-1.17 * lmbd) + 0.197 * np.exp(-0.164 * lmbd)
+    gdl = cb.PorousLayer(thickness=160e-6, 
+                         temperature=353.15, 
+                         gas=cb.GasComposition(temperature=353.15, pressure=1.0e5), 
+                         effective_gas_diffusion_ratio=0.25/f) # D_OM / D_OMy = 4 in Baker et al. (2009)
+    gdl.gas.set_composition(0.2,0,0.62) 
+    return gdl 
+
 @pytest.fixture
 def gas():
     gc = cb.GasComposition()
@@ -37,14 +48,19 @@ def test_gas_diffusivity(gas):
     assert gas.gas.X[0] == 0.2
     assert np.isclose(gas.gas.mix_diff_coeffs_mole[0], 0.209e-4, 1e-3)
 
+def test_gas_porous_transport_resistance(toray_gdl_060, fc): 
+    o2_diffusion_coeff = fc.ca.ch.get_species_diffusion_coefficient('o2')
+    non_dimensional_resistance = toray_gdl_060.calculate_transport_resistance(species='o2') * o2_diffusion_coeff / fc.ca.ch.half_width
+    assert np.isclose(non_dimensional_resistance, 3.73, 1e-2) # Dta from Baker et al. 2009, figure 9
+
 def test_gas_flow_resistance(fc): 
-    o2_diffusion_coeff = fc.ca.ch.get_o2_diffusion_coefficient()
+    o2_diffusion_coeff = fc.ca.ch.get_species_diffusion_coefficient('o2')
     # Test for volume flow rate in Backer et al. (2009), stoichiometry higher than 10
     volume_flow_rate = 14 * 375e-6 / 60. / (1-fc.ca.ch.gas.gas.X[-1]) * 1e5/ fc.ca.ch.gas.gas.P * fc.ca.ch.gas.gas.T / 273.15
-    non_dim_channel_resistance = fc.ca.ch.get_transport_resistance(o2_diffusion_coeff, volume_flow_rate)  *  o2_diffusion_coeff /fc.ca.ch.half_width
+    non_dim_channel_resistance = fc.ca.ch.calculate_transport_resistance(o2_diffusion_coeff, volume_flow_rate)  *  o2_diffusion_coeff / fc.ca.ch.half_width
     assert np.isclose(non_dim_channel_resistance, 1.73, 1e-2)
     # Test for stoichiometry 2 
     o2_molar_consumption = fc.current_density * fc.cell_number * fc.cell_area / (4 * ct.faraday)
     volume_flow_rate = fc.ca.ch.calculate_inlet_gas_flow_rate(o2_molar_consumption)
-    non_dim_channel_resistance = fc.ca.ch.get_transport_resistance(o2_diffusion_coeff, volume_flow_rate)  *  o2_diffusion_coeff /fc.ca.ch.half_width
+    non_dim_channel_resistance = fc.ca.ch.calculate_transport_resistance(o2_diffusion_coeff, volume_flow_rate)  *  o2_diffusion_coeff / fc.ca.ch.half_width
     assert np.isclose(non_dim_channel_resistance, 2.93, 1e-2)

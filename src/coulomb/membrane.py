@@ -203,7 +203,7 @@ class MembraneWaterBalanceModel:
             side.rh_at_cl_without_crossover = (side.ch.gas.vapor_pressure() / side.cl.gas.saturation_pressure +
                                                (cell.current_density / (2*ct.faraday) / k_v if side == cell.ca else 0))
             side.ch.equiv_water_content = cell.membrane.equilibrium_water_content(
-                side.rh_at_cl_without_crossover 
+                side.rh_at_cl_without_crossover
             )
             side.membrane_interface_water_content_derivative = cell.membrane.equilibrium_water_content_derivative(
                 side.rh_at_cl_without_crossover

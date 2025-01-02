@@ -7,8 +7,12 @@ import cantera as ct
 from coulomb.water import water_saturation_pressure
 
 gas = ct.Solution("gri30.yaml")
-selected_species_dict = {sp.name: sp for sp in gas.species() if sp.name in ("O2", "N2", "H2", "H2O")} 
-selected_species = [selected_species_dict[sp] for sp in ("O2", "N2", "H2", "H2O")]
+species_list = ("O2", "N2", "H2", "H2O")
+selected_species_dict = {sp.name: sp for sp in gas.species() if sp.name in species_list}
+selected_species = [selected_species_dict[sp] for sp in species_list]
+species_names = [sp.lower() for sp in species_list]
+species_indexes = dict(zip(species_names, (0,1,2,3)))
+index_o2, index_n2, index_h2, index_h2ov = 0, 1, 2, 3
 
 class GasComposition:
     """
@@ -138,7 +142,7 @@ class GasComposition:
         float
             Vapor partial pressure in Pa.
         """
-        return self.gas.X[-1] * self.gas.P
+        return self.gas.X[index_h2ov] * self.gas.P
 
     def set_composition(self, dry_o2_mole_fraction: float, dry_h2_mole_fraction: float, relative_humidity: float):
         """
