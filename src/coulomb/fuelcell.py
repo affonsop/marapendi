@@ -6,13 +6,13 @@ import numpy as np
 import cantera as ct
 
 from .electrochemistry import ElectrochemicalReaction, calculate_reversible_cell_voltage
-from .porous_layers import PorousLayer 
+from .porous_layers import PorousLayer, CatalystLayer
 from .flow_channels import GasFlowChannel
 from .membrane import Membrane
 
 @dataclass
 class FuelCellSide:
-    cl: PorousLayer = field(default_factory=PorousLayer) 
+    cl: PorousLayer = field(default_factory=CatalystLayer) 
     gdl: PorousLayer = field(default_factory=PorousLayer)
     mpl: PorousLayer = field(default_factory=PorousLayer)
     ch: GasFlowChannel = field(default_factory=GasFlowChannel)
@@ -26,11 +26,11 @@ class FuelCellSide:
 class FuelCell: 
     cell_area: float
     cell_number: int
-    orr_reaction: ElectrochemicalReaction = field(default_factory=ElectrochemicalReaction)
-    hor_reaction: ElectrochemicalReaction = field(default_factory=ElectrochemicalReaction)
     an: FuelCellSide = field(default_factory=FuelCellSide)
     ca: FuelCellSide = field(default_factory=FuelCellSide)
     membrane: Membrane = field(default_factory=Membrane)
+    orr_reaction: ElectrochemicalReaction = field(default_factory=ElectrochemicalReaction)
+    hor_reaction: ElectrochemicalReaction = field(default_factory=ElectrochemicalReaction)
 
     def reversible_cell_voltage(self, operating_conditions): 
         return calculate_reversible_cell_voltage(
@@ -40,7 +40,7 @@ class FuelCell:
         )
     
     def activation_overpotential(self, operating_conditions): 
-        return self.orr_reaction.tafel_overpotential(
+        return self.ca.cl.reaction.tafel_overpotential(
             operating_conditions.current_density,
             operating_conditions.temperature,
             operating_conditions.partial_pressure_o2

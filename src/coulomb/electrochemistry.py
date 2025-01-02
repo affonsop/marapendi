@@ -76,6 +76,31 @@ def calculate_reversible_cell_voltage(
 
     return reversible_cell_voltage
 
+
+def calculate_tafel_slope(
+        temperature,
+        number_of_electrons,
+        charge_transfer_coeff):
+    """
+    Calculate the Tafel slope for an electrochemical reaction.
+
+    Parameters:
+    -----------
+    temperature : float
+        Temperature in Kelvin (K).
+    number_of_electrons : int
+        Number of electrons transferred in the electrochemical reaction.
+    charge_transfer_coefficient : float
+        Symmetry factor or charge transfer coefficient (dimensionless).
+
+    Returns:
+    --------
+    float
+        The Tafel slope in Volts (V/decade).
+    """
+    return 2.303 * (ct.gas_constant * temperature /
+            (number_of_electrons * charge_transfer_coeff * ct.faraday))
+
 def calculate_tafel_overpotential(
         current_density,
         exchange_current_density,
@@ -116,7 +141,7 @@ def calculate_tafel_overpotential(
     ... )
     0.17985
     """
-    tafel_slope = (ct.gas_constant * temperature /
+    tafel_slope = (ct.gas_constant * temperature / 
                    (number_of_electrons * charge_transfer_coeff * ct.faraday))
     return tafel_slope * np.log(np.maximum(current_density / exchange_current_density,1))
 
@@ -197,6 +222,24 @@ class ElectrochemicalReaction:
         """
         return calculate_exchange_current_density(temperature, reactant_activity, self)
     
+    def tafel_slope(self, temperature):
+        """
+        Calculate the Tafel slope for the electrochemical reaction.
+
+        Parameters:
+        -----------
+        temperature : float
+            Temperature in Kelvin (K).
+
+        Returns:
+        --------
+        float
+            The Tafel slope in Volts (V/decade).
+        """
+        return calculate_tafel_slope(temperature,
+                                     self.number_of_electrons,
+                                     self.charge_transfer_coeff)
+
     def tafel_overpotential(self, current_density, temperature, reactant_activity):
         """
         Calculate the Tafel overpotential for the electrochemical reaction.

@@ -49,12 +49,15 @@ def operating_conditions_ocv():
 
 @pytest.fixture
 def fuel_cell(orr_reaction_params, hor_reaction_params):
-    return cb.FuelCell(
+    fc = cb.FuelCell(
         cell_area=25e-4,
         cell_number=1,
         orr_reaction=orr_reaction_params,
         hor_reaction=hor_reaction_params,
     )
+    fc.ca.cl.reaction = orr_reaction_params
+    fc.an.cl.reaction = hor_reaction_params
+    return fc
 
 def test_fuel_cell_voltage_at_1Acm2(fuel_cell,operating_conditions_1A_per_cm2):
     assert np.isclose(fuel_cell.cell_voltage(operating_conditions_1A_per_cm2), 1.0701, 1e-4)
