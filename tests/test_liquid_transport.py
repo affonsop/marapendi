@@ -69,6 +69,9 @@ def test_gas_porous_transport_resistance(toray_gdl_060, fc, cl):
     assert np.isclose(dry_resistance, 200, 10e-2)
 
     # Test Damkholer is close to 1 at transition points in figure 3a
+    # In theory Da should be equal to 1. I think that we cannot reproduce results from Chuang et al. (2020)
+    # if we don't consider different sigmoids for land and channel regions. See for instance works of 
+    # Owejan et al. (2014) and Xu et al. (2021)
     thermal_resistance = 165e-6 / 5.75
     thermal_contact_resistance =  5e-4
     for rh, i_cell in ((1., 0.7e4), (0.9, 0.91e4), (0.8, 1.18e4)):
@@ -79,8 +82,7 @@ def test_gas_porous_transport_resistance(toray_gdl_060, fc, cl):
         fc.ca.liquid_transport_model = cb.PorousLiquidTransportModel(wet_saturation=0.44, dry_wet_transition_parameter=10) 
         da = fc.ca.liquid_transport_model.calculate_damkholer_number(fc.ca, 0.5*i_cell/(2 * ct.faraday))
         print(da, thermal_resistance)
-    
-    #assert np.isclose(da, 1, atol=0.01)
+
     # Test wet conditions resistance
     i_cell = 1e4
     for layer in fc.ca.components:
