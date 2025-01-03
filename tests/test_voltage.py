@@ -52,8 +52,6 @@ def fuel_cell(orr_reaction_params, hor_reaction_params):
     fc = cb.FuelCell(
         cell_area=25e-4,
         cell_number=1,
-        orr_reaction=orr_reaction_params,
-        hor_reaction=hor_reaction_params,
     )
     fc.ca.cl.reaction = orr_reaction_params
     fc.an.cl.reaction = hor_reaction_params

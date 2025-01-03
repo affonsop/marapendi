@@ -12,3 +12,6 @@ def calculate_arrhenius_term(
 ):
     
     return np.exp(activation_energy / ct.gas_constant * (1/reference_temperature - 1/temperature)) 
+
+def sigmoid(x, x_inflection, slope_parameter):
+    return 1/(1 + np.exp(-slope_parameter * (x - x_inflection)))

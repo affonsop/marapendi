@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 import numpy as np 
 import cantera as ct
 
-from .electrochemistry import ElectrochemicalReaction, calculate_reversible_cell_voltage
+from .electrochemistry import calculate_reversible_cell_voltage
 from .porous_layers import PorousLayer, CatalystLayer
 from .flow_channels import GasFlowChannel
 from .membrane import Membrane
@@ -22,6 +22,18 @@ class FuelCellSide:
         self.porous_layers = [self.cl, self.mpl, self.gdl] if self.has_mpl else [self.cl, self.gdl]
         self.components = self.porous_layers + [self.ch]
 
+    def set_catalyst_layer(self,cl): 
+        self.cl = cl 
+        self.__post_init__()
+    
+    def set_gas_diffusion_layer(self, gdl): 
+        self.gdl = gdl
+        self.__post_init__()
+    
+    def set_channel(self, ch): 
+        self.ch = ch 
+        self.__post_init__()
+        
 @dataclass
 class FuelCell: 
     cell_area: float
@@ -29,8 +41,6 @@ class FuelCell:
     an: FuelCellSide = field(default_factory=FuelCellSide)
     ca: FuelCellSide = field(default_factory=FuelCellSide)
     membrane: Membrane = field(default_factory=Membrane)
-    orr_reaction: ElectrochemicalReaction = field(default_factory=ElectrochemicalReaction)
-    hor_reaction: ElectrochemicalReaction = field(default_factory=ElectrochemicalReaction)
 
     def reversible_cell_voltage(self, operating_conditions): 
         return calculate_reversible_cell_voltage(

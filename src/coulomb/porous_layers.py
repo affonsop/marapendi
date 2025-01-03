@@ -5,40 +5,24 @@ from dataclasses import dataclass, field
 import numpy as np 
 import cantera as ct
 
-from .gas_composition import GasComposition, index_h2, index_o2, species_indexes
+from .gas_composition import GasComposition, index_h2, index_o2, index_h2ov, species_indexes
 from .tools import calculate_arrhenius_term
 from .electrochemistry import ElectrochemicalReaction 
+from .transport import PorousGasResistanceModel
+from .water import water_saturation_pressure
 
 @dataclass 
 class CellComponent: 
     temperature: float = 300.
 
 @dataclass
-class GasTransportResistanceModel:
-    water_saturation_exponent: float = 3.0
-
-    def water_saturation_correction(self, water_saturation):
-        return (1 - water_saturation) ** self.water_saturation_exponent
-    
-    def molecular_diffusion_effective_length(self, layer, water_saturation=0):
-        return layer.thickness / layer.effective_gas_diffusion_ratio / self.water_saturation_correction(water_saturation)
-    
-    def molecular_diffusion_resistance(self, layer, diffusion_coefficient, water_saturation=0):
-        return self.molecular_diffusion_effective_length(layer, water_saturation) / diffusion_coefficient
-    
-    def knudsen_diffusivity(self,layer, temperature, molecular_weight):
-        return layer.pore_diameter / 3 * np.sqrt(8 * ct.gas_constant * temperature / molecular_weight / np.pi)
-    
-    def total_diffusion_resistance(self, layer, temperature, diffusion_coefficient, molecular_weight, water_saturation=0):
-        return self.molecular_diffusion_resistance(layer, diffusion_coefficient, water_saturation) + layer.thickness / self.knudsen_diffusivity(layer, temperature, molecular_weight)
-
-@dataclass
 class PorousLayer(CellComponent):
     thickness: float = 1e-3
     gas: GasComposition = field(default_factory=GasComposition)
+    porosity: float = 1
     effective_gas_diffusion_ratio: float = 1
     pore_diameter: float=1e12
-    transport_resistance_model: GasTransportResistanceModel = field(default_factory=GasTransportResistanceModel)
+    transport_resistance_model: PorousGasResistanceModel = field(default_factory=PorousGasResistanceModel)
 
     def __post_init__(self):
         self.gas.set_temperature(self.temperature)
@@ -58,16 +42,34 @@ class PorousLayer(CellComponent):
     def get_species_molecular_weight(self, species): 
         return self.gas.gas.molecular_weights[species_indexes[species]]
 
-    def get_gas_temperature(self): 
-        return self.gas.gas.T
+    def get_gas_temperature(self):
+        return self.gas.temperature()
 
-    def calculate_transport_resistance(self, species='o2'): 
+    def get_gas_pressure(self): 
+        return self.gas.pressure()
+    
+    def get_vapor_pressure(self): 
+        return self.gas.gas.X[index_h2ov] * self.gas.pressure()
+     
+    def get_relative_humidity(self):
+        return self.gas.relative_humidity
+    
+    def get_saturation_pressure(self): 
+        return self.gas.saturation_pressure
+    
+    def get_saturation_concentration(self): 
+        return self.get_saturation_pressure() / (ct.gas_constant * self.get_gas_temperature()) 
+
+    def get_vapor_concentration(self): 
+        return self.get_vapor_pressure() / (ct.gas_constant * self.get_gas_temperature())
+    
+    def calculate_gas_transport_resistance(self, species='o2', water_saturation=0): 
         return self.transport_resistance_model.total_diffusion_resistance(
             self, 
             self.get_gas_temperature(), 
             self.get_species_diffusion_coefficient(species), 
             self.get_species_molecular_weight(species), 
-            water_saturation=0)
+            water_saturation)
     
 @dataclass 
 class CatalystLayerIonomerModel: 
@@ -103,7 +105,7 @@ class CatalystLayer(PorousLayer):
     carbon_agglomerate_radius: float = 20e-9 
     ionomer_vol_fraction: float = 0
     ionomer_film_thickness: float = 0 
-
+    
     def __post_init__(self): 
         if self.platinum_vol_surface_area == 0: 
             self.platinum_vol_surface_area = self.platinum_loading * self.ecsa / self.thickness 
@@ -122,8 +124,9 @@ class CatalystLayer(PorousLayer):
         if self.ionomer_film_thickness == 0: 
             self.ionomer_film_thickness = self.ionomer_vol_fraction / (self.carbon_agglomerate_number_density * self.carbon_agglomerate_surface)
         self.ionomer_specific_surface = 4 * np.pi * (self.carbon_agglomerate_radius + self.ionomer_film_thickness) ** 2 * self.carbon_agglomerate_number_density
+        self.effective_gas_diffusion_ratio = self.porosity ** 1.5 
 
-    def calculate_film_resistance(self, ionomer_water_content, temperature): 
+    def calculate_o2_film_resistance(self, ionomer_water_content, temperature): 
         return self.ionomer.o2_film_resistance(ionomer_water_content, temperature) / self.ionomer_specific_surface / self.thickness
     
     def calculate_ionomer_sheet_proton_resistance(self, relative_humidity, ionomer_water_content, temperature): 

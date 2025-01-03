@@ -7,6 +7,7 @@ import cantera as ct
 
 from .gas_composition import species_indexes
 from .porous_layers import PorousLayer
+from .transport import ChannelGasResistanceModel
 
 @dataclass 
 class ChannelConditions:  
@@ -38,21 +39,6 @@ class ChannelConditions:
         if not stoichiometry:
             self.stoichiometry = stoichiometry
         self.__post_init__()
-    
-@dataclass 
-class ChannelTransportResistanceModel: 
-    A_ch: float = 1.0
-    B_ch: float = 1.0
-
-    def molecular_diffusion_resistance(self, channel, diffusion_coefficient): 
-        return self.A_ch * channel.half_width / diffusion_coefficient
-    
-    def convection_resistance(self, channel, volume_flow_rate): 
-        return self.B_ch * channel.length / channel.half_width * channel.total_flow_section / volume_flow_rate
-
-    def total_resistance(self, channel, diffusion_coefficient, volume_flow_rate): 
-        return (self.molecular_diffusion_resistance(channel, diffusion_coefficient) +
-                self.convection_resistance(channel, volume_flow_rate)) 
 
 @dataclass
 class GasFlowChannel(PorousLayer):
@@ -63,7 +49,7 @@ class GasFlowChannel(PorousLayer):
     height: float = 1e-3
     length: float = 100e-3
     n_parallel: int = 14
-    transport_resistance_model: ChannelTransportResistanceModel = field(default_factory=ChannelTransportResistanceModel)
+    transport_resistance_model: ChannelGasResistanceModel = field(default_factory=ChannelGasResistanceModel)
 
     def __post_init__(self): 
         self.gas.set_temperature(self.temperature)
@@ -85,5 +71,6 @@ class GasFlowChannel(PorousLayer):
     def calculate_inlet_stochiometry(self, reactant_consumption): 
         return self.inlet_gas_flow_rate * self.get_reactant_mole_fraction() / self.gas.gas.volume_mole / reactant_consumption
 
-    def calculate_transport_resistance(self, diffusion_coeff, volume_flow_rate): 
+    def calculate_gas_transport_resistance(self, species, volume_flow_rate): 
+        diffusion_coeff = self.get_species_diffusion_coefficient(species)
         return self.transport_resistance_model.total_resistance(self, diffusion_coeff, volume_flow_rate)

@@ -45,7 +45,7 @@ def test_catalyst_layer(cl):
     for k in range(3):
         print(relative_humidity[k])
         assert np.isclose(cl.ionomer.o2_film_resistance(ionomer_water_content[k], temperature=353.), ionomer_film_resistance[k], 10e-2)
-        assert np.isclose(cl.calculate_film_resistance(ionomer_water_content[k], temperature=353.15), local_resistance[k], 20e-2)
+        assert np.isclose(cl.calculate_o2_film_resistance(ionomer_water_content[k], temperature=353.15), local_resistance[k], 20e-2)
 
         assert np.isclose(cl.ionomer.proton_conductivity(relative_humidity[k], 0, temperature=353.15),  proton_conductivity[k], 12e-2)
         assert np.isclose(cl.calculate_ionomer_sheet_proton_resistance(relative_humidity[k], ionomer_water_content[k], temperature=353.15), 

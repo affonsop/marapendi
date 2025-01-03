@@ -64,9 +64,6 @@ class GasComposition:
         """
         self.gas = ct.Solution(thermo='ideal-gas', species=selected_species, reactions=[], transport_model="mixture-averaged")
         
-        self.relative_humidity = 0
-        self.saturation_pressure = water_saturation_pressure(temperature)
-        
         self.set_temperature_and_pressure(temperature, pressure)
         self.set_composition(1,0,0)
 
@@ -92,9 +89,7 @@ class GasComposition:
             The new temperature in Kelvin (K).
         """
         self.gas.TP = new_temperature, self.gas.P
-        new_saturation_pressure = water_saturation_pressure(new_temperature)
-        self.relative_humidity *= self.saturation_pressure / new_saturation_pressure
-        self.saturation_pressure = new_saturation_pressure
+        self.calculate_relative_humidity()
 
     def set_temperature_and_pressure(self, temperature: float, pressure: float):
         """
@@ -143,6 +138,30 @@ class GasComposition:
         """
         return self.gas.X[index_h2ov] * self.gas.P
 
+    def calculate_relative_humidity(self) -> float: 
+        """
+        Calculate the current relative humidity in the gas mixture.
+
+        Returns:
+        --------
+        float
+            Relative humidity between 0 and 1.
+        """
+        self.saturation_pressure = water_saturation_pressure(self.temperature())
+        self.relative_humidity = self.vapor_pressure() / self.saturation_pressure
+        return self.relative_humidity
+    
+    def get_relative_humidity(self) -> float: 
+        """
+        Get the current relative humidity in the gas mixture.
+
+        Returns:
+        --------
+        float
+            Relative humidity between 0 and 1.
+        """
+        return self.relative_humidity
+            
     def set_composition(self, dry_o2_mole_fraction: float, dry_h2_mole_fraction: float, relative_humidity: float):
         """
         Set the composition of the gas mixture.

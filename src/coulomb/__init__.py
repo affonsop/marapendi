@@ -6,3 +6,4 @@ from .membrane import *
 from .gas_composition import *
 from .flow_channels import *
 from .porous_layers import * 
+from .transport import * 
