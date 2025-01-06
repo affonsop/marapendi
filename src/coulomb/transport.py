@@ -40,7 +40,7 @@ class PorousGasResistanceModel:
     def knudsen_diffusivity(self,layer, temperature, molecular_weight):
         return layer.pore_diameter / 3 * np.sqrt(8 * ct.gas_constant * temperature / molecular_weight / np.pi)
     
-    def total_diffusion_resistance(self, layer, temperature, diffusion_coefficient, molecular_weight, water_saturation=0):
+    def total_diffusion_resistance(self, layer, temperature, diffusion_coefficient, molecular_weight, water_saturation):
         return self.molecular_diffusion_resistance(layer, diffusion_coefficient, water_saturation) + layer.thickness / self.knudsen_diffusivity(layer, temperature, molecular_weight)
 
 
@@ -50,17 +50,16 @@ class PorousLiquidTransportModel:
     dry_wet_transition_parameter: float = 10
     wet_saturation: float = 0.4 
 
-    def vapor_transport_resistance(self, cell_side, channel_volume_flow_rate): 
-        return (sum(layer.calculate_gas_transport_resistance('h2o') for layer in cell_side.porous_layers) +
-                cell_side.ch.calculate_gas_transport_resistance('h2o', channel_volume_flow_rate))
+    def vapor_transport_resistance(self, cell_side): 
+        return cell_side.calculate_gas_transport_resistance('h2o')
     
-    def calculate_damkholer_number(self, cell_side, water_injection_flux, channel_volume_flow_rate=1e12): 
-        vapor_transport_resistance = self.vapor_transport_resistance(cell_side, channel_volume_flow_rate)
+    def calculate_damkholer_number(self, cell_side, water_injection_flux): 
+        vapor_transport_resistance = self.vapor_transport_resistance(cell_side)
         cl_sat_concentration = cell_side.cl.get_saturation_concentration()
         ch_vapor_concentration = cell_side.ch.get_vapor_concentration()
         max_vapor_removal_flux = (cl_sat_concentration - ch_vapor_concentration) / vapor_transport_resistance
         return water_injection_flux / max_vapor_removal_flux 
         
-    def calculate_water_saturation(self, cell_side, water_injection_flux, channel_volume_flow_rate=1e12): 
-        damkholer = self.calculate_damkholer_number(cell_side, water_injection_flux, channel_volume_flow_rate)
+    def calculate_water_saturation(self, cell_side, water_injection_flux): 
+        damkholer = self.calculate_damkholer_number(cell_side, water_injection_flux)
         return self.wet_saturation * sigmoid(damkholer, self.critical_damkholer, self.dry_wet_transition_parameter)

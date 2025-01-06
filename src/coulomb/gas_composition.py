@@ -63,9 +63,10 @@ class GasComposition:
             Pressure of the gas mixture in Pascals (Pa).
         """
         self.gas = ct.Solution(thermo='ideal-gas', species=selected_species, reactions=[], transport_model="mixture-averaged")
-        
+        self.states = ct.SolutionArray(self.gas, shape=1)
         self.set_temperature_and_pressure(temperature, pressure)
         self.set_composition(1,0,0)
+
 
     def set_pressure(self, new_pressure: float):
         """
@@ -76,8 +77,8 @@ class GasComposition:
         new_pressure : float
             The new pressure in Pascals (Pa).
         """
-        self.relative_humidity *= new_pressure / self.gas.P
-        self.gas.TP = self.gas.T, new_pressure
+        self.relative_humidity *= new_pressure / self.states.P
+        self.states.TPX = self.states.T, new_pressure, self.states.X
 
     def set_temperature(self, new_temperature: float):
         """
@@ -88,7 +89,7 @@ class GasComposition:
         new_temperature : float
             The new temperature in Kelvin (K).
         """
-        self.gas.TP = new_temperature, self.gas.P
+        self.states.TPX = new_temperature, self.states.P, self.states.X
         self.calculate_relative_humidity()
 
     def set_temperature_and_pressure(self, temperature: float, pressure: float):
@@ -114,7 +115,7 @@ class GasComposition:
         float
             Pressure in Pascals (Pa).
         """
-        return self.gas.P
+        return self.states.P
 
     def temperature(self) -> float:
         """
@@ -125,7 +126,7 @@ class GasComposition:
         float
             Temperature in Kelvin (K).
         """
-        return self.gas.T
+        return self.states.T
 
     def vapor_pressure(self) -> float:
         """
@@ -136,7 +137,7 @@ class GasComposition:
         float
             Vapor partial pressure in Pa.
         """
-        return self.gas.X[index_h2ov] * self.gas.P
+        return self.states.X[...,index_h2ov] * self.states.P
 
     def calculate_relative_humidity(self) -> float: 
         """
@@ -147,7 +148,7 @@ class GasComposition:
         float
             Relative humidity between 0 and 1.
         """
-        self.saturation_pressure = water_saturation_pressure(self.temperature())
+        self.saturation_pressure = water_saturation_pressure(self.states.T)
         self.relative_humidity = self.vapor_pressure() / self.saturation_pressure
         return self.relative_humidity
     
@@ -179,13 +180,19 @@ class GasComposition:
         relative_humidity : float
             Relative humidity of the gas mixture.
         """
-        dry_mole_fractions = np.array([
-            dry_o2_mole_fraction,
-            1 - dry_o2_mole_fraction - dry_h2_mole_fraction,
-            dry_h2_mole_fraction,
-            0  # Placeholder for water vapor, updated below
-        ])
-        h2o_mole_fraction = relative_humidity * self.saturation_pressure / self.gas.P
-        self.gas.TPX = self.gas.T, self.gas.P, dry_mole_fractions * (1 - h2o_mole_fraction) + np.array([0, 0, 0, h2o_mole_fraction])
-        self.relative_humidity = relative_humidity
+        dry_mole_fractions = np.zeros_like(self.states.X)
+        dry_mole_fractions[...,index_o2] = dry_o2_mole_fraction
+        dry_mole_fractions[...,index_h2] = dry_h2_mole_fraction
+        dry_mole_fractions[...,index_n2] = 1 - dry_o2_mole_fraction - dry_h2_mole_fraction
+
+
+        self.saturation_pressure = water_saturation_pressure(self.states.T)
+        h2o_mole_fraction = relative_humidity *  self.saturation_pressure / self.states.P
+
+        vapor_mole_fractions = np.zeros_like(self.states.X)
+        vapor_mole_fractions[...,index_h2ov] = h2o_mole_fraction
+
+        self.states.TPX = self.states.T, self.states.P, dry_mole_fractions * (1 - vapor_mole_fractions[...,index_h2ov, np.newaxis]) + vapor_mole_fractions
+        self.relative_humidity = self.states.P * vapor_mole_fractions[...,index_h2ov] / self.saturation_pressure
       
+    

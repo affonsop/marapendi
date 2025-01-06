@@ -23,9 +23,9 @@ def toray_gdl_060():
     lmbd = 0.86 # Data for figure 9 in Baker et al. (2009)
     f = 1 + 0.803 * np.exp(-1.17 * lmbd) + 0.197 * np.exp(-0.164 * lmbd)
     gdl = cb.PorousLayer(thickness=160e-6, 
-                         temperature=353.15, 
                          gas=cb.GasComposition(temperature=353.15, pressure=1.0e5), 
                          effective_gas_diffusion_ratio=0.25/f) # D_OM / D_OMy = 4 in Baker et al. (2009)
+    gdl.gas.set_temperature(353.15)
     gdl.gas.set_composition(0.2,0,0.62) 
     return gdl 
 

@@ -6,14 +6,25 @@ import numpy as np
 import cantera as ct
 from coulomb.tools import calculate_arrhenius_term
 
-h2o2 = ct.Solution('h2o2.yaml')
-h2 = h2o2.species('h2').thermo
-o2 = h2o2.species('o2').thermo
+h2o2 = ct.Solution('gri30.yaml')
+h2 = h2o2.species('H2').thermo
+o2 = h2o2.species('O2').thermo
+h2ov = h2o2.species('H2O').thermo
 h2ol = ct.Solution('water.yaml', name='liquid_water').species(0).thermo
 h2os = ct.Solution('water.yaml', name='ice').species(0).thermo
 
 STD_PRESSURE = 1e5
 STD_TEMPERATURE = 298.15
+
+std_formation_enthalpy_h2ov = (h2ov.h(STD_TEMPERATURE) -
+                               (h2.h(STD_TEMPERATURE) +
+                                0.5 * o2.h(STD_TEMPERATURE)))
+std_formation_entropy_h2ov = (h2ov.s(STD_TEMPERATURE) -
+                               (h2.s(STD_TEMPERATURE) +
+                                0.5 * o2.s(STD_TEMPERATURE)))
+
+std_formation_gibbs_h2ov = (std_formation_enthalpy_h2ov -
+                            STD_TEMPERATURE * std_formation_entropy_h2ov)
 
 std_formation_enthalpy_h2ol = (h2ol.h(STD_TEMPERATURE) -
                                (h2.h(STD_TEMPERATURE) +
@@ -24,6 +35,12 @@ std_formation_entropy_h2ol = (h2ol.s(STD_TEMPERATURE) -
 std_formation_gibbs_h2ol = (std_formation_enthalpy_h2ol -
                             STD_TEMPERATURE * std_formation_entropy_h2ol)
 
+
+def h2_hhv(temperature): 
+    return h2ol.h(temperature) - 0.5 * o2.h(temperature) - h2.h(temperature)
+
+def h2_lhv(temperature): 
+    return h2ov.h(temperature) - 0.5 * o2.h(temperature) - h2.h(temperature)
 
 def calculate_reversible_cell_voltage(
     temperature,
@@ -310,7 +327,7 @@ def calculate_exchange_current_density(
 
     """
 
-    activity_correction = (reactant_activity / params.reference_activity) ** params.reaction_order
+    activity_correction = np.maximum(reactant_activity / params.reference_activity, 1e-12) ** params.reaction_order
     arrhenius_term = calculate_arrhenius_term(params.activation_energy,
                                               temperature,
                                               params.reference_temperature)

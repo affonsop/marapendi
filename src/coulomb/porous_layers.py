@@ -11,36 +11,32 @@ from .electrochemistry import ElectrochemicalReaction
 from .transport import PorousGasResistanceModel
 from .water import water_saturation_pressure
 
-@dataclass 
-class CellComponent: 
-    temperature: float = 300.
 
 @dataclass
-class PorousLayer(CellComponent):
+class PorousLayer():
     thickness: float = 1e-3
     gas: GasComposition = field(default_factory=GasComposition)
     porosity: float = 1
     effective_gas_diffusion_ratio: float = 1
     pore_diameter: float=1e12
     transport_resistance_model: PorousGasResistanceModel = field(default_factory=PorousGasResistanceModel)
-
-    def __post_init__(self):
-        self.gas.set_temperature(self.temperature)
+    water_saturation: float = 0
+    thermal_conductivity: float = 1e12 
 
     def get_o2_mole_fraction(self):
-        return self.gas.gas.X[index_o2]
+        return self.gas.states.X[...,index_o2]
     
     def get_h2_mole_fraction(self):
-        return self.gas.gas.X[index_h2]
+        return self.gas.states.X[...,index_h2]
     
     def get_species_mole_fraction(self, species):
-        return self.gas.gas.X[species_indexes[species]] 
+        return self.gas.states.X[...,species_indexes[species]] 
     
     def get_species_diffusion_coefficient(self, species): 
-        return self.gas.gas.mix_diff_coeffs_mole[species_indexes[species]]
+        return self.gas.states.mix_diff_coeffs_mole[...,species_indexes[species]]
 
     def get_species_molecular_weight(self, species): 
-        return self.gas.gas.molecular_weights[species_indexes[species]]
+        return self.gas.states.molecular_weights[...,species_indexes[species]]
 
     def get_gas_temperature(self):
         return self.gas.temperature()
@@ -48,8 +44,14 @@ class PorousLayer(CellComponent):
     def get_gas_pressure(self): 
         return self.gas.pressure()
     
+    def get_species_concentrations(self, species): 
+        return self.gas.states.concentrations[...,species_indexes[species]] 
+
+    def get_species_partial_pressure(self, species): 
+        return self.gas.states.X[...,species_indexes[species]] * self.gas.states.P
+
     def get_vapor_pressure(self): 
-        return self.gas.gas.X[index_h2ov] * self.gas.pressure()
+        return self.gas.states.X[...,index_h2ov] * self.gas.pressure()
      
     def get_relative_humidity(self):
         return self.gas.relative_humidity
@@ -63,13 +65,16 @@ class PorousLayer(CellComponent):
     def get_vapor_concentration(self): 
         return self.get_vapor_pressure() / (ct.gas_constant * self.get_gas_temperature())
     
-    def calculate_gas_transport_resistance(self, species='o2', water_saturation=0): 
+    def calculate_gas_transport_resistance(self, species='o2'): 
         return self.transport_resistance_model.total_diffusion_resistance(
             self, 
             self.get_gas_temperature(), 
             self.get_species_diffusion_coefficient(species), 
             self.get_species_molecular_weight(species), 
-            water_saturation)
+            self.water_saturation)
+    
+    def calculate_heat_transfer_resistance(self): 
+        return self.thickness / self.thermal_conductivity
     
 @dataclass 
 class CatalystLayerIonomerModel: 

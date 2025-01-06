@@ -9,7 +9,6 @@ def toray_gdl_060():
     lmbd = 0.86 # Data for figure 9 in Baker et al. (2009)
     f = 1 + 0.803 * np.exp(-1.17 * lmbd) + 0.197 * np.exp(-0.164 * lmbd)
     gdl = cb.PorousLayer(thickness=165e-6, 
-                         temperature=343.15, 
                          gas=cb.GasComposition(temperature=343.15, pressure=3.0e5), 
                          effective_gas_diffusion_ratio=0.2/f) # D_OM / D_OMy = 5 in Chuang et al. (2020)
     
@@ -63,7 +62,8 @@ def test_gas_porous_transport_resistance(toray_gdl_060, fc, cl):
     for layer in fc.ca.components:
             layer.gas.set_composition(0.2,0,1)
             layer.gas.set_temperature_and_pressure(343.15, 300e3)
-    dry_resistance = (fc.ca.gdl.calculate_gas_transport_resistance(species='o2', water_saturation=0.1) +
+    fc.ca.gdl.water_saturation = 0.1
+    dry_resistance = (fc.ca.gdl.calculate_gas_transport_resistance(species='o2') +
                     fc.ca.cl.calculate_gas_transport_resistance(species='o2') +
                     fc.ca.cl.calculate_o2_film_resistance(14, fc.ca.cl.get_gas_temperature()))
     assert np.isclose(dry_resistance, 200, 10e-2)
@@ -91,8 +91,8 @@ def test_gas_porous_transport_resistance(toray_gdl_060, fc, cl):
     temperature = 343.15 + 1.4 * i_cell / 2 * (thermal_resistance + thermal_contact_resistance)
     fc.ca.cl.gas.set_temperature(temperature)
     fc.ca.liquid_transport_model.wet_saturation = 0.3    
-    sl = fc.ca.liquid_transport_model.calculate_water_saturation(fc.ca, water_injection_flux=i_cell/(2*ct.faraday))
-    wet_resistance = (fc.ca.gdl.calculate_gas_transport_resistance(species='o2', water_saturation=sl) +
+    fc.ca.gdl.water_saturation = fc.ca.liquid_transport_model.calculate_water_saturation(fc.ca, water_injection_flux=i_cell/(2*ct.faraday))
+    wet_resistance = (fc.ca.gdl.calculate_gas_transport_resistance(species='o2') +
                     fc.ca.cl.calculate_gas_transport_resistance(species='o2') +
                     fc.ca.cl.calculate_o2_film_resistance(14, fc.ca.cl.get_gas_temperature()))
 

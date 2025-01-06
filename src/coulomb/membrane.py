@@ -194,7 +194,7 @@ class MembraneWaterBalanceModel:
     
     def biot_number(self, absorption_coefficient, temperature, membrane):
         return absorption_coefficient * membrane.dry_thickness / self.water_diffusivity(temperature)
-    
+
     def water_balance(self, cell):
         k_v = 5e-3
         k_int = self.absorption_coefficient 
@@ -229,13 +229,23 @@ class MembraneWaterBalanceModel:
                                cell.an.membrane_biot_number,
                                cell.ca.membrane_biot_number,
                                cell.membrane.peclet)
-        print(cell.membrane.peclet)
+        cell.membrane.water_content = np.mean(self.water_content_profile, axis=0)
         return self.water_content_profile
     
     def cathode_absorption_flux(self, cell): 
         lmbd_ca = self.water_content_profile[-1,:]
         return (cell.ca.membrane_absorption_coefficient_lmbd * (cell.ca.ch.equiv_water_content - lmbd_ca) +
                 -self.electroosmotic_drag_speed(cell.membrane.temperature, cell.current_density, cell.membrane) * lmbd_ca * self.k_v_int / self.absorption_coefficient) * cell.membrane.dry_concentration
+
+@dataclass
+class SimpleMembraneWaterBalanceModel(MembraneWaterBalanceModel): 
+
+    def water_balance(self, cell): 
+        for side in (cell.ca, cell.an):
+            side.rh_at_cl_without_crossover = (side.ch.get_vapor_pressure() / side.cl.gas.saturation_pressure +
+                                               (cell.current_density / (2*ct.faraday) / side.calculate_gas_transport_resistance('h2o') / side.cl.get_saturation_concentration() if side == cell.ca else 0))
+            side.membrane_surface_water_content = cell.membrane.equilibrium_water_content(side.rh_at_cl_without_crossover)
+        cell.membrane.water_content = 0.5 * sum(side.membrane_surface_water_content for side in (cell.ca, cell.an))
 
 def membrane_water_profile(xi, equiv_lmbd_ca_ch, equiv_lmbd_an_ch, k_v, biot_an, biot_ca, peclet):
     """
@@ -291,6 +301,8 @@ class Membrane:
         Thickness of the membrane in meters (m). Default is 25 µm.
     hydrogen_permeation_model: HydrogenPermeationModel
         A dataclass representing the properties of membrane hydrogen permeability model.
+    water_content: float
+        Water content of the membrane. 
 
     Computed Attributes:
     --------------------
@@ -313,6 +325,7 @@ class Membrane:
     dry_thickness: float = 25e-6
     h2_permeation_model: HydrogenPermeationModel = field(default_factory=HydrogenPermeationModel)
     water_balance_model: MembraneWaterBalanceModel = field(default_factory=MembraneWaterBalanceModel)
+    water_content: float = 14
 
     def __post_init__(self):
         """
@@ -320,9 +333,6 @@ class Membrane:
         """
         self.dry_concentration = self.density / self.equivalent_weight  # mol/m³
         self.dry_molar_volume = 1. / self.dry_concentration  # m³/mol
-
-
-
 
     def water_vol_fraction(self, water_content: float, water_molar_volume: float) -> float:
         """
@@ -386,3 +396,9 @@ class Membrane:
 
     def equilibrium_water_content_derivative(self,rh): 
         return (17.18 - 79.70 * rh + 108 * rh**2)
+
+    def proton_conductivity(self, temperature, water_vol_fraction, water_content): 
+        return (0.539 * np.maximum(water_content, 1) - 0.326) * calculate_arrhenius_term(10e6, temperature, 303.15)
+
+    def proton_resistance(self, temperature, water_vol_fraction, water_content): 
+        return self.dry_thickness / self.proton_conductivity(temperature, water_vol_fraction, water_content)
