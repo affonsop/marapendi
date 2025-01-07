@@ -17,3 +17,5 @@ dependencies :
     - pylint
     - sphinx-autoapi
     - nbsphinx
+    - scipy
+    - matplotlib
