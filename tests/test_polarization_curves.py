@@ -97,24 +97,37 @@ def fuel_cell(cathode_conditions, anode_conditions):
     return fc
 
 def test_polarization_curve(fuel_cell, cathode_conditions, anode_conditions):
-
+    fig, ax = plt.subplots(2,3,figsize=(8,4))
     for k, rh_cathode in enumerate((0.5,0.7,0.9)): 
         cathode_conditions.inlet_relative_humidity = rh_cathode
-        fuel_cell.set_conditions(353.15, np.linspace(0.01,2e4,200),cathode_conditions, anode_conditions)
+        fuel_cell.set_conditions(353.15, np.linspace(0.01,1.5e4,50),cathode_conditions, anode_conditions)
         fuel_cell.solve_transport()
-        plt.figure(1)
-        plt.plot(fuel_cell.current_density, fuel_cell.cell_voltage())
-        plt.figure(2)
-        plt.plot(fuel_cell.current_density, fuel_cell.ca.gdl.water_saturation, 'C{}'.format(k))
-        plt.plot(fuel_cell.current_density, fuel_cell.ca.rh_at_cl_without_crossover, '--C{}'.format(k))
-        plt.plot(fuel_cell.current_density, fuel_cell.an.rh_at_cl_without_crossover, '-.C{}'.format(k))
-        plt.figure(3)
-        plt.plot(fuel_cell.current_density, fuel_cell.membrane.water_content)
-        plt.figure(4)
-        plt.plot(fuel_cell.current_density, fuel_cell.ca.cl.get_o2_mole_fraction())
-        plt.figure(5)
-        plt.plot(fuel_cell.current_density, fuel_cell.ca.cl.get_gas_temperature())
+        
+        ax[0,0].plot(fuel_cell.current_density * 1e-4, fuel_cell.cell_voltage(), label='{:.0f} %'.format(rh_cathode * 100))
+        ax[0,0].set_ylabel('Cell voltage (V)')
+        ax[0,0].set_xlabel('Curent density (A/cm$^2$)')
+
+        ax[0,1].plot(fuel_cell.current_density * 1e-4, fuel_cell.ca.gdl.water_saturation, label='{:.0f} %'.format(rh_cathode * 100))
+        ax[0,1].set_ylabel('GDL water\nsaturation (n.d.)')
+        ax[0,1].set_xlabel('Curent density (A/cm$^2$)')
+
+        ax[0,2].plot(fuel_cell.current_density * 1e-4, fuel_cell.membrane.water_content, label='{:.0f} %'.format(rh_cathode * 100))
+        ax[0,2].set_ylabel('Membrane\nwater content (n.d.)')
+        ax[0,2].set_xlabel('Curent density (A/cm$^2$)')
+        ax[0,2].legend(loc='upper left', bbox_to_anchor=(1,1.0), title='RH$_{in,ca}$')
+        
+        ax[1,0].plot(fuel_cell.current_density * 1e-4, fuel_cell.ca.cl.get_o2_mole_fraction(), label='{:.0f} %'.format(rh_cathode * 100))
+        ax[1,0].set_ylabel('Cathode CL\nO$_2$ mole fraction (n.d.)')
+        ax[1,0].set_xlabel('Curent density (A/cm$^2$)')
+     
+        ax[1,1].plot(fuel_cell.current_density * 1e-4, fuel_cell.ca.cl.get_gas_temperature()-273.15)
+        ax[1,1].set_ylabel(u'Cathode CL\ntemperature (\u00B0C)')
+        ax[1,1].set_xlabel('Curent density (A/cm$^2$)')
     
+        ax[1,2].plot(fuel_cell.current_density * 1e-4, 1e7 * fuel_cell.high_frequency_resistance())
+        ax[1,2].set_ylabel('HFR (m$\Omega$.cm$^2$)')
+        ax[1,2].set_xlabel('Curent density (A/cm$^2$)')
+    plt.tight_layout()
     plt.show()
     
 

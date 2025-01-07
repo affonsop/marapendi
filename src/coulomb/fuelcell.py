@@ -95,21 +95,21 @@ class FuelCell:
             self.ca.cl.get_gas_temperature(),
             self.ca.cl.get_species_partial_pressure('o2')
         )
-
+    
+    def high_frequency_resistance(self): 
+        return self.membrane.proton_resistance(self.membrane.temperature, 0, self.membrane.water_content) + self.electrical_resistance
+    
     def ohmic_overpotential(self): 
         cl_resistance = self.ca.cl.calculate_effective_proton_resistance(self.current_density, 
                                                                          self.ca.cl.get_relative_humidity(), 
                                                                          self.ca.membrane_surface_water_content, 
                                                                          self.ca.cl.get_gas_temperature())
-        membrane_resistance = self.membrane.proton_resistance(self.membrane.temperature, 0, self.membrane.water_content)
-        return self.current_density * (cl_resistance + membrane_resistance + self.electrical_resistance)
+        return self.current_density * (cl_resistance + self.high_frequency_resistance())
 
     def cell_voltage(self):
-
         reversible_cell_voltage = self.reversible_cell_voltage()
         activation_overpotential_oer = self.activation_overpotential()
         ohmic_overpotential = self.ohmic_overpotential()
-
         return np.maximum(0,reversible_cell_voltage - activation_overpotential_oer - ohmic_overpotential)
     
     def set_mea_temperature(self, mea_temperature): 
