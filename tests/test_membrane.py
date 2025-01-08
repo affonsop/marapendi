@@ -35,8 +35,8 @@ def fuel_cell_liso_2016(membrane_liso_2016):
 @pytest.fixture 
 def liso_2016_exp_data(): 
     return {
-        0.2: [0.0000365, 0.0000982, 0.0001487, 0.0001988],
-        0.8: [0.0000500, 0.0001062, 0.0001464, 0.0002065]} 
+        0.2: np.array([0.0000365, 0.0000982, 0.0001487, 0.0001988]),
+        0.8: np.array([0.0000500, 0.0001062, 0.0001464, 0.0002065])} 
     
 @pytest.fixture
 def water(): 
@@ -70,15 +70,20 @@ def test_membrane_water_transport_model(fuel_cell_liso_2016, liso_2016_exp_data)
     fc.membrane.water_balance_model.water_balance(fc)
     fc.ca.h2ov_outlet_mass_flow_rate = (fc.ca.ch.h2ov_inlet_mass_flow_rate + fc.product_water_mass_source -
                                         fc.membrane.water_balance_model.cathode_absorption_flux(fc) * fc.cell_area * fc.cell_number) 
-    plt.plot(fc.current_density, fc.ca.h2ov_outlet_mass_flow_rate, 'C0')
-    plt.plot(fc.current_density, liso_2016_exp_data[0.2], 'C0s')
+    plt.figure(figsize=(4,3))
+    plt.plot(fc.current_density * 1e-4, 60e3*fc.ca.h2ov_outlet_mass_flow_rate, 'C0')
+    plt.plot(fc.current_density * 1e-4, 60e3*liso_2016_exp_data[0.2], 'C0s', label='20 %')
     fc.an.ch.gas.set_composition(0, 1.0, 0.8)
     fc.membrane.water_balance_model.water_balance(fc)
     fc.ca.h2ov_outlet_mass_flow_rate = (fc.ca.ch.h2ov_inlet_mass_flow_rate + fc.product_water_mass_source -
                                         fc.membrane.water_balance_model.cathode_absorption_flux(fc) * fc.cell_area * fc.cell_number)
-    plt.plot(fc.current_density, fc.ca.h2ov_outlet_mass_flow_rate, 'C1')
-    plt.plot(fc.current_density, liso_2016_exp_data[0.8], 'C1s')
-    plt.ylim(0,0.35e-3)
-    plt.show()
+    plt.plot(fc.current_density * 1e-4, 60e3*fc.ca.h2ov_outlet_mass_flow_rate, 'C1')
+    plt.plot(fc.current_density * 1e-4, 60e3*liso_2016_exp_data[0.8], 'C1s', label='80 %')
+    plt.ylim(0,0.35*60)
+    plt.legend(title='RH$_{in,an}$')
+    plt.xlabel('Current density (A/cm$^2$)')
+    plt.ylabel('Cathode outlet water\nmass flow rate (g/min)')
+    plt.tight_layout()
+    plt.savefig('./tests/figures/test_membrane.png',dpi=300)
     for m_dot_h2o, m_dot_h2o_exp in zip(fc.ca.h2ov_outlet_mass_flow_rate, liso_2016_exp_data[0.2]): 
         assert np.isclose(m_dot_h2o, m_dot_h2o_exp, 0.2)

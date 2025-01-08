@@ -128,6 +128,6 @@ def test_polarization_curve(fuel_cell, cathode_conditions, anode_conditions):
         ax[1,2].set_ylabel(r'HFR (m$\Omega$.cm$^2$)')
         ax[1,2].set_xlabel('Curent density (A/cm$^2$)')
     plt.tight_layout()
-    plt.show()
-    
+    plt.savefig('tests/figures/test_polarization_curves.png',dpi=300)
+
 
