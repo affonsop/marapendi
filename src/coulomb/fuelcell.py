@@ -47,7 +47,7 @@ class FuelCellSide:
     def calculate_gas_transport_resistance(self, species, ionomer_water_content=11):
         return (sum(layer.calculate_gas_transport_resistance(species) for layer in self.porous_layers) +
                 self.ch.calculate_gas_transport_resistance(species) + 
-                (self.cl.calculate_o2_film_resistance(ionomer_water_content, self.cl.get_gas_temperature()) if species == 'o2' else 0))
+                (self.cl.calculate_o2_film_resistance(ionomer_water_content, self.cl.temperature) if species == 'o2' else 0))
 
     def calculate_heat_transfer_resistance(self): 
         return sum(layer.calculate_heat_transfer_resistance() for layer in self.porous_layers) + self.thermal_contact_resistance
@@ -129,11 +129,10 @@ class FuelCell:
     
     def calculate_reactant_concentration_at_cl(self): 
         self.ca.o2_resistance = self.ca.calculate_gas_transport_resistance('o2', self.ca.membrane_surface_water_content)
-        c = self.ca.ch.gas.states.concentrations
-        c[...,species_indexes['o2']] = self.ca.ch.gas.states.concentrations[...,species_indexes['o2']] - self.o2_consumption * self.ca.o2_resistance 
-        c[...,species_indexes['n2']] = self.ca.ch.gas.states.concentrations[...,species_indexes['n2']] + self.o2_consumption * self.ca.o2_resistance 
-        self.ca.cl.gas.states.TPX = self.ca.cl.gas.states.T, self.ca.cl.gas.states.P, c 
-
+        c = self.ca.ch.gas.concentration()
+        self.ca.cl.gas.X[...,species_indexes['o2']] = np.maximum(1e-12, self.ca.ch.gas.X[...,species_indexes['o2']] - self.o2_consumption * self.ca.o2_resistance / c)
+        self.ca.cl.gas.X[...,species_indexes['n2']] = self.ca.ch.gas.X[...,species_indexes['n2']] + self.ca.ch.gas.X[...,species_indexes['o2']] - self.ca.cl.gas.X[...,species_indexes['o2']]
+      
     def calculate_heat_transfer_resistance(self): 
         self.thermal_resistance = 1/sum(1./side.calculate_heat_transfer_resistance() for side in (self.ca, self.an))
 
@@ -166,7 +165,8 @@ class FuelCell:
             
             for component in cell_side.components: 
                 component.water_saturation = 0
-                component.gas.states = ct.SolutionArray(component.gas.gas, np.shape(self.current_density))
+
+                component.gas.X = self.current_density[...,np.newaxis] * np.array([0,0,0,0])
                 component.set_gas_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
                 component.set_gas_composition(conditions.dry_o2_mole_fraction, 
                                               conditions.dry_h2_mole_fraction,

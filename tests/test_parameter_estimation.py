@@ -114,7 +114,7 @@ def create_fuel_cell(params):
 def h(params): 
     fuel_cell = create_fuel_cell(params)
     return np.concatenate(
-         [compute_ui_curve(exp_data[p]['i']*1e4, fuel_cell, p*1e5)
+         [compute_ui_curve(exp_data[p]['i'].values*1e4, fuel_cell, p*1e5)
           for p in pressure_list]
     )
 
@@ -128,4 +128,4 @@ estimator.set_unknown_params(
      ('crossover-correction', (0,2), True, '$k_x$')]
 )
 
-sol, p = estimator.estimate(h({'ecsa': 50e3, 'crossover-correction':1}), t=0, print_iterations=True, popsize=5, ftol=1e-8)
+sol, p = estimator.estimate(h({'ecsa': 50e3, 'crossover-correction':1}), t=0, print_iterations=True, popsize=5, ftol=1e-13)

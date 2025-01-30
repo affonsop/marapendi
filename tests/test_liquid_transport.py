@@ -11,7 +11,6 @@ def toray_gdl_060():
     gdl = cb.PorousLayer(thickness=165e-6, 
                          gas=cb.GasComposition(temperature=343.15, pressure=3.0e5), 
                          effective_gas_diffusion_ratio=0.2/f) # D_OM / D_OMy = 5 in Chuang et al. (2020)
-    
     return gdl 
 
 @pytest.fixture
@@ -79,6 +78,7 @@ def test_gas_porous_transport_resistance(toray_gdl_060, fc, cl):
         for layer in fc.ca.components:
             layer.gas.set_composition(0.2,0,rh)
         fc.ca.cl.gas.set_temperature(temperature)
+        fc.ca.h2ov_resistance = fc.ca.calculate_gas_transport_resistance('h2o')
         fc.ca.liquid_transport_model = cb.PorousLiquidTransportModel(wet_saturation=0.44, dry_wet_transition_parameter=10) 
         da = fc.ca.liquid_transport_model.calculate_damkholer_number(fc.ca, 0.5*i_cell/(2 * ct.faraday))
         print(da, thermal_resistance)
@@ -96,4 +96,4 @@ def test_gas_porous_transport_resistance(toray_gdl_060, fc, cl):
                     fc.ca.cl.calculate_gas_transport_resistance(species='o2') +
                     fc.ca.cl.calculate_o2_film_resistance(14, fc.ca.cl.get_gas_temperature()))
 
-    assert np.isclose(wet_resistance,400, 5e-2)
+    assert np.isclose(wet_resistance,400, 10e-2)

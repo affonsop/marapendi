@@ -26,10 +26,10 @@ def fuel_cell_liso_2016(membrane_liso_2016):
     fc.ca.ch.gas.set_composition(0.2, 0, 1.)
     fc.an.ch.gas.set_temperature_and_pressure(337.8842, 135e3)
     fc.an.ch.gas.set_composition(0, 1.0, 0.2)
-    fc.product_water_mass_source = fc.current_density * fc.cell_area * fc.cell_number / (2 * ct.faraday) * fc.ca.ch.gas.gas.molecular_weights[-1]
+    fc.product_water_mass_source = fc.current_density * fc.cell_area * fc.cell_number / (2 * ct.faraday) * fc.ca.ch.gas.molecular_weights[-1]
     fc.ca.ch.o2_inlet_molar_flow_rate = fc.current_density * fc.cell_area * fc.cell_number / (4 * ct.faraday)
-    fc.ca.ch.h2ov_inlet_molar_flow_rate = fc.ca.ch.o2_inlet_molar_flow_rate / fc.ca.ch.gas.gas.X[0] * fc.ca.ch.gas.gas.X[-1]
-    fc.ca.ch.h2ov_inlet_mass_flow_rate = fc.ca.ch.h2ov_inlet_molar_flow_rate * fc.ca.ch.gas.gas.molecular_weights[-1]
+    fc.ca.ch.h2ov_inlet_molar_flow_rate = fc.ca.ch.o2_inlet_molar_flow_rate / fc.ca.ch.gas.X[0] * fc.ca.ch.gas.X[-1]
+    fc.ca.ch.h2ov_inlet_mass_flow_rate = fc.ca.ch.h2ov_inlet_molar_flow_rate * fc.ca.ch.gas.molecular_weights[-1]
     return fc
 
 @pytest.fixture 
@@ -64,8 +64,8 @@ import matplotlib.pyplot as plt
 
 def test_membrane_water_transport_model(fuel_cell_liso_2016, liso_2016_exp_data):
     fc = fuel_cell_liso_2016
-    assert np.isclose(fc.ca.ch.gas.gas.X[0], 0.1634, 1e-3)
-    assert fc.ca.ch.gas.gas.X[2] == 0
+    assert np.isclose(fc.ca.ch.gas.X[0], 0.1634, 1e-3)
+    assert fc.ca.ch.gas.X[2] == 0
 
     fc.membrane.water_balance_model.water_balance(fc)
     fc.ca.h2ov_outlet_mass_flow_rate = (fc.ca.ch.h2ov_inlet_mass_flow_rate + fc.product_water_mass_source -
