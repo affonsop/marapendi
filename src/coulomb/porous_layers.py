@@ -39,19 +39,35 @@ class PorousLayer():
         return self.gas.states.molecular_weights[...,species_indexes[species]]
 
     def get_gas_temperature(self):
-        return self.gas.temperature()
+        return self.temperature
 
     def get_gas_pressure(self): 
-        return self.gas.pressure()
+        return self.pressure
     
+    def set_gas_composition(self, dry_o2_mole_fraction, dry_h2_mole_fraction, relative_humidity): 
+        self.gas.set_composition(dry_o2_mole_fraction, dry_h2_mole_fraction, relative_humidity)
+
+    def set_gas_pressure(self, pressure):
+        self.pressure = pressure
+        self.gas.set_pressure(pressure)
+
+    def set_gas_temperature(self, temperature):
+        self.temperature = temperature 
+        self.gas.set_temperature(temperature)
+        
+    def set_gas_temperature_and_pressure(self, temperature, pressure):
+        self.temperature = temperature 
+        self.pressure = pressure
+        self.gas.set_temperature_and_pressure(temperature, pressure)
+
     def get_species_concentrations(self, species): 
         return self.gas.states.concentrations[...,species_indexes[species]] 
 
     def get_species_partial_pressure(self, species): 
-        return self.gas.states.X[...,species_indexes[species]] * self.gas.states.P
+        return self.gas.states.X[...,species_indexes[species]] * self.pressure
 
     def get_vapor_pressure(self): 
-        return self.gas.states.X[...,index_h2ov] * self.gas.pressure()
+        return self.gas.states.X[...,index_h2ov] * self.pressure
      
     def get_relative_humidity(self):
         return self.gas.relative_humidity
@@ -60,15 +76,15 @@ class PorousLayer():
         return self.gas.saturation_pressure
     
     def get_saturation_concentration(self): 
-        return self.get_saturation_pressure() / (ct.gas_constant * self.get_gas_temperature()) 
+        return self.get_saturation_pressure() / (ct.gas_constant * self.temperature) 
 
     def get_vapor_concentration(self): 
-        return self.get_vapor_pressure() / (ct.gas_constant * self.get_gas_temperature())
+        return self.get_vapor_pressure() / (ct.gas_constant * self.temperature)
     
     def calculate_gas_transport_resistance(self, species='o2'): 
         return self.transport_resistance_model.total_diffusion_resistance(
             self, 
-            self.get_gas_temperature(), 
+            self.temperature, 
             self.get_species_diffusion_coefficient(species), 
             self.get_species_molecular_weight(species), 
             self.water_saturation)

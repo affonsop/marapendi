@@ -66,8 +66,11 @@ class GasFlowChannel(PorousLayer):
     def set_fixed_inlet_gas_flow_rate(self, inlet_gas_flow_rate): 
         self.inlet_gas_flow_rate = inlet_gas_flow_rate 
 
-    def set_inlet_gas_flow_rate_from_stoichiometry(self, reactant_consumption, stoichiometry=None):
-        if stoichiometry: 
+    def set_inlet_gas_flow_rate_from_stoichiometry(self, reactant_consumption, stoichiometry=0):
+        try: 
+            if stoichiometry > 0: 
+                self.inlet_stoichiometry = stoichiometry 
+        except ValueError: 
             self.inlet_stoichiometry = stoichiometry 
         self.inlet_gas_flow_rate = self.calculate_inlet_gas_flow_rate(reactant_consumption)
 

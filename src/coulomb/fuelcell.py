@@ -74,7 +74,7 @@ class FuelCell:
 
     def reversible_cell_voltage(self): 
         return calculate_reversible_cell_voltage(
-            self.ca.cl.get_gas_temperature(),
+            self.ca.cl.temperature,
             self.ca.cl.get_species_partial_pressure('o2'),
             self.an.cl.get_species_partial_pressure('h2')
         )
@@ -82,7 +82,7 @@ class FuelCell:
     def activation_overpotential(self): 
         self.h2_permeation_flux = self.membrane.hydrogen_permeation_flux(self.an.cl.get_species_partial_pressure('h2'), 
                                                                         self.membrane.temperature, 
-                                                                        self.an.cl.get_gas_pressure() - self.ca.cl.get_gas_pressure(),
+                                                                        self.an.cl.pressure - self.ca.cl.pressure,
                                                                         self.membrane.water_vol_fraction(
                                                                             self.membrane.water_content, 
                                                                             water_molar_volume(self.membrane.temperature)
@@ -92,7 +92,7 @@ class FuelCell:
 
         return self.ca.cl.reaction.tafel_overpotential(
             (self.current_density + self.crossover_current) / (self.ca.cl.ecsa * self.ca.cl.platinum_loading),
-            self.ca.cl.get_gas_temperature(),
+            self.ca.cl.temperature,
             self.ca.cl.get_species_partial_pressure('o2')
         )
     
@@ -103,7 +103,7 @@ class FuelCell:
         cl_resistance = self.ca.cl.calculate_effective_proton_resistance(self.current_density, 
                                                                          self.ca.cl.get_relative_humidity(), 
                                                                          self.ca.membrane_surface_water_content, 
-                                                                         self.ca.cl.get_gas_temperature())
+                                                                         self.ca.cl.temperature)
         return self.current_density * (cl_resistance + self.high_frequency_resistance())
 
     def cell_voltage(self):
@@ -114,9 +114,10 @@ class FuelCell:
     
     def set_mea_temperature(self, mea_temperature): 
         self.mea_temperature = mea_temperature
-        self.ca.cl.gas.set_temperature(mea_temperature)
-        self.an.cl.gas.set_temperature(mea_temperature)
-        self.ca.gdl.gas.set_temperature(mea_temperature)
+        self.ca.cl.set_gas_temperature(mea_temperature)
+        self.an.cl.set_gas_temperature(mea_temperature)
+
+        # self.ca.gdl.gas.set_temperature(mea_temperature)
         self.membrane.temperature = mea_temperature
         self.mea_temperature_increase = self.mea_temperature - self.temperature
     
@@ -151,7 +152,7 @@ class FuelCell:
             return dT - self.mea_temperature_increase
         
         self.calculate_heat_transfer_resistance()
-        res = root(f, 1.4 * self.current_density * self.thermal_resistance, method='broyden1', options={'fatol':1e-3})
+        res = root(f, 1.4 * self.current_density * self.thermal_resistance, method='broyden1', options={'fatol':1e-3, 'maxiter':100})
  
     def set_conditions(self, stack_temperature, current_density, cathode_conditions, anode_conditions): 
         self.current_density = current_density
@@ -164,14 +165,15 @@ class FuelCell:
         for cell_side, conditions in zip((self.ca, self.an), (cathode_conditions, anode_conditions)): 
             
             for component in cell_side.components: 
+                component.water_saturation = 0
                 component.gas.states = ct.SolutionArray(component.gas.gas, np.shape(self.current_density))
-                component.gas.set_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
-                component.gas.set_composition(conditions.dry_o2_mole_fraction, 
+                component.set_gas_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
+                component.set_gas_composition(conditions.dry_o2_mole_fraction, 
                                               conditions.dry_h2_mole_fraction,
                                               conditions.inlet_relative_humidity)
                 
-                component.gas.set_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
-                component.gas.set_temperature_and_pressure(stack_temperature, conditions.inlet_pressure)
+                # component.gas.set_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
+                component.set_gas_temperature_and_pressure(stack_temperature, conditions.inlet_pressure)
                 
             cell_side.ch.set_inlet_gas_flow_rate_from_stoichiometry(
                 self.o2_consumption if cell_side == self.ca else self.h2_consumption, conditions.stoichiometry

@@ -78,7 +78,7 @@ class GasComposition:
             The new pressure in Pascals (Pa).
         """
         self.relative_humidity *= new_pressure / self.states.P
-        self.states.TPX = self.states.T, new_pressure, self.states.X
+        self.states.TP = self.states.T, new_pressure
 
     def set_temperature(self, new_temperature: float):
         """
@@ -89,7 +89,7 @@ class GasComposition:
         new_temperature : float
             The new temperature in Kelvin (K).
         """
-        self.states.TPX = new_temperature, self.states.P, self.states.X
+        self.states.TP = new_temperature, self.states.P
         self.calculate_relative_humidity()
 
     def set_temperature_and_pressure(self, temperature: float, pressure: float):
@@ -103,8 +103,8 @@ class GasComposition:
         pressure : float
             The pressure in Pascals (Pa).
         """
-        self.set_temperature(temperature)
-        self.set_pressure(pressure)
+        self.states.TP = temperature, pressure
+        self.calculate_relative_humidity()
 
     def pressure(self) -> float:
         """
