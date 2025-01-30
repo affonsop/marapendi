@@ -45,7 +45,7 @@ def fuel_cell(cathode_conditions, anode_conditions):
             ),
             gdl=cb.PorousLayer(
                 thickness=200e-6,
-                effective_gas_diffusion_ratio=0.25,
+                effective_gas_diffusion_ratio=0.20,
                 thermal_conductivity=5.75
             ),
             has_mpl=False, 
@@ -69,7 +69,7 @@ def fuel_cell(cathode_conditions, anode_conditions):
             ),
             gdl=cb.PorousLayer(
                 thickness=200e-6,
-                effective_gas_diffusion_ratio=0.25, 
+                effective_gas_diffusion_ratio=0.20, 
                 thermal_conductivity=5.75
             ),
             ch=cb.GasFlowChannel(
@@ -100,7 +100,7 @@ def test_polarization_curve(fuel_cell, cathode_conditions, anode_conditions):
     fig, ax = plt.subplots(2,3,figsize=(8,4))
     for k, rh_cathode in enumerate((0.5,0.7,0.9)): 
         cathode_conditions.inlet_relative_humidity = rh_cathode
-        fuel_cell.set_conditions(353.15, np.linspace(0.01,1.5e4,50),cathode_conditions, anode_conditions)
+        fuel_cell.set_conditions(353.15, np.linspace(0.01,1.6e4,50),cathode_conditions, anode_conditions)
         fuel_cell.solve_transport()
         
         ax[0,0].plot(fuel_cell.current_density * 1e-4, fuel_cell.cell_voltage(), label=f'{rh_cathode * 100:.0f} %')
