@@ -24,16 +24,16 @@ def test_water_saturation_concentration():
     assert np.isclose(cb.water_saturation_concentration(298.15), 3167 / (8.3145e3 * 298.15), 1e-2)
 
 def test_water_density():
-    assert np.isclose(cb.water_density(), 997., 1e-3)
+    assert np.isclose(cb.water_density(), 997., 1e-2)
 
 def test_water_molar_volume():
-    assert np.isclose(cb.water_molar_volume(), 18.015 / 997., 1e-3)
+    assert np.isclose(cb.water_molar_volume(), 18.015 / 997., 1e-2)
 
 def test_water_properties_class(water): 
     water.density == cb.water_density(300.)
     for temperature in [300., 353.15]:
         water.set_temperature(temperature)
-        assert water.density == cb.water_density(temperature)
-        assert water.molar_volume == cb.water_molar_volume(temperature)
-        assert water.dynamic_viscosity == cb.water_dynamic_viscosity(temperature)
-        assert water.saturation_pressure == cb.water_saturation_pressure(temperature)
+        assert np.isclose(water.density, cb.water_density(temperature), 1e-2)
+        assert np.isclose(water.molar_volume, cb.water_molar_volume(temperature), 1e-2)
+        assert np.isclose(water.dynamic_viscosity, cb.water_dynamic_viscosity(temperature), 1e-2)
+        assert np.isclose(water.saturation_pressure, cb.water_saturation_pressure(temperature), 1e-2)

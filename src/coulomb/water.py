@@ -23,9 +23,17 @@ def water_saturation_pressure(temperature):
     float
         Saturation pressure of water in Pascals (Pa).
     """
-    h2o = ct.SolutionArray(h2o_phase, np.shape(temperature))
-    h2o.TQ = temperature, 0  # Set temperature and vapor quality
-    return h2o.P_sat
+    Tcelsius = temperature - 273.15
+    return 611.21 * np.exp((18.678 - Tcelsius /  234.5) * (Tcelsius / (257.14 + Tcelsius)))
+    # return np.piecewise(
+    #     Tcelsius, [Tcelsius > 0, Tcelsius <= 0], [
+    #         lambda Tcelsius: 611.21 * np.exp((18.678 - Tcelsius /  234.5) * (Tcelsius / (257.14 + Tcelsius))), 
+    #         lambda Tcelsius: 611.15 * np.exp((23.036 - Tcelsius /  333.7) * (Tcelsius / (279.82 + Tcelsius)))
+    #     ])
+ 
+    # h2o = ct.SolutionArray(h2o_phase, np.shape(temperature))
+    # h2o.TQ = temperature, 0  # Set temperature and vapor quality
+    # return h2o.P_sat
 
 
 def water_saturation_concentration(temperature):
@@ -96,9 +104,13 @@ def water_density(temperature=300):
     float
         Density of water in kg/m³.
     """
-    h2o = ct.SolutionArray(h2o_phase, np.shape(temperature))
-    h2o.TQ = temperature, 0 
-    return h2o.density_mass
+    # Source : https://onlinelibrary.wiley.com/doi/pdf/10.1002/9780470516430.app3
+    T_Celsius = temperature - 273.15
+    return 1001.3 - 0.155 * T_Celsius - 2.658e-3 * T_Celsius ** 2 # kg/m3
+
+    # h2o = ct.SolutionArray(h2o_phase, np.shape(temperature))
+    # h2o.TQ = temperature, 0 
+    # return h2o.density_mass
 
 def water_molar_volume(temperature=300): 
     """
@@ -114,9 +126,9 @@ def water_molar_volume(temperature=300):
     float
         Molar volume of water m³/kmol.
     """
-    h2o = ct.SolutionArray(h2o_phase, np.shape(temperature))
-    h2o.TQ = temperature, 0 
-    return h2o.volume_mole
+    # h2o = ct.SolutionArray(h2o_phase, np.shape(temperature))
+    # h2o.TQ = temperature, 0 
+    return  h2o_phase.molecular_weights[0] / water_density(temperature)
 
 class WaterProperties:
     """

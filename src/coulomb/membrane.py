@@ -243,9 +243,21 @@ class SimpleMembraneWaterBalanceModel(MembraneWaterBalanceModel):
     def water_balance(self, cell): 
         for side in (cell.ca, cell.an):
             side.rh_at_cl_without_crossover = (side.ch.get_vapor_pressure() / side.cl.gas.saturation_pressure +
-                                               (cell.current_density / (2*ct.faraday) / side.calculate_gas_transport_resistance('h2o') / side.cl.get_saturation_concentration() if side == cell.ca else 0))
+                                               (cell.current_density / (2*ct.faraday) / side.h2ov_resistance / side.cl.get_saturation_concentration() if side == cell.ca else 0))
             side.membrane_surface_water_content = cell.membrane.equilibrium_water_content(side.rh_at_cl_without_crossover)
         cell.membrane.water_content = 0.5 * sum(side.membrane_surface_water_content for side in (cell.ca, cell.an))
+
+
+@dataclass
+class PemfminesMembraneWaterBalanceModel(MembraneWaterBalanceModel): 
+
+    def water_balance(self, cell): 
+        for side in (cell.ca, cell.an):
+            side.rh_at_cl_without_crossover = (side.ch.get_vapor_pressure() / side.cl.gas.saturation_pressure +
+                                               (cell.current_density / (2*ct.faraday) / side.h2ov_resistance / side.cl.get_saturation_concentration() if side == cell.ca else 0))
+            side.membrane_surface_water_content = cell.membrane.equilibrium_water_content(side.rh_at_cl_without_crossover)
+        cell.membrane.water_content = 0.5 * sum(side.membrane_surface_water_content for side in (cell.ca, cell.an))
+
 
 def membrane_water_profile(xi, equiv_lmbd_ca_ch, equiv_lmbd_an_ch, k_v, biot_an, biot_ca, peclet):
     """

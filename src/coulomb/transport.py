@@ -54,11 +54,10 @@ class PorousLiquidTransportModel:
         return cell_side.calculate_gas_transport_resistance('h2o')
     
     def calculate_damkholer_number(self, cell_side, water_injection_flux): 
-        vapor_transport_resistance = self.vapor_transport_resistance(cell_side)
         cl_sat_concentration = cell_side.cl.get_saturation_concentration()
         ch_vapor_concentration = cell_side.ch.get_vapor_concentration()
-        max_vapor_removal_flux = (cl_sat_concentration - ch_vapor_concentration) / vapor_transport_resistance
-        return water_injection_flux / max_vapor_removal_flux 
+        max_vapor_removal_flux = (cl_sat_concentration - ch_vapor_concentration) / cell_side.h2ov_resistance
+        return water_injection_flux / max_vapor_removal_flux
         
     def calculate_water_saturation(self, cell_side, water_injection_flux): 
         damkholer = self.calculate_damkholer_number(cell_side, water_injection_flux)

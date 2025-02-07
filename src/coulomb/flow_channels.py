@@ -52,6 +52,9 @@ class GasFlowChannel(PorousLayer):
     transport_resistance_model: ChannelGasResistanceModel = field(default_factory=ChannelGasResistanceModel)
 
     def __post_init__(self): 
+        self.temperature = self.gas.temperature 
+        self.pressure = self.gas.pressure 
+    
         self.hydraulic_diameter = 2 * self.width * self.height / (self.width + self.height)
         self.channel_flow_section = self.width * self.height
         self.half_width = 0.5 * self.width
@@ -61,21 +64,24 @@ class GasFlowChannel(PorousLayer):
         self.inlet_stoichiometry = stoichiometry
 
     def get_reactant_mole_fraction(self): 
-        return self.gas.states.X[...,species_indexes[self.reactant]]
+        return self.gas.X[...,species_indexes[self.reactant]]
     
     def set_fixed_inlet_gas_flow_rate(self, inlet_gas_flow_rate): 
         self.inlet_gas_flow_rate = inlet_gas_flow_rate 
 
-    def set_inlet_gas_flow_rate_from_stoichiometry(self, reactant_consumption, stoichiometry=None):
-        if stoichiometry: 
+    def set_inlet_gas_flow_rate_from_stoichiometry(self, reactant_consumption, stoichiometry=0):
+        try: 
+            if stoichiometry > 0: 
+                self.inlet_stoichiometry = stoichiometry 
+        except ValueError: 
             self.inlet_stoichiometry = stoichiometry 
         self.inlet_gas_flow_rate = self.calculate_inlet_gas_flow_rate(reactant_consumption)
 
     def calculate_inlet_gas_flow_rate(self, reactant_consumption): 
-        return self.inlet_stoichiometry * reactant_consumption / self.get_reactant_mole_fraction() * self.gas.states.volume_mole
+        return self.inlet_stoichiometry * reactant_consumption / self.get_reactant_mole_fraction() / self.gas.concentration()
     
     def calculate_inlet_stochiometry(self, reactant_consumption): 
-        return self.inlet_gas_flow_rate * self.get_reactant_mole_fraction() / self.gas.states.volume_mole / reactant_consumption
+        return self.inlet_gas_flow_rate * self.get_reactant_mole_fraction() * self.gas.concentration() / reactant_consumption
 
     def calculate_gas_transport_resistance(self, species, volume_flow_rate=None): 
         diffusion_coeff = self.get_species_diffusion_coefficient(species)
