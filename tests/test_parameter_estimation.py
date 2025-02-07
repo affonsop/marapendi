@@ -105,9 +105,6 @@ def create_fuel_cell(params):
             water_balance_model=cb.SimpleMembraneWaterBalanceModel()
         )
     )
-    
-
-
     return fc
 
     
@@ -122,10 +119,18 @@ exp_voltage_list = np.concatenate(
          [exp_data[p]['U'] for p in pressure_list]
     )
 
-estimator = cb.ParameterEstimationSteadyState(h, {'ecsa':70e3})
-estimator.set_unknown_params(
-    [('ecsa', (40e3, 80e3), True, '$ECSA$'),
-     ('crossover-correction', (0,2), True, '$k_x$')]
-)
+    
 
-sol, p = estimator.estimate(h({'ecsa': 50e3, 'crossover-correction':1}), t=0, print_iterations=True, popsize=5, ftol=1e-13)
+def test_model_to_model_validation(): 
+    estimator = cb.ParameterEstimationSteadyState(h, {'ecsa':70e3, 'crossover-correction':1.})
+    estimator.set_unknown_params(
+        [('ecsa', (40e3, 80e3), True, '$ECSA$'),]
+    )
+
+    rng = np.random.default_rng()
+    y = h({'ecsa':70e3, 'crossover-correction':1})
+    y *= (1 + .05 * rng.standard_normal(len(y))) 
+
+    sol, p = estimator.estimate(y, t=0, print_iterations=False, popsize=5, ftol=1e-8)
+    
+    assert np.isclose(p[0], 70.e3, atol = 10.e3) 
