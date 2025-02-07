@@ -119,18 +119,31 @@ exp_voltage_list = np.concatenate(
          [exp_data[p]['U'] for p in pressure_list]
     )
 
-    
+rng = np.random.default_rng()
+simulated_data = h({'ecsa':70e3, 'crossover-correction':1})
+simulated_data *= (1 + .05 * rng.standard_normal(len(simulated_data))) 
 
-def test_model_to_model_validation(): 
-    estimator = cb.ParameterEstimationSteadyState(h, {'ecsa':70e3, 'crossover-correction':1.})
+@pytest.fixture
+def estimator(): 
+    return cb.ParameterEstimationSteadyState(h, {'ecsa':70e3, 'crossover-correction':1.})
+
+def test_model_to_model_validation(estimator): 
     estimator.set_unknown_params(
         [('ecsa', (40e3, 80e3), True, '$ECSA$'),]
     )
-
-    rng = np.random.default_rng()
-    y = h({'ecsa':70e3, 'crossover-correction':1})
-    y *= (1 + .05 * rng.standard_normal(len(y))) 
-
-    sol, p = estimator.estimate(y, t=0, print_iterations=False, popsize=5, ftol=1e-8)
+    sol, p = estimator.estimate(simulated_data, t=0, print_iterations=False, popsize=5, ftol=1e-8)
     
     assert np.isclose(p[0], 70.e3, atol = 10.e3) 
+
+def test_global_sensitivity(estimator): 
+   
+    estimator.set_unknown_params(
+        [('ecsa', (40e3, 80e3), True, '$ECSA$'),
+         ('crossover-correction', (0,2), True, '$k_{i_x}$')]
+    )
+    cosPhi_med_ij, norm_s_i, S_med, S_std, S_med_i, S_std_i, S_n, n_valid = estimator.compute_global_sensitivity(t=0, m=2,  check_samples=True, y_exp=simulated_data, res_limit=0.02)
+    fig1, ax1 = estimator.plot_global_sensitivity(xlabel_angle=0) 
+    fig2, ax2 = estimator.plot_colinearity_map(xlabel_angle=0, cmap='Blues',figsize=(5,4))
+    fig1.tight_layout()
+    fig2.tight_layout()
+    # plt.show()
