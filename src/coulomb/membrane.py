@@ -172,7 +172,7 @@ class MembraneWaterBalanceModel:
     # This assumption tends to overestimate water diffusivity and therefore backdiffusion for 
     # dry membranes. 
     gamma_function_ferrara: float = 0.2 
-    absorption_coefficient: float = 3e-4
+    absorption_coefficient: float = 0.9e-3
                                 
 
     def wet_chemical_diffusion_coefficient(self, temperature):
@@ -189,53 +189,51 @@ class MembraneWaterBalanceModel:
     def electroosmotic_drag_speed(self, temperature, current_density, membrane):
         return (0.02 * temperature - 3.86) / 22.5 * current_density / ct.faraday / membrane.dry_concentration
     
-    def peclet_number(self, temperature, current_density, membrane):
-        return self.electroosmotic_drag_speed(temperature, current_density, membrane) * membrane.dry_thickness / self.water_diffusivity(temperature)
+    def peclet_number(self, temperature, current_density, membrane, water_diffusivity):
+        return self.electroosmotic_drag_speed(temperature, current_density, membrane) * membrane.dry_thickness / water_diffusivity
     
-    def biot_number(self, absorption_coefficient, temperature, membrane):
-        return absorption_coefficient * membrane.dry_thickness / self.water_diffusivity(temperature)
+    def biot_number(self, absorption_coefficient, membrane, water_diffusivity):
+        return absorption_coefficient * membrane.dry_thickness / water_diffusivity
 
     def water_balance(self, cell):
-        k_v = 5e-3
-        k_int = self.absorption_coefficient 
-        self.k_v_int = k_v * k_int / (k_v + k_int)
+
+        water_diffusivity = self.water_diffusivity(cell.membrane.temperature)
+        bi = self.biot_number(self.absorption_coefficient, cell.membrane, water_diffusivity)
+        pe = self.peclet_number(cell.membrane.temperature, cell.current_density, cell.membrane, water_diffusivity)
+        ePe = np.exp(pe)      
 
         for side in (cell.ca, cell.an):
-            side.rh_at_cl_without_crossover = (side.ch.gas.vapor_pressure() / side.cl.gas.saturation_pressure +
-                                               (cell.current_density / (2*ct.faraday) / k_v if side == cell.ca else 0))
-            side.ch.equiv_water_content = cell.membrane.equilibrium_water_content(
+            c_sat_cl = side.cl.get_saturation_concentration()
+            side.rh_at_cl_without_crossover = (side.ch.get_species_concentrations('h2o') +
+                                               (cell.current_density / (2*ct.faraday) * side.h2ov_transport_resistance  if side == cell.ca else 0)) / c_sat_cl
+            side.equiv_water_content = cell.membrane.equilibrium_water_content(
                 side.rh_at_cl_without_crossover
             )
-            side.membrane_interface_water_content_derivative = cell.membrane.equilibrium_water_content_derivative(
+            side.equiv_water_content_derivative = cell.membrane.equilibrium_water_content_derivative(
                 side.rh_at_cl_without_crossover
             )
-            side.membrane_absorption_coefficient_lmbd = (self.k_v_int / 
-                                                         cell.membrane.equilibrium_water_content_derivative(side.rh_at_cl_without_crossover))
+
+            side.non_dim_R_v = (side.h2ov_transport_resistance / c_sat_cl *
+                                                   water_diffusivity / cell.membrane.dry_thickness * side.equiv_water_content_derivative)
             
-            side.membrane_biot_number =  (1 if side == cell.ca else -1) * self.biot_number(
-                side.membrane_absorption_coefficient_lmbd,
-                cell.membrane.temperature,
-                cell.membrane
-            )
-        u_d = self.electroosmotic_drag_speed(cell.membrane.temperature, cell.current_density, cell.membrane)
-        nondim_vapor_transport_resistance = u_d / k_v / water_saturation_concentration(cell.membrane.temperature)
-        cell.membrane.peclet = self.peclet_number(cell.membrane.temperature, cell.current_density, cell.membrane)
+            side.K = bi / (side.equiv_water_content_derivative + bi * side.non_dim_R_v)
+            side.a = (1 + side.non_dim_R_v * (pe if side == cell.an else -pe))
+
+        denom = (cell.ca.K * cell.ca.a + cell.an.K * cell.an.a * ePe) * pe + cell.ca.K * cell.ca.a * cell.an.K * cell.an.a * (ePe - 1)
+        lmbd_ca = 1 / cell.ca.a * (cell.ca.equiv_water_content + pe * ePe * cell.an.K * (cell.ca.a * cell.an.equiv_water_content - cell.an.a * cell.ca.equiv_water_content) / denom)
+        lmbd_an = 1 / cell.an.a * (cell.an.equiv_water_content - pe * cell.ca.K * (cell.ca.a * cell.an.equiv_water_content - cell.an.a * cell.ca.equiv_water_content) / denom)
+        
         xi = np.linspace(0,np.ones_like(cell.current_density),10)
         
-        self.water_content_profile = membrane_water_profile(xi,
-                               cell.ca.ch.equiv_water_content,
-                               cell.an.ch.equiv_water_content,
-                               nondim_vapor_transport_resistance,
-                               cell.an.membrane_biot_number,
-                               cell.ca.membrane_biot_number,
-                               cell.membrane.peclet)
+        self.water_content_profile = (lmbd_ca - lmbd_an) * np.expm1(xi * pe) / (ePe - 1) + lmbd_an
+
         cell.membrane.water_content = np.mean(self.water_content_profile, axis=0)
         return self.water_content_profile
     
     def cathode_absorption_flux(self, cell): 
         lmbd_ca = self.water_content_profile[-1,:]
-        return (cell.ca.membrane_absorption_coefficient_lmbd * (cell.ca.ch.equiv_water_content - lmbd_ca) +
-                -self.electroosmotic_drag_speed(cell.membrane.temperature, cell.current_density, cell.membrane) * lmbd_ca * self.k_v_int / self.absorption_coefficient) * cell.membrane.dry_concentration
+        return (self.absorption_coefficient * (cell.ca.equiv_water_content - lmbd_ca) / cell.ca.equiv_water_content_derivative
+                +self.electroosmotic_drag_speed(cell.membrane.temperature, cell.current_density, cell.membrane) * lmbd_ca)
 
 @dataclass
 class SimpleMembraneWaterBalanceModel(MembraneWaterBalanceModel): 
@@ -258,43 +256,6 @@ class PemfminesMembraneWaterBalanceModel(MembraneWaterBalanceModel):
             side.membrane_surface_water_content = cell.membrane.equilibrium_water_content(side.rh_at_cl_without_crossover)
         cell.membrane.water_content = 0.5 * sum(side.membrane_surface_water_content for side in (cell.ca, cell.an))
 
-
-def membrane_water_profile(xi, equiv_lmbd_ca_ch, equiv_lmbd_an_ch, k_v, biot_an, biot_ca, peclet):
-    """
-    Calculate membrane water profile for constant water absorption and diffusivity coefficients.
-    Based on the work of Ferrara et al. (2018), with an extension to consider interface resitances 
-    (Biot numbers for cathode and anode) and vapor transport resistance between the channel and the
-    catalyst layer.     
-
-    Parameters:
-    -----------
-    xi : float
-        Non-dimensinal membrane thickness, between 0 (anode) and 1 (cathode). 
-    equiv_lmbd_ca_ch : float
-        Equivalent membrane water content corresponding to the RH at
-        the cathode channel calculated at the catalyst layer temperature.
-    equiv_lmbd_ca_ch : float
-        Equivalent membrane water content corresponding to the RH at
-        the anode channel calculated at the catalyst layer temperature.
-    k_v : float
-        Non-dimensional vapor transport resistance. 
-    biot_ca : float
-        Biot number relating water absorption/desorption at the cathode 
-        side and diffusion in the bulk membrane. 
-    biot_an : float
-        Biot number relating water absorption/desorption at the cathode 
-        side and diffusion in the bulk membrane.
-    peclet : float
-        Peclet number relating electroosmotic drag to water diffusion.
-    """
-    exp_peclet = np.exp(peclet)
-
-    A = np.exp(peclet * xi) + peclet/biot_an - 1
-    B = peclet/biot_ca*exp_peclet + peclet/biot_an + (1+k_v)*(exp_peclet-1)
-    C = (1-k_v)*peclet/biot_ca*exp_peclet + (1+k_v)*peclet/biot_an + (1-k_v**2)*(exp_peclet-1)
-
-    return (A * (equiv_lmbd_ca_ch - equiv_lmbd_an_ch) + equiv_lmbd_an_ch * B)/C
-    
 
 @dataclass
 class Membrane:
