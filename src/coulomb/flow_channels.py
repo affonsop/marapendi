@@ -54,7 +54,7 @@ class GasFlowChannel(PorousLayer):
     def __post_init__(self): 
         self.temperature = self.gas.temperature 
         self.pressure = self.gas.pressure 
-    
+        self.RT = ct.gas_constant * self.temperature
         self.hydraulic_diameter = 2 * self.width * self.height / (self.width + self.height)
         self.channel_flow_section = self.width * self.height
         self.half_width = 0.5 * self.width

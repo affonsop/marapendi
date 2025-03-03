@@ -1,10 +1,10 @@
 """
 Module providing a membrane class intended to be the base class for different membrane models. 
 """
-from dataclasses import dataclass, field
+
 import numpy as np
 import cantera as ct 
-
+from dataclasses import dataclass, field
 from coulomb.tools import calculate_arrhenius_term
 from coulomb.water import water_saturation_concentration
 
@@ -78,7 +78,7 @@ class HydrogenPermeationModel:
         Returns:
         --------
         float
-            The hydrogen permeability coefficient in mol/(m·s·Pa).
+            The hydrogen permeability coefficient in kmol/(m·s·Pa).
 
         References:
         -----------
@@ -167,12 +167,12 @@ class HydrogenPermeationModel:
 class MembraneWaterBalanceModel:
     reference_water_chemical_diffusion_coefficient: float = 4.3e-10
     reference_temperature: float = 303.15
-    water_diffusivity_activation_energy: float = 28e6
+    water_diffusivity_activation_energy: float = 27.8e6
     # Eq. 31b in Ferrara et al. (2018), equal to 0.2 for Nafion and water contents above 5
     # This assumption tends to overestimate water diffusivity and therefore backdiffusion for 
     # dry membranes. 
     gamma_function_ferrara: float = 0.2 
-    absorption_coefficient: float = 0.9e-3
+    reference_absorption_coefficient: float = 5e-5
                                 
 
     def wet_chemical_diffusion_coefficient(self, temperature):
@@ -182,68 +182,102 @@ class MembraneWaterBalanceModel:
                                          temperature,
                                          self.reference_temperature))
     
+    
     def water_diffusivity(self, temperature):
         # According to Ferrara et al. (2018)
-        return self.wet_chemical_diffusion_coefficient(temperature) / self.gamma_function_ferrara 
+        return self.wet_chemical_diffusion_coefficient(temperature) * self.gamma_function_ferrara 
     
     def electroosmotic_drag_speed(self, temperature, current_density, membrane):
-        return (0.02 * temperature - 3.86) / 22.5 * current_density / ct.faraday / membrane.dry_concentration
+        return (0.02 * temperature - 3.86) / 22.5 * current_density / ct.faraday  / membrane.dry_concentration
     
     def peclet_number(self, temperature, current_density, membrane, water_diffusivity):
-        return self.electroosmotic_drag_speed(temperature, current_density, membrane) * membrane.dry_thickness / water_diffusivity
+        return self.electroosmotic_drag_speed(temperature, current_density, membrane) * membrane.dry_thickness / water_diffusivity 
     
     def biot_number(self, absorption_coefficient, membrane, water_diffusivity):
         return absorption_coefficient * membrane.dry_thickness / water_diffusivity
 
     def water_balance(self, cell):
+        self.absorption_coefficient = self.reference_absorption_coefficient * calculate_arrhenius_term(29e6, cell.membrane.temperature, 353.15)
+        self.membrane_water_diffusivity = self.water_diffusivity(cell.membrane.temperature) 
+        i_star = cell.current_density / (2*ct.faraday) * cell.membrane.dry_thickness / self.membrane_water_diffusivity / cell.membrane.dry_concentration 
 
-        water_diffusivity = self.water_diffusivity(cell.membrane.temperature)
-        bi = self.biot_number(self.absorption_coefficient, cell.membrane, water_diffusivity)
-        pe = self.peclet_number(cell.membrane.temperature, cell.current_density, cell.membrane, water_diffusivity)
-        ePe = np.exp(pe)      
+        bi = self.biot_number(self.absorption_coefficient, cell.membrane, self.membrane_water_diffusivity)
+        Pe =  self.peclet_number(cell.membrane.temperature, cell.current_density, cell.membrane, self.membrane_water_diffusivity) 
+        ePe = np.exp(Pe)      
+        
+        cell.membrane.pe = Pe
+        cell.membrane.bi = bi 
 
         for side in (cell.ca, cell.an):
             c_sat_cl = side.cl.get_saturation_concentration()
-            side.rh_at_cl_without_crossover = (side.ch.get_species_concentrations('h2o') +
-                                               (cell.current_density / (2*ct.faraday) * side.h2ov_transport_resistance  if side == cell.ca else 0)) / c_sat_cl
+            
+            side.rh_at_cl_without_crossover = np.minimum(
+                (side.ch.get_species_concentrations('h2o') + cell.h2o_production * side.h2ov_transport_resistance) 
+                / c_sat_cl,
+                1
+            )
             side.equiv_water_content = cell.membrane.equilibrium_water_content(
                 side.rh_at_cl_without_crossover
             )
             side.equiv_water_content_derivative = cell.membrane.equilibrium_water_content_derivative(
                 side.rh_at_cl_without_crossover
             )
+            side.R_v_star = side.h2ov_transport_resistance * self.absorption_coefficient * cell.membrane.dry_concentration / c_sat_cl * side.equiv_water_content_derivative
+            side.bi = bi
 
-            side.non_dim_R_v = (side.h2ov_transport_resistance / c_sat_cl *
-                                                   water_diffusivity / cell.membrane.dry_thickness * side.equiv_water_content_derivative)
-            
-            side.K = bi / (side.equiv_water_content_derivative + bi * side.non_dim_R_v)
-            side.a = (1 + side.non_dim_R_v * (pe if side == cell.an else -pe))
+        Bi_ca = cell.ca.bi# * cell.ca.cl.porosity + cell.membrane.dry_thickness / cell.ca.cl.thickness * cell.ca.cl.ionomer_vol_fraction
+        Bi_an = -cell.an.bi #* cell.an.cl.porosity - cell.membrane.dry_thickness / cell.an.cl.thickness * cell.an.cl.ionomer_vol_fraction
 
-        denom = (cell.ca.K * cell.ca.a + cell.an.K * cell.an.a * ePe) * pe + cell.ca.K * cell.ca.a * cell.an.K * cell.an.a * (ePe - 1)
-        lmbd_ca = 1 / cell.ca.a * (cell.ca.equiv_water_content + pe * ePe * cell.an.K * (cell.ca.a * cell.an.equiv_water_content - cell.an.a * cell.ca.equiv_water_content) / denom)
-        lmbd_an = 1 / cell.an.a * (cell.an.equiv_water_content - pe * cell.ca.K * (cell.ca.a * cell.an.equiv_water_content - cell.an.a * cell.ca.equiv_water_content) / denom)
+        # linear version: K = 1 / (1 / Bi_ca - 1 / Bi_an + 1) # 
+        K = Pe * (Pe / Bi_an + 1) / (ePe * (Pe / Bi_ca + 1) - (Pe / Bi_an + 1))
+
+        lmbd_eq_ch_ca = cell.ca.equiv_water_content #+ i_star * cell.ca.R_v_star / Bi_ca
+        lmbd_eq_ch_an = cell.an.equiv_water_content
+        
+        lmbd_eq_cl_ca = ((lmbd_eq_ch_ca * Bi_ca * (-Bi_an  + (K + Pe) * cell.an.R_v_star) - lmbd_eq_ch_an * Bi_an * (K + Pe) * cell.ca.R_v_star) / 
+                  (Bi_ca * (-Bi_an + (K + Pe) * cell.an.R_v_star) - Bi_an * K * cell.ca.R_v_star))
+        lmbd_eq_cl_an = ((lmbd_eq_ch_ca * Bi_ca * K * cell.an.R_v_star - lmbd_eq_ch_an * Bi_an * (K * cell.ca.R_v_star + Bi_ca )) / 
+                  (Bi_ca * (-Bi_an + (K + Pe) * cell.an.R_v_star) - Bi_an * K * cell.ca.R_v_star))
+        # lmbd_m = (lmbd_eq_cl_ca - lmbd_eq_cl_an) * (1/2 - 1/Bi_an) * K + lmbd_eq_cl_an
         
         xi = np.linspace(0,np.ones_like(cell.current_density),10)
         
-        self.water_content_profile = (lmbd_ca - lmbd_an) * np.expm1(xi * pe) / (ePe - 1) + lmbd_an
+        #linear version : self.water_content_profile = (lmbd_eq_cl_ca - lmbd_eq_cl_an) * (xi - 1/Bi_an) * K + lmbd_eq_cl_an
+        self.water_content_profile = (lmbd_eq_cl_ca - lmbd_eq_cl_an) * (np.expm1(xi*Pe) - Pe/Bi_an) / (Pe/Bi_ca * ePe - Pe/Bi_an + ePe-1) + lmbd_eq_cl_an
 
-        cell.membrane.water_content = np.mean(self.water_content_profile, axis=0)
+        cell.membrane.K = K
+    
+        cell.membrane.i_star = i_star
+        cell.membrane.water_content = 1./np.mean(1./self.water_content_profile, axis=0)
+        cell.ca.membrane_surface_water_content = lmbd_eq_cl_ca
+        cell.an.membrane_surface_water_content = lmbd_eq_cl_an
         return self.water_content_profile
     
-    def cathode_absorption_flux(self, cell): 
+    def cathode_flux(self, cell): 
         lmbd_ca = self.water_content_profile[-1,:]
-        return (self.absorption_coefficient * (cell.ca.equiv_water_content - lmbd_ca) / cell.ca.equiv_water_content_derivative
-                +self.electroosmotic_drag_speed(cell.membrane.temperature, cell.current_density, cell.membrane) * lmbd_ca)
+        return (self.absorption_coefficient * (lmbd_ca-cell.ca.membrane_surface_water_content) #* cell.ca.cl.porosity +
+                #self.membrane_water_diffusivity * (lmbd_ca-cell.ca.membrane_surface_water_content) * cell.ca.cl.ionomer_vol_fraction / cell.ca.cl.thickness + #/ cell.ca.equiv_water_content_derivative
+                + self.electroosmotic_drag_speed(cell.membrane.temperature, cell.current_density, cell.membrane) * lmbd_ca) * cell.membrane.dry_concentration
 
 @dataclass
 class SimpleMembraneWaterBalanceModel(MembraneWaterBalanceModel): 
-
+    
     def water_balance(self, cell): 
         for side in (cell.ca, cell.an):
             side.rh_at_cl_without_crossover = (side.ch.get_vapor_pressure() / side.cl.gas.saturation_pressure +
-                                               (cell.current_density / (2*ct.faraday) / side.h2ov_resistance / side.cl.get_saturation_concentration() if side == cell.ca else 0))
+                                               (cell.current_density / (2*ct.faraday) * side.h2ov_transport_resistance / side.cl.get_saturation_concentration() if side == cell.ca else 0))
             side.membrane_surface_water_content = cell.membrane.equilibrium_water_content(side.rh_at_cl_without_crossover)
         cell.membrane.water_content = 0.5 * sum(side.membrane_surface_water_content for side in (cell.ca, cell.an))
+        xi = np.linspace(0,np.ones_like(cell.current_density),10)
+        self.water_content_profile = cell.ca.membrane_surface_water_content * xi + cell.an.membrane_surface_water_content * (1-xi)
+        return self.water_content_profile
+    
+    def cathode_flux(self, cell): 
+        self.membrane_water_diffusivity = self.water_diffusivity(cell.membrane.temperature) 
+        lmbd_ca = self.water_content_profile[-1,:]
+        lmbd_an =  self.water_content_profile[0,:]
+        return (-self.membrane_water_diffusivity * (lmbd_ca-lmbd_an) / cell.membrane.dry_thickness + #/ cell.ca.equiv_water_content_derivative
+                + self.electroosmotic_drag_speed(cell.membrane.temperature, cell.current_density, cell.membrane) * lmbd_ca) * cell.membrane.dry_concentration
 
 
 @dataclass
@@ -299,13 +333,14 @@ class Membrane:
     h2_permeation_model: HydrogenPermeationModel = field(default_factory=HydrogenPermeationModel)
     water_balance_model: MembraneWaterBalanceModel = field(default_factory=MembraneWaterBalanceModel)
     water_content: float = 14
+    conductivity_correction: float = 1
 
     def __post_init__(self):
         """
         Compute derived properties of the membrane after initialization.
         """
-        self.dry_concentration = self.density / self.equivalent_weight  # mol/m³
-        self.dry_molar_volume = 1. / self.dry_concentration  # m³/mol
+        self.dry_concentration = self.density / self.equivalent_weight  # kmol/m³
+        self.dry_molar_volume = 1. / self.dry_concentration  # m³/kmol
 
     def water_vol_fraction(self, water_content: float, water_molar_volume: float) -> float:
         """
@@ -371,7 +406,7 @@ class Membrane:
         return (17.18 - 79.70 * rh + 108 * rh**2)
 
     def proton_conductivity(self, temperature, water_vol_fraction, water_content): 
-        return (0.539 * np.maximum(water_content, 1) - 0.326) * calculate_arrhenius_term(10e6, temperature, 303.15)
+        return self.conductivity_correction * (0.539 * np.maximum(water_content, 1) - 0.326) * calculate_arrhenius_term(10e6, temperature, 303.15)
 
     def proton_resistance(self, temperature, water_vol_fraction, water_content): 
         return self.dry_thickness / self.proton_conductivity(temperature, water_vol_fraction, water_content)

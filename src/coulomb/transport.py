@@ -6,7 +6,7 @@ import numpy as np
 import cantera as ct
 
 from .tools import sigmoid
-
+from .water import water_density, water_dynamic_viscosity, water_surface_tension
 
 @dataclass 
 class ChannelGasResistanceModel: 
@@ -56,9 +56,34 @@ class PorousLiquidTransportModel:
     def calculate_damkholer_number(self, cell_side, water_injection_flux): 
         cl_sat_concentration = cell_side.cl.get_saturation_concentration()
         ch_vapor_concentration = cell_side.ch.get_vapor_concentration()
-        max_vapor_removal_flux = (cl_sat_concentration - ch_vapor_concentration) / cell_side.h2ov_resistance
+        max_vapor_removal_flux = (cl_sat_concentration - ch_vapor_concentration) / cell_side.h2ov_transport_resistance
         return water_injection_flux / max_vapor_removal_flux
         
     def calculate_water_saturation(self, cell_side, water_injection_flux): 
         damkholer = self.calculate_damkholer_number(cell_side, water_injection_flux)
         return self.wet_saturation * sigmoid(damkholer, self.critical_damkholer, self.dry_wet_transition_parameter)
+
+@dataclass    
+class DarcyLiquidTransportModel: 
+    dry_wet_transition_parameter: float = 0.2
+
+
+    def vapor_transport_resistance(self, cell_side): 
+        return cell_side.calculate_gas_transport_resistance('h2o')
+    
+    def calculate_damkholer_number(self, cell_side, water_injection_flux): 
+        cl_sat_concentration = cell_side.cl.get_saturation_concentration()
+        ch_vapor_concentration = cell_side.ch.get_vapor_concentration()
+        max_vapor_removal_flux = (cl_sat_concentration - ch_vapor_concentration) / cell_side.h2ov_transport_resistance
+        return water_injection_flux / max_vapor_removal_flux
+
+    def calculate_water_saturation(self, cell_side, water_injection_flux): 
+        #damkholer = self.calculate_damkholer_number(cell_side, water_injection_flux)
+        cl_sat_concentration = cell_side.cl.get_saturation_concentration()
+        ch_vapor_concentration = cell_side.ch.get_vapor_concentration()
+        max_vapor_removal_flux = (cl_sat_concentration - ch_vapor_concentration) / cell_side.h2ov_transport_resistance
+        cell_side.liquid_flux = np.maximum(water_injection_flux-max_vapor_removal_flux,1e-12)
+        cell_side.vapor_flux = water_injection_flux - cell_side.liquid_flux 
+        cell_side.liquid_flux_ratio = cell_side.liquid_flux / water_injection_flux 
+        #return self.wet_saturation *  cb.sigmoid(water_injection_flux, max_vapor_removal_flux * self.critical_damkholer, self.dry_wet_transition_parameter)
+        return np.minimum(0.9,(cell_side.liquid_flux / cell_side.calculate_equivalent_flow_resistance()) ** self.dry_wet_transition_parameter)

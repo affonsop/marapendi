@@ -55,6 +55,9 @@ class FuelCellSide:
     def calculate_water_saturation(self, water_production): 
         return self.liq_transport_model.calculate_water_saturation(self, water_production)
     
+    def calculate_equivalent_flow_resistance(self): 
+            return sum(layer.calculate_saturation_absolute_flow_resistance() for layer in self.porous_layers)
+    
     
 
 @dataclass
@@ -79,7 +82,7 @@ class FuelCell:
             self.an.cl.get_species_partial_pressure('h2')
         )
     
-    def activation_overpotential(self): 
+    def activation_overpotential(self, theta_PtO=0): 
         self.h2_permeation_flux = self.membrane.hydrogen_permeation_flux(self.an.cl.get_species_partial_pressure('h2'), 
                                                                         self.membrane.temperature, 
                                                                         self.an.cl.pressure - self.ca.cl.pressure,
@@ -91,26 +94,44 @@ class FuelCell:
         self.crossover_current = self.h2_permeation_flux * (2 * ct.faraday)
 
         return self.ca.cl.reaction.tafel_overpotential(
-            (self.current_density + self.crossover_current) / (self.ca.cl.ecsa * self.ca.cl.platinum_loading),
+            (self.current_density + self.crossover_current) / (self.ca.cl.ecsa * self.ca.cl.platinum_loading * (1-theta_PtO)),
             self.ca.cl.temperature,
             self.ca.cl.get_species_partial_pressure('o2')
-        )
+        )  + self.ca.cl.omega_PtO * theta_PtO / (self.ca.cl.reaction.number_of_electrons * self.ca.cl.reaction.charge_transfer_coeff * ct.faraday)
     
     def high_frequency_resistance(self): 
         return self.membrane.proton_resistance(self.membrane.temperature, 0, self.membrane.water_content) + self.electrical_resistance
     
     def ohmic_overpotential(self): 
-        cl_resistance = self.ca.cl.calculate_effective_proton_resistance(self.current_density, 
+        self.ca.cl.proton_resistance = self.ca.cl.calculate_effective_proton_resistance(self.current_density, 
                                                                          self.ca.cl.get_relative_humidity(), 
                                                                          self.ca.membrane_surface_water_content, 
                                                                          self.ca.cl.temperature)
-        return self.current_density * (cl_resistance + self.high_frequency_resistance())
+        return self.current_density * (self.ca.cl.proton_resistance + self.high_frequency_resistance())
+
+    def reversible_voltage_vs_RHE(self): 
+        return calculate_reversible_cell_voltage(
+            self.ca.cl.temperature,
+            self.ca.cl.get_species_partial_pressure('o2'),
+            1e5,
+        )
 
     def cell_voltage(self):
-        reversible_cell_voltage = self.reversible_cell_voltage()
-        activation_overpotential_oer = self.activation_overpotential()
-        ohmic_overpotential = self.ohmic_overpotential()
-        return np.maximum(0,reversible_cell_voltage - activation_overpotential_oer - ohmic_overpotential)
+        E_rev_vs_RHE = self.reversible_voltage_vs_RHE()
+      
+        theta_PtO = 0
+        if self.ca.cl.omega_PtO > 0: 
+            eps_max = 10
+            eta_act = 0
+            while  eps_max > 0.001:
+                eta_act_old = eta_act
+                eta_act = self.activation_overpotential(theta_PtO) 
+                theta_PtO = 0.5 * theta_PtO +0.5 / (1 + np.exp(22.4 * (0.818 - E_rev_vs_RHE + eta_act)))
+            
+                eps_max = np.mean(np.abs(eta_act - eta_act_old))
+        else:
+            eta_act = self.activation_overpotential(theta_PtO=0) 
+        return np.maximum(0,self.reversible_cell_voltage() - eta_act - self.ohmic_overpotential())
     
     def set_mea_temperature(self, mea_temperature): 
         self.mea_temperature = mea_temperature
@@ -122,17 +143,40 @@ class FuelCell:
         self.mea_temperature_increase = self.mea_temperature - self.temperature
     
     def calculate_water_transport(self): 
-        self.ca.h2ov_resistance = self.ca.calculate_gas_transport_resistance('h2o')
-        self.an.h2ov_resistance = self.an.calculate_gas_transport_resistance('h2o')
-        self.ca.gdl.water_saturation = self.ca.calculate_water_saturation(self.h2o_production) 
+        self.ca.h2ov_transport_resistance = self.ca.calculate_gas_transport_resistance('h2o')
+        self.an.h2ov_transport_resistance = self.an.calculate_gas_transport_resistance('h2o')
+        self.ca.h2ov_flux = self.h2o_production 
+        self.an.h2ov_flux = 0 #
         self.membrane.water_balance_model.water_balance(self)
+        self.ca.h2ov_flux += self.membrane.water_balance_model.cathode_flux(self)
+        self.an.h2ov_flux -= self.membrane.water_balance_model.cathode_flux(self)
+        self.ca.gdl.water_saturation = self.ca.calculate_water_saturation(np.maximum(1e-12,self.ca.h2ov_flux))
+        self.an.gdl.water_saturation = self.ca.calculate_water_saturation(np.maximum(1e-12,self.an.h2ov_flux))
+        self.ca.h2ov_transport_resistance = self.ca.calculate_gas_transport_resistance('h2o')
+        self.an.h2ov_transport_resistance = self.an.calculate_gas_transport_resistance('h2o')
     
     def calculate_reactant_concentration_at_cl(self): 
-        self.ca.o2_resistance = self.ca.calculate_gas_transport_resistance('o2', self.ca.membrane_surface_water_content)
-        c = self.ca.ch.gas.concentration()
-        self.ca.cl.gas.X[...,species_indexes['o2']] = np.maximum(1e-12, self.ca.ch.gas.X[...,species_indexes['o2']] - self.o2_consumption * self.ca.o2_resistance / c)
-        self.ca.cl.gas.X[...,species_indexes['n2']] = self.ca.ch.gas.X[...,species_indexes['n2']] + self.ca.ch.gas.X[...,species_indexes['o2']] - self.ca.cl.gas.X[...,species_indexes['o2']]
-      
+        ca = self.ca
+        ca.o2_transport_resistance = ca.calculate_gas_transport_resistance('o2', self.ca.membrane_surface_water_content)
+        ca.cl.gas.X[...,species_indexes['o2']] = np.maximum(1e-12, 
+            ca.ch.gas.X[...,species_indexes['o2']] * ca.ch.gas.concentration() - 
+            self.o2_consumption * ca.o2_transport_resistance) / ca.cl.gas.concentration()
+        
+        an = self.an
+        an.h2_transport_resistance = an.calculate_gas_transport_resistance('h2', self.ca.membrane_surface_water_content)
+        an.cl.gas.X[...,species_indexes['h2']] = np.maximum(1e-12, 
+            an.ch.gas.X[...,species_indexes['h2']] * an.ch.gas.concentration() - 
+            self.h2_consumption * an.h2_transport_resistance) / an.cl.gas.concentration()
+        
+        for side in (self.ca, self.an):
+            side.cl.gas.X[...,species_indexes['h2o']] = np.maximum(1e-12,
+                side.ch.gas.X[...,species_indexes['h2o']] * side.ch.gas.concentration() +
+                side.h2ov_flux * side.h2ov_transport_resistance) / side.cl.gas.concentration() 
+            side.cl.gas.calculate_relative_humidity()
+            side.cl.gas.X[...,species_indexes['n2']] = (1 - side.cl.gas.X[...,species_indexes['o2']] -
+                                                        side.cl.gas.X[...,species_indexes['h2o']] -
+                                                        side.cl.gas.X[...,species_indexes['h2']])
+
     def calculate_heat_transfer_resistance(self): 
         self.thermal_resistance = 1/sum(1./side.calculate_heat_transfer_resistance() for side in (self.ca, self.an))
 
@@ -142,17 +186,20 @@ class FuelCell:
         self.mea_temperature_increase = self.heat_release_rate * self.thermal_resistance
 
     def solve_transport(self):
-        def f(dT):
-            mea_temperature = np.minimum(self.temperature + np.maximum(0,dT),373.15)
+        def f(dT): 
+            mea_temperature = np.minimum(self.temperature + np.maximum(dT, 0), 373.15) 
             self.set_mea_temperature(mea_temperature)
             self.calculate_water_transport()
             self.calculate_reactant_concentration_at_cl()
             self.calculate_heat_transport()
-            return dT - self.mea_temperature_increase
+            return dT - self.mea_temperature_increase 
         
         self.calculate_heat_transfer_resistance()
-        res = root(f, 1.4 * self.current_density * self.thermal_resistance, method='broyden1', options={'fatol':1e-3, 'maxiter':100})
- 
+        res = root(f, 1.4 * self.current_density * self.thermal_resistance, method='broyden1', options={'fatol':1e-2, 'maxiter':5})
+        # self.calculate_water_transport()
+        # self.calculate_reactant_concentration_at_cl()
+        # self.calculate_heat_transport()
+
     def set_conditions(self, stack_temperature, current_density, cathode_conditions, anode_conditions): 
         self.current_density = current_density
         self.o2_consumption = current_density / (4 * ct.faraday)
@@ -160,13 +207,16 @@ class FuelCell:
         self.h2o_production = self.h2_consumption
         self.temperature = stack_temperature
         self.membrane.temperature = stack_temperature
+        for side in (self.ca, self.an): 
+            for layer in side.components: 
+                layer.water_saturation = 0 
 
         for cell_side, conditions in zip((self.ca, self.an), (cathode_conditions, anode_conditions)): 
             
             for component in cell_side.components: 
                 component.water_saturation = 0
 
-                component.gas.X = self.current_density[...,np.newaxis] * np.array([0,0,0,0])
+                component.gas.X = np.zeros_like(self.current_density[...,np.newaxis]) * np.array([0,0,0,0])
                 component.set_gas_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
                 component.set_gas_composition(conditions.dry_o2_mole_fraction, 
                                               conditions.dry_h2_mole_fraction,
@@ -176,7 +226,7 @@ class FuelCell:
                 component.set_gas_temperature_and_pressure(stack_temperature, conditions.inlet_pressure)
                 
             cell_side.ch.set_inlet_gas_flow_rate_from_stoichiometry(
-                self.o2_consumption if cell_side == self.ca else self.h2_consumption, conditions.stoichiometry
+                (self.o2_consumption if cell_side == self.ca else self.h2_consumption) * self.cell_area, conditions.stoichiometry
             )
         
 class OperatingConditions():
@@ -186,13 +236,19 @@ class OperatingConditions():
                  inlet_pressure=False, 
                  outlet_pressure=False, 
                  dry_o2_mole_fraction=0.2, 
-                 dry_h2_mole_fraction=0, 
+                 dry_h2_mole_fraction=0., 
                  inlet_relative_humidity=0.5, 
                  stoichiometry=2):
         self.inlet_temperature = inlet_temperature
         self.inlet_relative_humidity = inlet_relative_humidity
-        self.inlet_pressure = inlet_pressure if inlet_pressure else outlet_pressure
-        self.outlet_pressure = outlet_pressure if outlet_pressure else inlet_pressure
+        try: 
+            self.inlet_pressure = inlet_pressure if inlet_pressure else outlet_pressure
+        except ValueError: # Raised if a np.array is passed 
+            self.inlet_pressure = inlet_pressure 
+        try: 
+            self.outlet_pressure = outlet_pressure if outlet_pressure else inlet_pressure
+        except ValueError: 
+            self.outlet_pressure = outlet_pressure
         self.average_pressure = 0.5 * (self.inlet_pressure + self.outlet_pressure) 
         self.dry_o2_mole_fraction = dry_o2_mole_fraction
         self.dry_h2_mole_fraction = dry_h2_mole_fraction

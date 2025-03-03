@@ -68,9 +68,9 @@ class ParameterEstimation:
         def print_res(intermediate_result): 
             print('------'*5)
             p = self.theta_to_p(intermediate_result.x)
-            print(p)
+            print('RMSE : {:.1f} mV'.format(1e3*np.sqrt(intermediate_result.fun)))
             for k, param in enumerate(self.unknown_p_list):
-                print(param, '{:.2e}'.format(p[k]))
+                print(param[0], param[1], '{:.2e}'.format(p[k]))
             print('------'*5)
             if intermediate_result.fun < ftol: 
                 return True
@@ -78,6 +78,7 @@ class ParameterEstimation:
         sol = differential_evolution(f, tuple(([0,1] for p in self.unknown_p_list)), disp=True, 
                                      callback=print_res if print_iterations else None, 
                                      popsize=popsize, polish=False, workers=workers, 
+                                     mutation=(0,1.6), seed=2, init='sobol', 
                                      atol=atol)
         return sol, self.theta_to_p(sol.x)
 

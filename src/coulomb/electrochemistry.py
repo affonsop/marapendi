@@ -39,8 +39,11 @@ std_formation_gibbs_h2ol = (std_formation_enthalpy_h2ol -
 def h2_hhv(temperature): 
     return h2ol.h(temperature) - 0.5 * o2.h(temperature) - h2.h(temperature)
 
+h2_hhv = np.vectorize(h2_hhv)
+
 def h2_lhv(temperature): 
     return h2ov.h(temperature) - 0.5 * o2.h(temperature) - h2.h(temperature)
+h2_lhv = np.vectorize(h2_lhv)
 
 def calculate_reversible_cell_voltage(
     temperature,
@@ -85,12 +88,15 @@ def calculate_reversible_cell_voltage(
 
     activity_o2 = partial_pressure_o2 / STD_PRESSURE
     activity_h2 = partial_pressure_h2 / STD_PRESSURE
-    activities_ratio = activity_o2 * activity_h2 ** 0.5
+    activities_ratio = activity_o2 ** 0.5 * activity_h2 
 
-    reversible_cell_voltage = (gibbs_formation_h2ol +
-                               ct.gas_constant * temperature *
-                               np.log(activities_ratio)) / (2 * ct.faraday)
+    # reversible_cell_voltage = (gibbs_formation_h2ov +
+    #                            ct.gas_constant * temperature *
+        #                            np.log(activities_ratio)) / (2 * ct.faraday)
 
+    reversible_cell_voltage = (1.229 - 8.5e-4 * (temperature - 298.15) +
+                                   (ct.gas_constant * temperature *
+                                   np.log(activities_ratio)) / (2 * ct.faraday))
     return reversible_cell_voltage
 
 
@@ -182,7 +188,7 @@ class ElectrochemicalReaction:
         The reference temperature in Kelvin (K), for the reference exchange current density. 
     number_of_electrons : int, optional, default=2
         Number of electrons transferred in the electrochemical reaction.
-    charge_transfer_coefficient : float, optional, default=0.5
+    charge_transfer_coeff : float, optional, default=0.5
         Symmetry factor or charge transfer coefficient (dimensionless).
 
     Methods:
