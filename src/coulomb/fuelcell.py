@@ -52,12 +52,14 @@ class FuelCellSide:
     def calculate_heat_transfer_resistance(self): 
         return sum(layer.calculate_heat_transfer_resistance() for layer in self.porous_layers) + self.thermal_contact_resistance
                 
-    def calculate_water_saturation(self, water_production): 
-        return self.liq_transport_model.calculate_water_saturation(self, water_production)
+    def calculate_water_saturation(self): 
+        return self.liq_transport_model.calculate_water_saturation(self)
     
     def calculate_equivalent_flow_resistance(self): 
             return sum(layer.calculate_saturation_absolute_flow_resistance() for layer in self.porous_layers)
     
+    def max_water_vapor_removal(self): 
+        return (self.cl.get_saturation_concentration() - self.ch.get_vapor_concentration()) / self.calculate_gas_transport_resistance('h2o')
     
 
 @dataclass
@@ -105,7 +107,7 @@ class FuelCell:
     def ohmic_overpotential(self): 
         self.ca.cl.proton_resistance = self.ca.cl.calculate_effective_proton_resistance(self.current_density, 
                                                                          self.ca.cl.get_relative_humidity(), 
-                                                                         self.ca.membrane_surface_water_content, 
+                                                                         self.ca.cl.water_content, 
                                                                          self.ca.cl.temperature)
         return self.current_density * (self.ca.cl.proton_resistance + self.high_frequency_resistance())
 
@@ -145,25 +147,21 @@ class FuelCell:
     def calculate_water_transport(self): 
         self.ca.h2ov_transport_resistance = self.ca.calculate_gas_transport_resistance('h2o')
         self.an.h2ov_transport_resistance = self.an.calculate_gas_transport_resistance('h2o')
-        self.ca.h2ov_flux = self.h2o_production 
-        self.an.h2ov_flux = 0 #
         self.membrane.water_balance_model.water_balance(self)
-        self.ca.h2ov_flux += self.membrane.water_balance_model.cathode_flux(self)
-        self.an.h2ov_flux -= self.membrane.water_balance_model.cathode_flux(self)
-        self.ca.gdl.water_saturation = self.ca.calculate_water_saturation(np.maximum(1e-12,self.ca.h2ov_flux))
-        self.an.gdl.water_saturation = self.ca.calculate_water_saturation(np.maximum(1e-12,self.an.h2ov_flux))
+        self.ca.gdl.water_saturation = self.ca.calculate_water_saturation()
+        self.an.gdl.water_saturation = self.ca.calculate_water_saturation()
         self.ca.h2ov_transport_resistance = self.ca.calculate_gas_transport_resistance('h2o')
         self.an.h2ov_transport_resistance = self.an.calculate_gas_transport_resistance('h2o')
     
     def calculate_reactant_concentration_at_cl(self): 
         ca = self.ca
-        ca.o2_transport_resistance = ca.calculate_gas_transport_resistance('o2', self.ca.membrane_surface_water_content)
+        ca.o2_transport_resistance = ca.calculate_gas_transport_resistance('o2', self.ca.cl.water_content)
         ca.cl.gas.X[...,species_indexes['o2']] = np.maximum(1e-12, 
             ca.ch.gas.X[...,species_indexes['o2']] * ca.ch.gas.concentration() - 
             self.o2_consumption * ca.o2_transport_resistance) / ca.cl.gas.concentration()
         
         an = self.an
-        an.h2_transport_resistance = an.calculate_gas_transport_resistance('h2', self.ca.membrane_surface_water_content)
+        an.h2_transport_resistance = an.calculate_gas_transport_resistance('h2')
         an.cl.gas.X[...,species_indexes['h2']] = np.maximum(1e-12, 
             an.ch.gas.X[...,species_indexes['h2']] * an.ch.gas.concentration() - 
             self.h2_consumption * an.h2_transport_resistance) / an.cl.gas.concentration()
@@ -171,12 +169,12 @@ class FuelCell:
         for side in (self.ca, self.an):
             side.cl.gas.X[...,species_indexes['h2o']] = np.maximum(1e-12,
                 side.ch.gas.X[...,species_indexes['h2o']] * side.ch.gas.concentration() +
-                side.h2ov_flux * side.h2ov_transport_resistance) / side.cl.gas.concentration() 
+                side.vapor_flux * side.h2ov_transport_resistance) / side.cl.gas.concentration() 
             side.cl.gas.calculate_relative_humidity()
             side.cl.gas.X[...,species_indexes['n2']] = (1 - side.cl.gas.X[...,species_indexes['o2']] -
                                                         side.cl.gas.X[...,species_indexes['h2o']] -
                                                         side.cl.gas.X[...,species_indexes['h2']])
-
+    
     def calculate_heat_transfer_resistance(self): 
         self.thermal_resistance = 1/sum(1./side.calculate_heat_transfer_resistance() for side in (self.ca, self.an))
 

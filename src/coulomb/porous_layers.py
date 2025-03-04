@@ -112,8 +112,9 @@ class PorousLayer():
 
 @dataclass 
 class CatalystLayerIonomerModel: 
-    density: float = 2004 
+    dry_density: float = 2004 
     equivalent_weight: float = 952. 
+    
     hydrated_proton_conductivity: float = 11 # S/m
     proton_conductivity_water_content_exponent: float = 0
     proton_conductivity_rh_exponent: float = 2.7
@@ -122,6 +123,8 @@ class CatalystLayerIonomerModel:
     o2_diffusion_exponent: float = 0.708
     o2_diffusion_activation_energy: float = 24e6
 
+    def __post_init__(self): 
+        self.dry_concentration = self.dry_density / self.equivalent_weight 
 
     def o2_film_resistance(self, water_content, temperature= 353.15):
         # Linear regression of data from Jinnouchi et al. (2021), neglecting bulk diffusion.
@@ -136,7 +139,7 @@ class CatalystLayerIonomerModel:
                 relative_humidity ** self.proton_conductivity_rh_exponent *
                 calculate_arrhenius_term(self.proton_conductivity_activation_energy, temperature, 353.15)) # Following measurements of Hutapea et al. (2023)
 
-NafionD2020 = CatalystLayerIonomerModel(density=2004., equivalent_weight=952.)
+NafionD2020 = CatalystLayerIonomerModel(dry_density=2004., equivalent_weight=952.)
 
 
 @dataclass 
@@ -170,7 +173,7 @@ class CatalystLayer(PorousLayer):
             self.carbon_vol_fraction = self.carbon_loading / self.thickness / self.carbon_density
             self.platinum_vol_fraction = self.platinum_loading / self.thickness / self.platinum_density
             self.catalyst_vol_fraction = self.platinum_vol_fraction + self.carbon_vol_fraction 
-            self.ionomer_vol_fraction = self.carbon_loading / self.thickness * self.ionomer_to_carbon_ratio / self.ionomer.density 
+            self.ionomer_vol_fraction = self.carbon_loading / self.thickness * self.ionomer_to_carbon_ratio / self.ionomer.dry_density 
             self.porosity = 1 - self.catalyst_vol_fraction - self.ionomer_vol_fraction
         else:
             self.catalyst_vol_fraction = 1 - self.ionomer_vol_fraction - self.porosity
