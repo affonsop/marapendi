@@ -11,7 +11,7 @@ from .porous_layers import PorousLayer, CatalystLayer
 from .flow_channels import GasFlowChannel
 from .membrane import Membrane
 from .gas_composition import species_indexes 
-from .transport import PorousLiquidTransportModel
+from .transport import DarcyLiquidTransportModel
 from .water import water_molar_volume
 
 @dataclass
@@ -21,7 +21,7 @@ class FuelCellSide:
     mpl: PorousLayer = field(default_factory=PorousLayer)
     ch: GasFlowChannel = field(default_factory=GasFlowChannel)
     has_mpl: bool = False
-    liq_transport_model: PorousLiquidTransportModel = field(default_factory=PorousLiquidTransportModel)
+    liq_transport_model: DarcyLiquidTransportModel = field(default_factory=DarcyLiquidTransportModel)
     membrane_surface_water_content: float = 0 
     thermal_contact_resistance: float = 0 
 
@@ -53,10 +53,16 @@ class FuelCellSide:
         return sum(layer.calculate_heat_transfer_resistance() for layer in self.porous_layers) + self.thermal_contact_resistance
                 
     def calculate_water_saturation(self): 
-        return self.liq_transport_model.calculate_water_saturation(self)
+        for layer in self.porous_layers: 
+            layer.water_saturation = self.liq_transport_model.calculate_water_saturation(self.liquid_flux, layer.equivalent_flow_resistance)
     
     def calculate_equivalent_flow_resistance(self): 
-            return sum(layer.calculate_saturation_absolute_flow_resistance() for layer in self.porous_layers)
+            total_equivalent_flow_resistance = 0 
+            for k, layer in enumerate(self.porous_layers[::-1]): 
+                layer_resistance = layer.calculate_saturation_absolute_flow_resistance()
+                layer.equivalent_flow_resistance = total_equivalent_flow_resistance + layer_resistance / 2
+                total_equivalent_flow_resistance += layer_resistance
+            return total_equivalent_flow_resistance
     
     def max_water_vapor_removal(self): 
         return (self.cl.get_saturation_concentration() - self.ch.get_vapor_concentration()) / self.calculate_gas_transport_resistance('h2o')
@@ -148,8 +154,8 @@ class FuelCell:
         self.ca.h2ov_transport_resistance = self.ca.calculate_gas_transport_resistance('h2o')
         self.an.h2ov_transport_resistance = self.an.calculate_gas_transport_resistance('h2o')
         self.membrane.water_balance_model.water_balance(self)
-        self.ca.gdl.water_saturation = self.ca.calculate_water_saturation()
-        self.an.gdl.water_saturation = self.ca.calculate_water_saturation()
+        self.ca.calculate_equivalent_flow_resistance()
+        self.ca.calculate_water_saturation()
         self.ca.h2ov_transport_resistance = self.ca.calculate_gas_transport_resistance('h2o')
         self.an.h2ov_transport_resistance = self.an.calculate_gas_transport_resistance('h2o')
     

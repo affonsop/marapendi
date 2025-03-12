@@ -79,7 +79,7 @@ def test_gas_porous_transport_resistance(toray_gdl_060, fc, cl):
             layer.gas.set_composition(0.2,0,rh)
         fc.ca.cl.gas.set_temperature(temperature)
         fc.ca.h2ov_resistance = fc.ca.calculate_gas_transport_resistance('h2o')
-        fc.ca.liquid_transport_model = cb.PorousLiquidTransportModel(wet_saturation=0.44, dry_wet_transition_parameter=10) 
+        fc.ca.liquid_transport_model = cb.DarcyLiquidTransportModel(dry_wet_transition_parameter=10) 
         da = fc.ca.liquid_transport_model.calculate_damkholer_number(fc.ca, 0.5*i_cell/(2 * ct.faraday))
         print(da, thermal_resistance)
 
@@ -91,7 +91,9 @@ def test_gas_porous_transport_resistance(toray_gdl_060, fc, cl):
     temperature = 343.15 + 1.4 * i_cell / 2 * (thermal_resistance + thermal_contact_resistance)
     fc.ca.cl.gas.set_temperature(temperature)
     fc.ca.liquid_transport_model.wet_saturation = 0.3    
-    fc.ca.gdl.water_saturation = fc.ca.liquid_transport_model.calculate_water_saturation(fc.ca, water_injection_flux=i_cell/(2*ct.faraday))
+    fc.ca.calculate_equivalent_flow_resistance()
+    fc.ca.gdl.water_saturation = fc.ca.liquid_transport_model.calculate_water_saturation(i_cell/(2*ct.faraday), 
+                                                                                         equivalent_flow_resistance=fc.ca.gdl.equivalent_flow_resistance)
     wet_resistance = (fc.ca.gdl.calculate_gas_transport_resistance(species='o2') +
                     fc.ca.cl.calculate_gas_transport_resistance(species='o2') +
                     fc.ca.cl.calculate_o2_film_resistance(14, fc.ca.cl.get_gas_temperature()))

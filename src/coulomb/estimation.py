@@ -78,7 +78,7 @@ class ParameterEstimation:
         sol = differential_evolution(f, tuple(([0,1] for p in self.unknown_p_list)), disp=True, 
                                      callback=print_res if print_iterations else None, 
                                      popsize=popsize, polish=False, workers=workers, 
-                                     mutation=(0,1.6), seed=2, init='sobol', 
+                                     mutation=(0,1.6), seed=2, init='sobol',
                                      atol=atol)
         return sol, self.theta_to_p(sol.x)
 

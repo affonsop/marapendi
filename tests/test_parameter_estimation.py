@@ -70,9 +70,8 @@ def create_fuel_cell(params):
                 n_parallel=20,
                 reactant='o2', 
             ),
-            liq_transport_model=cb.PorousLiquidTransportModel(
-                critical_damkholer=1,
-                dry_wet_transition_parameter=0.1
+            liq_transport_model=cb.DarcyLiquidTransportModel(
+                dry_wet_transition_parameter=0.2
             ),
             thermal_contact_resistance=2e-4,
         ),
