@@ -36,11 +36,38 @@ std_formation_gibbs_h2ol = (std_formation_enthalpy_h2ol -
                             STD_TEMPERATURE * std_formation_entropy_h2ol)
 
 
-def h2_hhv(temperature): 
+def h2_hhv(temperature):
+    """
+    Calculate the hydrogen higher heating value voltage.
+
+    Parameters:
+    -----------
+    temperature : float
+        Temperature of the cell in Kelvin (K).
+    
+    Returns:
+    --------
+    float
+        Hydrogen higher heating value voltage in Volts (V).
+    """
     return h2ol.h(temperature) - 0.5 * o2.h(temperature) - h2.h(temperature)
+
 h2_hhv = np.vectorize(h2_hhv)
 
-def h2_lhv(temperature): 
+def h2_lhv(temperature):
+    """
+    Calculate the hydrogen lower heating value voltage.
+
+    Parameters:
+    -----------
+    temperature : float
+        Temperature of the cell in Kelvin (K).
+    
+    Returns:
+    --------
+    float
+        Hydrogen lower heating value voltage in Volts (V).
+    """
     return h2ov.h(temperature) - 0.5 * o2.h(temperature) - h2.h(temperature)
 h2_lhv = np.vectorize(h2_lhv)
 
