@@ -38,7 +38,6 @@ std_formation_gibbs_h2ol = (std_formation_enthalpy_h2ol -
 
 def h2_hhv(temperature): 
     return h2ol.h(temperature) - 0.5 * o2.h(temperature) - h2.h(temperature)
-
 h2_hhv = np.vectorize(h2_hhv)
 
 def h2_lhv(temperature): 
@@ -70,7 +69,7 @@ def calculate_reversible_cell_voltage(
     Notes:
     ------
     The function computes the reversible cell voltage using the thermodynamic relationship:
-        E_rev = (-ΔG° - ΔS°(T - T°) + RT ln(Q)) / (2F)
+        E_rev = (-ΔG° + ΔS°(T - T°) + RT ln(Q)) / (2F)
     where Q is the reaction quotient based on the partial pressures of H₂ and O₂.
 
     Constants:
@@ -83,20 +82,17 @@ def calculate_reversible_cell_voltage(
     >>> reversible_cell_voltage(T=300, p_o2=2e5, p_h2=1e5)
     1.1901
     """
-    gibbs_formation_h2ol = (- std_formation_gibbs_h2ol -
+    gibbs_formation_h2ol = (- std_formation_gibbs_h2ol +
                              std_formation_entropy_h2ol * (temperature - STD_TEMPERATURE))
 
     activity_o2 = partial_pressure_o2 / STD_PRESSURE
     activity_h2 = partial_pressure_h2 / STD_PRESSURE
-    activities_ratio = activity_o2 ** 0.5 * activity_h2 
+    activities_ratio = activity_o2 ** 0.5 * activity_h2
 
-    # reversible_cell_voltage = (gibbs_formation_h2ov +
-    #                            ct.gas_constant * temperature *
-        #                            np.log(activities_ratio)) / (2 * ct.faraday)
+    reversible_cell_voltage = (gibbs_formation_h2ol +
+                               ct.gas_constant * temperature *
+                               np.log(activities_ratio)) / (2 * ct.faraday)
 
-    reversible_cell_voltage = (1.229 - 8.5e-4 * (temperature - 298.15) +
-                                   (ct.gas_constant * temperature *
-                                   np.log(activities_ratio)) / (2 * ct.faraday))
     return reversible_cell_voltage
 
 
