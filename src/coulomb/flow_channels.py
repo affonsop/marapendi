@@ -63,7 +63,7 @@ class GasFlowChannel(PorousLayer):
     def set_inlet_stoichiometry(self, stoichiometry):
         self.inlet_stoichiometry = stoichiometry
 
-    def get_reactant_mole_fraction(self): 
+    def reactant_mole_fraction(self): 
         return self.gas.X[...,species_indexes[self.reactant]]
     
     def set_fixed_inlet_gas_flow_rate(self, inlet_gas_flow_rate): 
@@ -78,12 +78,12 @@ class GasFlowChannel(PorousLayer):
         self.inlet_gas_flow_rate = self.calculate_inlet_gas_flow_rate(reactant_consumption)
 
     def calculate_inlet_gas_flow_rate(self, reactant_consumption): 
-        return self.inlet_stoichiometry * reactant_consumption / self.get_reactant_mole_fraction() / self.gas.concentration()
+        return self.inlet_stoichiometry * reactant_consumption / self.reactant_mole_fraction() / self.gas.concentration()
     
     def calculate_inlet_stochiometry(self, reactant_consumption): 
-        return self.inlet_gas_flow_rate * self.get_reactant_mole_fraction() * self.gas.concentration() / reactant_consumption
+        return self.inlet_gas_flow_rate * self.reactant_mole_fraction() * self.gas.concentration() / reactant_consumption
 
-    def calculate_gas_transport_resistance(self, species, volume_flow_rate=None): 
-        diffusion_coeff = self.get_species_diffusion_coefficient(species)
+    def gas_transport_resistance(self, species, volume_flow_rate=None): 
+        diffusion_coeff = self.species_diffusion_coefficient(species)
         return self.transport_resistance_model.total_resistance(self, diffusion_coeff, 
                                                                 volume_flow_rate if volume_flow_rate else self.inlet_gas_flow_rate)

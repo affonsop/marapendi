@@ -53,8 +53,8 @@ class DarcyLiquidTransportModel:
         return cell_side.calculate_gas_transport_resistance('h2o')
     
     def calculate_damkholer_number(self, cell_side, water_injection_flux): 
-        cl_sat_concentration = cell_side.cl.get_saturation_concentration()
-        ch_vapor_concentration = cell_side.ch.get_vapor_concentration()
+        cl_sat_concentration = cell_side.cl.saturation_concentration()
+        ch_vapor_concentration = cell_side.ch.vapor_concentration()
         max_vapor_removal_flux = (cl_sat_concentration - ch_vapor_concentration) / cell_side.h2ov_transport_resistance
         return water_injection_flux / max_vapor_removal_flux
 

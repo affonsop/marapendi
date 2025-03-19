@@ -115,11 +115,11 @@ def test_polarization_curve(fuel_cell, cathode_conditions, anode_conditions):
         ax[0,2].set_xlabel('Curent density (A/cm$^2$)')
         ax[0,2].legend(loc='upper left', bbox_to_anchor=(1,1.0), title='RH$_{in,ca}$')
         
-        ax[1,0].plot(fuel_cell.current_density * 1e-4, fuel_cell.ca.cl.get_o2_mole_fraction(), label=f'{rh_cathode * 100:.0f} %')
+        ax[1,0].plot(fuel_cell.current_density * 1e-4, fuel_cell.ca.cl.o2_mole_fraction(), label=f'{rh_cathode * 100:.0f} %')
         ax[1,0].set_ylabel('Cathode CL\nO$_2$ mole fraction (n.d.)')
         ax[1,0].set_xlabel('Curent density (A/cm$^2$)')
      
-        ax[1,1].plot(fuel_cell.current_density * 1e-4, fuel_cell.ca.cl.get_gas_temperature()-273.15)
+        ax[1,1].plot(fuel_cell.current_density * 1e-4, fuel_cell.ca.cl.gas_temperature()-273.15)
         ax[1,1].set_ylabel(u'Cathode CL\ntemperature (\u00B0C)')
         ax[1,1].set_xlabel('Curent density (A/cm$^2$)')
     

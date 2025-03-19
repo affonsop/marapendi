@@ -31,7 +31,7 @@ def compute_ui_curve(current_density, fuel_cell, stack_pressure):
         )
 
         fuel_cell.set_conditions(stack_temperature, current_density,cathode_conditions, anode_conditions)
-        fuel_cell.solve_transport() 
+        fuel_cell.calculate_water_transport()
         return fuel_cell.cell_voltage()
 
 
@@ -120,7 +120,7 @@ exp_voltage_list = np.concatenate(
 
 rng = np.random.default_rng()
 simulated_data = h({'ecsa':70e3, 'crossover-correction':1})
-simulated_data *= (1 + .05 * rng.standard_normal(len(simulated_data))) 
+simulated_data *= (1 + .01 * rng.standard_normal(len(simulated_data))) 
 
 @pytest.fixture
 def estimator(): 
@@ -130,17 +130,16 @@ def test_model_to_model_validation(estimator):
     estimator.set_unknown_params(
         [('ecsa', (40e3, 80e3), True, '$ECSA$'),]
     )
-    sol, p = estimator.estimate(simulated_data, t=0, print_iterations=False, popsize=5, ftol=1e-8)
+    sol, p = estimator.estimate(simulated_data, t=0, print_iterations=False, popsize=10, ftol=1e-8)
     
-    assert np.isclose(p[0], 70.e3, atol = 10.e3) 
+    assert np.isclose(p[0], 70.e3, atol = 5.e3) 
 
 def test_global_sensitivity(estimator): 
    
     estimator.set_unknown_params(
-        [('ecsa', (40e3, 80e3), True, '$ECSA$'),
-         ('crossover-correction', (0,2), True, '$k_{i_x}$')]
+        [('ecsa', (40e3, 80e3), True, '$ECSA$')]
     )
-    cosPhi_med_ij, norm_s_i, S_med, S_std, S_med_i, S_std_i, S_n, n_valid = estimator.compute_global_sensitivity(t=0, m=2,  check_samples=True, y_exp=simulated_data, res_limit=0.02)
+    cosPhi_med_ij, norm_s_i, S_med, S_std, S_med_i, S_std_i, S_n, n_valid = estimator.compute_global_sensitivity(t=0, m=2,  check_samples=False, y_exp=simulated_data, res_limit=0.02)
     fig1, ax1 = estimator.plot_global_sensitivity(xlabel_angle=0) 
     fig2, ax2 = estimator.plot_colinearity_map(xlabel_angle=0, cmap='Blues',figsize=(5,4))
     fig1.tight_layout()

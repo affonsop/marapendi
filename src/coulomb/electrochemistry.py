@@ -263,7 +263,10 @@ class ElectrochemicalReaction:
 
         Example:
         --------
-        >>> reaction = ElectrochemicalReaction(reference_exchange_current_density=1e-4, activation_energy=50e6)
+        >>> reaction = ElectrochemicalReaction(
+            reference_exchange_current_density=1e-4, 
+            activation_energy=50e6
+        )
         >>> i0 = reaction.exchange_current_density(temperature=310, reactant_activity=0.5)
         """
         return calculate_exchange_current_density(temperature, reactant_activity, self)
@@ -312,7 +315,9 @@ class ElectrochemicalReaction:
         ...     number_of_electrons=2,
         ...     charge_transfer_coeff=0.5
         ... )
-        >>> eta = reaction.tafel_overpotential(current_density=1e-3, temperature=310, reactant_activity=0.5)
+        >>> eta = reaction.tafel_overpotential(
+            current_density=1e-3, temperature=310, reactant_activity=0.5
+        )
         """
         exchange_current_density = self.exchange_current_density(temperature,reactant_activity)
         return calculate_tafel_overpotential(
@@ -321,7 +326,7 @@ class ElectrochemicalReaction:
             temperature,
             self.number_of_electrons, 
             self.charge_transfer_coeff)
-    
+
 def calculate_exchange_current_density(
     temperature: float,
     reactant_activity: float,
@@ -355,8 +360,8 @@ def calculate_exchange_current_density(
         The exchange current density in Amperes per square meter (A/m²).
 
     """
-
-    activity_correction = np.maximum(reactant_activity / params.reference_activity, 1e-12) ** params.reaction_order
+    activity_correction = np.maximum(reactant_activity / params.reference_activity, 
+                                     1e-12) ** params.reaction_order
     arrhenius_term = calculate_arrhenius_term(params.activation_energy,
                                               temperature,
                                               params.reference_temperature)

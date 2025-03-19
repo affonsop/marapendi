@@ -213,10 +213,10 @@ class MembraneWaterBalanceModel:
 
         for side in (cell.ca, cell.an):
   
-            c_sat_cl = side.cl.get_saturation_concentration()
+            c_sat_cl = side.cl.saturation_concentration()
 
             side.rh_at_cl_without_crossover = np.minimum(
-                (side.ch.get_vapor_concentration() + ((cell.current_density / (2*ct.faraday) * side.h2ov_transport_resistance)
+                (side.ch.vapor_concentration() + ((cell.current_density / (2*ct.faraday) * side.h2ov_transport_resistance)
                                                 if side == cell.ca else np.zeros_like(cell.current_density)))
                 
                 / c_sat_cl,
@@ -255,8 +255,8 @@ class MembraneWaterBalanceModel:
     
         cell.membrane.i_star = i_star
         cell.membrane.water_content = np.mean(self.water_content_profile, axis=0)
-        cell.ca.cl.water_content = lmbd_eq_cl_ca
-        cell.an.cl.water_content = lmbd_eq_cl_an
+        cell.ca.cl.ionomer_water_content = lmbd_eq_cl_ca
+        cell.an.cl.ionomer_water_content = lmbd_eq_cl_an
         self.calculate_cell_water_fluxes(cell)
 
         return self.water_content_profile
@@ -269,14 +269,14 @@ class MembraneWaterBalanceModel:
         
     def cathode_flux(self, cell): 
         lmbd_ca = self.water_content_profile[-1,:]
-        return (self.absorption_coefficient * (lmbd_ca-cell.ca.cl.water_content) #* cell.ca.cl.porosity +
+        return (self.absorption_coefficient * (lmbd_ca-cell.ca.cl.ionomer_water_content) #* cell.ca.cl.porosity +
                 #self.membrane_water_diffusivity * (lmbd_ca-cell.ca.membrane_surface_water_content) * cell.ca.cl.ionomer_vol_fraction / cell.ca.cl.thickness + #/ cell.ca.equiv_water_content_derivative
                 + self.electroosmotic_drag_speed(cell.membrane.temperature, cell.current_density, cell.membrane) * lmbd_ca) * cell.membrane.dry_concentration
 
 
     def calculate_cell_side_liquid_flux(self,cell_side): 
-        cl_sat_concentration = cell_side.cl.get_saturation_concentration()
-        ch_vapor_concentration = cell_side.ch.get_vapor_concentration()
+        cl_sat_concentration = cell_side.cl.saturation_concentration()
+        ch_vapor_concentration = cell_side.ch.vapor_concentration()
         max_vapor_removal_flux = (cl_sat_concentration - ch_vapor_concentration) / cell_side.h2ov_transport_resistance
         cell_side.liquid_flux = np.maximum(cell_side.water_flux-max_vapor_removal_flux,1e-12)
         cell_side.vapor_flux = cell_side.water_flux - cell_side.liquid_flux
@@ -286,14 +286,14 @@ class SimpleMembraneWaterBalanceModel(MembraneWaterBalanceModel):
     
     def water_balance(self, cell): 
         for side in (cell.ca, cell.an):
-            side.rh_at_cl_without_crossover = (side.ch.get_vapor_pressure() / side.cl.gas.saturation_pressure +
-                                               (cell.current_density / (2*ct.faraday) * side.h2ov_transport_resistance / side.cl.get_saturation_concentration() 
+            side.rh_at_cl_without_crossover = (side.ch.vapor_pressure() / side.cl.gas.saturation_pressure +
+                                               (cell.current_density / (2*ct.faraday) * side.h2ov_transport_resistance / side.cl.saturation_concentration() 
                                                 if side == cell.ca else np.zeros_like(cell.current_density)))
-            side.cl.water_content = cell.membrane.equilibrium_water_content(side.rh_at_cl_without_crossover)
+            side.cl.ionomer_water_content = cell.membrane.equilibrium_water_content(side.rh_at_cl_without_crossover)
 
         
         xi = np.linspace(0,np.ones_like(cell.current_density),10)
-        self.water_content_profile = cell.ca.cl.water_content * xi + cell.an.cl.water_content * (1-xi)
+        self.water_content_profile = cell.ca.cl.ionomer_water_content * xi + cell.an.cl.ionomer_water_content * (1-xi)
         cell.membrane.water_content = np.mean(self.water_content_profile, axis=0)
         self.calculate_cell_water_fluxes(cell)
 
@@ -328,20 +328,20 @@ class NewMembraneWaterBalanceModel(MembraneWaterBalanceModel):
                                         cell.membrane.dry_concentration * side.cl.thickness /
                                         side.cl.ionomer_vol_fraction / side.cl.ionomer.dry_concentration)
                         
-            side.ch_rh_at_cl_temp = side.ch.get_vapor_concentration() / side.cl.get_saturation_concentration()
-            side.equiv_rh =  side.ch_rh_at_cl_temp + ((2 * n_d + 1) if side == cell.ca else (- 2 * n_d)) * cell.h2o_production * side.h2ov_transport_resistance / side.cl.get_saturation_concentration()
+            side.ch_rh_at_cl_temp = side.ch.vapor_concentration() / side.cl.saturation_concentration()
+            side.equiv_rh =  side.ch_rh_at_cl_temp + ((2 * n_d + 1) if side == cell.ca else (- 2 * n_d)) * cell.h2o_production * side.h2ov_transport_resistance / side.cl.saturation_concentration()
             
             side.equiv_water_content_derivative = cell.membrane.equilibrium_water_content_derivative(side.ch_rh_at_cl_temp)
             side.cl.nondim_ionomer_equiv_length = 0.5 * (1 +
                                         cell.membrane.dry_concentration / cell.membrane.dry_thickness *
                                         side.cl.thickness / side.cl.ionomer_vol_fraction / side.cl.ionomer.dry_concentration) / side.equiv_water_content_derivative
         for side in (cell.ca, cell.an):
-            side.xi = side.h2ov_transport_resistance / side.cl.get_saturation_concentration() / cell.membrane.water_content_resistance / (cell.ca.cl.nondim_ionomer_equiv_length + cell.an.cl.nondim_ionomer_equiv_length)
+            side.xi = side.h2ov_transport_resistance / side.cl.saturation_concentration() / cell.membrane.water_content_resistance / (cell.ca.cl.nondim_ionomer_equiv_length + cell.an.cl.nondim_ionomer_equiv_length)
         denom = (1 + cell.ca.xi + cell.an.xi)
         cell.ca.cl.water_activity = (cell.ca.equiv_rh * (1 + cell.an.xi) + cell.ca.xi * cell.an.equiv_rh) / denom
         cell.an.cl.water_activity = (cell.an.equiv_rh * (1 + cell.ca.xi) + cell.an.xi * cell.ca.equiv_rh) / denom
 
-        cell.ca.liquid_flux = cell.ca.cl.get_saturation_concentration()/ cell.ca.h2ov_transport_resistance * np.maximum(cell.ca.cl.water_activity - 1, 0) * denom
+        cell.ca.liquid_flux = cell.ca.cl.saturation_concentration()/ cell.ca.h2ov_transport_resistance * np.maximum(cell.ca.cl.water_activity - 1, 0) * denom
         cell.ca.cl.water_activity = np.minimum(cell.ca.cl.water_activity, 1)    
         
         cell.an.liquid_flux = 0
@@ -478,10 +478,7 @@ class Membrane:
                                                         temperature,
                                                         pressure_difference,
                                                         water_vol_fraction)
-    # def equilibrium_water_content(self, a):
-    #     K = 92
-    #     n = 12.8
-    #     return 23/12.8 * K * a / (1-a) * (1+ (-(n+1) + n * a)*a**n) / (1+ (K-1)*a - K *a**(n+1))
+
     def equilibrium_water_content(self, rh):
         rh = np.minimum(np.maximum(rh, 0),1)
         return (0.043 + 17.18 * rh - 39.85 * rh**2 + 36 * rh**3)
