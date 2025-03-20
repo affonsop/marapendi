@@ -69,7 +69,8 @@ def test_membrane_water_transport_model(fuel_cell_liso_2016, liso_2016_exp_data)
     assert np.isclose(fc.ca.ch.gas.X[0], 0.1634, 1e-3)
     assert fc.ca.ch.gas.X[2] == 0
     fc.h2o_production = fc.current_density / (2 * ct.faraday)
-    fc.membrane.water_balance_model.water_balance(fc)
+    fc.calculate_water_transport()
+    #fc.membrane.water_balance_model.water_balance(fc)
     fc.ca.h2ov_outlet_mass_flow_rate = (fc.ca.ch.h2ov_inlet_mass_flow_rate + fc.product_water_mass_source +
                                         fc.membrane.water_balance_model.cathode_flux(fc) * fc.cell_area * fc.cell_number) 
     plt.figure(figsize=(4,3))

@@ -1,6 +1,7 @@
 import pytest
 import numpy as np
 import cantera as ct 
+import matplotlib.pyplot as plt 
 
 import coulomb as cb
 
@@ -20,12 +21,12 @@ def toray_gdl_060():
 def cl(): 
     return cb.CatalystLayer(thickness=10e-6,
                             platinum_loading=0.3e-2, 
-                            ionomer_to_carbon_ratio=0.75, 
+                            ionomer_to_carbon_ratio=1, 
                             catalyst_platinum_weight_percent=0.4,
                             thermal_conductivity=0.25,
-                            ecsa=60e3,
-                            ionomer=cb.CatalystLayerIonomerModel(hydrated_o2_diffusion=4.e-11),     
-                            carbon_agglomerate_radius=58e-9, 
+                            ecsa=45e3,
+                            ionomer=cb.CatalystLayerIonomerModel(),     
+                            carbon_agglomerate_radius=60e-9, 
                             reaction = cb.ElectrochemicalReaction(reference_exchange_current_density=2.47e-8 * 3e11 * 10e-6,
                                                                 activation_energy=67e6,
                                                                 reaction_order=0.54,
@@ -60,8 +61,8 @@ def test_gas_porous_transport_resistance(toray_gdl_060, fc, cl):
         dry_resistance = (fc.ca.gdl.gas_transport_resistance(species='o2') +
                     fc.ca.cl.gas_transport_resistance(species='o2') +
                     fc.ca.cl.o2_ionomer_film_resistance(14, temperature=353.))
-
         assert np.isclose(dry_resistance, experimental_resistance, 10e-2) 
+
     # Test wet conditions resistance, low current densities. A small saturation of 0.1 is needed, probably because of very wet conditions
     for layer in fc.ca.components:
             layer.gas.set_composition(0.2,0,1)

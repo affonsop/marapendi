@@ -265,7 +265,6 @@ class FuelCell:
         """
         self.ca.cl.proton_resistance = self.ca.cl.effective_proton_resistance(
             self.current_density, 
-            self.ca.cl.relative_humidity(), 
             self.ca.cl.ionomer_water_content, 
             self.ca.cl.temperature
         )

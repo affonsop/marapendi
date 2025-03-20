@@ -9,7 +9,7 @@ from .gas_composition import GasComposition, index_h2, index_o2, index_h2ov, spe
 from .tools import calculate_arrhenius_term
 from .electrochemistry import ElectrochemicalReaction 
 from .transport import PorousGasResistanceModel
-from .water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight, water_molar_volume
+from .water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight, water_molar_volume, water_density
 from .membrane import Membrane
 
 @dataclass
@@ -351,8 +351,6 @@ class CatalystLayerIonomerModel(Membrane):
     equivalent_weight: float = 952. 
     
     hydrated_proton_conductivity: float = 11 # S/m
-    proton_conductivity_water_content_exponent: float = 0
-    proton_conductivity_rh_exponent: float = 2.7
     proton_conductivity_activation_energy: float = 11e6
     hydrated_o2_diffusion: float = 1.14698e-10*14**0.708
     o2_diffusion_exponent: float = 0.708
@@ -360,6 +358,14 @@ class CatalystLayerIonomerModel(Membrane):
 
     def __post_init__(self): 
         Membrane.__post_init__(self)
+
+    def wet_density(self, water_content, temperature):
+        water_mass = water_molecular_weight * water_content
+        return self.equivalent_weight + water_mass / (self.equivalent_weight / self.dry_density + water_mass / water_density(temperature))
+
+    def wet_expansion_factor(self, water_content, temperature):
+        water_mass = water_molecular_weight * water_content 
+        return 1 + self.dry_density * water_mass / self.equivalent_weight / water_density(temperature)
 
     def o2_film_diffusion_coefficient(self, water_content, temperature= 353.15):
         # Linear regression of data from Jinnouchi et al. (2021), neglecting bulk diffusion.
@@ -373,11 +379,12 @@ class CatalystLayerIonomerModel(Membrane):
         RT = ct.gas_constant * temperature
         return (6.74e-12 * np.exp(-21280e3/RT) + fv * 50.5e-12 * np.exp(-20470e3/RT)) * 1e-3
 
-    def proton_conductivity(self, relative_humidity, water_content, temperature):
-        return (self.hydrated_proton_conductivity *
-                (water_content/14.) ** (self.proton_conductivity_water_content_exponent) *
-                relative_humidity ** self.proton_conductivity_rh_exponent *
-                calculate_arrhenius_term(self.proton_conductivity_activation_energy, temperature, 353.15)) # Following measurements of Hutapea et al. (2023)
+    def proton_conductivity(self, water_content, temperature):
+        fv = self.water_vol_fraction(water_content ,water_molar_volume(temperature))
+        return self.conductivity_correction * 50 * (np.maximum(fv, 0.061) - 0.06 ) ** self.conductivity_exp * calculate_arrhenius_term(self.proton_conductivity_activation_energy, temperature, 303.15)
+    
+    def equilibrium_water_content(self, rh):
+        return 21.669 * rh ** 3 - 27.692* rh **2 + 17.624 * rh + 0.688 # Fit from Jinnouchi et al. (2021), sup. material
 
 NafionD2020 = CatalystLayerIonomerModel(dry_density=2004., equivalent_weight=952.)
 
@@ -473,7 +480,7 @@ class CatalystLayer(PorousLayer):
         self.ionomer_vol_surface_area = (4 * np.pi *
                                          (self.carbon_agglomerate_radius + self.ionomer_film_thickness) ** 2 *
                                          self.carbon_agglomerate_number_density)
-
+        self.ionomer_to_carbon_vol_ratio = (1 + self.ionomer_film_thickness / self.carbon_agglomerate_radius)**3 - 1 # According to eq. 1 in Liu ett al. (2010)
         self.effective_gas_diffusion_ratio = self.porosity ** 1.5
         PorousLayer.__post_init__(self)
 
@@ -495,7 +502,7 @@ class CatalystLayer(PorousLayer):
         """
 
        
-        return  (self.ionomer_film_thickness / 
+        return  (self.ionomer_film_thickness * self.ionomer.wet_expansion_factor(ionomer_water_content, temperature) / 
                  (ct.gas_constant * temperature * self.ionomer.o2_permeability(ionomer_water_content, temperature)))
     
     def o2_ionomer_film_resistance(self, ionomer_water_content, temperature): 
@@ -523,7 +530,7 @@ class CatalystLayer(PorousLayer):
         ionomer_gas_interface_term = k1 / (self.ionomer_vol_surface_area * self.thickness)
         return  (ionomer_gas_interface_term + ionomer_pt_interface_term) * self.o2_ionomer_film_bulk_resistance(ionomer_water_content, temperature)
     
-    def ionomer_sheet_proton_resistance(self, relative_humidity, ionomer_water_content, temperature): 
+    def ionomer_sheet_proton_resistance(self, ionomer_water_content, temperature): 
         """
         Calculate the proton resistance of the ionomer film.
 
@@ -542,10 +549,12 @@ class CatalystLayer(PorousLayer):
             Ionomer film proton resistance [Ohm.m2].
         """
         # Consider ionomer_tortuosity = 1
-        ionomer_proton_conductivity = self.ionomer.proton_conductivity(relative_humidity, ionomer_water_content, temperature)
-        return self.thickness / (self.ionomer_vol_fraction * ionomer_proton_conductivity)
+        ionomer_proton_conductivity = self.ionomer.proton_conductivity(ionomer_water_content, temperature)
+        eps_ion = (self.ionomer_vol_fraction * self.ionomer.wet_expansion_factor(ionomer_water_content, temperature))**1.5
+        tort_ion = np.where(eps_ion > 0.16, 1, 0.0845 * (eps_ion - 0.04) ** -1.17) # eq. 54 in Hao et al. (2015)
+        return self.thickness / (eps_ion / tort_ion * ionomer_proton_conductivity)
     
-    def effective_proton_resistance(self,current_density, relative_humidity, ionomer_water_content, temperature): 
+    def effective_proton_resistance(self,current_density, ionomer_water_content, temperature): 
         """
         Calculate the effective proton resistance in the catalyst layer 
         based on Goshtasbi et al. (2020) and Neyerlin et al. (2007).
@@ -567,7 +576,7 @@ class CatalystLayer(PorousLayer):
             Effective catalyst layer proton resistance [Ohm.m2].
         """
         # Based on the method proposed by Goshtasbi et al. (2020), based on Neyerlin et al. (2007)
-        self.ionomer_sheet_resistance = self.ionomer_sheet_proton_resistance(relative_humidity, ionomer_water_content, temperature)
+        self.ionomer_sheet_resistance = self.ionomer_sheet_proton_resistance(ionomer_water_content, temperature)
         nu = np.minimum(self.ionomer_sheet_resistance * current_density / self.reaction.tafel_slope(temperature), 10) # Goshtasbi parametrization valid for nu < 10
         self.xi_neyerlin = nu * (-8.287e-3 * nu + 0.7184) - 2.072e-3
         return self.ionomer_sheet_resistance / (3 + self.xi_neyerlin)

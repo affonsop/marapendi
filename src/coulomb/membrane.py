@@ -389,6 +389,12 @@ class Membrane:
         A dataclass representing the properties of membrane hydrogen permeability model.
     water_content: float
         Water content of the membrane. 
+    conductivity_correction: float
+        Correction factor for the proton conductivity. 
+    conductivity_correction: float
+        Correction factor for the proton conductivity, to scale the expression from Vetter and Schumacher (2020).  
+    conductivity_exp: float
+        Exponent for the proton conductivity correlation. 
 
     Computed Attributes:
     --------------------
@@ -407,7 +413,8 @@ class Membrane:
     """
 
     equivalent_weight: float = 1.1e3
-    density: float = 1980.
+    
+    dry_density: float = 1980.
     dry_thickness: float = 25e-6
     h2_permeation_model: HydrogenPermeationModel = field(default_factory=HydrogenPermeationModel)
     water_balance_model: MembraneWaterBalanceModel = field(default_factory=MembraneWaterBalanceModel)
@@ -419,7 +426,7 @@ class Membrane:
         """
         Compute derived properties of the membrane after initialization.
         """
-        self.dry_concentration = self.density / self.equivalent_weight  # kmol/m³
+        self.dry_concentration = self.dry_density / self.equivalent_weight  # kmol/m³
         self.dry_molar_volume = 1. / self.dry_concentration  # m³/kmol
        
     def water_vol_fraction(self, water_content: float, water_molar_volume: float) -> float:
@@ -494,7 +501,6 @@ class Membrane:
         else: 
             fv = self.water_vol_fraction(water_content ,water_molar_volume(temperature))
             return self.conductivity_correction * 50 * (np.maximum(fv, 0.061) - 0.06 ) ** self.conductivity_exp * calculate_arrhenius_term(15e6, temperature, 303.15)
-        #return self.conductivity_correction * (0.539 * np.maximum(water_content, 1) - 0.326) * calculate_arrhenius_term(10e6, temperature, 303.15)
-
+        
     def proton_resistance(self, temperature, water_vol_fraction, water_content): 
         return self.dry_thickness / self.proton_conductivity(temperature, water_vol_fraction, water_content)
