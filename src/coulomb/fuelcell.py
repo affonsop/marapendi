@@ -475,7 +475,7 @@ class FuelCell:
             return dT - self.mea_temperature_increase 
         
         self.calculate_heat_transfer_resistance()
-        res = root(f, 1.4 * self.current_density * self.thermal_resistance, method='broyden1', options={'fatol':1e-2, 'maxiter':5})
+        res = root(f, 1.4 * self.current_density * self.thermal_resistance, method='broyden1', options={'fatol':1e-1, 'maxiter':5})
 
     def set_conditions(self, stack_temperature, current_density, cathode_conditions, anode_conditions):  
         """

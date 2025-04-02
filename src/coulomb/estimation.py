@@ -53,7 +53,7 @@ class ParameterEstimation:
         t, x, y = self.solve(t, u, x0, p)
         return y_exp - y
 
-    def estimate(self, y_exp, t, u=None, x0=None, p=None, print_iterations=False, popsize=10, workers=1, ftol=0, atol=0):
+    def estimate(self, y_exp, t, u=None, x0=None, p=None, print_iterations=False, popsize=10, workers=1, ftol=0, atol=0, penalty_threshold=10e-3):
         if not p:
             if self.p:
                 p = self.p
@@ -63,7 +63,9 @@ class ParameterEstimation:
             px = p.copy()
             px.update({p[0]: v for p, v in zip(self.unknown_p_list, self.theta_to_p(x))})
             res = self.residuals(y_exp, t, u, x0, px)
-            return np.dot(res, res) / len(res)
+            if penalty_threshold > 0: 
+                penalty = np.where(np.abs(res) > penalty_threshold, 10 * (res - penalty_threshold), 0)
+            return np.dot(res, res) / len(res) + (np.dot(penalty, penalty) if penalty_threshold > 0 else 0)
         
         def print_res(intermediate_result): 
             print('------'*5)

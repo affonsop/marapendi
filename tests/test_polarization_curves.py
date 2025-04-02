@@ -82,7 +82,7 @@ def fuel_cell(cathode_conditions, anode_conditions):
         ),
         membrane = cb.Membrane(
             equivalent_weight=1100,
-            density=1980, 
+            dry_density=1980, 
             dry_thickness=25e-6,
             h2_permeation_model=cb.HydrogenPermeationModel(
                 permeability_correction_factor=1

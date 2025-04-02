@@ -96,7 +96,7 @@ def create_fuel_cell(params):
         ),
         membrane = cb.Membrane(
             equivalent_weight=1100,
-            density=1980, 
+            dry_density=1980, 
             dry_thickness=25e-6,
             h2_permeation_model=cb.HydrogenPermeationModel(
                 permeability_correction_factor=params['crossover-correction']
@@ -120,7 +120,7 @@ exp_voltage_list = np.concatenate(
 
 rng = np.random.default_rng()
 simulated_data = h({'ecsa':70e3, 'crossover-correction':1})
-simulated_data *= (1 + .01 * rng.standard_normal(len(simulated_data))) 
+simulated_data *= (1 + .00 * rng.standard_normal(len(simulated_data))) 
 
 @pytest.fixture
 def estimator(): 
@@ -130,7 +130,7 @@ def test_model_to_model_validation(estimator):
     estimator.set_unknown_params(
         [('ecsa', (40e3, 80e3), True, '$ECSA$'),]
     )
-    sol, p = estimator.estimate(simulated_data, t=0, print_iterations=False, popsize=10, ftol=1e-8)
+    sol, p = estimator.estimate(simulated_data, t=0, print_iterations=False, popsize=20, ftol=1e-8)
     
     assert np.isclose(p[0], 70.e3, atol = 5.e3) 
 

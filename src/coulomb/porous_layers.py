@@ -451,7 +451,9 @@ class CatalystLayer(PorousLayer):
     ionomer_film_thickness: float = 0  # Will be calculated
     contact_angle: float = 95.  # degrees
     omega_PtO: float = 3000e3  # kJ/mol
-    theta_PtO: float = 0 
+    theta_PtO: float = 0
+    ionomer_k1: float = 8.5
+    ionomer_k2: float = 5.4
 
     def __post_init__(self):
         if self.platinum_vol_surface_area == 0:
@@ -523,11 +525,9 @@ class CatalystLayer(PorousLayer):
             Oxygen film resistance [s/m].
         """
 
-        # k1 and k2 values from Hao et al. (2015)
-        k1 = 8.5
-        k2 = 5.4
-        ionomer_pt_interface_term = (k2 + 1) / (1 - self.theta_PtO) / (self.platinum_loading * self.ecsa)
-        ionomer_gas_interface_term = k1 / (self.ionomer_vol_surface_area * self.thickness)
+        # k1 and k2 default values from Hao et al. (2015)
+        ionomer_pt_interface_term = (self.ionomer_k2 + 1) / (1 - self.theta_PtO) / (self.platinum_loading * self.ecsa)
+        ionomer_gas_interface_term = self.ionomer_k1 / (self.ionomer_vol_surface_area * self.thickness)
         return  (ionomer_gas_interface_term + ionomer_pt_interface_term) * self.o2_ionomer_film_bulk_resistance(ionomer_water_content, temperature)
     
     def ionomer_sheet_proton_resistance(self, ionomer_water_content, temperature): 

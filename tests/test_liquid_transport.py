@@ -21,7 +21,7 @@ def toray_gdl_060():
 def cl(): 
     return cb.CatalystLayer(thickness=10e-6,
                             platinum_loading=0.3e-2, 
-                            ionomer_to_carbon_ratio=1, 
+                            ionomer_to_carbon_ratio=0.7, 
                             catalyst_platinum_weight_percent=0.4,
                             thermal_conductivity=0.25,
                             ecsa=45e3,

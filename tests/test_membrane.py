@@ -5,15 +5,15 @@ import cantera as ct
 
 @pytest.fixture
 def thick_membrane(): 
-    return cb.Membrane(equivalent_weight=1100, density=1980, dry_thickness=125e-6)
+    return cb.Membrane(equivalent_weight=1100, dry_density=1980, dry_thickness=125e-6)
 
 @pytest.fixture
 def thin_membrane(): 
-    return cb.Membrane(equivalent_weight=1100, density=1980, dry_thickness=25e-6)
+    return cb.Membrane(equivalent_weight=1100, dry_density=1980, dry_thickness=25e-6)
 
 @pytest.fixture
 def membrane_liso_2016(): 
-    return cb.Membrane(equivalent_weight=1100, density=2000, dry_thickness=51e-6, 
+    return cb.Membrane(equivalent_weight=1100, dry_density=2000, dry_thickness=51e-6, 
                        water_balance_model=cb.MembraneWaterBalanceModel(reference_absorption_coefficient=1.e-5, 
                                                                         reference_water_chemical_diffusion_coefficient=4e-10))   
  
