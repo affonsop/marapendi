@@ -6,7 +6,7 @@ import numpy as np
 import cantera as ct
 
 from .tools import sigmoid
-
+from .water import water_density, water_dynamic_viscosity, water_surface_tension
 
 @dataclass 
 class ChannelGasResistanceModel: 
@@ -44,21 +44,22 @@ class PorousGasResistanceModel:
         return self.molecular_diffusion_resistance(layer, diffusion_coefficient, water_saturation) + layer.thickness / self.knudsen_diffusivity(layer, temperature, molecular_weight)
 
 
-@dataclass
-class PorousLiquidTransportModel: 
-    critical_damkholer: float = 1.
-    dry_wet_transition_parameter: float = 10
-    wet_saturation: float = 0.4 
+@dataclass    
+class DarcyLiquidTransportModel: 
+    dry_wet_transition_parameter: float = 0.2
+
 
     def vapor_transport_resistance(self, cell_side): 
         return cell_side.calculate_gas_transport_resistance('h2o')
     
     def calculate_damkholer_number(self, cell_side, water_injection_flux): 
-        cl_sat_concentration = cell_side.cl.get_saturation_concentration()
-        ch_vapor_concentration = cell_side.ch.get_vapor_concentration()
-        max_vapor_removal_flux = (cl_sat_concentration - ch_vapor_concentration) / cell_side.h2ov_resistance
+        cl_sat_concentration = cell_side.cl.saturation_concentration()
+        ch_vapor_concentration = cell_side.ch.vapor_concentration()
+        max_vapor_removal_flux = (cl_sat_concentration - ch_vapor_concentration) / cell_side.h2ov_transport_resistance
         return water_injection_flux / max_vapor_removal_flux
-        
-    def calculate_water_saturation(self, cell_side, water_injection_flux): 
-        damkholer = self.calculate_damkholer_number(cell_side, water_injection_flux)
-        return self.wet_saturation * sigmoid(damkholer, self.critical_damkholer, self.dry_wet_transition_parameter)
+
+    def calculate_water_saturation(self, liquid_flux, equivalent_flow_resistance): 
+        #damkholer = self.calculate_damkholer_number(cell_side, water_injection_flux)
+
+        #return self.wet_saturation *  cb.sigmoid(water_injection_flux, max_vapor_removal_flux * self.critical_damkholer, self.dry_wet_transition_parameter)
+        return np.minimum(0.9,(liquid_flux * equivalent_flow_resistance) ** self.dry_wet_transition_parameter)

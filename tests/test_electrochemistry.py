@@ -9,7 +9,7 @@ def reaction_params():
 
 def test_reversible_cell_voltage():
     assert  np.isclose(cb.calculate_reversible_cell_voltage(temperature=298.15, partial_pressure_o2=1e5, partial_pressure_h2=1e5), 1.229, 1e-3)
-    assert  np.isclose(cb.calculate_reversible_cell_voltage(temperature=353.15, partial_pressure_o2=.2e5, partial_pressure_h2=2e5), 1.256, 1e-3)
+    assert  np.isclose(cb.calculate_reversible_cell_voltage(temperature=353.15, partial_pressure_o2=.2e5, partial_pressure_h2=2e5), 1.1805, 1e-3)
 
 def test_tafel_overpotential():
     assert np.isclose(cb.calculate_tafel_overpotential(1e4,1e-3,298.15,2,0.5), 0.41412, 1e-4)

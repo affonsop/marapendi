@@ -9,6 +9,8 @@ import numpy as np
 
 h2o_phase = ct.Water()
 
+water_molecular_weight = h2o_phase.molecular_weights[0]
+
 def water_saturation_pressure(temperature):
     """
     Calculate the saturation pressure of water at a given temperature.
@@ -89,6 +91,25 @@ def water_dynamic_viscosity(temperature=300):
     h2o = ct.SolutionArray(h2o_phase, np.shape(temperature))
     h2o.TQ = temperature, 0  # Set temperature and vapor quality
     return h2o.viscosity
+
+def water_kinematic_viscosity(temperature=300):
+    """
+    Calculate the kinemattic viscosity of water at a given temperature.
+
+    Parameters:
+    -----------
+    temperature : float, optional, default=300
+        Temperature in Kelvin (K). Default is 300 K.
+
+    Returns:
+    --------
+    float
+        Kinematic viscosity of water in m2/s.
+    """
+    return water_dynamic_viscosity(temperature) / water_density(temperature)
+
+def water_surface_tension(temperature=300): 
+    return 0.076 - 1.677e-4 * (temperature - 273.15)  # N/m
 
 def water_density(temperature=300): 
     """

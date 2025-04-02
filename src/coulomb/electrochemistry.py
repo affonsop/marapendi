@@ -36,11 +36,40 @@ std_formation_gibbs_h2ol = (std_formation_enthalpy_h2ol -
                             STD_TEMPERATURE * std_formation_entropy_h2ol)
 
 
-def h2_hhv(temperature): 
+def h2_hhv(temperature):
+    """
+    Calculate the hydrogen higher heating value voltage.
+
+    Parameters:
+    -----------
+    temperature : float
+        Temperature of the cell in Kelvin (K).
+    
+    Returns:
+    --------
+    float
+        Hydrogen higher heating value voltage in Volts (V).
+    """
     return h2ol.h(temperature) - 0.5 * o2.h(temperature) - h2.h(temperature)
 
-def h2_lhv(temperature): 
+h2_hhv = np.vectorize(h2_hhv)
+
+def h2_lhv(temperature):
+    """
+    Calculate the hydrogen lower heating value voltage.
+
+    Parameters:
+    -----------
+    temperature : float
+        Temperature of the cell in Kelvin (K).
+    
+    Returns:
+    --------
+    float
+        Hydrogen lower heating value voltage in Volts (V).
+    """
     return h2ov.h(temperature) - 0.5 * o2.h(temperature) - h2.h(temperature)
+h2_lhv = np.vectorize(h2_lhv)
 
 def calculate_reversible_cell_voltage(
     temperature,
@@ -67,7 +96,7 @@ def calculate_reversible_cell_voltage(
     Notes:
     ------
     The function computes the reversible cell voltage using the thermodynamic relationship:
-        E_rev = (-ΔG° - ΔS°(T - T°) + RT ln(Q)) / (2F)
+        E_rev = (-ΔG° + ΔS°(T - T°) + RT ln(Q)) / (2F)
     where Q is the reaction quotient based on the partial pressures of H₂ and O₂.
 
     Constants:
@@ -80,12 +109,12 @@ def calculate_reversible_cell_voltage(
     >>> reversible_cell_voltage(T=300, p_o2=2e5, p_h2=1e5)
     1.1901
     """
-    gibbs_formation_h2ol = (- std_formation_gibbs_h2ol -
+    gibbs_formation_h2ol = (- std_formation_gibbs_h2ol +
                              std_formation_entropy_h2ol * (temperature - STD_TEMPERATURE))
 
     activity_o2 = partial_pressure_o2 / STD_PRESSURE
     activity_h2 = partial_pressure_h2 / STD_PRESSURE
-    activities_ratio = activity_o2 * activity_h2 ** 0.5
+    activities_ratio = activity_o2 ** 0.5 * activity_h2
 
     reversible_cell_voltage = (gibbs_formation_h2ol +
                                ct.gas_constant * temperature *
@@ -182,7 +211,7 @@ class ElectrochemicalReaction:
         The reference temperature in Kelvin (K), for the reference exchange current density. 
     number_of_electrons : int, optional, default=2
         Number of electrons transferred in the electrochemical reaction.
-    charge_transfer_coefficient : float, optional, default=0.5
+    charge_transfer_coeff : float, optional, default=0.5
         Symmetry factor or charge transfer coefficient (dimensionless).
 
     Methods:
@@ -234,7 +263,10 @@ class ElectrochemicalReaction:
 
         Example:
         --------
-        >>> reaction = ElectrochemicalReaction(reference_exchange_current_density=1e-4, activation_energy=50e6)
+        >>> reaction = ElectrochemicalReaction(
+            reference_exchange_current_density=1e-4, 
+            activation_energy=50e6
+        )
         >>> i0 = reaction.exchange_current_density(temperature=310, reactant_activity=0.5)
         """
         return calculate_exchange_current_density(temperature, reactant_activity, self)
@@ -283,7 +315,9 @@ class ElectrochemicalReaction:
         ...     number_of_electrons=2,
         ...     charge_transfer_coeff=0.5
         ... )
-        >>> eta = reaction.tafel_overpotential(current_density=1e-3, temperature=310, reactant_activity=0.5)
+        >>> eta = reaction.tafel_overpotential(
+            current_density=1e-3, temperature=310, reactant_activity=0.5
+        )
         """
         exchange_current_density = self.exchange_current_density(temperature,reactant_activity)
         return calculate_tafel_overpotential(
@@ -292,7 +326,7 @@ class ElectrochemicalReaction:
             temperature,
             self.number_of_electrons, 
             self.charge_transfer_coeff)
-    
+
 def calculate_exchange_current_density(
     temperature: float,
     reactant_activity: float,
@@ -326,8 +360,8 @@ def calculate_exchange_current_density(
         The exchange current density in Amperes per square meter (A/m²).
 
     """
-
-    activity_correction = np.maximum(reactant_activity / params.reference_activity, 1e-12) ** params.reaction_order
+    activity_correction = np.maximum(reactant_activity / params.reference_activity, 
+                                     1e-12) ** params.reaction_order
     arrhenius_term = calculate_arrhenius_term(params.activation_energy,
                                               temperature,
                                               params.reference_temperature)

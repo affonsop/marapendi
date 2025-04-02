@@ -5,15 +5,17 @@ import cantera as ct
 
 @pytest.fixture
 def thick_membrane(): 
-    return cb.Membrane(equivalent_weight=1100, density=1980, dry_thickness=125e-6)
+    return cb.Membrane(equivalent_weight=1100, dry_density=1980, dry_thickness=125e-6)
 
 @pytest.fixture
 def thin_membrane(): 
-    return cb.Membrane(equivalent_weight=1100, density=1980, dry_thickness=25e-6)
+    return cb.Membrane(equivalent_weight=1100, dry_density=1980, dry_thickness=25e-6)
 
 @pytest.fixture
 def membrane_liso_2016(): 
-    return cb.Membrane(equivalent_weight=1100, density=2000, dry_thickness=51e-6)   
+    return cb.Membrane(equivalent_weight=1100, dry_density=2000, dry_thickness=51e-6, 
+                       water_balance_model=cb.MembraneWaterBalanceModel(reference_absorption_coefficient=1.e-5, 
+                                                                        reference_water_chemical_diffusion_coefficient=4e-10))   
  
 @pytest.fixture
 def fuel_cell_liso_2016(membrane_liso_2016): 
@@ -66,17 +68,19 @@ def test_membrane_water_transport_model(fuel_cell_liso_2016, liso_2016_exp_data)
     fc = fuel_cell_liso_2016
     assert np.isclose(fc.ca.ch.gas.X[0], 0.1634, 1e-3)
     assert fc.ca.ch.gas.X[2] == 0
-
-    fc.membrane.water_balance_model.water_balance(fc)
-    fc.ca.h2ov_outlet_mass_flow_rate = (fc.ca.ch.h2ov_inlet_mass_flow_rate + fc.product_water_mass_source -
-                                        fc.membrane.water_balance_model.cathode_absorption_flux(fc) * fc.cell_area * fc.cell_number) 
+    fc.h2o_production = fc.current_density / (2 * ct.faraday)
+    fc.calculate_water_transport()
+    #fc.membrane.water_balance_model.water_balance(fc)
+    fc.ca.h2ov_outlet_mass_flow_rate = (fc.ca.ch.h2ov_inlet_mass_flow_rate + fc.product_water_mass_source +
+                                        fc.membrane.water_balance_model.cathode_flux(fc) * fc.cell_area * fc.cell_number) 
     plt.figure(figsize=(4,3))
     plt.plot(fc.current_density * 1e-4, 60e3*fc.ca.h2ov_outlet_mass_flow_rate, 'C0')
     plt.plot(fc.current_density * 1e-4, 60e3*liso_2016_exp_data[0.2], 'C0s', label='20 %')
     fc.an.ch.gas.set_composition(0, 1.0, 0.8)
+    
     fc.membrane.water_balance_model.water_balance(fc)
-    fc.ca.h2ov_outlet_mass_flow_rate = (fc.ca.ch.h2ov_inlet_mass_flow_rate + fc.product_water_mass_source -
-                                        fc.membrane.water_balance_model.cathode_absorption_flux(fc) * fc.cell_area * fc.cell_number)
+    fc.ca.h2ov_outlet_mass_flow_rate = (fc.ca.ch.h2ov_inlet_mass_flow_rate + fc.product_water_mass_source +
+                                        fc.membrane.water_balance_model.cathode_flux(fc) * fc.cell_area * fc.cell_number)
     plt.plot(fc.current_density * 1e-4, 60e3*fc.ca.h2ov_outlet_mass_flow_rate, 'C1')
     plt.plot(fc.current_density * 1e-4, 60e3*liso_2016_exp_data[0.8], 'C1s', label='80 %')
     plt.ylim(0,0.35*60)
@@ -86,4 +90,4 @@ def test_membrane_water_transport_model(fuel_cell_liso_2016, liso_2016_exp_data)
     plt.tight_layout()
     plt.savefig('./tests/figures/test_membrane.png',dpi=300)
     for m_dot_h2o, m_dot_h2o_exp in zip(fc.ca.h2ov_outlet_mass_flow_rate, liso_2016_exp_data[0.2]): 
-        assert np.isclose(m_dot_h2o, m_dot_h2o_exp, 0.2)
+        assert np.isclose(m_dot_h2o, m_dot_h2o_exp, atol=3e-5, rtol=0.1)

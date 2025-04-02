@@ -53,7 +53,7 @@ class ParameterEstimation:
         t, x, y = self.solve(t, u, x0, p)
         return y_exp - y
 
-    def estimate(self, y_exp, t, u=None, x0=None, p=None, print_iterations=False, popsize=10, workers=1, ftol=0, atol=0):
+    def estimate(self, y_exp, t, u=None, x0=None, p=None, print_iterations=False, popsize=10, workers=1, ftol=0, atol=0, penalty_threshold=10e-3):
         if not p:
             if self.p:
                 p = self.p
@@ -63,14 +63,16 @@ class ParameterEstimation:
             px = p.copy()
             px.update({p[0]: v for p, v in zip(self.unknown_p_list, self.theta_to_p(x))})
             res = self.residuals(y_exp, t, u, x0, px)
-            return np.dot(res, res) / len(res)
+            if penalty_threshold > 0: 
+                penalty = np.where(np.abs(res) > penalty_threshold, 10 * (res - penalty_threshold), 0)
+            return np.dot(res, res) / len(res) + (np.dot(penalty, penalty) if penalty_threshold > 0 else 0)
         
         def print_res(intermediate_result): 
             print('------'*5)
             p = self.theta_to_p(intermediate_result.x)
-            print(p)
+            print('RMSE : {:.1f} mV'.format(1e3*np.sqrt(intermediate_result.fun)))
             for k, param in enumerate(self.unknown_p_list):
-                print(param, '{:.2e}'.format(p[k]))
+                print(param[0], param[1], '{:.2e}'.format(p[k]))
             print('------'*5)
             if intermediate_result.fun < ftol: 
                 return True
@@ -78,6 +80,7 @@ class ParameterEstimation:
         sol = differential_evolution(f, tuple(([0,1] for p in self.unknown_p_list)), disp=True, 
                                      callback=print_res if print_iterations else None, 
                                      popsize=popsize, polish=False, workers=workers, 
+                                     mutation=(0,1.6), seed=2, init='sobol',
                                      atol=atol)
         return sol, self.theta_to_p(sol.x)
 

@@ -56,9 +56,8 @@ def fuel_cell(cathode_conditions, anode_conditions):
                 n_parallel=20,
                 reactant='o2', 
             ),
-            liq_transport_model=cb.PorousLiquidTransportModel(
-                critical_damkholer=1,
-                dry_wet_transition_parameter=0.1
+            liq_transport_model=cb.DarcyLiquidTransportModel(
+                dry_wet_transition_parameter=0.2
             ),
             thermal_contact_resistance=2e-4,
         ),
@@ -83,7 +82,7 @@ def fuel_cell(cathode_conditions, anode_conditions):
         ),
         membrane = cb.Membrane(
             equivalent_weight=1100,
-            density=1980, 
+            dry_density=1980, 
             dry_thickness=25e-6,
             h2_permeation_model=cb.HydrogenPermeationModel(
                 permeability_correction_factor=1
@@ -116,11 +115,11 @@ def test_polarization_curve(fuel_cell, cathode_conditions, anode_conditions):
         ax[0,2].set_xlabel('Curent density (A/cm$^2$)')
         ax[0,2].legend(loc='upper left', bbox_to_anchor=(1,1.0), title='RH$_{in,ca}$')
         
-        ax[1,0].plot(fuel_cell.current_density * 1e-4, fuel_cell.ca.cl.get_o2_mole_fraction(), label=f'{rh_cathode * 100:.0f} %')
+        ax[1,0].plot(fuel_cell.current_density * 1e-4, fuel_cell.ca.cl.o2_mole_fraction(), label=f'{rh_cathode * 100:.0f} %')
         ax[1,0].set_ylabel('Cathode CL\nO$_2$ mole fraction (n.d.)')
         ax[1,0].set_xlabel('Curent density (A/cm$^2$)')
      
-        ax[1,1].plot(fuel_cell.current_density * 1e-4, fuel_cell.ca.cl.get_gas_temperature()-273.15)
+        ax[1,1].plot(fuel_cell.current_density * 1e-4, fuel_cell.ca.cl.gas_temperature()-273.15)
         ax[1,1].set_ylabel(u'Cathode CL\ntemperature (\u00B0C)')
         ax[1,1].set_xlabel('Curent density (A/cm$^2$)')
     
