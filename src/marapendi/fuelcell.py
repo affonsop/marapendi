@@ -476,7 +476,59 @@ class FuelCell:
         
         self.calculate_heat_transfer_resistance()
         res = root(f, 1.4 * self.current_density * self.thermal_resistance, method='broyden1', options={'fatol':1e-1, 'maxiter':5})
+    
+    def compute_ui_curve(self, current_density, stack_temperature, cathode_conditions, anode_conditions, model='explicit_steady_state'):
+        """
+        Calculation of polarization curve for given operating conditions.
 
+        Parameters
+        ----------
+        current_density : float
+            The current density of the cell in A/m².
+        stack_temperature : float
+            The operating temperature of the fuel cell stack in Kelvin.
+        cathode_conditions : OperatingConditions
+            The inlet conditions at the cathode side, including temperature, 
+            pressure, oxygen mole fraction, and relative humidity.
+        anode_conditions : OperatingConditions
+            The inlet conditions at the anode side, including temperature, 
+            pressure, hydrogen mole fraction, and relative humidity.
+        model : string
+            The model to be used. Only 'explicit_steady_state' supported for now.
+
+        Returns
+        -------
+        float
+            The fuel cell voltage in volts.
+        """
+        self.set_conditions(stack_temperature, current_density,cathode_conditions, anode_conditions)
+        if model == 'explicit_steady_state': 
+            return self.explicit_steady_state_model()
+        
+    def explicit_steady_state_model(self): 
+        """
+        Simplified steady-state model where all calculations are explicit. 
+        
+        The main hypotheses are: 
+        - The fuel cell HHV efficiency is constant; 
+        (MEA temperature increases linearly with current density)
+        - The membrane water transport is calculated considering dry conditions 
+        (Gas transport resistances or membrane water sorption/balance are not impacted by 
+        the presence of liquid water)
+        - Water saturation is given by a power law of the liquid water flux
+
+        Returns
+        -------
+        float
+            The fuel cell voltage in volts.
+        """
+        self.calculate_heat_transfer_resistance()
+        mea_temperature = self.temperature + (self.current_density * 0.7) * self.thermal_resistance
+        self.set_mea_temperature(mea_temperature)
+        self.calculate_water_transport()
+        self.calculate_gas_concentrations_at_cl()
+        return self.cell_voltage()
+    
     def set_conditions(self, stack_temperature, current_density, cathode_conditions, anode_conditions):  
         """
         Set the operating conditions of the fuel cell stack.
