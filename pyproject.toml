@@ -1,7 +1,7 @@
 [project]
-name = "coulomb"
+name = "marapendi"
 version = "0.1.0"
-description = "Framework for simulating electrochemical cell systems, such as water electrolyzers and fuel cells. "
+description = "Framework for modelling anion and proton exchange membrane electrochemical cell devices, such as water electrolyzers and fuel cells. "
 authors = [
     { name = "Pedro Affonso Nobrega", email = "pedro.affonso_nobrega@minesparis.psl.eu" },
 ]
