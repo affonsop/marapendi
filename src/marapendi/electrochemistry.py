@@ -4,7 +4,7 @@ Module providing electrochemistry functions.
 from dataclasses import dataclass
 import numpy as np
 import cantera as ct
-from coulomb.tools import calculate_arrhenius_term
+from marapendi.tools import calculate_arrhenius_term
 
 h2o2 = ct.Solution('gri30.yaml')
 h2 = h2o2.species('H2').thermo

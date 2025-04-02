@@ -2,17 +2,17 @@ import pytest
 import numpy as np
 import cantera as ct 
 
-import coulomb as cb
+import marapendi as mrpd
 
 @pytest.fixture
 def fc(): 
-    fc = cb.FuelCell(5e-4, 1.)
+    fc = mrpd.FuelCell(5e-4, 1.)
     fc.membrane.temperature = 353.15
     fc.current_density = 1.e4
     fc.ca.stoichiometry = 2.0
     fc.curent_density = 1e4
-    fc.ca.ch = cb.GasFlowChannel(width=0.05e-2, height=0.08e-2, length=3.7e-2, n_parallel=14) # Values from Baker et al. (2009)
-    fc.ca.ch.transport_resistance_model = cb.ChannelGasResistanceModel(A_ch=1.12, B_ch=1.01)
+    fc.ca.ch = mrpd.GasFlowChannel(width=0.05e-2, height=0.08e-2, length=3.7e-2, n_parallel=14) # Values from Baker et al. (2009)
+    fc.ca.ch.transport_resistance_model = mrpd.ChannelGasResistanceModel(A_ch=1.12, B_ch=1.01)
     fc.ca.ch.gas.set_temperature_and_pressure(353.15, 1.0e5)
     fc.ca.ch.gas.set_composition(0.02,0,0.62)
     fc.ca.ch.set_inlet_stoichiometry(2) 
@@ -22,8 +22,8 @@ def fc():
 def toray_gdl_060(): 
     lmbd = 0.86 # Data for figure 9 in Baker et al. (2009)
     f = 1 + 0.803 * np.exp(-1.17 * lmbd) + 0.197 * np.exp(-0.164 * lmbd)
-    gdl = cb.PorousLayer(thickness=160e-6, 
-                         gas=cb.GasComposition(temperature=353.15, pressure=1.0e5), 
+    gdl = mrpd.PorousLayer(thickness=160e-6, 
+                         gas=mrpd.GasComposition(temperature=353.15, pressure=1.0e5), 
                          effective_gas_diffusion_ratio=0.25/f) # D_OM / D_OMy = 4 in Baker et al. (2009)
     gdl.gas.set_temperature(353.15)
     gdl.gas.set_composition(0.2,0,0.62) 
@@ -31,7 +31,7 @@ def toray_gdl_060():
 
 @pytest.fixture
 def gas():
-    gc = cb.GasComposition()
+    gc = mrpd.GasComposition()
     gc.set_temperature_and_pressure(298.15,1e5)
     gc.set_composition(0.2, 0, 0)
     return gc

@@ -3,7 +3,7 @@ Module providing a class to handle gas composition and properties.
 """
 import numpy as np
 import cantera as ct
-from coulomb.water import water_saturation_pressure
+from marapendi.water import water_saturation_pressure
 
 gas = ct.Solution("gri30.yaml")
 species_list = ("O2", "N2", "H2", "H2O")

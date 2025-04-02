@@ -5,8 +5,8 @@ Module providing a membrane class intended to be the base class for different me
 import numpy as np
 import cantera as ct 
 from dataclasses import dataclass, field
-from coulomb.tools import calculate_arrhenius_term
-from coulomb.water import water_saturation_concentration, water_molar_volume
+from marapendi.tools import calculate_arrhenius_term
+from marapendi.water import water_saturation_concentration, water_molar_volume
 
 @dataclass
 class HydrogenPermeationModel:
