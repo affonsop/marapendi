@@ -13,4 +13,4 @@ WORKDIR /buildingmodel
 
 # Installing python package
 RUN source activate buildingmodel && pip install .
-RUN source activate buildingmodel && python -c "import coulomb"
+RUN source activate buildingmodel && python -c "import marapendi"

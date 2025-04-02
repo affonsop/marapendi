@@ -1,11 +1,10 @@
-# coulomb
+# marapendi
 
-coulomb is a framework for simulating electrochemical cell systems, such as water electrolyzers and fuel cells
+marapendi is a framework for modelling anion and proton exchange membrane electrochemical cell devices, such as water electrolyzers and fuel cells. 
 
 ## Getting started
 
-You can simply clone or download the template from https://git.persee.mines-paristech.fr/pedro.affonso_nobrega/coulomb.git
-and copy the files and folders in the project you want to start.
+You can simply clone or download the template from https://git.persee.mines-paristech.fr/pedro.affonso_nobrega/marapedi.git and copy the files and folders in the project you want to start.
 
 ## Author
 

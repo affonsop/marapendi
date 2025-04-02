@@ -1,25 +1,25 @@
 import pytest
 import numpy as np
-import coulomb as cb
+import marapendi as mrpd
 import cantera as ct
 
 @pytest.fixture
 def thick_membrane(): 
-    return cb.Membrane(equivalent_weight=1100, dry_density=1980, dry_thickness=125e-6)
+    return mrpd.Membrane(equivalent_weight=1100, dry_density=1980, dry_thickness=125e-6)
 
 @pytest.fixture
 def thin_membrane(): 
-    return cb.Membrane(equivalent_weight=1100, dry_density=1980, dry_thickness=25e-6)
+    return mrpd.Membrane(equivalent_weight=1100, dry_density=1980, dry_thickness=25e-6)
 
 @pytest.fixture
 def membrane_liso_2016(): 
-    return cb.Membrane(equivalent_weight=1100, dry_density=2000, dry_thickness=51e-6, 
-                       water_balance_model=cb.MembraneWaterBalanceModel(reference_absorption_coefficient=1.e-5, 
+    return mrpd.Membrane(equivalent_weight=1100, dry_density=2000, dry_thickness=51e-6, 
+                       water_balance_model=mrpd.MembraneWaterBalanceModel(reference_absorption_coefficient=1.e-5, 
                                                                         reference_water_chemical_diffusion_coefficient=4e-10))   
  
 @pytest.fixture
 def fuel_cell_liso_2016(membrane_liso_2016): 
-    fc = cb.FuelCell(cell_area=96e-4, cell_number=16, membrane=membrane_liso_2016)
+    fc = mrpd.FuelCell(cell_area=96e-4, cell_number=16, membrane=membrane_liso_2016)
     fc.membrane.temperature = 337.8842
     fc.current_density = np.linspace(0.25e4,1e4,4)
     fc.ca.cl.gas.set_temperature_and_pressure(337.8842, 135e3)
@@ -42,7 +42,7 @@ def liso_2016_exp_data():
     
 @pytest.fixture
 def water(): 
-    return cb.WaterProperties(temperature=353.15)
+    return mrpd.WaterProperties(temperature=353.15)
 
 def test_membrane_water_vol_fraction(thin_membrane, water): 
     assert np.isclose(thin_membrane.water_vol_fraction(10, water.molar_volume), 0.25, 1e-1)

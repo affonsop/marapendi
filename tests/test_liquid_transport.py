@@ -3,31 +3,31 @@ import numpy as np
 import cantera as ct 
 import matplotlib.pyplot as plt 
 
-import coulomb as cb
+import marapendi as mrpd
 
 @pytest.fixture
 def toray_gdl_060(): 
     lmbd = 0.86 # Data for figure 9 in Baker et al. (2009)
     f = 1 + 0.803 * np.exp(-1.17 * lmbd) + 0.197 * np.exp(-0.164 * lmbd)
-    gdl = cb.PorousLayer(thickness=165e-6, 
+    gdl = mrpd.PorousLayer(thickness=165e-6, 
                          absolute_permeability=1e-12,
                          thermal_conductivity=1.24,
                          contact_angle=115.,
-                         gas=cb.GasComposition(temperature=343.15, pressure=3.0e5), 
+                         gas=mrpd.GasComposition(temperature=343.15, pressure=3.0e5), 
                          effective_gas_diffusion_ratio=0.2/f) # D_OM / D_OMy = 5 in Chuang et al. (2020)
     return gdl 
 
 @pytest.fixture
 def cl(): 
-    return cb.CatalystLayer(thickness=10e-6,
+    return mrpd.CatalystLayer(thickness=10e-6,
                             platinum_loading=0.3e-2, 
                             ionomer_to_carbon_ratio=0.7, 
                             catalyst_platinum_weight_percent=0.4,
                             thermal_conductivity=0.25,
                             ecsa=45e3,
-                            ionomer=cb.CatalystLayerIonomerModel(),     
+                            ionomer=mrpd.CatalystLayerIonomerModel(),     
                             carbon_agglomerate_radius=60e-9, 
-                            reaction = cb.ElectrochemicalReaction(reference_exchange_current_density=2.47e-8 * 3e11 * 10e-6,
+                            reaction = mrpd.ElectrochemicalReaction(reference_exchange_current_density=2.47e-8 * 3e11 * 10e-6,
                                                                 activation_energy=67e6,
                                                                 reaction_order=0.54,
                                                                 reference_activity=1.,
@@ -37,14 +37,14 @@ def cl():
 
 @pytest.fixture
 def fc(cl, toray_gdl_060): 
-    fc = cb.FuelCell(2e-4, 1.)
+    fc = mrpd.FuelCell(2e-4, 1.)
     fc.membrane.temperature = 343.15
     fc.current_density = 1.e4
     fc.ca.stoichiometry = 33.0
     fc.ca.set_catalyst_layer(cl)
     fc.ca.set_gas_diffusion_layer(toray_gdl_060)
-    fc.ca.set_channel(cb.GasFlowChannel(width=0.1e-2, height=0.1e-2, length=3.7e-2, n_parallel=6)) # Values from Baker et al. (2009)
-    fc.ca.ch.transport_resistance_model = cb.ChannelGasResistanceModel(A_ch=1.12, B_ch=1.01)
+    fc.ca.set_channel(mrpd.GasFlowChannel(width=0.1e-2, height=0.1e-2, length=3.7e-2, n_parallel=6)) # Values from Baker et al. (2009)
+    fc.ca.ch.transport_resistance_model = mrpd.ChannelGasResistanceModel(A_ch=1.12, B_ch=1.01)
     fc.ca.ch.gas.set_temperature_and_pressure(343.15, 3.0e5)
     fc.ca.ch.set_inlet_stoichiometry(33) 
     return fc
@@ -89,7 +89,7 @@ def test_gas_porous_transport_resistance(toray_gdl_060, fc, cl):
             layer.gas.set_composition(0.2,0,rh)
         fc.ca.cl.gas.set_temperature(temperature)
        
-        fc.ca.liquid_transport_model = cb.DarcyLiquidTransportModel(dry_wet_transition_parameter=0.2) 
+        fc.ca.liquid_transport_model = mrpd.DarcyLiquidTransportModel(dry_wet_transition_parameter=0.2) 
         da = fc.ca.liquid_transport_model.calculate_damkholer_number(fc.ca, 0.5*i_cell/(2 * ct.faraday))
 
 

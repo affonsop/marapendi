@@ -1,4 +1,4 @@
-name : coulomb
+name : marapendi
 channels:
   - anaconda
   - conda-forge

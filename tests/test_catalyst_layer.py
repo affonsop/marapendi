@@ -1,20 +1,20 @@
 import pytest
 import numpy as np
-import coulomb as cb
+import marapendi as mrpd
 import matplotlib.pyplot as plt 
 from sklearn.linear_model import LinearRegression
 
 
 @pytest.fixture
 def cl(): 
-    return cb.CatalystLayer(thickness=2.7*1.2*4/3*1e-6,
+    return mrpd.CatalystLayer(thickness=2.7*1.2*4/3*1e-6,
                             platinum_loading=0.12e-2, 
                             ionomer_to_carbon_ratio=0.75, 
                             catalyst_platinum_weight_percent=0.3,
                             carbon_agglomerate_radius=25e-9, 
-                            ionomer=cb.CatalystLayerIonomerModel(dry_density=2004, equivalent_weight=952, 
+                            ionomer=mrpd.CatalystLayerIonomerModel(dry_density=2004, equivalent_weight=952, 
                                                                  conductivity_correction=1., conductivity_exp=1.5),
-                            reaction = cb.ElectrochemicalReaction(reference_exchange_current_density=2.47e-8 * 3e11 * 10e-6,
+                            reaction = mrpd.ElectrochemicalReaction(reference_exchange_current_density=2.47e-8 * 3e11 * 10e-6,
                                                                 activation_energy=67e6,
                                                                 reaction_order=0.54,
                                                                 reference_activity=1.,
