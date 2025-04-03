@@ -171,7 +171,7 @@ class MembraneWaterBalanceModel:
     # Eq. 31b in Ferrara et al. (2018), equal to 0.2 for Nafion and water contents above 5
     # This assumption tends to overestimate water diffusivity and therefore backdiffusion for 
     # dry membranes. 
-    gamma_function_ferrara: float = 0.2 
+    gamma_function_ferrara: float = 1 # Actually looking into fig. 4a, we have D ~ 3.6e-10 m2/s, which would correspond to Gamma = 1. 
     reference_absorption_coefficient: float = 5e-5
                                 
 
@@ -201,8 +201,7 @@ class MembraneWaterBalanceModel:
 
     def water_balance(self, cell):
         self.absorption_coefficient = self.reference_absorption_coefficient * calculate_arrhenius_term(29e6, cell.membrane.temperature, 353.15)
-        self.membrane_water_diffusivity = self.water_diffusivity(cell.membrane.temperature) 
-        i_star = cell.current_density / (2*ct.faraday) * cell.membrane.dry_thickness / self.membrane_water_diffusivity / cell.membrane.dry_concentration 
+        self.membrane_water_diffusivity = self.water_diffusivity(cell.membrane.temperature)
 
         bi = self.biot_number(self.absorption_coefficient, cell.membrane, self.membrane_water_diffusivity)
         Pe =  self.peclet_number(cell.membrane.temperature, cell.current_density, cell.membrane, self.membrane_water_diffusivity) 
@@ -253,7 +252,6 @@ class MembraneWaterBalanceModel:
 
         cell.membrane.K = K
     
-        cell.membrane.i_star = i_star
         cell.membrane.water_content = np.mean(self.water_content_profile, axis=0)
         cell.ca.cl.ionomer_water_content = lmbd_eq_cl_ca
         cell.an.cl.ionomer_water_content = lmbd_eq_cl_an
