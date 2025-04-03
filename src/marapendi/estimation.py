@@ -117,7 +117,7 @@ class ParameterEstimation:
         dy = np.diff(y, axis=1)
         dtheta = np.diff(theta)
         dydtheta = dy / dtheta[:,np.newaxis]
-        S = np.mean(y, axis=1) * np.mean(dydtheta, axis=1)
+        S = 1/(1e-12 + np.mean(y, axis=1)) * np.mean(dydtheta, axis=1)
         self.S = S
         return S
     
