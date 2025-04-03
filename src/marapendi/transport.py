@@ -5,9 +5,6 @@ from dataclasses import dataclass
 import numpy as np
 import cantera as ct
 
-from .tools import sigmoid
-from .water import water_density, water_dynamic_viscosity, water_surface_tension
-
 @dataclass 
 class ChannelGasResistanceModel: 
     A_ch: float = 1.0
