@@ -388,12 +388,180 @@ class CatalystLayerIonomerModel(Membrane):
 
 NafionD2020 = CatalystLayerIonomerModel(dry_density=2004., equivalent_weight=952.)
 
+    
+@dataclass 
+class CatalystLayer(PorousLayer): 
+    ionomer: CatalystLayerIonomerModel = field(default_factory=CatalystLayerIonomerModel)
+    reaction: ElectrochemicalReaction = field(default_factory=ElectrochemicalReaction)
+    catalyst_loading: float = 0.2e-6 * 1e4  # 0.2 mg/cm²
+    ionomer_to_catalyst_ratio: float = 0.75
+    catalyst_density: float = 21450  # kg/m³
+    ecsa: float = 70e3  # m²/g
+    ionomer_vol_fraction: float = 0.3
+    ionomer_film_thickness: float = 2e-9
+    contact_angle: float = 95.  # degrees
+    theta_catalyst: float = 0
 
-from dataclasses import dataclass, field
-import numpy as np
+    def o2_ionomer_film_bulk_resistance(self, ionomer_water_content, temperature): 
+        """
+        Calculate the oxygen bulk resistance in the ionomer film.
+
+        Parameters
+        ----------
+        ionomer_water_content : float
+            Water content in the ionomer film.
+        temperature : float
+            Operating temperature in Kelvin.
+
+        Returns
+        -------
+        float
+            Oxygen film resistance [s/m].
+        """
+        return  (self.ionomer_film_thickness * self.ionomer.wet_expansion_factor(ionomer_water_content, temperature) / 
+                 (ct.gas_constant * temperature * self.ionomer.o2_permeability(ionomer_water_content, temperature)))   
+    
+    def ionomer_sheet_charge_resistance(self, ionomer_water_content, temperature): 
+        """
+        Calculate the charge resistance of the ionomer film.
+
+        Parameters
+        ----------
+        relative_humidity : float
+            Relative humidity in the catalyst layer.
+        ionomer_water_content : float
+            Water content in the ionomer.
+        temperature : float
+            Operating temperature in Kelvin.
+
+        Returns
+        -------
+        float
+            Ionomer film charge resistance [Ohm.m2].
+        """
+        # Uses Bruggeman correlation for ionomer tortuosity
+        ionomer_proton_conductivity = self.ionomer.charge_conductivity(ionomer_water_content, temperature)
+        eps_ion = (self.ionomer_vol_fraction * self.ionomer.wet_expansion_factor(ionomer_water_content, temperature))
+        return self.thickness / (eps_ion ** 1.5 * ionomer_proton_conductivity)
+    
+    def effective_charge_resistance(self,current_density, ionomer_water_content, temperature, electrolyte_concentration=0): 
+        """
+        Calculate the effective charge resistance in the catalyst layer 
+        based on Goshtasbi et al. (2020) and Neyerlin et al. (2007).
+
+        Parameters
+        ----------
+        current_density : float
+            Current density [A/m²].
+        relative_humidity : float
+            Relative humidity in the catalyst layer.
+        ionomer_water_content : float
+            Water content in the ionomer.
+        temperature : float
+            Operating temperature in Kelvin.
+        electrolyte_concentration : float
+            Operating electrolyte concentration [mol/m3](default: 0).
+
+        Returns
+        -------
+        float
+            Effective catalyst layer charge resistance [Ohm.m2].
+        """
+        # Based on the method proposed by Goshtasbi et al. (2020), based on Neyerlin et al. (2007)
+        self.sheet_resistance = 1./(1./self.ionomer_sheet_charge_resistance(ionomer_water_content, temperature) + 1./self.electrolyte_sheet_resistance(electrolyte_concentration, temperature))
+        nu = np.minimum(self.sheet_resistance * current_density / self.reaction.tafel_slope(temperature), 10) # Goshtasbi parametrization valid for nu < 10
+        self.xi_neyerlin = nu * (-8.287e-3 * nu + 0.7184) - 2.072e-3
+        return self.sheet_resistance / (3 + self.xi_neyerlin)
+
+    def electrolyte_sheet_resistance(self, electrolyte_concentration, temperature): 
+        return 1e12 
+
+    def o2_ionomer_film_resistance(self, ionomer_water_content, temperature): 
+        """
+        Calculate the oxygen film resistance in the ionomer film.
+        Uses the formulation from Hao et al. (2015).
+
+        Parameters
+        ----------
+        ionomer_water_content : float
+            Water content in the ionomer film.
+        temperature : float
+            Operating temperature in Kelvin.
+
+        Returns
+        -------
+        float
+            Oxygen film resistance [s/m].
+        """
+
+        # k1 and k2 default values from Hao et al. (2015)
+        ionomer_pt_interface_term = (self.ionomer_k2 + 1) / (1 - self.theta_catalyst) / (self.platinum_loading * self.ecsa)
+        ionomer_gas_interface_term = self.ionomer_k1 / (self.ionomer_vol_surface_area * self.thickness)
+        return  (ionomer_gas_interface_term + ionomer_pt_interface_term) * self.o2_ionomer_film_bulk_resistance(ionomer_water_content, temperature)
+    
+@dataclass 
+class PorousTransferLayer(CatalystLayer): 
+    """
+    Represents the catalyst layer in a fuel cell, containing platinum, ionomer, and carbon structure.
+    Catalyst properties are calculated based on the work of Hao et al. (2015)
+
+    Attributes
+    ----------
+    thickness : float
+        Thickness of the catalyst layer (default: 10 µm).
+    porosity : float
+        Initial porosity of the PTL layer (default: 0.83).
+    fiber_diameter : float
+        Fiber diameter.
+    ionomer : CatalystLayerIonomerModel
+        Ionomer model associated with the layer.
+    reaction : ElectrochemicalReaction
+        Electrochemical reaction model.
+    catalyst_loading : float
+        Catalyst loading in g/cm² (default: 0.2 mg/cm²).
+    ionomer_to_catalyst_ratio : float
+        Ratio of ionomer to catalyst content.
+    catalyst_density : float
+        Density of catalyst particles.
+    ecsa : float
+        Electrochemically active surface area (70 m²/g).
+    platinum_vol_surface_area : float
+        Volume-specific platinum surface area (calculated if not provided).
+    carbon_agglomerate_radius : float
+        Radius of carbon agglomerates (default: 20 nm).
+    ionomer_vol_fraction : float
+        Volume fraction of ionomer (calculated).
+    ionomer_film_thickness : float
+        Thickness of ionomer film around carbon agglomerates.
+    contact_angle : float
+        Contact angle for water (default: 95°).
+    """
+    thickness: float = 10e-6 
+    ptl_porosity: float = 0.83
+    fiber_diameter: float = 20e-6 
+    ionomer_k1: float = 8.5
+    ionomer_k2: float = 5.4
+
+    def __post_init__(self):
+        self.fiber_number_density_cross_section = 4 * (1-self.ptl_porosity) / (np.pi * self.fiber_diameter ** 2)
+        self.fiber_surface_per_volume = 4 * (1-self.ptl_porosity) / self.fiber_diameter
+
+        self.catalyst_vol_surface_area = self.catalyst_loading * self.ecsa / self.thickness
+        self.catalyst_vol_fraction = self.catalyst_loading / (self.thickness * self.catalyst_density)
+        self.ionomer_vol_fraction = (self.catalyst_vol_fraction * self.catalyst_density *
+                                        self.ionomer_to_catalyst_ratio / self.ionomer.dry_density)
+        self.porosity = self.ptl_porosity - self.catalyst_vol_fraction - self.ionomer_vol_fraction
+
+        
+        self.ionomer_film_thickness = (self.ionomer_vol_fraction / self.fiber_surface_per_volume)
+        self.ionomer_vol_surface_area = (np.pi *
+                                         (self.fiber_diameter + 2 * self.ionomer_film_thickness) *
+                                         self.fiber_number_density_cross_section)
+        self.effective_gas_diffusion_ratio = self.porosity ** 1.5
+        PorousLayer.__post_init__(self)
 
 @dataclass
-class CatalystLayer(PorousLayer):
+class PtCCatalystLayer(CatalystLayer):
     """
     Represents the catalyst layer in a fuel cell, containing platinum, ionomer, and carbon structure.
     Catalyst properties are calculated based on the work of Hao et al. (2015)
@@ -432,26 +600,22 @@ class CatalystLayer(PorousLayer):
         Contact angle for water (default: 95°).
     omega_PtO : float
         Oxide coverage parameter for Pt (default: 3000 kJ/mol).
-    theta_PtO : float
-        PtO surface coverage.
+    theta_catalyst : float
+        Catalyst surface coverage.
     """
     thickness: float = 10e-6 
     porosity: float = 0  # Will be recalculated
-    ionomer: CatalystLayerIonomerModel = field(default_factory=CatalystLayerIonomerModel)
-    reaction: ElectrochemicalReaction = field(default_factory=ElectrochemicalReaction)
     platinum_loading: float = 0.2e-6 * 1e4  # 0.2 mg/cm²
     catalyst_platinum_weight_percent: float = 0.5
     ionomer_to_carbon_ratio: float = 0.75
     platinum_density: float = 21450  # kg/m³
     carbon_density: float = 1950  # kg/m³
-    ecsa: float = 70e3  # m²/g
     platinum_vol_surface_area: float = 0  # Will be calculated if zero
     carbon_agglomerate_radius: float = 25e-9 # Vulcan XC-72 radius according to Hao et al. (2015)
     ionomer_vol_fraction: float = 0  # Will be calculated
     ionomer_film_thickness: float = 0  # Will be calculated
     contact_angle: float = 95.  # degrees
     omega_PtO: float = 3000e3  # kJ/mol
-    theta_PtO: float = 0
     ionomer_k1: float = 8.5
     ionomer_k2: float = 5.4
 
@@ -486,51 +650,8 @@ class CatalystLayer(PorousLayer):
         self.effective_gas_diffusion_ratio = self.porosity ** 1.5
         PorousLayer.__post_init__(self)
 
-    def o2_ionomer_film_bulk_resistance(self, ionomer_water_content, temperature): 
-        """
-        Calculate the oxygen bulk resistance in the ionomer film.
 
-        Parameters
-        ----------
-        ionomer_water_content : float
-            Water content in the ionomer film.
-        temperature : float
-            Operating temperature in Kelvin.
-
-        Returns
-        -------
-        float
-            Oxygen film resistance [s/m].
-        """
-
-       
-        return  (self.ionomer_film_thickness * self.ionomer.wet_expansion_factor(ionomer_water_content, temperature) / 
-                 (ct.gas_constant * temperature * self.ionomer.o2_permeability(ionomer_water_content, temperature)))
-    
-    def o2_ionomer_film_resistance(self, ionomer_water_content, temperature): 
-        """
-        Calculate the oxygen film resistance in the ionomer film.
-        Uses the formulation from Hao et al. (2015).
-
-        Parameters
-        ----------
-        ionomer_water_content : float
-            Water content in the ionomer film.
-        temperature : float
-            Operating temperature in Kelvin.
-
-        Returns
-        -------
-        float
-            Oxygen film resistance [s/m].
-        """
-
-        # k1 and k2 default values from Hao et al. (2015)
-        ionomer_pt_interface_term = (self.ionomer_k2 + 1) / (1 - self.theta_PtO) / (self.platinum_loading * self.ecsa)
-        ionomer_gas_interface_term = self.ionomer_k1 / (self.ionomer_vol_surface_area * self.thickness)
-        return  (ionomer_gas_interface_term + ionomer_pt_interface_term) * self.o2_ionomer_film_bulk_resistance(ionomer_water_content, temperature)
-    
-    def ionomer_sheet_proton_resistance(self, ionomer_water_content, temperature): 
+    def ionomer_sheet_charge_resistance(self, ionomer_water_content, temperature): 
         """
         Calculate the proton resistance of the ionomer film.
 
@@ -550,33 +671,7 @@ class CatalystLayer(PorousLayer):
         """
         # Consider ionomer_tortuosity = 1
         ionomer_proton_conductivity = self.ionomer.proton_conductivity(ionomer_water_content, temperature)
-        eps_ion = (self.ionomer_vol_fraction * self.ionomer.wet_expansion_factor(ionomer_water_content, temperature))**1.5
+        eps_ion = (self.ionomer_vol_fraction * self.ionomer.wet_expansion_factor(ionomer_water_content, temperature))
         tort_ion = np.where(eps_ion > 0.16, 1, 0.0845 * (eps_ion - 0.04) ** -1.17) # eq. 54 in Hao et al. (2015)
         return self.thickness / (eps_ion / tort_ion * ionomer_proton_conductivity)
     
-    def effective_proton_resistance(self,current_density, ionomer_water_content, temperature): 
-        """
-        Calculate the effective proton resistance in the catalyst layer 
-        based on Goshtasbi et al. (2020) and Neyerlin et al. (2007).
-
-        Parameters
-        ----------
-        current_density : float
-            Current density [A/m²].
-        relative_humidity : float
-            Relative humidity in the catalyst layer.
-        ionomer_water_content : float
-            Water content in the ionomer.
-        temperature : float
-            Operating temperature in Kelvin.
-
-        Returns
-        -------
-        float
-            Effective catalyst layer proton resistance [Ohm.m2].
-        """
-        # Based on the method proposed by Goshtasbi et al. (2020), based on Neyerlin et al. (2007)
-        self.ionomer_sheet_resistance = self.ionomer_sheet_proton_resistance(ionomer_water_content, temperature)
-        nu = np.minimum(self.ionomer_sheet_resistance * current_density / self.reaction.tafel_slope(temperature), 10) # Goshtasbi parametrization valid for nu < 10
-        self.xi_neyerlin = nu * (-8.287e-3 * nu + 0.7184) - 2.072e-3
-        return self.ionomer_sheet_resistance / (3 + self.xi_neyerlin)

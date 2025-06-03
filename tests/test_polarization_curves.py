@@ -27,7 +27,7 @@ def fuel_cell(cathode_conditions, anode_conditions):
         cell_area = 25e-4, 
         cell_number = 1, 
         ca = mrpd.FuelCellSide(
-            cl=mrpd.CatalystLayer(
+            cl=mrpd.PtCCatalystLayer(
                 ecsa=50e3, 
                 platinum_loading=0.4e-2, 
                 carbon_agglomerate_radius=60e-9,
@@ -62,7 +62,7 @@ def fuel_cell(cathode_conditions, anode_conditions):
             thermal_contact_resistance=2e-4,
         ),
         an = mrpd.FuelCellSide(
-            cl=mrpd.CatalystLayer(
+            cl=mrpd.PtCCatalystLayer(
                 thickness=6e-6, 
                 thermal_conductivity=0.25,
             ),

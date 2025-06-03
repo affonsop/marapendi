@@ -19,7 +19,7 @@ def toray_gdl_060():
 
 @pytest.fixture
 def cl(): 
-    return mrpd.CatalystLayer(thickness=10e-6,
+    return mrpd.PtCCatalystLayer(thickness=10e-6,
                             platinum_loading=0.3e-2, 
                             ionomer_to_carbon_ratio=0.7, 
                             catalyst_platinum_weight_percent=0.4,

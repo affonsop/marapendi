@@ -7,16 +7,17 @@ import numpy as np
 import cantera as ct
 
 from .electrochemistry import calculate_reversible_cell_voltage, h2_lhv
-from .porous_layers import PorousLayer, CatalystLayer
+from .porous_layers import PorousLayer, PtCCatalystLayer
 from .flow_channels import GasFlowChannel
 from .membrane import Membrane
 from .gas_composition import species_indexes 
 from .transport import DarcyLiquidTransportModel
 from .water import water_molar_volume
 
+
 @dataclass
 class FuelCellSide:
-    cl: PorousLayer = field(default_factory=CatalystLayer) 
+    cl: PorousLayer = field(default_factory=PtCCatalystLayer) 
     gdl: PorousLayer = field(default_factory=PorousLayer)
     mpl: PorousLayer = field(default_factory=PorousLayer)
     ch: GasFlowChannel = field(default_factory=GasFlowChannel)
@@ -263,7 +264,7 @@ class FuelCell:
         cell components. It is calculated as the product of the current density and 
         the total internal resistance.
         """
-        self.ca.cl.proton_resistance = self.ca.cl.effective_proton_resistance(
+        self.ca.cl.proton_resistance = self.ca.cl.effective_charge_resistance(
             self.current_density, 
             self.ca.cl.ionomer_water_content, 
             self.ca.cl.temperature
@@ -318,7 +319,7 @@ class FuelCell:
                 theta_PtO = 0.5 * theta_PtO +0.5 / (1 + np.exp(22.4 * (0.818 - E_rev_vs_RHE + eta_act)))
                 eps_max = np.mean(np.abs(eta_act - eta_act_old))
             
-        self.ca.cl.theta_PtO = theta_PtO
+        self.ca.cl.theta_catalyst = theta_PtO
 
     def cell_voltage(self):
         """
@@ -339,7 +340,7 @@ class FuelCell:
         self.calculate_theta_PtO()
         E_rev = self.reversible_cell_voltage()
         eta_ohm = self.ohmic_overpotential()
-        eta_act = self.activation_overpotential(self.ca.cl.theta_PtO)
+        eta_act = self.activation_overpotential(self.ca.cl.theta_catalyst)
         return np.maximum(0, E_rev - eta_act - eta_ohm)
     
     def set_mea_temperature(self, mea_temperature): 
@@ -585,7 +586,9 @@ class FuelCell:
             cell_side.ch.set_inlet_gas_flow_rate_from_stoichiometry(
                 (self.o2_consumption if cell_side == self.ca else self.h2_consumption) * self.cell_area, conditions.stoichiometry
             )
-        
+
+from .electrolyte import ElectrolyteSolution
+
 @dataclass
 class OperatingConditions:
     """
@@ -617,6 +620,8 @@ class OperatingConditions:
     dry_h2_mole_fraction: float = 0.0
     inlet_relative_humidity: float = 0.5
     stoichiometry: float = 2.0
+    inlet_liquid_saturation: float = 0
+    inlet_liquid: ElectrolyteSolution = field(default_factory=ElectrolyteSolution)
     
     def __post_init__(self):
         if self.inlet_pressure is None:
