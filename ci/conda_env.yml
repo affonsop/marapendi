@@ -3,11 +3,11 @@ channels:
   - anaconda
   - conda-forge
 dependencies :
-  - python=3.12
+  - python>=3.10
   - pandas
   - pandoc
   - pip
-  - cantera>=3.0
+  - cantera
   - pip :
     - cython
     - pytest
@@ -19,4 +19,3 @@ dependencies :
     - nbsphinx
     - scipy
     - matplotlib
-    - marapendi
