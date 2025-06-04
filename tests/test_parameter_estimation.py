@@ -63,7 +63,7 @@ def create_fuel_cell(params):
                 thermal_conductivity=5.75
             ),
             has_mpl=False, 
-            ch=mrpd.GasFlowChannel(
+            ch=mrpd.FlowChannel(
                 height=1e-3,
                 width=1e-3, 
                 length=0.1,
@@ -85,7 +85,7 @@ def create_fuel_cell(params):
                 effective_gas_diffusion_ratio=0.25, 
                 thermal_conductivity=5.75
             ),
-            ch=mrpd.GasFlowChannel(
+            ch=mrpd.FlowChannel(
                 height=1e-3,
                 width=1e-3, 
                 length=0.1,

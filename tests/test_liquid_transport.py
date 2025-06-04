@@ -43,7 +43,7 @@ def fc(cl, toray_gdl_060):
     fc.ca.stoichiometry = 33.0
     fc.ca.set_catalyst_layer(cl)
     fc.ca.set_gas_diffusion_layer(toray_gdl_060)
-    fc.ca.set_channel(mrpd.GasFlowChannel(width=0.1e-2, height=0.1e-2, length=3.7e-2, n_parallel=6)) # Values from Baker et al. (2009)
+    fc.ca.set_channel(mrpd.FlowChannel(width=0.1e-2, height=0.1e-2, length=3.7e-2, n_parallel=6)) # Values from Baker et al. (2009)
     fc.ca.ch.transport_resistance_model = mrpd.ChannelGasResistanceModel(A_ch=1.12, B_ch=1.01)
     fc.ca.ch.gas.set_temperature_and_pressure(343.15, 3.0e5)
     fc.ca.ch.set_inlet_stoichiometry(33) 

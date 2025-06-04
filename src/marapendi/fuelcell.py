@@ -8,7 +8,7 @@ import cantera as ct
 
 from .electrochemistry import calculate_reversible_cell_voltage, h2_lhv
 from .porous_layers import PorousLayer, PtCCatalystLayer
-from .flow_channels import GasFlowChannel
+from .flow_channels import FlowChannel
 from .membrane import Membrane
 from .gas_composition import species_indexes 
 from .transport import DarcyLiquidTransportModel
@@ -20,7 +20,7 @@ class FuelCellSide:
     cl: PorousLayer = field(default_factory=PtCCatalystLayer) 
     gdl: PorousLayer = field(default_factory=PorousLayer)
     mpl: PorousLayer = field(default_factory=PorousLayer)
-    ch: GasFlowChannel = field(default_factory=GasFlowChannel)
+    ch: FlowChannel = field(default_factory=FlowChannel)
     has_mpl: bool = False
     liq_transport_model: DarcyLiquidTransportModel = field(default_factory=DarcyLiquidTransportModel)
     membrane_surface_water_content: float = 0 
@@ -583,9 +583,14 @@ class FuelCell:
                                               conditions.dry_h2_mole_fraction,
                                               conditions.inlet_relative_humidity)
                 component.set_gas_temperature_and_pressure(stack_temperature, conditions.inlet_pressure)
+            
+            cell_side.ch.set_fixed_inlet_liquid_flow_rate(conditions.inlet_liquid_flow_rate)
+            
             cell_side.ch.set_inlet_gas_flow_rate_from_stoichiometry(
-                (self.o2_consumption if cell_side == self.ca else self.h2_consumption) * self.cell_area, conditions.stoichiometry
+                (self.o2_consumption if cell_side == self.ca else self.h2_consumption) * self.cell_area, conditions.stoichiometry, 
+                fixed_inlet_gas_flow_rate=conditions.inlet_gas_flow_rate
             )
+            
 
 from .electrolyte import ElectrolyteSolution
 
@@ -612,6 +617,16 @@ class OperatingConditions:
         The stoichiometric ratio of reactant.
     average_pressure : float
         The average pressure between inlet and outlet (Pa).
+    inlet_liquid_saturation : float 
+        The volume fraction of the liquid phase at the inlet. Defaults to zero. 
+    inlet_liquid : ElectrolyteSolution
+        The nature of the liquid phase.
+    inlet_liquid_volume_flow_rate : float 
+        The inlet liquid flow rate (m3/s).
+    inlet_liquid_volume_flow_rate : float 
+        The inlet liquid flow rate (m3/s).
+    inlet_gas_volume_flow_rate : float 
+        The inlet liquid flow rate (m3/s).
     """
     inlet_temperature: float = 353.15
     inlet_pressure: float = None
@@ -619,10 +634,12 @@ class OperatingConditions:
     dry_o2_mole_fraction: float = 0.2
     dry_h2_mole_fraction: float = 0.0
     inlet_relative_humidity: float = 0.5
-    stoichiometry: float = 2.0
+    stoichiometry: float = 2
     inlet_liquid_saturation: float = 0
     inlet_liquid: ElectrolyteSolution = field(default_factory=ElectrolyteSolution)
-    
+    inlet_liquid_flow_rate: float = 0
+    inlet_gas_flow_rate: float = 0
+
     def __post_init__(self):
         if self.inlet_pressure is None:
             self.inlet_pressure = self.outlet_pressure if self.outlet_pressure is not None else 101325.0

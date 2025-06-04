@@ -11,7 +11,7 @@ def fc():
     fc.current_density = 1.e4
     fc.ca.stoichiometry = 2.0
     fc.curent_density = 1e4
-    fc.ca.ch = mrpd.GasFlowChannel(width=0.05e-2, height=0.08e-2, length=3.7e-2, n_parallel=14) # Values from Baker et al. (2009)
+    fc.ca.ch = mrpd.FlowChannel(width=0.05e-2, height=0.08e-2, length=3.7e-2, n_parallel=14) # Values from Baker et al. (2009)
     fc.ca.ch.transport_resistance_model = mrpd.ChannelGasResistanceModel(A_ch=1.12, B_ch=1.01)
     fc.ca.ch.gas.set_temperature_and_pressure(353.15, 1.0e5)
     fc.ca.ch.gas.set_composition(0.02,0,0.62)

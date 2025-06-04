@@ -41,10 +41,12 @@ class ChannelConditions:
         self.__post_init__()
 
 @dataclass
-class GasFlowChannel(PorousLayer):
+class FlowChannel(PorousLayer):
     reactant: str = 'o2'
     inlet_stoichiometry: float = 0 
     inlet_gas_flow_rate: float = 1e-12
+    inlet_liquid_flow_rate: float = 0
+    inlet_liquid_saturation: float = 0
     width: float = 1e-3
     height: float = 1e-3
     length: float = 100e-3
@@ -68,15 +70,24 @@ class GasFlowChannel(PorousLayer):
     
     def set_fixed_inlet_gas_flow_rate(self, inlet_gas_flow_rate): 
         self.inlet_gas_flow_rate = inlet_gas_flow_rate 
+        self.inlet_liquid_saturation =  self.inlet_liquid_flow_rate / (self.inlet_liquid_flow_rate +
+                                                                        self.inlet_gas_flow_rate)
+        
+    def set_fixed_inlet_liquid_flow_rate(self, inlet_liquid_flow_rate): 
+        self.inlet_liquid_flow_rate = inlet_liquid_flow_rate
+        self.inlet_liquid_saturation =  self.inlet_liquid_flow_rate / (self.inlet_liquid_flow_rate +
+                                                                        self.inlet_gas_flow_rate)
 
-    def set_inlet_gas_flow_rate_from_stoichiometry(self, reactant_consumption, stoichiometry=0):
+    def set_inlet_gas_flow_rate_from_stoichiometry(self, reactant_consumption, stoichiometry=0, fixed_inlet_gas_flow_rate=0):
         try: 
             if stoichiometry > 0: 
                 self.inlet_stoichiometry = stoichiometry 
         except ValueError: 
             self.inlet_stoichiometry = stoichiometry 
-        self.inlet_gas_flow_rate = self.calculate_inlet_gas_flow_rate(reactant_consumption)
+        inlet_gas_flow_rate = self.calculate_inlet_gas_flow_rate(reactant_consumption) + fixed_inlet_gas_flow_rate
+        self.set_fixed_inlet_gas_flow_rate(inlet_gas_flow_rate)
 
+   
     def calculate_inlet_gas_flow_rate(self, reactant_consumption): 
         return self.inlet_stoichiometry * reactant_consumption / self.reactant_mole_fraction() / self.gas.concentration()
     
