@@ -577,7 +577,10 @@ class FuelCell:
         for cell_side, conditions in zip((self.ca, self.an), (cathode_conditions, anode_conditions)): 
             for component in cell_side.components: 
                 component.liquid_saturation = 0
-                component.gas.X = np.zeros_like(self.current_density[...,np.newaxis]) * np.array([0,0,0,0])
+                try: 
+                    component.gas.X = np.zeros_like(self.current_density[...,np.newaxis]) * np.array([0,0,0,0])
+                except TypeError: 
+                    component.gas.X = self.current_density * np.array([0,0,0,0])
                 component.set_gas_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
                 component.set_gas_composition(conditions.dry_o2_mole_fraction, 
                                               conditions.dry_h2_mole_fraction,
