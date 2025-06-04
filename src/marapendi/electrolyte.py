@@ -81,10 +81,12 @@ class KOH_solution(ElectrolyteSolution):
 
     def calculate_solution_saturation_pressure(self, molality, water_sat_pressure):
         # Eq. 6 in Balej (1985)
-        return water_sat_pressure - molality  * (
-                (0.01508 + 0.0012062 * water_sat_pressure) + 
-                (0.0016788 - 5.6024e-4 * water_sat_pressure) * molality -
-                (2.25887e-5 - 7.8228e-6 * water_sat_pressure) * molality ** 2)
+        molality_mol_per_kg = molality * 1000.
+        log_p_sat = np.log10(water_sat_pressure/1e5)
+        return 10 ** (5 + log_p_sat - molality_mol_per_kg  * (
+                (0.01508 + 0.0012062 * log_p_sat) + 
+                (0.0016788 - 5.6024e-4 * log_p_sat) * molality_mol_per_kg -
+                (2.25887e-5 - 7.8228e-6 * log_p_sat) * molality_mol_per_kg ** 2))
     
 KOH_1M = KOH_solution(temperature=298.15,weight_percent=5.3732)
 KOH_2M = KOH_solution(temperature=298.15,weight_percent=10.3)

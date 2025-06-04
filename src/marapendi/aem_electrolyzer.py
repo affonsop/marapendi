@@ -7,9 +7,9 @@ import numpy as np
 import cantera as ct
 
 from .fuelcell import FuelCell, FuelCellSide
-from .electrochemistry import calculate_reversible_cell_voltage, h2_lhv
+from .electrochemistry import calculate_reversible_cell_voltage, h2_lhv, STD_PRESSURE
 from .porous_layers import PorousLayer, PtCCatalystLayer
-from .flow_channels import GasFlowChannel
+from .flow_channels import FlowChannel
 from .membrane import Membrane
 from .gas_composition import species_indexes 
 from .transport import DarcyLiquidTransportModel
@@ -30,6 +30,12 @@ class ElectrolyzerCellSide(FuelCellSide):
         self.h2ov_transport_resistance = 0
         self.h2_transport_resistance = 0   
 
+    def calculate_dry_gas_pressure(self): 
+        solution_saturation_pressure = self.electrolyte.solution_sat_pressure
+        return np.where(self.cl.liquid_saturation > 0, 
+                 self.cl.pressure - solution_saturation_pressure,
+                 self.cl.pressure - self.cl.vapor_pressure())
+         
 class ElectrolyzerCell(FuelCell): 
 
     def reversible_cell_voltage(self): 
@@ -46,10 +52,14 @@ class ElectrolyzerCell(FuelCell):
         The calculation considers the temperature of the catalyst layer and the partial pressures
         of oxygen and hydrogen at the cathode and anode, respectively.
         """
+        h2_activity = self.ca.calculate_dry_gas_pressure()/STD_PRESSURE
+        o2_activity = self.an.calculate_dry_gas_pressure()/STD_PRESSURE
+        h2o_activity = self.ca.electrolyte.solution_sat_pressure / self.ca.cl.saturation_pressure()
+        activities_ratio = h2o_activity / (h2_activity * o2_activity ** 0.5)
+        
         return calculate_reversible_cell_voltage(
             self.mea_temperature,
-            self.an.cl.species_partial_pressure('o2'),
-            self.ca.cl.species_partial_pressure('h2')
+            activities_ratio, 
         )
     
     def ohmic_overpotential(self): 
@@ -102,3 +112,50 @@ class ElectrolyzerCell(FuelCell):
         eta_act = self.activation_overpotential(self.ca.cl.theta_catalyst)
         return np.maximum(0, E_rev + eta_act + eta_ohm)
     
+    def set_conditions(self, stack_temperature, current_density, cathode_conditions, anode_conditions):  
+        """
+        Set the operating conditions of the electrolyzer stack.
+
+        This method initializes key operating parameters such as current density, 
+        water consumption rates, O2 and H2 production, and temperature. It also 
+        updates the gas composition and electrolyte flow conditions for the cathode and anode.
+
+        Parameters
+        ----------
+        stack_temperature : float
+            The operating temperature of the electrolyzer stack in Kelvin.
+        current_density : float
+            The current density of the cell in A/m².
+        cathode_conditions : OperatingConditions
+            The inlet conditions at the cathode side, including temperature, 
+            pressure, oxygen mole fraction, relative humidity and electrolyte saturation.
+        anode_conditions : OperatingConditions
+            The inlet conditions at the anode side, including temperature, 
+            pressure, hydrogen mole fraction, relative humidity and electrolyte saturation.
+        """
+        self.current_density = current_density
+        self.o2_production = current_density / (4 * ct.faraday)
+        self.h2_production = 2 * self.o2_production
+        self.ca.h2o_consumption = 2 * self.h2_production
+        self.an.h2o_production = self.h2_production
+        self.temperature = stack_temperature
+        self.membrane.temperature = stack_temperature
+        self.mea_temperature = stack_temperature
+
+        for cell_side, conditions in zip((self.ca, self.an), (cathode_conditions, anode_conditions)): 
+            cell_side.electrolyte = conditions.inlet_liquid
+            cell_side.electrolyte.set_temperature(self.membrane.temperature)
+            for component in cell_side.components: 
+                try: 
+                    component.gas.X = np.zeros_like(self.current_density[...,np.newaxis]) * np.array([0,0,0,0])
+                except TypeError: 
+                    component.gas.X = self.current_density * np.array([0,0,0,0])
+                component.set_gas_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
+                component.set_gas_composition(conditions.dry_o2_mole_fraction, 
+                                              conditions.dry_h2_mole_fraction,
+                                              conditions.inlet_relative_humidity)
+                component.set_gas_temperature_and_pressure(stack_temperature, conditions.inlet_pressure)
+            cell_side.ch.set_fixed_inlet_liquid_flow_rate(conditions.inlet_liquid_flow_rate)
+            cell_side.ch.set_fixed_inlet_gas_flow_rate(conditions.inlet_gas_flow_rate)
+            for component in cell_side.components: 
+                component.liquid_saturation = cell_side.ch.inlet_liquid_saturation

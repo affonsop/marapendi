@@ -6,7 +6,7 @@ from scipy.optimize import root
 import numpy as np 
 import cantera as ct
 
-from .electrochemistry import calculate_reversible_cell_voltage, h2_lhv
+from .electrochemistry import calculate_reversible_cell_voltage, h2_lhv, STD_PRESSURE
 from .porous_layers import PorousLayer, PtCCatalystLayer
 from .flow_channels import FlowChannel
 from .membrane import Membrane
@@ -187,10 +187,11 @@ class FuelCell:
         The calculation considers the temperature of the catalyst layer and the partial pressures
         of oxygen and hydrogen at the cathode and anode, respectively.
         """
+        activity_o2 = self.ca.cl.species_partial_pressure('o2') / STD_PRESSURE
+        activity_h2 = self.an.cl.species_partial_pressure('h2') / STD_PRESSURE
         return calculate_reversible_cell_voltage(
             self.ca.cl.temperature,
-            self.ca.cl.species_partial_pressure('o2'),
-            self.an.cl.species_partial_pressure('h2')
+            activity_o2 ** 0.5 * activity_h2
         )
     
     def activation_overpotential(self, theta_PtO=0): 
@@ -288,8 +289,7 @@ class FuelCell:
         """
         return calculate_reversible_cell_voltage(
             self.ca.cl.temperature,
-            self.ca.cl.species_partial_pressure('o2'),
-            1e5,  # Reference hydrogen pressure in Pascals
+            self.ca.cl.species_partial_pressure('o2') / STD_PRESSURE
         )
     def calculate_theta_PtO(self): 
         """

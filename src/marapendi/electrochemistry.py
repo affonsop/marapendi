@@ -73,8 +73,7 @@ h2_lhv = np.vectorize(h2_lhv)
 
 def calculate_reversible_cell_voltage(
     temperature,
-    partial_pressure_o2,
-    partial_pressure_h2):
+    activities_ratio):
     """
     Calculate the reversible cell voltage of a hydrogen fuel cell or electrolyser, 
     using Nernst equation.
@@ -111,10 +110,6 @@ def calculate_reversible_cell_voltage(
     """
     gibbs_formation_h2ol = (- std_formation_gibbs_h2ol +
                              std_formation_entropy_h2ol * (temperature - STD_TEMPERATURE))
-
-    activity_o2 = partial_pressure_o2 / STD_PRESSURE
-    activity_h2 = partial_pressure_h2 / STD_PRESSURE
-    activities_ratio = activity_o2 ** 0.5 * activity_h2
 
     reversible_cell_voltage = (gibbs_formation_h2ol +
                                ct.gas_constant * temperature *
