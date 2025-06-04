@@ -85,3 +85,9 @@ class KOH_solution(ElectrolyteSolution):
                 (0.01508 + 0.0012062 * water_sat_pressure) + 
                 (0.0016788 - 5.6024e-4 * water_sat_pressure) * molality -
                 (2.25887e-5 - 7.8228e-6 * water_sat_pressure) * molality ** 2)
+    
+KOH_1M = KOH_solution(temperature=298.15,weight_percent=5.3732)
+KOH_2M = KOH_solution(temperature=298.15,weight_percent=10.3)
+KOH_5M = KOH_solution(temperature=298.15,weight_percent=23.072)
+KOH_20_wt_percent = KOH_solution(temperature=298.15, weight_percent=20.)
+KOH_45_wt_percent = KOH_solution(temperature=298.15, weight_percent=45.)
