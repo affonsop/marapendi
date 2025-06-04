@@ -33,15 +33,15 @@ class ElectrolyteSolution():
     
     def calculate_molarity(self, weight_percent, temperature): 
         # In kmol/m3
-        return self.weight_percent/100. * self.calculate_density(weight_percent, temperature) / self.electrolyte_molecular_weight
+        return weight_percent/100. * self.calculate_density(weight_percent, temperature) / self.electrolyte_molecular_weight
     
     def calculate_ionic_conductivity(self, molarity, weight_percent, temperature):
         pass 
 
     def calculate_density(self, weight_percent, temperature): 
-        pass 
+        return 1000. 
     
-    def calculate_solution_saturation_pressure(molality, water_sat_pressure): 
+    def calculate_solution_saturation_pressure(self, molality, water_sat_pressure): 
         pass
 
 @dataclass
