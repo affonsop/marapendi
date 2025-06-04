@@ -32,8 +32,8 @@ class PorousLayer():
         Average pore diameter in meters (default is 1e12, with negligible Knudsen diffusion).
     transport_resistance_model : PorousGasResistanceModel
         Model used to calculate gas transport resistance.
-    water_saturation : float
-        Fraction of the pore volume occupied by liquid water (default is 0).
+    liquid_saturation : float
+        Fraction of the pore volume occupied by the liquid phase (default is 0).
     thermal_conductivity : float
         Thermal conductivity in W/(m·K) (default is 1e12, high conductivity).
     absolute_permeability : float
@@ -48,7 +48,7 @@ class PorousLayer():
     effective_gas_diffusion_ratio: float = 1
     pore_diameter: float=1e12
     transport_resistance_model: PorousGasResistanceModel = field(default_factory=PorousGasResistanceModel)
-    water_saturation: float = 0
+    liquid_saturation: float = 0
     thermal_conductivity: float = 1e12 
     absolute_permeability: float = 10000
     contact_angle: float = 120. 
@@ -315,7 +315,7 @@ class PorousLayer():
             self.temperature, 
             self.species_diffusion_coefficient(species), 
             self.species_molecular_weight(species), 
-            self.water_saturation
+            self.liquid_saturation
         )
 
     def thermal_resistance(self):

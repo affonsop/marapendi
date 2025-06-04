@@ -87,7 +87,7 @@ class FuelCellSide:
         equivalent flow resistance.
         """
         for layer in self.porous_layers: 
-            layer.water_saturation = self.liq_transport_model.calculate_water_saturation(self.liquid_flux, layer.equivalent_flow_resistance)
+            layer.liquid_saturation = self.liq_transport_model.calculate_water_saturation(self.liquid_flux, layer.equivalent_flow_resistance)
     
     def calculate_equivalent_flow_resistance(self): 
         """
@@ -572,11 +572,11 @@ class FuelCell:
 
         for side in (self.ca, self.an): 
             for layer in side.components: 
-                layer.water_saturation = 0 
+                layer.liquid_saturation = 0 
 
         for cell_side, conditions in zip((self.ca, self.an), (cathode_conditions, anode_conditions)): 
             for component in cell_side.components: 
-                component.water_saturation = 0
+                component.liquid_saturation = 0
                 component.gas.X = np.zeros_like(self.current_density[...,np.newaxis]) * np.array([0,0,0,0])
                 component.set_gas_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
                 component.set_gas_composition(conditions.dry_o2_mole_fraction, 

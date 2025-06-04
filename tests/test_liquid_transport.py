@@ -67,7 +67,7 @@ def test_gas_porous_transport_resistance(toray_gdl_060, fc, cl):
     for layer in fc.ca.components:
             layer.gas.set_composition(0.2,0,1)
             layer.gas.set_temperature_and_pressure(343.15, 300e3)
-    fc.ca.gdl.water_saturation = 0.05
+    fc.ca.gdl.liquid_saturation = 0.05
     dry_resistance = (fc.ca.gdl.gas_transport_resistance(species='o2') +
                     fc.ca.cl.gas_transport_resistance(species='o2') +
                     fc.ca.cl.o2_ionomer_film_resistance(14, fc.ca.cl.gas_temperature()))
@@ -102,7 +102,7 @@ def test_gas_porous_transport_resistance(toray_gdl_060, fc, cl):
     fc.ca.cl.gas.set_temperature(temperature)  
     fc.ca.calculate_equivalent_flow_resistance()
     
-    fc.ca.gdl.water_saturation = fc.ca.liquid_transport_model.calculate_water_saturation(i_cell/(2*ct.faraday), 
+    fc.ca.gdl.liquid_saturation = fc.ca.liquid_transport_model.calculate_water_saturation(i_cell/(2*ct.faraday), 
                                                                                          equivalent_flow_resistance=fc.ca.gdl.equivalent_flow_resistance)
     wet_resistance = (fc.ca.gdl.gas_transport_resistance(species='o2') +
                     fc.ca.cl.gas_transport_resistance(species='o2') +

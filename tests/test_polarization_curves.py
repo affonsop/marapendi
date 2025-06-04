@@ -106,7 +106,7 @@ def test_polarization_curve(fuel_cell, cathode_conditions, anode_conditions):
         ax[0,0].set_ylabel('Cell voltage (V)')
         ax[0,0].set_xlabel('Curent density (A/cm$^2$)')
 
-        ax[0,1].plot(fuel_cell.current_density * 1e-4, fuel_cell.ca.gdl.water_saturation, label=f'{rh_cathode * 100:.0f} %')
+        ax[0,1].plot(fuel_cell.current_density * 1e-4, fuel_cell.ca.gdl.liquid_saturation, label=f'{rh_cathode * 100:.0f} %')
         ax[0,1].set_ylabel('GDL water\nsaturation (n.d.)')
         ax[0,1].set_xlabel('Curent density (A/cm$^2$)')
 
