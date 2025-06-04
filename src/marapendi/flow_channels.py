@@ -70,13 +70,13 @@ class FlowChannel(PorousLayer):
     
     def set_fixed_inlet_gas_flow_rate(self, inlet_gas_flow_rate): 
         self.inlet_gas_flow_rate = inlet_gas_flow_rate 
-        self.inlet_liquid_saturation =  self.inlet_liquid_flow_rate / (self.inlet_liquid_flow_rate +
-                                                                        self.inlet_gas_flow_rate)
+        self.inlet_liquid_saturation =  self.inlet_liquid_flow_rate / np.maximum(self.inlet_liquid_flow_rate +
+                                                                        self.inlet_gas_flow_rate, 1e-12)
         
     def set_fixed_inlet_liquid_flow_rate(self, inlet_liquid_flow_rate): 
         self.inlet_liquid_flow_rate = inlet_liquid_flow_rate
-        self.inlet_liquid_saturation =  self.inlet_liquid_flow_rate / (self.inlet_liquid_flow_rate +
-                                                                        self.inlet_gas_flow_rate)
+        self.inlet_liquid_saturation =  self.inlet_liquid_flow_rate / np.maximum(self.inlet_liquid_flow_rate +
+                                                                        self.inlet_gas_flow_rate, 1e-12)
 
     def set_inlet_gas_flow_rate_from_stoichiometry(self, reactant_consumption, stoichiometry=0, fixed_inlet_gas_flow_rate=0):
         try: 
