@@ -25,7 +25,7 @@ def cl():
                             catalyst_platinum_weight_percent=0.4,
                             thermal_conductivity=0.25,
                             ecsa=45e3,
-                            ionomer=mrpd.CatalystLayerIonomerModel(),     
+                            ionomer=mrpd.PFSAIonomer(),     
                             carbon_agglomerate_radius=60e-9, 
                             reaction = mrpd.ElectrochemicalReaction(reference_exchange_current_density=2.47e-8 * 3e11 * 10e-6,
                                                                 activation_energy=67e6,

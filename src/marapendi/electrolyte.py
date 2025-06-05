@@ -36,13 +36,13 @@ class ElectrolyteSolution():
         return weight_percent/100. * self.calculate_density(weight_percent, temperature) / self.electrolyte_molecular_weight
     
     def calculate_ionic_conductivity(self, molarity, weight_percent, temperature):
-        pass 
+        return 1e-12
 
     def calculate_density(self, weight_percent, temperature): 
         return 1000. 
     
     def calculate_solution_saturation_pressure(self, molality, water_sat_pressure): 
-        pass
+        return water_sat_pressure
 
 @dataclass
 class KOH_solution(ElectrolyteSolution): 

@@ -417,8 +417,7 @@ class Membrane:
     h2_permeation_model: HydrogenPermeationModel = field(default_factory=HydrogenPermeationModel)
     water_balance_model: MembraneWaterBalanceModel = field(default_factory=MembraneWaterBalanceModel)
     water_content: float = 14
-    conductivity_correction: float = 1
-    conductivity_exp: float = 1.5
+
 
     def __post_init__(self):
         """
@@ -483,7 +482,21 @@ class Membrane:
                                                         temperature,
                                                         pressure_difference,
                                                         water_vol_fraction)
-
+    
+    def charge_conductivity(self, water_content, temperature, use_water_profile=True, charge='proton'): 
+        if charge == 'proton':
+            return self.proton_conductivity(water_content, temperature, use_water_profile)
+        elif charge == 'hydroxide': 
+            return self.hydroxide_conductivity(water_content, temperature)
+    
+    def charge_resistance(self, water_content, temperature, use_water_profile=True, charge='proton'): 
+        return self.dry_thickness / self.charge_conductivity(water_content, temperature, use_water_profile, charge)
+    
+@dataclass
+class PFSA(Membrane):
+    conductivity_correction: float = 1
+    conductivity_exp: float = 1.5
+ 
     def equilibrium_water_content(self, rh):
         rh = np.minimum(np.maximum(rh, 0),1)
         return (0.043 + 17.18 * rh - 39.85 * rh**2 + 36 * rh**3)
@@ -492,13 +505,29 @@ class Membrane:
         rh = np.minimum(np.maximum(rh, 0),1)
         return (17.18 - 79.70 * rh + 108 * rh**2)
 
-    def proton_conductivity(self, temperature, water_vol_fraction, water_content, use_water_profile=True): 
+    def proton_conductivity(self, water_content, temperature, use_water_profile=True): 
         if use_water_profile:
             fv = self.water_vol_fraction(self.water_balance_model.water_content_profile ,water_molar_volume(temperature))
             return 1/np.mean(1/(self.conductivity_correction * 50 * (np.maximum(fv, 0.061) - 0.06 ) ** self.conductivity_exp * calculate_arrhenius_term(15e6, temperature, 303.15)), axis=0)
         else: 
             fv = self.water_vol_fraction(water_content ,water_molar_volume(temperature))
             return self.conductivity_correction * 50 * (np.maximum(fv, 0.061) - 0.06 ) ** self.conductivity_exp * calculate_arrhenius_term(15e6, temperature, 303.15)
-        
-    def proton_resistance(self, temperature, water_vol_fraction, water_content): 
-        return self.dry_thickness / self.proton_conductivity(temperature, water_vol_fraction, water_content)
+
+    def proton_resistance(self, water_content, temperature, use_water_profile=True): 
+        return self.dry_thickness / self.proton_conductivity(water_content, temperature, use_water_profile)
+
+@dataclass
+class FAA3(Membrane):
+    dry_density: float = 1310.
+    equivalent_weight: float = 1000/1.91
+    def hydroxide_conductivity(self, water_content, temperature): 
+        return np.interp(temperature, [298.15, 313.15, 333.15, 353.15], [4.10,	5.68,	7.73,	9.17])
+    
+@dataclass
+class PAP85(Membrane):
+    dry_density: float = 1220.
+    equivalent_weight: float = 1000/2.35
+
+    def hydroxide_conductivity(self, water_content, temperature): 
+        return np.interp(temperature, [298.15, 313.15, 333.15, 353.15], [6.63,	8.45,	11.44,	14.87])
+    

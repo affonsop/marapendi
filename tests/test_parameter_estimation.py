@@ -47,6 +47,7 @@ def create_fuel_cell(params):
                 carbon_agglomerate_radius=60e-9,
                 thickness=10e-6,
                 thermal_conductivity=0.25,
+                ionomer=mrpd.PFSAIonomer(),
                 reaction=mrpd.ElectrochemicalReaction(
                     reference_exchange_current_density=2.45e-4,
                     reaction_order=0.54, 
@@ -94,7 +95,7 @@ def create_fuel_cell(params):
             ),
             thermal_contact_resistance=2e-4
         ),
-        membrane = mrpd.Membrane(
+        membrane = mrpd.PFSA(
             equivalent_weight=1100,
             dry_density=1980, 
             dry_thickness=25e-6,

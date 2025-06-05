@@ -12,10 +12,7 @@ def cathode():
             carbon_agglomerate_radius=25e-9,
             platinum_loading=0.3e-2, 
             catalyst_platinum_weight_percent=0.4,
-            ionomer=mrpd.CatalystLayerIonomerModel(dry_density=2004, 
-                                                   equivalent_weight=952, 
-                                                   conductivity_correction=1., 
-                                                   conductivity_exp=1.5),
+            ionomer=mrpd.PAPIonomer(),
         ),
         gdl=mrpd.PorousLayer(
             thickness=245e-6, 
@@ -34,10 +31,7 @@ def anode():
             fiber_diameter=20e-6,
             catalyst_density=5400., 
             catalyst_loading=1e-2,
-            ionomer=mrpd.CatalystLayerIonomerModel(dry_density=2004, 
-                                                   equivalent_weight=952, 
-                                                   conductivity_correction=1., 
-                                                   conductivity_exp=1.5),
+            ionomer=mrpd.PAPIonomer(),
         ),
         has_mpl=False, 
         has_gdl=False, 
@@ -45,11 +39,11 @@ def anode():
 
 @pytest.fixture 
 def membrane():
-    return mrpd.Membrane(equivalent_weight=1000/2.35, dry_density=1220, dry_thickness=60e-6)
+    return mrpd.PAP85(dry_thickness=80e-6)
 
 @pytest.fixture
 def electrolyzer_cell(cathode, anode, membrane): 
-    return mrpd.ElectrolyzerCell(ca=cathode,an=anode, membrane=membrane, cell_area=5e-4, cell_number=1)
+    return mrpd.ElectrolyzerCell(ca=cathode,an=anode, membrane=membrane, cell_area=5e-4, cell_number=1, electrical_resistance=60e-7)
 
 @pytest.fixture
 def cathode_conditions():
@@ -68,6 +62,59 @@ def anode_conditions():
         dry_o2_mole_fraction=0,
         outlet_pressure=1.5e5
     )
+@pytest.fixture
+def wet_cathode():
+    return mrpd.OperatingConditions(
+        inlet_temperature = 353.15,
+        inlet_liquid_flow_rate=200e-6/60., # 200 mL/min
+        inlet_liquid=mrpd.KOH_1M,
+        dry_h2_mole_fraction=1, 
+        dry_o2_mole_fraction=0,
+        outlet_pressure=1.0e5, 
+    )
+@pytest.fixture
+def wet_anode():
+    return mrpd.OperatingConditions(
+        inlet_temperature = 353.15,
+        inlet_liquid_flow_rate=200e-6/60., # 200 mL/min
+        inlet_liquid=mrpd.KOH_1M,
+        dry_h2_mole_fraction=0, 
+        dry_o2_mole_fraction=1,
+        outlet_pressure=1.0e5, 
+    )
+@pytest.fixture
+def dry_cathode():
+    return mrpd.OperatingConditions(
+        inlet_temperature = 353.15,
+        inlet_liquid_flow_rate=0.,
+        inlet_gas_flow_rate=200e-6/60., # 200 mL/min
+        inlet_relative_humidity=0., 
+        inlet_liquid=mrpd.KOH_1M,
+        dry_h2_mole_fraction=1, 
+        dry_o2_mole_fraction=0,
+        outlet_pressure=1.0e5, 
+    )
+
+@pytest.fixture
+def deionized_water_cathode():
+    return mrpd.OperatingConditions(
+        inlet_temperature = 353.15,
+        inlet_liquid_flow_rate=200e-6/60., # 200 mL/min
+        inlet_liquid=mrpd.KOH_solution(temperature = 353.15, weight_percent=0., molality=0.),
+        dry_h2_mole_fraction=1, 
+        dry_o2_mole_fraction=0,
+        outlet_pressure=1.0e5, 
+    )
+@pytest.fixture
+def deionized_water_anode():
+    return mrpd.OperatingConditions(
+        inlet_temperature = 353.15,
+        inlet_liquid_flow_rate=200e-6/60., # 200 mL/min
+        inlet_liquid=mrpd.KOH_solution(temperature = 353.15, weight_percent=0, molality=0.),
+        dry_h2_mole_fraction=0, 
+        dry_o2_mole_fraction=1,
+        outlet_pressure=1.0e5, 
+    )
 
 def test_electrochemistry():
     assert np.isclose(mrpd.electrochemistry.calculate_reversible_cell_voltage(298.15, 1), 1.229, 1e-3)
@@ -83,51 +130,7 @@ def test_electrolyte():
     assert np.isclose(mrpd.KOH_5M.molarity, 5, rtol=1e-4)
     assert np.isclose(mrpd.KOH_1M.solution_sat_pressure, 3054, rtol=1e-3)
 
-def test_operating_conditions(electrolyzer_cell): 
-    
-    wet_cathode = mrpd.OperatingConditions(
-        inlet_temperature = 353.15,
-        inlet_liquid_flow_rate=200e-6/60., # 200 mL/min
-        inlet_liquid=mrpd.KOH_1M,
-        dry_h2_mole_fraction=1, 
-        dry_o2_mole_fraction=0,
-        outlet_pressure=1.0e5, 
-    )
-    wet_anode = mrpd.OperatingConditions(
-        inlet_temperature = 353.15,
-        inlet_liquid_flow_rate=200e-6/60., # 200 mL/min
-        inlet_liquid=mrpd.KOH_1M,
-        dry_h2_mole_fraction=0, 
-        dry_o2_mole_fraction=1,
-        outlet_pressure=1.0e5, 
-    )
-    dry_cathode = mrpd.OperatingConditions(
-        inlet_temperature = 353.15,
-        inlet_liquid_flow_rate=0.,
-        inlet_gas_flow_rate=200e-6/60., # 200 mL/min
-        inlet_relative_humidity=0., 
-        inlet_liquid=mrpd.KOH_1M,
-        dry_h2_mole_fraction=1, 
-        dry_o2_mole_fraction=0,
-        outlet_pressure=1.0e5, 
-    )
-
-    deionized_water_cathode = mrpd.OperatingConditions(
-        inlet_temperature = 353.15,
-        inlet_liquid_flow_rate=200e-6/60., # 200 mL/min
-        inlet_liquid=mrpd.KOH_solution(temperature = 353.15, weight_percent=0., molality=0.),
-        dry_h2_mole_fraction=1, 
-        dry_o2_mole_fraction=0,
-        outlet_pressure=1.0e5, 
-    )
-    deionized_water_anode = mrpd.OperatingConditions(
-        inlet_temperature = 353.15,
-        inlet_liquid_flow_rate=200e-6/60., # 200 mL/min
-        inlet_liquid=mrpd.KOH_solution(temperature = 353.15, weight_percent=0, molality=0.),
-        dry_h2_mole_fraction=0, 
-        dry_o2_mole_fraction=1,
-        outlet_pressure=1.0e5, 
-    )
+def test_operating_conditions(electrolyzer_cell, wet_anode, wet_cathode, dry_cathode, deionized_water_cathode, deionized_water_anode):     
     electrolyzer_cell.set_conditions(353.15, 1e4, wet_cathode, wet_anode)
     water_sat_pressure = mrpd.water_saturation_pressure(353.15)
     assert np.isclose(electrolyzer_cell.ca.ch.inlet_gas_flow_rate, 0)
@@ -155,3 +158,9 @@ def test_operating_conditions(electrolyzer_cell):
     assert np.isclose(electrolyzer_cell.ca.calculate_dry_gas_pressure(), 1e5 - water_sat_pressure)
     assert np.isclose(electrolyzer_cell.reversible_cell_voltage(), 1.197)
 
+def test_ohmic_resistance(electrolyzer_cell, deionized_water_anode, deionized_water_cathode, wet_anode, wet_cathode):
+    electrolyzer_cell.set_conditions(353.15, 1e4, deionized_water_cathode, deionized_water_anode)
+    electrolyzer_cell.ca.cl.ionomer_water_content = 20
+    #assert np.isclose(electrolyzer_cell.ohmic_overpotential(), 1e-5)
+    assert np.isclose(electrolyzer_cell.membrane.charge_resistance(20, electrolyzer_cell.temperature, 
+                                               use_water_profile=False, charge='hydroxide'), 53.8e-7)

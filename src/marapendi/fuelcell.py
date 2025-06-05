@@ -247,7 +247,7 @@ class FuelCell:
         and the electrical resistance of the cell components. It is an important parameter in 
         electrochemical impedance spectroscopy (EIS) measurements.
         """
-        return self.membrane.proton_resistance(self.membrane.temperature, 0, self.membrane.water_content) + self.electrical_resistance
+        return self.membrane.proton_resistance(self.membrane.water_content, self.membrane.temperature) + self.electrical_resistance
 
     def ohmic_overpotential(self): 
         """
@@ -576,7 +576,8 @@ class FuelCell:
 
         for cell_side, conditions in zip((self.ca, self.an), (cathode_conditions, anode_conditions)): 
             for component in cell_side.components: 
-                component.liquid_saturation = 0
+                cell_side.electrolyte = conditions.inlet_liquid
+                cell_side.electrolyte.set_temperature(self.membrane.temperature)
                 try: 
                     component.gas.X = np.zeros_like(self.current_density[...,np.newaxis]) * np.array([0,0,0,0])
                 except TypeError: 
@@ -593,6 +594,9 @@ class FuelCell:
                 (self.o2_consumption if cell_side == self.ca else self.h2_consumption) * self.cell_area, conditions.stoichiometry, 
                 fixed_inlet_gas_flow_rate=conditions.inlet_gas_flow_rate
             )
+            for component in cell_side.components: 
+                component.electrolyte = cell_side.electrolyte
+                component.liquid_saturation = cell_side.ch.inlet_liquid_saturation
             
 
 from .electrolyte import ElectrolyteSolution

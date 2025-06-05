@@ -78,19 +78,39 @@ class ElectrolyzerCell(FuelCell):
         cell components. It is calculated as the product of the current density and 
         the total internal resistance.
         """
-        self.ca.cl.proton_resistance = self.ca.cl.effective_charge_resistance(
+        self.ca.cl.charge_resistance = self.ca.cl.effective_charge_resistance(
             self.current_density, 
             self.ca.cl.ionomer_water_content, 
-            self.ca.cl.temperature
+            self.ca.cl.temperature, 
+            charge='hydroxide'
         )
-        self.an.cl.proton_resistance = self.ca.cl.effective_charge_resistance(
+        self.an.cl.charge_resistance = self.ca.cl.effective_charge_resistance(
             self.current_density, 
             self.ca.cl.ionomer_water_content, 
-            self.ca.cl.temperature
+            self.ca.cl.temperature,
+            charge='hydroxide'
         )
-        return self.current_density * (self.ca.cl.proton_resistance + 
+        return self.current_density * (self.ca.cl.charge_resistance + 
                                        self.high_frequency_resistance() + 
-                                       self.an.cl.proton_resistance)
+                                       self.an.cl.charge_resistance)
+    
+    def high_frequency_resistance(self): 
+        """
+        Compute the high-frequency resistance (HFR) of the fuel cell.
+
+        Returns
+        -------
+        float
+            The high-frequency resistance in ohms.
+
+        Notes
+        -----
+        The high-frequency resistance is mainly due to the proton resistance of the membrane 
+        and the electrical resistance of the cell components. It is an important parameter in 
+        electrochemical impedance spectroscopy (EIS) measurements.
+        """
+        return self.membrane.charge_resistance(20, self.membrane.temperature, 
+                                               use_water_profile=False, charge='hydroxide') + self.electrical_resistance
     
     def cell_voltage(self):
         """
@@ -158,4 +178,5 @@ class ElectrolyzerCell(FuelCell):
             cell_side.ch.set_fixed_inlet_liquid_flow_rate(conditions.inlet_liquid_flow_rate)
             cell_side.ch.set_fixed_inlet_gas_flow_rate(conditions.inlet_gas_flow_rate)
             for component in cell_side.components: 
+                component.electrolyte = cell_side.electrolyte
                 component.liquid_saturation = cell_side.ch.inlet_liquid_saturation

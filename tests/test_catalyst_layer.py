@@ -12,7 +12,7 @@ def cl():
                             ionomer_to_carbon_ratio=0.75, 
                             catalyst_platinum_weight_percent=0.3,
                             carbon_agglomerate_radius=25e-9, 
-                            ionomer=mrpd.CatalystLayerIonomerModel(dry_density=2004, equivalent_weight=952, 
+                            ionomer=mrpd.PFSAIonomer(dry_density=2004, equivalent_weight=952, 
                                                                  conductivity_correction=1., conductivity_exp=1.5),
                             reaction = mrpd.ElectrochemicalReaction(reference_exchange_current_density=2.47e-8 * 3e11 * 10e-6,
                                                                 activation_energy=67e6,
