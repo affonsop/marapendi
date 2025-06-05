@@ -494,7 +494,6 @@ class PorousTransferLayer(CatalystLayer):
     contact_angle : float
         Contact angle for water (default: 95°).
     """
-    thickness: float = 10e-6 
     ptl_porosity: float = 0.83
     fiber_diameter: float = 20e-6 
     ionomer_k1: float = 8.5
@@ -518,6 +517,12 @@ class PorousTransferLayer(CatalystLayer):
         self.effective_gas_diffusion_ratio = self.porosity ** 1.5
         PorousLayer.__post_init__(self)
 
+    def activation_overpotential(self, current_density, activity): 
+        return self.reaction.tafel_overpotential(
+            (current_density) / (self.ecsa * self.catalyst_loading),
+            self.temperature, 
+            activity
+        )
 @dataclass
 class PtCCatalystLayer(CatalystLayer):
     """
@@ -633,3 +638,9 @@ class PtCCatalystLayer(CatalystLayer):
         tort_ion = np.where(eps_ion > 0.16, 1, 0.0845 * (eps_ion - 0.04) ** -1.17) # eq. 54 in Hao et al. (2015)
         return self.thickness / (eps_ion / tort_ion * ionomer_charge_conductivity)
     
+    def activation_overpotential(self, current_density, activity): 
+        return self.reaction.tafel_overpotential(
+            (current_density) / (self.ecsa * self.platinum_loading),
+            self.temperature, 
+            activity
+        )

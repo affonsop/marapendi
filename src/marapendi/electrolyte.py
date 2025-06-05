@@ -20,7 +20,7 @@ class ElectrolyteSolution():
         self.temperature = temperature
         self.density = self.calculate_density(self.weight_percent, temperature)
         self.molarity = self.calculate_molarity(self.weight_percent, temperature)
-        self.ionic_conductivity = self.calculate_ionic_conductivity(self.molarity, self.weight_percent, self.temperature)
+        self.ionic_conductivity = self.calculate_ionic_conductivity(self.molarity, self.weight_percent, temperature)
         self.water_sat_pressure = water_saturation_pressure(temperature)
         self.solution_sat_pressure = self.calculate_solution_saturation_pressure(self.molality, self.water_sat_pressure)
 
@@ -62,19 +62,19 @@ class KOH_solution(ElectrolyteSolution):
 
     def calculate_ionic_conductivity(self, molarity, weight_percent, temperature):  
         # Eq. 5 and 6 in Hodges et al. (2023)
-        low_temperature_conductivity = molarity * (-2.041 - 0.0028 * molarity +
+        low_temperature_conductivity = 100 * molarity * (-2.041 - 0.0028 * molarity +
                                                     0.005332 * temperature + 
                                                     207.2 / temperature + 
                                                     0.001043 * molarity ** 2 -
                                                     3e-7 * molarity  * temperature ** 2)
-        high_temperature_conductivity =  weight_percent * (2.2204e-3 -
+        high_temperature_conductivity =  100 * weight_percent * (2.2204e-3 -
                                                            1.3077e-3 * weight_percent + 
-                                                           3.3647 * temperature - 
+                                                           3.3647e-4 * temperature - 
                                                            10.7021 / temperature + 
                                                            7.0101e-6 * weight_percent ** 2 - 
                                                            3.2033e-9 * weight_percent * temperature ** 2)
     
-        return np.where(temperature < 353.15, 
+        return np.where(temperature <= 353.15, 
                         low_temperature_conductivity, 
                         high_temperature_conductivity)
                  

@@ -140,7 +140,7 @@ def calculate_tafel_slope(
         The Tafel slope in Volts (V/decade).
     """
     return 2.303 * (ct.gas_constant * temperature /
-            (number_of_electrons * charge_transfer_coeff * ct.faraday))
+            (charge_transfer_coeff * ct.faraday))
 
 def calculate_tafel_overpotential(
         current_density,
@@ -182,9 +182,12 @@ def calculate_tafel_overpotential(
     ... )
     0.17985
     """
+    
     tafel_slope = (ct.gas_constant * temperature / 
-                   (number_of_electrons * charge_transfer_coeff * ct.faraday))
-    return tafel_slope * np.log(np.maximum(current_density / exchange_current_density,1))
+                   (charge_transfer_coeff * ct.faraday))
+    return tafel_slope * (np.asinh(current_density / exchange_current_density / 2) if charge_transfer_coeff == 0.5
+                          else np.log(np.maximum(current_density / exchange_current_density,1)))
+
 
 @dataclass
 class ElectrochemicalReaction:

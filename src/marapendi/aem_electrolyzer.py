@@ -84,10 +84,10 @@ class ElectrolyzerCell(FuelCell):
             self.ca.cl.temperature, 
             charge='hydroxide'
         )
-        self.an.cl.charge_resistance = self.ca.cl.effective_charge_resistance(
+        self.an.cl.charge_resistance = self.an.cl.effective_charge_resistance(
             self.current_density, 
-            self.ca.cl.ionomer_water_content, 
-            self.ca.cl.temperature,
+            self.an.cl.ionomer_water_content, 
+            self.an.cl.temperature,
             charge='hydroxide'
         )
         return self.current_density * (self.ca.cl.charge_resistance + 
@@ -129,8 +129,42 @@ class ElectrolyzerCell(FuelCell):
         
         E_rev = self.reversible_cell_voltage()
         eta_ohm = self.ohmic_overpotential()
-        eta_act = self.activation_overpotential(self.ca.cl.theta_catalyst)
+        eta_act = self.activation_overpotential()
         return np.maximum(0, E_rev + eta_act + eta_ohm)
+
+    def activation_overpotential(self, theta_PtO=0): 
+        """
+        Compute the activation overpotential of the electrolyzer cell.
+
+        Parameters
+        ----------
+        theta_PtO : float, optional
+            The coverage fraction of PtO species on the catalyst surface. Default is 0.
+
+        Returns
+        -------
+        float
+            The activation overpotential in volts.
+
+        Notes
+        -----
+        The activation overpotential is calculated using the Tafel equation, considering 
+        the hydrogen crossover current, oxygen partial pressure, and platinum surface coverage.
+        It accounts for the voltage drop due to the PtO coverage effect.
+        """
+        self.h2_permeation_flux = self.membrane.hydrogen_permeation_flux(self.an.cl.species_partial_pressure('h2'), 
+                                                                        self.membrane.temperature, 
+                                                                        self.an.cl.pressure - self.ca.cl.pressure,
+                                                                        self.membrane.water_vol_fraction(
+                                                                            self.membrane.water_content, 
+                                                                            water_molar_volume(self.membrane.temperature)
+                                                                            )
+                                                                        )
+        self.crossover_current = self.h2_permeation_flux * (2 * ct.faraday)
+  
+        tafel_overpotential_ca = self.ca.cl.activation_overpotential(self.current_density, 1.)
+        tafel_overpotential_an = self.an.cl.activation_overpotential(self.current_density, 1.)
+        return tafel_overpotential_ca + tafel_overpotential_an
     
     def set_conditions(self, stack_temperature, current_density, cathode_conditions, anode_conditions):  
         """
