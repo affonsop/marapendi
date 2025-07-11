@@ -12,7 +12,6 @@ from .catalyst_layers import PtCCatalystLayer
 from .flow_channels import FlowChannel
 from .membrane import Membrane
 from .gas_composition import species_indexes 
-from .transport_models import DarcyLiquidTransportModel
 from .water import water_molar_volume
 
 
