@@ -7,7 +7,8 @@ import numpy as np
 import cantera as ct
 
 from .electrochemistry import calculate_reversible_cell_voltage, h2_lhv, STD_PRESSURE
-from .porous_layers import PorousLayer, PtCCatalystLayer
+from .porous_layers import PorousLayer
+from .catalyst_layers import PtCCatalystLayer
 from .flow_channels import FlowChannel
 from .membrane import Membrane
 from .gas_composition import species_indexes 
