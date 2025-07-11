@@ -11,3 +11,4 @@ from .transport import *
 from .estimation import *
 from .electrolyte import *
 from .ionomer import *
+from .water_balance import *
