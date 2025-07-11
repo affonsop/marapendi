@@ -121,7 +121,7 @@ class ParameterEstimation:
         self.S = S
         return S
     
-    def compute_global_sensitivity(self,  t, u=None, x0=None, p=None, n_samples=7, m=8, check_samples=False, y_exp=None, res_limit=0.3): 
+    def compute_global_sensitivity(self,  t, u=None, x0=None, p=None, n_samples=7, m=8, check_samples=False, y_exp=None, rmse_limit=0.3, print_px=False): 
         # Generates 2**m samples in the space parameter 
         ni = len(self.unknown_p_list)
         sampler = qmc.Sobol(d=ni, scramble=False)
@@ -139,10 +139,12 @@ class ParameterEstimation:
             px.update({p_i: v for p_i, v in zip(self.p_i_name, p_i_n)})
             if check_samples:
                 res = self.residuals(y_exp, t, u, x0, px)
-                isValid = np.sqrt(np.dot(res, res))/len(res) < res_limit 
+                isValid = np.sqrt(np.dot(res,res)/len(res)) < rmse_limit 
             else:
                 isValid = True
             if isValid: 
+                if print_px: 
+                    print(px)
                 s_n = self.calculate_local_sensitivity(t, u, x0, px, n_samples) 
                 S_n.append(s_n) 
         n_valid = len(S_n)
@@ -177,6 +179,7 @@ class ParameterEstimation:
             ax.plot(i * np.ones_like(self.norm_s_i[:,i]), self.norm_s_i[:,i], '.' + color, alpha=0.2)
         ax.semilogy(xi, self.S_med_i, '-s'+ color)
         ax.set_xticks(xi, labels=self.p_i_label)
+        ax.set_xlim(xi[0]-0.5,xi[-1]+0.5)
         if xlabel_angle > 0: 
             plt.setp(ax.get_xticklabels(), rotation=xlabel_angle, ha="right",
                     rotation_mode="anchor")
@@ -184,21 +187,26 @@ class ParameterEstimation:
         fig.tight_layout()
         return fig, ax
     
-    def plot_colinearity_map(self, fig=None, ax=None, cmap='viridis', xlabel_angle=45, figsize=(4,3)):
+    def plot_colinearity_map(self, fig=None, ax=None, cmap='viridis', xlabel_angle=45, figsize=(4,3), write_text=True):
         if not ax: 
             fig, ax = plt.subplots(figsize=figsize)
         xi = [i for i in range(len(self.unknown_p_list))]
         im = ax.pcolormesh(xi, xi, self.cosPhi_med_ij[:,:], vmin=0, vmax=1, cmap=plt.colormaps[cmap])
-        for i in xi:
-            for j in xi:
-                text = ax.text(j, i, '{:.2f}'.format(self.cosPhi_med_ij[i,j]),
-                            ha="center", va="center", color="w")
+        if write_text:
+            for i in xi:
+                for j in xi:
+                    text = ax.text(j, i, '{:.2f}'.format(self.cosPhi_med_ij[i,j]),
+                                ha="center", va="center", color="w")
         fig.colorbar(im, ax=ax)
         ax.set_xticks(xi, labels=self.p_i_label)
         ax.set_yticks(xi, labels=self.p_i_label)
+        
+        ax.tick_params(top=True, bottom=False,
+                   labeltop=True, labelbottom=False)
+
         if xlabel_angle > 0: 
-            plt.setp(ax.get_xticklabels(), rotation=xlabel_angle, ha="right",
-                    rotation_mode="anchor")
+            plt.setp(ax.get_xticklabels(), rotation=xlabel_angle, ha="center", va='bottom',
+                    rotation_mode="default")
         plt.gca().set_aspect('equal')
         fig.tight_layout()
         return fig, ax
