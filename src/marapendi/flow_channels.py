@@ -7,7 +7,7 @@ import cantera as ct
 
 from .gas_composition import species_indexes
 from .porous_layers import PorousLayer
-from .transport import ChannelGasResistanceModel
+from .transport_models import ChannelGasResistanceModel
 
 @dataclass 
 class ChannelConditions:  
@@ -50,6 +50,7 @@ class FlowChannel(PorousLayer):
     width: float = 1e-3
     height: float = 1e-3
     length: float = 100e-3
+    channel_land_ratio: float = 1.
     n_parallel: int = 14
     transport_resistance_model: ChannelGasResistanceModel = field(default_factory=ChannelGasResistanceModel)
 
@@ -61,7 +62,8 @@ class FlowChannel(PorousLayer):
         self.channel_flow_section = self.width * self.height
         self.half_width = 0.5 * self.width
         self.total_flow_section = self.n_parallel * self.channel_flow_section
-        
+        PorousLayer.__post_init__(self)
+
     def set_inlet_stoichiometry(self, stoichiometry):
         self.inlet_stoichiometry = stoichiometry
 
