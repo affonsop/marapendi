@@ -16,8 +16,49 @@ from .transport_models import DarcyLiquidTransportModel
 from .water import water_molar_volume
 
 
+from dataclasses import dataclass, field
+
 @dataclass
 class FuelCellSide:
+    """
+    A class representing one side (anode or cathode) of a PEM fuel cell, 
+    composed of porous layers (catalyst layer, microporous layer, gas diffusion layer)
+    and flow channels. This class provides methods to calculate transport and 
+    thermal resistances, as well as water management parameters.
+
+    Attributes
+    ----------
+    cl : CatalystLayer
+        Catalyst layer object (defaults to PtCCatalystLayer).
+    gdl : PorousLayer
+        Gas diffusion layer object.
+    mpl : PorousLayer, optional
+        Microporous layer object.
+    ch : FlowChannel
+        Flow channel object for gas transport.
+    has_mpl : bool
+        Whether this side includes a microporous layer.
+    membrane_surface_water_content : float
+        Water content at the membrane surface (lambda).
+    thermal_contact_resistance : float
+        Additional thermal contact resistance at interfaces.
+
+    Derived Attributes
+    ------------------
+    porous_layers : list of PorousLayer
+        Ordered list of porous layers (includes mpl if has_mpl is True).
+    components : list
+        List of all components including porous layers and channel.
+    o2_transport_resistance : float
+        Cached value for O2 transport resistance (initialized as 0).
+    h2ov_transport_resistance : float
+        Cached value for H2O vapor transport resistance (initialized as 0).
+    h2_transport_resistance : float
+        Cached value for H2 transport resistance (initialized as 0).
+    liquid_water_flux : float 
+        Cached value for liquid water flux from the catalyst layer to the channel (initialized as 0).
+    """
+
     cl: PorousLayer = field(default_factory=PtCCatalystLayer) 
     gdl: PorousLayer = field(default_factory=PorousLayer)
     mpl: PorousLayer = field(default_factory=PorousLayer)
@@ -27,21 +68,50 @@ class FuelCellSide:
     thermal_contact_resistance: float = 0 
 
     def __post_init__(self): 
+        """
+        Post-initialization to update the ordered list of porous layers and all components.
+        Sets up porous_layers and components lists based on whether MPL is present.
+        """
         self.porous_layers = [self.cl, self.mpl, self.gdl] if self.has_mpl else [self.cl, self.gdl]
         self.components = self.porous_layers + [self.ch]
         self.o2_transport_resistance = 0
         self.h2ov_transport_resistance = 0
         self.h2_transport_resistance = 0   
+        self.liquid_water_flux = 0
 
-    def set_catalyst_layer(self,cl): 
+    def set_catalyst_layer(self, cl): 
+        """
+        Set a new catalyst layer and update internal component structure.
+
+        Parameters
+        ----------
+        cl : PorousLayer
+            The new catalyst layer object.
+        """
         self.cl = cl 
         self.__post_init__()
     
     def set_gas_diffusion_layer(self, gdl): 
+        """
+        Set a new gas diffusion layer and update internal component structure.
+
+        Parameters
+        ----------
+        gdl : PorousLayer
+            The new gas diffusion layer object.
+        """
         self.gdl = gdl
         self.__post_init__()
     
     def set_channel(self, ch): 
+        """
+        Set a new flow channel and update internal component structure.
+
+        Parameters
+        ----------
+        ch : FlowChannel
+            The new flow channel object.
+        """
         self.ch = ch 
         self.__post_init__()
 
@@ -52,15 +122,15 @@ class FuelCellSide:
         Parameters
         ----------
         species : str
-            The gas species for which transport resistance is calculated (e.g., 'o2', 'h2o').
+            The gas species ('o2', 'h2o', etc.) for which to compute resistance.
         ionomer_water_content : float, optional
-            The water content in the ionomer, used for O2 film resistance calculation (default is 11).
+            Water content in the ionomer (lambda), relevant for O2 film resistance (default is 11).
 
         Returns
         -------
         float
-            The total gas transport resistance, including contributions from porous layers,
-            channel, and ionomer film for O2.
+            The total gas transport resistance, including porous layers,
+            channel, and O2 ionomer film resistance if applicable.
         """
         return (sum(layer.gas_transport_resistance(species) for layer in self.porous_layers) +
                 self.ch.gas_transport_resistance(species) + 
@@ -68,40 +138,46 @@ class FuelCellSide:
 
     def heat_transfer_resistance(self): 
         """
-        Calculate the total heat transfer resistance.
+        Calculate the total heat transfer resistance across this side.
 
         Returns
         -------
         float
-            The sum of heat transfer resistances from all porous layers and thermal contact resistance.
+            Total heat transfer resistance, summing all porous layers and 
+            the thermal contact resistance.
         """
         return sum(layer.thermal_resistance() for layer in self.porous_layers) + self.thermal_contact_resistance
                 
     def calculate_water_saturation(self): 
         """
-        Calculate the water saturation for each porous layer.
+        Compute and update the water saturation in each porous layer.
 
-        Updates
-        -------
-        Each layer's `water_saturation` attribute is updated based on the liquid flux and 
-        equivalent flow resistance.
+        Notes
+        -----
+        This method updates each layer's `water_saturation` attribute based on 
+        the liquid flux and upstream capillary pressures. It assumes that 
+        `self.liquid_flux` has been set externally.
         """
         self.gdl.liq_transport_model.calculate_water_saturation(self.gdl, self.liquid_flux, upstream_capillary_pressure=0)
-        self.cl.liq_transport_model.calculate_water_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
+        if self.has_mpl: 
+             self.mpl.liq_transport_model.calculate_water_saturation(self.gdl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
+             self.cl.liq_transport_model.calculate_water_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.mpl.downstream_capillary_pressure)
+        else:
+            self.cl.liq_transport_model.calculate_water_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
 
-    
     def calculate_equivalent_flow_resistance(self): 
         """
-        Compute the equivalent flow resistances for each layer.
+        Compute and update equivalent flow resistances for each porous layer.
 
         Returns
         -------
         float
-            The total flow resistance considering all porous layers.
+            The total equivalent flow resistance across all porous layers.
 
-        Updates
-        -------
-        Each layer's `equivalent_flow_resistance` attribute is updated iteratively.
+        Notes
+        -----
+        Updates each layer's `equivalent_flow_resistance` attribute 
+        based on its saturation-dependent flow resistance.
         """
         total_equivalent_flow_resistance = 0 
         for k, layer in enumerate(self.porous_layers[::-1]): 
@@ -111,18 +187,18 @@ class FuelCellSide:
 
     def max_water_vapor_removal(self):
         """
-        Calculate the maximum amount of water vapor that can be removed.
-        Considers the dry water vapor transport resistance. 
+        Calculate the maximum removable water vapor concentration.
 
         Returns
         -------
         float
-            The maximum removable water vapor concentration, based on the difference
-            between the vapor concentration for a saturated CL and the gas flow channel.
+            The maximum amount of water vapor that can be removed, 
+            computed from the difference between the saturation 
+            concentration at the CL and the vapor concentration 
+            in the gas flow channel, divided by the vapor transport resistance.
         """
         return ((self.cl.saturation_concentration() - self.ch.vapor_concentration()) 
-                / self.gas_transport_resistance('h2o')) 
-    
+                / self.gas_transport_resistance('h2o'))
 
 @dataclass
 class FuelCell: 
