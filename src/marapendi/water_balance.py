@@ -5,17 +5,40 @@ from marapendi.tools import calculate_arrhenius_term
 
 @dataclass
 class MembraneWaterBalanceModel:
+    """
+    A class representing a membrane water balance model with various parameters related to water diffusivity and absorption.
+
+    Attributes
+    ----------
+    reference_water_diffusivity : float, optional
+        Reference value for water diffusivity, in m2/s (default is 4.3e-10).
+    reference_absorption_coefficient : float, optional
+        Reference value for the absorption coefficient (default is 1e-5).
+    reference_temperature : float, optional
+        Reference temperature for calculations, in Kelvin (default is 353.15 K).
+    water_diffusivity_activation_energy : float, optional
+        Activation energy for water diffusivity, in J/kmol (default is 20e6).
+    water_absorption_activation_energy : float, optional
+        Activation energy for water absorption, in J/kmol (default is 20e6).
+    sorption_activity_driving_force : bool, optional
+        Boolean flag indicating whether water activity is the driving force for water absorption (default is False).
+        If false, water content difference is considered as the driving force. 
+    eod_parallel_to_sorption : bool, optional
+        Boolean flag indicating if electro-osmotic drag is parallel to water absorption/desorption (default is False).
+        If True, electro-osmotic drag is added to the water absorption flux on the RHS of the water balance boundary conditions.  
+
+    Notes
+    -----
+    The class is based on the equations and assumptions in Ferrara et al. (2018), while accounting 
+    for gas transport resistance and non-equilibrium conditions at the membrane interface.
+    """
     reference_water_diffusivity: float = 4.3e-10
     reference_absorption_coefficient: float = 1e-5
     reference_temperature: float = 353.15
     water_diffusivity_activation_energy: float = 20e6
     water_absorption_activation_energy: float = 20e6
-    sorption_activity_driving_force: bool = True
-    # Eq. 31b in Ferrara et al. (2018), equal to 0.2 for Nafion and water contents above 5
-    # This assumption tends to overestimate water diffusivity and therefore backdiffusion for 
-    # dry membranes. 
-    gamma_function_ferrara: float = 1 # Actually looking into fig. 4a, we have D ~ 3.6e-10 m2/s, which would correspond to Gamma = 1. 
-    eod_parallel_to_sorption: bool = True                            
+    sorption_activity_driving_force: bool = False
+    eod_parallel_to_sorption: bool = False                            
     
     def calculate_water_absorption_coefficient(self, temperature): 
         """
