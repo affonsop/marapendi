@@ -7,7 +7,7 @@ import cantera as ct
 from dataclasses import dataclass, field
 from marapendi.tools import calculate_arrhenius_term
 from marapendi.water import water_molar_volume
-from marapendi.water_balance import MembraneWaterBalanceModel
+from marapendi.water_balance_models import MembraneWaterBalanceModel
 from marapendi.membrane_permeation_models import HydrogenPermeationModel 
 
 @dataclass

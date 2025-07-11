@@ -11,5 +11,5 @@ from .transport import *
 from .estimation import *
 from .electrolyte import *
 from .ionomer import *
-from .water_balance import *
+from .water_balance_models import *
 from .membrane_permeation_models import * 
