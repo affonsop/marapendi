@@ -11,7 +11,7 @@ from .porous_layers import PorousLayer, PtCCatalystLayer
 from .flow_channels import FlowChannel
 from .membrane import Membrane
 from .gas_composition import species_indexes 
-from .transport import DarcyLiquidTransportModel
+from .transport_models import DarcyLiquidTransportModel
 from .water import water_molar_volume
 
 
@@ -22,7 +22,6 @@ class FuelCellSide:
     mpl: PorousLayer = field(default_factory=PorousLayer)
     ch: FlowChannel = field(default_factory=FlowChannel)
     has_mpl: bool = False
-    liq_transport_model: DarcyLiquidTransportModel = field(default_factory=DarcyLiquidTransportModel)
     membrane_surface_water_content: float = 0 
     thermal_contact_resistance: float = 0 
 
@@ -86,8 +85,9 @@ class FuelCellSide:
         Each layer's `water_saturation` attribute is updated based on the liquid flux and 
         equivalent flow resistance.
         """
-        for layer in self.porous_layers: 
-            layer.liquid_saturation = self.liq_transport_model.calculate_water_saturation(self.liquid_flux, layer.equivalent_flow_resistance)
+        self.gdl.liq_transport_model.calculate_water_saturation(self.gdl, self.liquid_flux, upstream_capillary_pressure=0)
+        self.cl.liq_transport_model.calculate_water_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
+
     
     def calculate_equivalent_flow_resistance(self): 
         """
@@ -104,9 +104,8 @@ class FuelCellSide:
         """
         total_equivalent_flow_resistance = 0 
         for k, layer in enumerate(self.porous_layers[::-1]): 
-            layer_resistance = layer.saturation_flow_resistance()
-            layer.equivalent_flow_resistance = total_equivalent_flow_resistance + layer_resistance / 2
-            total_equivalent_flow_resistance += layer_resistance
+            layer.equivalent_flow_resistance = layer.saturation_flow_resistance
+            total_equivalent_flow_resistance += layer.equivalent_flow_resistance
         return total_equivalent_flow_resistance
 
     def max_water_vapor_removal(self):
@@ -247,7 +246,7 @@ class FuelCell:
         and the electrical resistance of the cell components. It is an important parameter in 
         electrochemical impedance spectroscopy (EIS) measurements.
         """
-        return self.membrane.proton_resistance(self.membrane.water_content, self.membrane.temperature) + self.electrical_resistance
+        return self.membrane.proton_resistance(self.membrane.water_content, self.membrane.temperature, water_saturation=self.ca.cl.liquid_saturation) + self.electrical_resistance
 
     def ohmic_overpotential(self): 
         """
@@ -389,7 +388,9 @@ class FuelCell:
         """
         self.ca.h2ov_transport_resistance = self.ca.gas_transport_resistance('h2o')
         self.an.h2ov_transport_resistance = self.an.gas_transport_resistance('h2o')
-        self.membrane.water_balance_model.water_balance(self)
+        self.membrane.water_balance_model.solve_water_balance(self)
+        self.ca.cl.set_ionomer_wet_properties(self.ca.cl.ionomer_water_content, self.ca.cl.temperature)
+        self.an.cl.set_ionomer_wet_properties(self.an.cl.ionomer_water_content, self.an.cl.temperature)
         self.ca.calculate_equivalent_flow_resistance()
         self.ca.calculate_water_saturation()
         self.ca.h2ov_transport_resistance = self.ca.gas_transport_resistance('h2o')
@@ -575,6 +576,7 @@ class FuelCell:
                 layer.liquid_saturation = 0 
 
         for cell_side, conditions in zip((self.ca, self.an), (cathode_conditions, anode_conditions)): 
+            cell_side.cl.set_ionomer_wet_properties(10, self.temperature)
             for component in cell_side.components: 
                 cell_side.electrolyte = conditions.inlet_liquid
                 cell_side.electrolyte.set_temperature(self.membrane.temperature)
