@@ -31,6 +31,10 @@ class MembraneWaterBalanceModel:
     -----
     The class is based on the equations and assumptions in Ferrara et al. (2018), while accounting 
     for gas transport resistance and non-equilibrium conditions at the membrane interface.
+
+    References:
+    -----------
+    Ferrara, A. et al. J. Power Sources 390, 197–207 (2018).
     """
     reference_water_diffusivity: float = 4.3e-10
     reference_absorption_coefficient: float = 1e-5
