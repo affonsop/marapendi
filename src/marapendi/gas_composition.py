@@ -198,15 +198,40 @@ class GasComposition:
         self.X = dry_mole_fractions * (1 - vapor_mole_fractions[...,index_h2ov, np.newaxis]) + vapor_mole_fractions
         self.relative_humidity = self.pressure * vapor_mole_fractions[...,index_h2ov] / self.saturation_pressure
       
-    def species_diffusion_coefficient(self, species): 
-        if species == 'o2': 
-            reference_diffusion_coeff = 0.26652e-4 
-        elif species == 'h2': 
-            reference_diffusion_coeff = 1.005e-4
-        elif species == 'h2o':
-            if np.max(self.X[...,index_h2]) > 0: 
-                reference_diffusion_coeff = 1.005e-4
-            else: 
-                reference_diffusion_coeff = 0.2982e-4
+    
+    def species_diffusion_coefficient(self, species):
+        """
+        Calculate the binary diffusion coefficient for a given species in the gas phase.
 
-        return reference_diffusion_coeff * (self.temperature / 333.15) ** 1.5 * (101325 / self.pressure)
+        Uses empirical correlations based on reference values adjusted for
+        temperature and pressure. Data from Vetter and Schumacher (2019).
+
+        Parameters
+        ----------
+        species : str
+            The chemical species ('o2', 'h2', or 'h2o') for which to compute the diffusion coefficient.
+
+        Returns
+        -------
+        float
+            The adjusted diffusion coefficient [m^2/s].
+
+        Reference
+        ----------
+        Vetter, R. & Schumacher, J. O. Comput. Phys. Commun. 234, 223–234 (2019).
+        """
+        # Set the reference diffusion coefficient based on species
+        if species == 'o2':
+            reference_diffusion_coeff = 0.28e-4  # [m^2/s]
+        elif species == 'h2':
+            reference_diffusion_coeff = 1.24e-4
+        elif species == 'h2o':
+            # If H2 is present, assume H2-H2O; else O2-H2O
+            if np.max(self.X[..., index_h2]) > 0:
+                reference_diffusion_coeff = 1.24e-4
+            else:
+                reference_diffusion_coeff = 0.36e-4
+
+        # Apply temperature and pressure correction
+        # Fick's law adjustment: D ~ T^1.5 / P
+        return reference_diffusion_coeff * (self.temperature / 353.15) ** 1.5 * (100000 / self.pressure)
