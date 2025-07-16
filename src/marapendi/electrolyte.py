@@ -49,7 +49,6 @@ class KOH_solution(ElectrolyteSolution):
     def __post_init__(self):
         super().__post_init__() 
         self.electrolyte_molecular_weight = 56.105
-    
 
 
     def calculate_density(self, weight_percent, temperature): 
@@ -78,7 +77,6 @@ class KOH_solution(ElectrolyteSolution):
                         low_temperature_conductivity, 
                         high_temperature_conductivity)
                  
-
     def calculate_solution_saturation_pressure(self, molality, water_sat_pressure):
         # Eq. 6 in Balej (1985)
         molality_mol_per_kg = molality * 1000.
