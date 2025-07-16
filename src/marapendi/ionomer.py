@@ -39,7 +39,7 @@ class PFSAIonomer(CatalystLayerIonomer):
     conductivity_correction: float = 1
     conductivity_exp: float = 1.5
     hydrated_proton_conductivity: float = 11 # S/m
-    proton_conductivity_activation_energy: float = 11e6
+    conductivity_activation_energy: float = 11e6
     hydrated_o2_diffusion: float = 1.14698e-10*14**0.708
     o2_diffusion_exponent: float = 0.708
     o2_diffusion_activation_energy: float = 24e6
@@ -59,7 +59,7 @@ class PFSAIonomer(CatalystLayerIonomer):
 
     def proton_conductivity(self, water_content, temperature):
         fv = self.water_vol_fraction(water_content ,water_molar_volume(temperature))
-        return self.conductivity_correction * 50 * (np.maximum(fv, 0.061) - 0.06 ) ** self.conductivity_exp * calculate_arrhenius_term(self.proton_conductivity_activation_energy, temperature, 303.15)
+        return self.conductivity_correction * 50 * (np.maximum(fv, 0.11) - 0.1 ) ** self.conductivity_exp * calculate_arrhenius_term(self.conductivity_activation_energy, temperature, 298.15)
     
     def equilibrium_water_content(self, rh):
         return 21.669 * rh ** 3 - 27.692* rh **2 + 17.624 * rh + 0.688 # Fit from Jinnouchi et al. (2021), sup. material
