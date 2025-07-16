@@ -1,22 +1,47 @@
 from dataclasses import dataclass, field
 import numpy as np
-from .water import water_saturation_pressure 
+from .water import water_saturation_pressure
 
 @dataclass
-class ElectrolyteSolution(): 
+class ElectrolyteSolution():
+    """
+    Class to represent an electrolyte solution, calculating various thermophysical
+    and transport properties based on temperature and concentration.
+
+    Attributes
+    ----------
+    temperature : float
+        Temperature of the solution [K].
+    molality : float
+        Molality of the solution [kmol/kg].
+    weight_percent : float
+        Weight percent concentration [0-1].
+    electrolyte_molecular_weight : float
+        Molecular weight of the electrolyte [kg/kmol].
+    """
+
     temperature: float = 298.15
-    molality: float = 0 
+    molality: float = 0
     weight_percent: float = 0
     electrolyte_molecular_weight: float = 56.105
 
-    def __post_init__(self): 
+    def __post_init__(self):
+        """Initialize and compute dependent properties."""
         if self.molality == 0:
             self.molality = self.calculate_molality(self.weight_percent)
         elif self.weight_percent == 0:
             self.weight_percent = self.calculate_weight_percent(self.molality)
         self.set_temperature(self.temperature)
 
-    def set_temperature(self, temperature): 
+    def set_temperature(self, temperature):
+        """
+        Set temperature and update dependent properties.
+
+        Parameters
+        ----------
+        temperature : float
+            New temperature [K].
+        """
         self.temperature = temperature
         self.density = self.calculate_density(self.weight_percent, temperature)
         self.molarity = self.calculate_molarity(self.weight_percent, temperature)
@@ -24,70 +49,166 @@ class ElectrolyteSolution():
         self.water_sat_pressure = water_saturation_pressure(temperature)
         self.solution_sat_pressure = self.calculate_solution_saturation_pressure(self.molality, self.water_sat_pressure)
 
-    def calculate_weight_percent(self, molality): 
+    def calculate_weight_percent(self, molality):
+        """
+        Calculate weight percent from molality.
+
+        Parameters
+        ----------
+        molality : float
+            Molality [kmol/kg].
+
+        Returns
+        -------
+        float
+            Weight percent [0-1].
+        """
         return 100. * self.electrolyte_molecular_weight * molality / (1 + self.electrolyte_molecular_weight * molality)
 
-    def calculate_molality(self, weight_percent): 
-        # In kmol/kg
+    def calculate_molality(self, weight_percent):
+        """
+        Calculate molality from weight percent.
+
+        Parameters
+        ----------
+        weight_percent : float
+            Weight percent [0-1].
+
+        Returns
+        -------
+        float
+            Molality [kmol/kg].
+        """
         return weight_percent / self.electrolyte_molecular_weight / (100 - weight_percent)
-    
-    def calculate_molarity(self, weight_percent, temperature): 
-        # In kmol/m3
-        return weight_percent/100. * self.calculate_density(weight_percent, temperature) / self.electrolyte_molecular_weight
-    
+
+    def calculate_molarity(self, weight_percent, temperature):
+        """
+        Calculate molarity of the solution.
+
+        Parameters
+        ----------
+        weight_percent : float
+            Weight percent [0-1].
+        temperature : float
+            Temperature [K].
+
+        Returns
+        -------
+        float
+            Molarity [kmol/m³].
+        """
+        return weight_percent / 100. * self.calculate_density(weight_percent, temperature) / self.electrolyte_molecular_weight
+
     def calculate_ionic_conductivity(self, molarity, weight_percent, temperature):
+        """Return a default very low ionic conductivity, override in subclasses."""
         return 1e-12
 
-    def calculate_density(self, weight_percent, temperature): 
-        return 1000. 
-    
-    def calculate_solution_saturation_pressure(self, molality, water_sat_pressure): 
+    def calculate_density(self, weight_percent, temperature):
+        """Return a default water-like density, override in subclasses."""
+        return 1000.
+
+    def calculate_solution_saturation_pressure(self, molality, water_sat_pressure):
+        """Return water saturation pressure by default, override in subclasses."""
         return water_sat_pressure
 
 @dataclass
-class KOH_solution(ElectrolyteSolution): 
+class KOH_solution(ElectrolyteSolution):
+    """
+    Specialized class for aqueous KOH solutions, with empirical correlations
+    for density, ionic conductivity and vapor pressure lowering.
+    """
+    
     def __post_init__(self):
-        super().__post_init__() 
+        super().__post_init__()
         self.electrolyte_molecular_weight = 56.105
 
+    def calculate_density(self, weight_percent, temperature):
+        """
+        Calculate solution density using correlation from Hodges et al. (2023).
 
-    def calculate_density(self, weight_percent, temperature): 
-        # Eq. 4 in Hodges et al. (2023)
+        Parameters
+        ----------
+        weight_percent : float
+            Weight percent [0-1].
+        temperature : float
+            Temperature [K].
+
+        Returns
+        -------
+        float
+            Density [kg/m³].
+        
+        Reference
+        ---------
+        Hodges, A. et al. J. Chem. Eng. Data 68, 1485–1506 (2023).
+        """
         T = temperature - 273.15
-        return (5.1998e-6 * T ** 3 -  
-         39.771334e-4 * T ** 2 -
-         848.089182e-4 * T + 
-         1001.5409980109) * np.exp(0.0086 * weight_percent)
+        return (5.1998e-6 * T ** 3 - 39.771334e-4 * T ** 2 -
+                848.089182e-4 * T + 1001.5409980109) * np.exp(0.0086 * weight_percent)
 
-    def calculate_ionic_conductivity(self, molarity, weight_percent, temperature):  
-        # Eq. 5 and 6 in Hodges et al. (2023)
-        low_temperature_conductivity = 100 * molarity * (-2.041 - 0.0028 * molarity +
-                                                    0.005332 * temperature + 
-                                                    207.2 / temperature + 
-                                                    0.001043 * molarity ** 2 -
-                                                    3e-7 * molarity  * temperature ** 2)
-        high_temperature_conductivity =  100 * weight_percent * (2.2204e-3 -
-                                                           1.3077e-3 * weight_percent + 
-                                                           3.3647e-4 * temperature - 
-                                                           10.7021 / temperature + 
-                                                           7.0101e-6 * weight_percent ** 2 - 
-                                                           3.2033e-9 * weight_percent * temperature ** 2)
-    
-        return np.where(temperature <= 353.15, 
-                        low_temperature_conductivity, 
-                        high_temperature_conductivity)
-                 
+    def calculate_ionic_conductivity(self, molarity, weight_percent, temperature):
+        """
+        Calculate ionic conductivity using correlations from Hodges et al. (2023).
+
+        Parameters
+        ----------
+        molarity : float
+            Molarity [kmol/m³].
+        weight_percent : float
+            Weight percent [0-1].
+        temperature : float
+            Temperature [K].
+
+        Returns
+        -------
+        float
+            Ionic conductivity [S/m].
+
+        Reference
+        ---------
+        Hodges, A. et al. J. Chem. Eng. Data 68, 1485–1506 (2023).
+        """
+        low_temp_cond = 100 * molarity * (-2.041 - 0.0028 * molarity +
+            0.005332 * temperature + 207.2 / temperature +
+            0.001043 * molarity ** 2 - 3e-7 * molarity * temperature ** 2)
+
+        high_temp_cond = 100 * weight_percent * (2.2204e-3 - 1.3077e-3 * weight_percent +
+            3.3647e-4 * temperature - 10.7021 / temperature +
+            7.0101e-6 * weight_percent ** 2 - 3.2033e-9 * weight_percent * temperature ** 2)
+
+        return np.where(temperature <= 353.15, low_temp_cond, high_temp_cond)
+
     def calculate_solution_saturation_pressure(self, molality, water_sat_pressure):
-        # Eq. 6 in Balej (1985)
-        molality_mol_per_kg = molality * 1000.
-        log_p_sat = np.log10(water_sat_pressure/1e5)
-        return 10 ** (5 + log_p_sat - molality_mol_per_kg  * (
-                (0.01508 + 0.0012062 * log_p_sat) + 
-                (0.0016788 - 5.6024e-4 * log_p_sat) * molality_mol_per_kg -
-                (2.25887e-5 - 7.8228e-6 * log_p_sat) * molality_mol_per_kg ** 2))
-    
-KOH_1M = KOH_solution(temperature=298.15,weight_percent=5.3732)
-KOH_2M = KOH_solution(temperature=298.15,weight_percent=10.3)
-KOH_5M = KOH_solution(temperature=298.15,weight_percent=23.072)
+        """
+        Calculate vapor pressure lowering using correlation from Balej (1985).
+        Used to compute the water activity of the electrolyte solution. 
+
+        Parameters
+        ----------
+        molality : float
+            Molality [kmol/kg].
+        water_sat_pressure : float
+            Pure water saturation pressure [Pa].
+
+        Returns
+        -------
+        float
+            Solution saturation pressure [Pa].
+        
+        Reference
+        --------- 
+        Balej, J. International Journal of Hydrogen Energy 10, 233–243 (1985).
+        """
+        m_mol_per_kg = molality * 1000.
+        log_p_sat = np.log10(water_sat_pressure / 1e5)
+        return 10 ** (5 + log_p_sat - m_mol_per_kg * (
+            (0.01508 + 0.0012062 * log_p_sat) +
+            (0.0016788 - 5.6024e-4 * log_p_sat) * m_mol_per_kg -
+            (2.25887e-5 - 7.8228e-6 * log_p_sat) * m_mol_per_kg ** 2))
+
+# Predefined solutions
+KOH_1M = KOH_solution(temperature=298.15, weight_percent=5.3732)
+KOH_2M = KOH_solution(temperature=298.15, weight_percent=10.3)
+KOH_5M = KOH_solution(temperature=298.15, weight_percent=23.072)
 KOH_20_wt_percent = KOH_solution(temperature=298.15, weight_percent=20.)
 KOH_45_wt_percent = KOH_solution(temperature=298.15, weight_percent=45.)
