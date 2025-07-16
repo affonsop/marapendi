@@ -87,7 +87,7 @@ class BakerChannelGasResistanceModel:
         return (self.molecular_diffusion_resistance(channel, diffusion_coefficient) +
                 self.convection_resistance(channel, volume_flow_rate))
 
-
+@dataclass
 class ChannelGasResistanceModel:
     """
     Channel gas transport resistance model using Sherwood number approach.
@@ -165,8 +165,7 @@ class ChannelGasResistanceModel:
         """
         return (self.molecular_diffusion_resistance(channel, diffusion_coefficient) +
                 self.convection_resistance(channel, volume_flow_rate))
-
-
+    
 @dataclass
 class PorousGasResistanceModel:
     """
