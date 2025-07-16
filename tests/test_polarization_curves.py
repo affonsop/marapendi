@@ -57,9 +57,6 @@ def fuel_cell(cathode_conditions, anode_conditions):
                 n_parallel=20,
                 reactant='o2', 
             ),
-            liq_transport_model=mrpd.DarcyLiquidTransportModel(
-                dry_wet_transition_parameter=0.2
-            ),
             thermal_contact_resistance=2e-4,
         ),
         an = mrpd.FuelCellSide(
@@ -88,7 +85,7 @@ def fuel_cell(cathode_conditions, anode_conditions):
             h2_permeation_model=mrpd.HydrogenPermeationModel(
                 permeability_correction_factor=1
             ), 
-            water_balance_model=mrpd.SimpleMembraneWaterBalanceModel()
+            water_balance_model=mrpd.MembraneWaterBalanceModel()
         )
     )
     

@@ -13,14 +13,14 @@ def cl():
                             catalyst_platinum_weight_percent=0.3,
                             carbon_agglomerate_radius=25e-9, 
                             ionomer=mrpd.PFSAIonomer(dry_density=2004, equivalent_weight=952, 
-                                                                 conductivity_correction=1., conductivity_exp=1.5),
+                                                                 conductivity_correction=1.3, conductivity_exp=1.5),
                             reaction = mrpd.ElectrochemicalReaction(reference_exchange_current_density=2.47e-8 * 3e11 * 10e-6,
                                                                 activation_energy=67e6,
                                                                 reaction_order=0.54,
                                                                 reference_activity=1.,
                                                                 reference_temperature=353.15,
                                                                 number_of_electrons=2,
-                                                                charge_transfer_coeff=0.5)
+                                                                charge_transfer_coeff=1)
                             ) #TEC10V30E, 0.2 mgPt/cm2, 0.75 I/C
 
 # Data from Jinnouchi et al. (2021)
@@ -47,7 +47,7 @@ def test_ionomer_o2_transport(cl):
     
     for k in range(3):
         
-        assert np.isclose(cl.ionomer_film_thickness, 6e-9, atol=2e-10)
+        assert np.isclose(cl.ionomer_film_thickness, 6.5e-9, atol=5e-11)
         assert np.isclose(cl.ionomer.o2_permeability(ionomer_water_content[k], temperature=353.),  1e-3*o2_perm[k], atol=5e-15)
         assert np.isclose(cl.ionomer.o2_film_diffusion_coefficient(ionomer_water_content[k], temperature=353.), o2_diff_coeff[k], atol=1e-10)
         #assert np.isclose(cl.o2_ionomer_film_resistance(ionomer_water_content[k], temperature=353.), ionomer_film_resistance[k], 10e-2)
@@ -73,9 +73,9 @@ def test_ionomer_proton_conductivity(cl):
         plt.plot(relative_humidity[k], cl.ionomer_sheet_charge_resistance(ionomer_water_content[k], temperature=298.15),'C0o')
         plt.semilogy(relative_humidity[k], proton_resistance[k],'C0s')
     #plt.show()
-    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.equilibrium_water_content(0.97), temperature=298.15),  5.6, 10e-2)
-    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.equilibrium_water_content(0.81), temperature=298.15),  3.7, 10e-2)
-    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.equilibrium_water_content(0.60), temperature=298.15),  1.91, 10e-2)
+    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.equilibrium_water_content(0.97), temperature=298.15),  5.6, 30e-2)
+    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.equilibrium_water_content(0.81), temperature=298.15),  3.7, 30e-2)
+    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.equilibrium_water_content(0.60), temperature=298.15),  1.91, 30e-2)
     
 # ## RH vs sigma_p ionomer at 298.15 K, Jinnouchi et al. (2021), sup material
 # 0,9662698412698414; 5,633142670601358

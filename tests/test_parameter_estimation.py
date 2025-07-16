@@ -71,9 +71,6 @@ def create_fuel_cell(params):
                 n_parallel=20,
                 reactant='o2', 
             ),
-            liq_transport_model=mrpd.DarcyLiquidTransportModel(
-                dry_wet_transition_parameter=0.2
-            ),
             thermal_contact_resistance=2e-4,
         ),
         an = mrpd.FuelCellSide(
@@ -102,7 +99,7 @@ def create_fuel_cell(params):
             h2_permeation_model=mrpd.HydrogenPermeationModel(
                 permeability_correction_factor=params['crossover-correction']
             ), 
-            water_balance_model=mrpd.SimpleMembraneWaterBalanceModel()
+            water_balance_model=mrpd.MembraneWaterBalanceModel()
         )
     )
     return fc
@@ -125,7 +122,7 @@ simulated_data *= (1 + .00 * rng.standard_normal(len(simulated_data)))
 
 @pytest.fixture
 def estimator(): 
-    return mrpd.ParameterEstimationSteadyState(h, {'ecsa':70e3, 'crossover-correction':1.})
+    return mrpd.SteadyStateModel(h, {'ecsa':70e3, 'crossover-correction':1.})
 
 def test_model_to_model_validation(estimator): 
     estimator.set_unknown_params(
@@ -140,7 +137,7 @@ def test_global_sensitivity(estimator):
     estimator.set_unknown_params(
         [('ecsa', (40e3, 80e3), True, '$ECSA$')]
     )
-    cosPhi_med_ij, norm_s_i, S_med, S_std, S_med_i, S_std_i, S_n, n_valid = estimator.compute_global_sensitivity(t=0, m=2,  check_samples=False, y_exp=simulated_data, res_limit=0.02)
+    cosPhi_med_ij, norm_s_i, S_med, S_std, S_med_i, S_std_i, S_n, n_valid = estimator.compute_global_sensitivity(t=0, m=2,  check_samples=False, y_exp=simulated_data, rmse_limit=0.02)
     fig1, ax1 = estimator.plot_global_sensitivity(xlabel_angle=0) 
     fig2, ax2 = estimator.plot_colinearity_map(xlabel_angle=0, cmap='Blues',figsize=(5,4))
     fig1.tight_layout()

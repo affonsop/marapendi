@@ -12,11 +12,11 @@ def test_reversible_cell_voltage():
     assert  np.isclose(mrpd.calculate_reversible_cell_voltage(353.15, .2**0.5 * 2), 1.1805, 1e-3)
 
 def test_tafel_overpotential():
-    assert np.isclose(mrpd.calculate_tafel_overpotential(1e4,1e-3,298.15,2,0.5), 0.41412, 1e-4)
-    assert np.isclose(mrpd.calculate_tafel_overpotential(1e5,1e-3,298.15,2,0.5), 0.47328, 1e-4)
-    assert np.isclose(mrpd.calculate_tafel_overpotential(1e3,1e-4,353.15,2,0.5), 0.49051, 1e-4)
-    assert np.isclose(mrpd.calculate_tafel_overpotential(1e4,1e-3,353.15,2,0.5), 0.49051, 1e-4)
-    assert np.isclose(mrpd.calculate_tafel_overpotential(1e4,1e-3,353.15,2,1.0), 0.24525, 1e-4)
+    assert np.isclose(mrpd.calculate_tafel_overpotential(1e4,1e-3,298.15,2,1.0), 0.41412, 1e-4)
+    assert np.isclose(mrpd.calculate_tafel_overpotential(1e5,1e-3,298.15,2,1.0), 0.47328, 1e-4)
+    assert np.isclose(mrpd.calculate_tafel_overpotential(1e3,1e-4,353.15,2,1.0), 0.49051, 1e-4)
+    assert np.isclose(mrpd.calculate_tafel_overpotential(1e4,1e-3,353.15,2,1.0), 0.49051, 1e-4)
+    assert np.isclose(mrpd.calculate_tafel_overpotential(1e4,1e-3,353.15,2,2.0), 0.24525, 1e-4)
     assert np.isclose(mrpd.calculate_tafel_overpotential(1e4,1e-3,353.15,1,1.0), 0.49051, 1e-4)
     
 def test_exchange_current_density(reaction_params):

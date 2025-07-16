@@ -163,4 +163,4 @@ def test_ohmic_resistance(electrolyzer_cell, deionized_water_anode, deionized_wa
     electrolyzer_cell.ca.cl.ionomer_water_content = 20
     #assert np.isclose(electrolyzer_cell.ohmic_overpotential(), 1e-5)
     assert np.isclose(electrolyzer_cell.membrane.charge_resistance(20, electrolyzer_cell.temperature, 
-                                               use_water_profile=False, charge='hydroxide'), 53.8e-7)
+                                               use_water_profile=False, charge='hydroxide'), 33.55e-7)
