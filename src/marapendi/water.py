@@ -154,7 +154,7 @@ def water_molar_volume(temperature=300):
 def o2_water_diffusivity(temperature): 
     """
     Calculate the O2 diffusivity in liquid water at a given temperature.
-    Uses value at 298 K from Bergman et al. (2011) and Stokes–Einstein–Sutherland equation
+    Uses value at 298 K from Tsimpanogiannis et al. (2021) and Stokes–Einstein–Sutherland equation
     Parameters:
     -----------
     temperature : float, optional, default=300
@@ -163,9 +163,9 @@ def o2_water_diffusivity(temperature):
     Returns:
     --------
     float
-        Molar volume of water m³/kmol.
+        O2 diffusivity in liquid water in m2/s.
     """
-    return 2.4e-9 * temperature / 298. / water_kinematic_viscosity(temperature) * water_kinematic_viscosity(298.)
+    return 4.6e-7 * np.exp(-0.155e4/temperature)
 
 class WaterProperties:
     """
