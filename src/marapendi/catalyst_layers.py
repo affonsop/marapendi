@@ -341,7 +341,7 @@ class PtCCatalystLayer(CatalystLayer):
         """
         ionomer_pt_interface_term = (self.ionomer_k2 + 1) / (1 - self.theta_catalyst) / (self.platinum_loading * self.ecsa)
         ionomer_gas_interface_term = self.ionomer_k1 / (self.ionomer_vol_surface_area * self.thickness)
-        water_term = (self.ionomer_k3 + 1) * self.water_film_thickness / o2_water_diffusivity(temperature)
+        water_term = (self.ionomer_k3 + 1) * self.water_film_thickness / o2_water_diffusivity(temperature) / (self.ionomer_vol_surface_area * self.thickness)
         return (ionomer_gas_interface_term + ionomer_pt_interface_term) * self.o2_ionomer_film_bulk_resistance(ionomer_water_content, temperature) + water_term
       
     def activation_overpotential(self, current_density, activity):
