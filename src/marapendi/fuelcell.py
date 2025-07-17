@@ -145,7 +145,7 @@ class FuelCellSide:
             Total heat transfer resistance, summing all porous layers and 
             the thermal contact resistance.
         """
-        return sum(layer.thermal_resistance() for layer in self.porous_layers) + self.thermal_contact_resistance
+        return sum(layer.thermal_resistance() for layer in self.porous_layers if layer != self.cl) + self.thermal_contact_resistance
                 
     def calculate_water_saturation(self): 
         """
