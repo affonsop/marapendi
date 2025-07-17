@@ -262,7 +262,7 @@ class PtCCatalystLayer(CatalystLayer):
         self.ionomer_vol_surface_area = 4 * np.pi * (self.carbon_agglomerate_radius + self.ionomer_film_thickness) ** 2 * self.carbon_agglomerate_number_density
         self.ionomer_to_carbon_vol_ratio = (1 + self.ionomer_film_thickness / self.carbon_agglomerate_radius)**3 - 1
         self.effective_gas_diffusion_ratio = self.porosity ** 1.5
-
+    
     def ionomer_sheet_charge_resistance(self, ionomer_water_content, temperature, charge='proton'):
         """
         Compute ionomer film proton resistance.
@@ -307,7 +307,7 @@ class PtCCatalystLayer(CatalystLayer):
         float
             Oxygen film resistance [s/m].
         """
-        return (self.ionomer_film_thickness * self.ionomer.wet_expansion_factor(ionomer_water_content, temperature) /
+        return (self.ionomer_film_thickness /
                 (ct.gas_constant * temperature * self.ionomer.o2_permeability(ionomer_water_content, temperature)))
 
     def o2_ionomer_film_resistance(self, ionomer_water_content, temperature):
