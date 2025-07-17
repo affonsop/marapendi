@@ -151,10 +151,10 @@ def water_molar_volume(temperature=300):
     # h2o.TQ = temperature, 0 
     return  h2o_phase.molecular_weights[0] / water_density(temperature)
 
-def o2_water_diffusivity(temperature): 
+def o2_water_diffusivity(temperature=300): 
     """
     Calculate the O2 diffusivity in liquid water at a given temperature.
-    Uses value at 298 K from Tsimpanogiannis et al. (2021) and Stokes–Einstein–Sutherland equation
+    Uses value at 298 K from Tsimpanogiannis et al. (2021), table 11.
     Parameters:
     -----------
     temperature : float, optional, default=300
