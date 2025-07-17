@@ -151,6 +151,22 @@ def water_molar_volume(temperature=300):
     # h2o.TQ = temperature, 0 
     return  h2o_phase.molecular_weights[0] / water_density(temperature)
 
+def o2_water_diffusivity(temperature): 
+    """
+    Calculate the O2 diffusivity in liquid water at a given temperature.
+    Uses value at 298 K from Bergman et al. (2011) and Stokes–Einstein–Sutherland equation
+    Parameters:
+    -----------
+    temperature : float, optional, default=300
+        Temperature in Kelvin (K). Default is 300 K.
+
+    Returns:
+    --------
+    float
+        Molar volume of water m³/kmol.
+    """
+    return 2.4e-9 * temperature / 298. / water_kinematic_viscosity(temperature) * water_kinematic_viscosity(298.)
+
 class WaterProperties:
     """
     A class to hold and compute thermophysical properties of water.

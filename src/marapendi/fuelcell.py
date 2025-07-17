@@ -469,6 +469,7 @@ class FuelCell:
         self.an.cl.set_ionomer_wet_properties(self.an.cl.ionomer_water_content, self.an.cl.temperature)
         self.ca.calculate_equivalent_flow_resistance()
         self.ca.calculate_water_saturation()
+        self.ca.cl.set_water_film_thickness(self.ca.cl.liquid_saturation)
         self.ca.h2ov_transport_resistance = self.ca.gas_transport_resistance('h2o')
         self.an.h2ov_transport_resistance = self.an.gas_transport_resistance('h2o')
     

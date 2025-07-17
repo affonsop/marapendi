@@ -8,6 +8,7 @@ import cantera as ct
 from .electrochemistry import ElectrochemicalReaction 
 from .ionomer import CatalystLayerIonomer
 from .porous_layers import PorousLayer
+from .water import o2_water_diffusivity 
 
 @dataclass
 class CatalystLayer(PorousLayer):
@@ -218,6 +219,7 @@ class PtCCatalystLayer(CatalystLayer):
     omega_PtO: float = 3000e3
     ionomer_k1: float = 8.5
     ionomer_k2: float = 5.4
+    ionomer_k3: float = 5.4
     ionomer_water_content: float = 10
 
     def __post_init__(self):
@@ -246,6 +248,7 @@ class PtCCatalystLayer(CatalystLayer):
         self.carbon_agglomerate_volume = self.carbon_agglomerate_surface * self.carbon_agglomerate_radius / 3.
         self.carbon_agglomerate_number_density = self.carbon_vol_fraction / self.carbon_agglomerate_volume
         self.set_ionomer_wet_properties(self.ionomer_water_content, 300)
+        self.set_water_film_thickness(0)
         PorousLayer.__post_init__(self)
 
     
@@ -263,6 +266,10 @@ class PtCCatalystLayer(CatalystLayer):
         self.ionomer_to_carbon_vol_ratio = (1 + self.ionomer_film_thickness / self.carbon_agglomerate_radius)**3 - 1
         self.effective_gas_diffusion_ratio = self.porosity ** 1.5
     
+    def set_water_film_thickness(self, water_saturation): 
+        ionomer_radius = self.carbon_agglomerate_radius + self.ionomer_film_thickness 
+        self.water_film_thickness = (water_saturation * self.porosity * self.carbon_agglomerate_radius ** 3/ self.carbon_vol_fraction + ionomer_radius ** 3 ) ** (1/3) - ionomer_radius
+
     def ionomer_sheet_charge_resistance(self, ionomer_water_content, temperature, charge='proton'):
         """
         Compute ionomer film proton resistance.
@@ -334,7 +341,8 @@ class PtCCatalystLayer(CatalystLayer):
         """
         ionomer_pt_interface_term = (self.ionomer_k2 + 1) / (1 - self.theta_catalyst) / (self.platinum_loading * self.ecsa)
         ionomer_gas_interface_term = self.ionomer_k1 / (self.ionomer_vol_surface_area * self.thickness)
-        return (ionomer_gas_interface_term + ionomer_pt_interface_term) * self.o2_ionomer_film_bulk_resistance(ionomer_water_content, temperature)
+        water_term = (self.ionomer_k3 + 1) * self.water_film_thickness / o2_water_diffusivity(temperature)
+        return (ionomer_gas_interface_term + ionomer_pt_interface_term) * self.o2_ionomer_film_bulk_resistance(ionomer_water_content, temperature) + water_term
       
     def activation_overpotential(self, current_density, activity):
         """
