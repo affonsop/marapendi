@@ -218,9 +218,9 @@ class DynamicModel:
                                      bounds=tuple(([0, 1] for _ in self.unknown_p_list)),
                                      disp=True,
                                      callback=print_res if print_iterations else None,
-                                     popsize=popsize, polish=False,
+                                     popsize=popsize, polish=True,
                                      workers=workers, mutation=(0, 1.6),
-                                     seed=2, init='sobol', atol=atol)
+                                     seed=2, init='halton', atol=atol, maxiter=100)
         return sol, self.theta_to_p(sol.x)
 
     def theta_to_p(self, theta_k):
@@ -355,7 +355,7 @@ class DynamicModel:
         """
         n_unknown_p = len(self.unknown_p_list)
         # Generate Sobol samples in the normalized [0,1] space for each parameter
-        sampler = qmc.Sobol(d=n_unknown_p, scramble=False)
+        sampler = qmc.Sobol(d=n_unknown_p, scramble=False,)
         theta_samples = sampler.random_base2(m)
 
         # Use provided parameter dict, else self.p or empty
@@ -391,16 +391,19 @@ class DynamicModel:
 
         # Compute pairwise colinearity indices (cosPhi) between parameters
         cosPhi_n = np.ones((len(S_n), n_unknown_p, n_unknown_p)) * np.nan
-        for n in range(n_valid):
-            for i in range(n_unknown_p):
-                for j in range(n_unknown_p):
-                    if i >= j:
-                        # Avoid divide by zero by max with small epsilon
-                        cosPhi_n[n, i, j] = np.abs(
-                            np.dot(S_n[n, j, :], S_n[n, i, :]) 
-                            / np.maximum(norm_s_i[n, i] * norm_s_i[n, j], 1e-12)
-                        )
+        # Compute all pairwise dot products for all samples
+        dot_product = np.einsum('nij,nkj->nik', S_n, S_n)
 
+        # Compute all pairwise norm products for all samples
+        norm_product = np.einsum('ni,nj->nij', norm_s_i, norm_s_i)
+        norm_product = np.maximum(norm_product, 1e-12)
+
+        # Compute cosine similarity for all samples
+        cosPhi_n = np.abs(dot_product / norm_product)
+
+        # If you only need the upper triangular part (including diagonal):
+        cosPhi_n = np.tril(cosPhi_n)
+                
         # Store statistics on sensitivity norms and colinearity
         self.norm_s_i = norm_s_i
         self.cosPhi_med_ij = np.median(cosPhi_n, axis=0)
@@ -490,7 +493,7 @@ class DynamicModel:
         return fig, ax
 
     def plot_global_sensitivity(self, fig=None, ax=None, cmap='viridis', color='C0',
-                                xlabel_angle=45, figsize=(4, 3)):
+                                xlabel_angle=45, xlabel_ha='center', figsize=(4, 3)):
         """
         Plot global sensitivity metrics.
 
@@ -531,7 +534,7 @@ class DynamicModel:
         
         # Rotate x labels if needed
         if xlabel_angle > 0:
-            plt.setp(ax.get_xticklabels(), rotation=xlabel_angle, ha="right")
+            plt.setp(ax.get_xticklabels(), rotation=xlabel_angle, ha=xlabel_ha)
         
         # Label y-axis
         ax.set_ylabel("Median normalized sensitivity")
