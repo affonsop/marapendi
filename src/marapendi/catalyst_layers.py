@@ -268,7 +268,7 @@ class PtCCatalystLayer(CatalystLayer):
     
     def set_water_film_thickness(self, water_saturation): 
         ionomer_radius = self.carbon_agglomerate_radius + self.ionomer_film_thickness 
-        self.water_film_thickness = (water_saturation * self.porosity * self.carbon_agglomerate_radius ** 3/ self.carbon_vol_fraction + ionomer_radius ** 3 ) ** (1/3) - ionomer_radius
+        self.water_film_thickness = (water_saturation * self.porosity * self.carbon_agglomerate_radius ** 3 / self.carbon_vol_fraction + ionomer_radius ** 3 ) ** (1./3) - ionomer_radius
 
     def ionomer_sheet_charge_resistance(self, ionomer_water_content, temperature, charge='proton'):
         """
