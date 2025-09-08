@@ -43,7 +43,7 @@ class MembraneWaterBalanceModel:
     water_absorption_activation_energy: float = 20e6
     sorption_activity_driving_force: bool = False
     eod_parallel_to_sorption: bool = False                            
-    
+
     def calculate_water_absorption_coefficient(self, temperature): 
         """
         Calculate the water absorption coefficient based on temperature.
@@ -229,21 +229,18 @@ class MembraneWaterBalanceModel:
         - Average water content in the membrane.
         - Ionomer water content in the cathode and anode catalyst layers.
         """
-        # Calculate equilibrium water contents at the CL
-        cell.ca.cl.eq_water_content = cell.ca.est_water_content + cell.ca.water_flux * cell.ca.R_v_star * cell.K_mb
-        cell.an.cl.eq_water_content = cell.an.est_water_content + cell.an.water_flux * cell.an.R_v_star * cell.K_mb
 
         # Set the average water content in the membrane
         cell.membrane.water_content = np.mean(self.water_content_profile, axis=0)
 
-        # # Set ionomer water content at the catalyst layers (supposing it is equal to the values at the membrane interface)
-        # cell.ca.cl.ionomer_water_content = self.water_content_profile[-1,:]
-        # cell.an.cl.ionomer_water_content = self.water_content_profile[0,:]
+        # Set water content at the interface of each catalyst layer 
+        cell.ca.cl.memb_interface_water_content = self.water_content_profile[-1,:]
+        cell.an.cl.memb_interface_water_content = self.water_content_profile[0,:]
 
-        # Set ionomer water content at the catalyst layers (supposing it is equal to the CL equilibrium values)
-        cell.ca.cl.ionomer_water_content = cell.ca.cl.eq_water_content 
-        cell.an.cl.ionomer_water_content = cell.an.cl.eq_water_content 
-
+        # Calculate equilibrium water contents at the CL
+        for side in (cell.ca, cell.an):
+            side.cl.eq_water_content = side.cl.memb_interface_water_content - side.membrane_water_flux / self.absorption_coefficient / cell.membrane.dry_concentration
+        
     def update_water_profile(self, cell): 
         """
         Calculate the water content profile across the cell based on various parameters.
@@ -382,6 +379,8 @@ class MembraneWaterBalanceModel:
         """
         # Calculate water flux for cathode and anode
         membrane_to_cathode_flux = self.calculate_cathode_flux(cell)
+        cell.ca.membrane_water_flux = membrane_to_cathode_flux
+        cell.an.membrane_water_flux = -membrane_to_cathode_flux
         cell.ca.water_flux = cell.h2o_production + membrane_to_cathode_flux
         cell.an.water_flux = -membrane_to_cathode_flux
         

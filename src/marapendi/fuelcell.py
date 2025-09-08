@@ -234,6 +234,9 @@ class FuelCell:
         Increase in membrane electrode assembly (MEA) temperature (default is 0).
     mea_temperature : float, optional
         Operating temperature of the MEA (default is 0 K).
+    use_eq_water_content_for_ionomer : bool, optional
+        Flag indicating if ionomer water content is equal to equilibrium water content at 
+        the CL. If not, use values of water content at the membrane interface
     """
     cell_area: float
     cell_number: int
@@ -247,7 +250,7 @@ class FuelCell:
     heat_release_rate: float = 0
     mea_temperature_increase: float = 0
     mea_temperature: float = 0
-
+    use_eq_water_content_for_ionomer: bool = True
     def reversible_cell_voltage(self): 
         """
         Calculate the reversible cell voltage based on the Nernst equation.
@@ -462,11 +465,17 @@ class FuelCell:
         - The equivalent flow resistance and water saturation in the cathode are recalculated.
         - Finally, the water vapor transport resistance values are updated again for consistency.
         """
+        
         self.ca.h2ov_transport_resistance = self.ca.gas_transport_resistance('h2o')
         self.an.h2ov_transport_resistance = self.an.gas_transport_resistance('h2o')
         self.membrane.water_balance_model.solve_water_balance(self)
-        self.ca.cl.set_ionomer_wet_properties(self.ca.cl.ionomer_water_content, self.ca.cl.temperature)
-        self.an.cl.set_ionomer_wet_properties(self.an.cl.ionomer_water_content, self.an.cl.temperature)
+        for cl in (self.ca.cl, self.an.cl): 
+            if self.use_eq_water_content_for_ionomer: 
+                cl.ionomer_water_content = cl.eq_water_content
+            else: 
+                cl.ionomer_water_content = cl.memb_interface_water_content
+            cl.set_ionomer_wet_properties(cl.ionomer_water_content, cl.temperature)
+
         self.ca.calculate_equivalent_flow_resistance()
         self.ca.calculate_water_saturation()
         self.ca.cl.set_water_film_thickness(self.ca.cl.liquid_saturation)
@@ -651,9 +660,11 @@ class FuelCell:
         for side in (self.ca, self.an): 
             for layer in side.components: 
                 layer.liquid_saturation = 0 
-
+            side.cl.set_water_film_thickness(0)
+            
         for cell_side, conditions in zip((self.ca, self.an), (cathode_conditions, anode_conditions)): 
-            cell_side.cl.set_ionomer_wet_properties(10, self.temperature)
+            cell_side.cl.ionomer_water_content = 10
+            cell_side.cl.set_ionomer_wet_properties(cell_side.cl.ionomer_water_content, self.temperature)
             for component in cell_side.components: 
                 cell_side.electrolyte = conditions.inlet_liquid
                 cell_side.electrolyte.set_temperature(self.membrane.temperature)
