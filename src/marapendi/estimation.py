@@ -218,9 +218,9 @@ class DynamicModel:
                                      bounds=tuple(([0, 1] for _ in self.unknown_p_list)),
                                      disp=True,
                                      callback=print_res if print_iterations else None,
-                                     popsize=popsize, polish=True,
+                                     popsize=popsize, polish=False,
                                      workers=workers, mutation=(0, 1.6),
-                                     seed=2, init='halton', atol=atol, maxiter=100)
+                                     seed=2, init='halton', atol=atol, maxiter=200)
         return sol, self.theta_to_p(sol.x)
 
     def theta_to_p(self, theta_k):
