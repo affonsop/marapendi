@@ -104,7 +104,7 @@ class ChannelGasResistanceModel:
     ----------
     Kim, H. et al. Int. J. Heat Mass Transf. 183, 122106 (2022).
     """
-    sherwood: float = 1.0 / 4.0
+    sherwood: float = 4.0
     B_ch: float = 1.0
 
     def molecular_diffusion_resistance(self, channel, diffusion_coefficient):
