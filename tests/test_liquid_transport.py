@@ -70,7 +70,7 @@ def test_gas_porous_transport_resistance(toray_gdl_060, fc, cl):
     for layer in fc.ca.components:
             layer.gas.set_composition(0.2,0,1)
             layer.gas.set_temperature_and_pressure(343.15, 300e3)
-    fc.ca.gdl.liquid_saturation = 0.05
+    fc.ca.gdl.non_wetting_saturation = 0.05
     dry_resistance = (fc.ca.gdl.gas_transport_resistance(species='o2') +
                     fc.ca.cl.gas_transport_resistance(species='o2') +
                     fc.ca.cl.o2_ionomer_film_resistance(14, fc.ca.cl.gas_temperature()))
@@ -92,9 +92,8 @@ def test_gas_porous_transport_resistance(toray_gdl_060, fc, cl):
             layer.gas.set_composition(0.2,0,rh)
         fc.ca.cl.gas.set_temperature(temperature)
        
-        fc.ca.liquid_transport_model = mrpd.DarcyLiquidTransportModel() 
-        da = fc.ca.liquid_transport_model.calculate_damkholer_number(fc.ca, 0.5*i_cell/(2 * ct.faraday))
-
+        fc.ca.two_phase_transport_model = mrpd.DarcyTransportModel() 
+      
 
     # Test wet conditions resistance
     i_cell = 2e4
@@ -105,13 +104,13 @@ def test_gas_porous_transport_resistance(toray_gdl_060, fc, cl):
     fc.ca.cl.gas.set_temperature(temperature)  
     fc.ca.calculate_equivalent_flow_resistance()
     
-    fc.ca.gdl.liq_transport_model.calculate_water_saturation(fc.ca.gdl, i_cell/(2*ct.faraday), 
+    fc.ca.gdl.two_phase_transport_model.calculate_non_wetting_saturation(fc.ca.gdl, i_cell/(2*ct.faraday), 
                                                                                                0)
-    fc.ca.cl.liq_transport_model.calculate_water_saturation(fc.ca.cl, i_cell/(2*ct.faraday), 
+    fc.ca.cl.two_phase_transport_model.calculate_non_wetting_saturation(fc.ca.cl, i_cell/(2*ct.faraday), 
                                                                                                0)
     r1 = fc.ca.cl.o2_ionomer_film_resistance(14, fc.ca.cl.gas_temperature())
-    fc.ca.cl.set_water_film_thickness(fc.ca.cl.liquid_saturation)
-    print(fc.ca.cl.liquid_saturation, fc.ca.cl.water_film_thickness,mrpd.o2_water_diffusivity(fc.ca.cl.temperature))
+    fc.ca.cl.set_water_film_thickness(fc.ca.cl.non_wetting_saturation)
+    print(fc.ca.cl.non_wetting_saturation, fc.ca.cl.water_film_thickness,mrpd.o2_water_diffusivity(fc.ca.cl.temperature))
     r2 = fc.ca.cl.o2_ionomer_film_resistance(14, fc.ca.cl.gas_temperature())
     print(r2-r1, (fc.ca.cl.ionomer_k3 + 1) * fc.ca.cl.water_film_thickness/mrpd.o2_water_diffusivity(fc.ca.cl.temperature))
     wet_resistance = (fc.ca.gdl.gas_transport_resistance(species='o2') +

@@ -6,7 +6,7 @@ import numpy as np
 import cantera as ct
 
 from .gas_composition import GasComposition, index_h2, index_o2, index_h2ov, species_indexes
-from .transport_models import PorousGasResistanceModel, DarcyLiquidTransportModel
+from .transport_models import PorousGasResistanceModel, DarcyTransportModel
 from .water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight
 
 @dataclass
@@ -29,10 +29,10 @@ class PorousLayer():
         Average pore diameter in meters (default is large, so Knudsen diffusion negligible).
     transport_resistance_model : PorousGasResistanceModel
         Model used to calculate gas transport resistance.
-    liq_transport_model : DarcyLiquidTransportModel
+    two_phase_transport_model : DarcyTransportModel
         Model used to compute liquid water flow and capillarity.
-    liquid_saturation : float
-        Fraction of the pore volume occupied by liquid phase (0 to 1).
+    non_wetting_saturation : float
+        Fraction of the pore volume occupied by non-wetting phase (0 to 1).
     thermal_conductivity : float
         Thermal conductivity in W/(m·K).
     absolute_permeability : float
@@ -41,6 +41,8 @@ class PorousLayer():
         Exponent for relative permeability model (default is 3, often used for cubic relationship).
     contact_angle : float
         Contact angle for liquid water in degrees (default is 120°).
+    non_wetting_phase : str
+        Non-wetting phase (liquid or gas).
 
     Notes
     -----
@@ -54,13 +56,15 @@ class PorousLayer():
     effective_gas_diffusion_ratio: float = 1
     pore_diameter: float=1e12
     transport_resistance_model: PorousGasResistanceModel = field(default_factory=PorousGasResistanceModel)
-    liq_transport_model: DarcyLiquidTransportModel = field(default_factory=DarcyLiquidTransportModel)
-    liquid_saturation: float = 0
+    two_phase_transport_model: DarcyTransportModel = field(default_factory=DarcyTransportModel)
+    non_wetting_saturation: float = 0
     thermal_conductivity: float = 1e12 
     absolute_permeability: float = 1e6
     relative_permeability_exponent: float = 3
     contact_angle: float = 120. 
-    
+    non_wetting_phase: str = 'water'
+    wetting_phase: str = 'gas'
+
     def __post_init__(self): 
         self.sqrt_abs_permeability_porosity = np.sqrt(self.absolute_permeability * self.porosity)
         self.cosinus_contact_angle = np.abs(np.cos(np.pi / 180 * self.contact_angle))
@@ -120,7 +124,7 @@ class PorousLayer():
         float
             Diffusion coefficient of the specified species (m²/s).
         """
-        return self.gas.species_diffusion_coefficient(species)
+        return self.gas.calculate_species_diffusion_coefficient(species)
 
     def species_molecular_weight(self, species):
         """
@@ -324,7 +328,7 @@ class PorousLayer():
             self.temperature, 
             self.species_diffusion_coefficient(species), 
             self.species_molecular_weight(species), 
-            self.liquid_saturation
+            self.non_wetting_saturation
         )
 
     def thermal_resistance(self):
@@ -338,9 +342,9 @@ class PorousLayer():
         """
         return self.thickness / self.thermal_conductivity
 
-    def calculate_saturation_flow_resistance(self):
+    def calculate_saturation_flow_resistance(self, electrolyte=None):
         """
-        Computes the resistance to liquid water flow of the layer. 
+        Computes the resistance to non-wetting phase flow of the layer. 
         Based on a water saturation gradient.
 
         Returns
@@ -348,13 +352,23 @@ class PorousLayer():
         float
             Saturation flow resistance in s.m²/mol.
         """
-        return ((self.thickness * water_kinematic_viscosity(self.temperature) * water_molecular_weight) / 
-                 (self.sqrt_abs_permeability_porosity * self.cosinus_contact_angle * water_surface_tension(self.temperature)))
+        if self.non_wetting_phase == 'water': 
+            non_wetting_kinematic_viscosity = water_kinematic_viscosity(self.temperature)
+            non_wetting_molecular_weight = water_molecular_weight
+            non_wetting_surface_tension = water_surface_tension(self.temperature)
+        elif self.non_wetting_phase == 'gas': 
+            non_wetting_kinematic_viscosity = self.gas.mixture_kinematic_viscosity 
+            non_wetting_molecular_weight = self.gas.mixture_molecular_weight
+            non_wetting_surface_tension = water_surface_tension(self.temperature) if self.wetting_phase == 'water' else electrolyte.surface_tension
+            
+        return ((self.thickness * non_wetting_kinematic_viscosity * non_wetting_molecular_weight) / 
+                    (self.sqrt_abs_permeability_porosity * self.cosinus_contact_angle * non_wetting_surface_tension))
+    
 
     def saturation_from_capillary_pressure(self, capillary_pressure):
         """
-        Computes the liquid saturation given a capillary pressure
-        using the layer's liquid transport model.
+        Computes the non-wetting phase saturation given a capillary pressure
+        using the layer's two-phase transport model.
 
         Parameters
         ----------
@@ -364,9 +378,9 @@ class PorousLayer():
         Returns
         -------
         float
-            Liquid saturation (0 to 1).
+            Non-wetting phase saturation (0 to 1).
         """
-        return self.liq_transport_model.saturation_from_capillary_pressure(self, capillary_pressure) 
+        return self.two_phase_transport_model.saturation_from_capillary_pressure(self, capillary_pressure) 
 
     def capillary_pressure_from_saturation(self, saturation):
         """
@@ -383,5 +397,5 @@ class PorousLayer():
         float
             Capillary pressure in Pascals (Pa).
         """
-        return self.liq_transport_model.capillary_pressur_from_saturation(self, saturation)
+        return self.two_phase_transport_model.capillary_pressur_from_saturation(self, saturation)
 

@@ -45,7 +45,7 @@ def test_gas_flow_rate(fc):
 
 def test_gas_diffusivity(gas):
     assert gas.X[0] == 0.2
-    assert np.isclose(gas.species_diffusion_coefficient('o2'), 0.229e-4, 0.1)
+    assert np.isclose(gas.calculate_species_diffusion_coefficient('o2'), 0.229e-4, 0.1)
 
 def test_gas_porous_transport_resistance(toray_gdl_060, fc): 
     o2_diffusion_coeff = fc.ca.ch.species_diffusion_coefficient('o2')

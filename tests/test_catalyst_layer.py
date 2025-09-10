@@ -20,7 +20,7 @@ def cl():
                                                                 reference_activity=1.,
                                                                 reference_temperature=353.15,
                                                                 number_of_electrons=2,
-                                                                charge_transfer_coeff=1)
+                                                                charge_transfer_coeff=0.5)
                             ) #TEC10V30E, 0.2 mgPt/cm2, 0.75 I/C
 
 # Data from Jinnouchi et al. (2021)
@@ -77,7 +77,7 @@ def test_ionomer_proton_conductivity(cl):
     assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.equilibrium_water_content(0.81), temperature=298.15),  3.7, 30e-2)
     assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.equilibrium_water_content(0.60), temperature=298.15),  1.91, 30e-2)
     
-# ## RH vs sigma_p ionomer at 298.15 K, Jinnouchi et al. (2021), sup material
+# ## RH vs sigma_p ionomer at 298.15 K, Jinnouchi et al. (2021), sup materialx
 # 0,9662698412698414; 5,633142670601358
 # 0,8115079365079365; 3,72023668141307
 # 0,6031746031746033; 1,9155005555735298

@@ -157,12 +157,12 @@ class FuelCellSide:
         the liquid flux and upstream capillary pressures. It assumes that 
         `self.liquid_flux` has been set externally.
         """
-        self.gdl.liq_transport_model.calculate_water_saturation(self.gdl, self.liquid_flux, upstream_capillary_pressure=0)
+        self.gdl.two_phase_transport_model.calculate_non_wetting_saturation(self.gdl, self.liquid_flux, upstream_capillary_pressure=0)
         if self.has_mpl: 
-             self.mpl.liq_transport_model.calculate_water_saturation(self.gdl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
-             self.cl.liq_transport_model.calculate_water_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.mpl.downstream_capillary_pressure)
+             self.mpl.two_phase_transport_model.calculate_non_wetting_saturation(self.gdl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
+             self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.mpl.downstream_capillary_pressure)
         else:
-            self.cl.liq_transport_model.calculate_water_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
+            self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
 
     def calculate_equivalent_flow_resistance(self): 
         """
@@ -325,7 +325,7 @@ class FuelCell:
         and the electrical resistance of the cell components. It is an important parameter in 
         electrochemical impedance spectroscopy (EIS) measurements.
         """
-        return self.membrane.proton_resistance(self.membrane.water_content, self.membrane.temperature, water_saturation=self.ca.cl.liquid_saturation) + self.electrical_resistance
+        return self.membrane.proton_resistance(self.membrane.water_content, self.membrane.temperature, water_saturation=self.ca.cl.non_wetting_saturation) + self.electrical_resistance
 
     def ohmic_overpotential(self): 
         """
@@ -478,7 +478,7 @@ class FuelCell:
 
         self.ca.calculate_equivalent_flow_resistance()
         self.ca.calculate_water_saturation()
-        self.ca.cl.set_water_film_thickness(self.ca.cl.liquid_saturation)
+        self.ca.cl.set_water_film_thickness(self.ca.cl.non_wetting_saturation)
         self.ca.h2ov_transport_resistance = self.ca.gas_transport_resistance('h2o')
         self.an.h2ov_transport_resistance = self.an.gas_transport_resistance('h2o')
     
@@ -659,7 +659,7 @@ class FuelCell:
 
         for side in (self.ca, self.an): 
             for layer in side.components: 
-                layer.liquid_saturation = 0 
+                layer.non_wetting_saturation = 0 
             side.cl.set_water_film_thickness(0)
             
         for cell_side, conditions in zip((self.ca, self.an), (cathode_conditions, anode_conditions)): 
@@ -669,13 +669,16 @@ class FuelCell:
                 cell_side.electrolyte = conditions.inlet_liquid
                 cell_side.electrolyte.set_temperature(self.membrane.temperature)
                 try: 
-                    component.gas.X = np.zeros_like(self.current_density[...,np.newaxis]) * np.array([0,0,0,0])
+                    component.gas.X = np.zeros_like(self.current_density[...,np.newaxis]) * np.array([1,0,0,0])
                 except TypeError: 
-                    component.gas.X = self.current_density * np.array([0,0,0,0])
-                component.set_gas_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
+                    component.gas.X = self.current_density * np.array([1,0,0,0])
                 component.set_gas_composition(conditions.dry_o2_mole_fraction, 
                                               conditions.dry_h2_mole_fraction,
                                               conditions.inlet_relative_humidity)
+                component.set_gas_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
+                # component.set_gas_composition(conditions.dry_o2_mole_fraction, 
+                #                               conditions.dry_h2_mole_fraction,
+                #                               conditions.inlet_relative_humidity)
                 component.set_gas_temperature_and_pressure(stack_temperature, conditions.inlet_pressure)
             
             cell_side.ch.set_fixed_inlet_liquid_flow_rate(conditions.inlet_liquid_flow_rate)
@@ -686,7 +689,7 @@ class FuelCell:
             )
             for component in cell_side.components: 
                 component.electrolyte = cell_side.electrolyte
-                component.liquid_saturation = cell_side.ch.inlet_liquid_saturation
+                component.non_wetting_saturation = cell_side.ch.inlet_liquid_saturation
             
 
 from .electrolyte import ElectrolyteSolution

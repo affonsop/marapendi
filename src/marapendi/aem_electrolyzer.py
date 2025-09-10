@@ -48,7 +48,7 @@ class ElectrolyzerCellSide(FuelCellSide):
             Dry gas pressure in Pa.
         """
         solution_saturation_pressure = self.electrolyte.solution_sat_pressure
-        return np.where(self.cl.liquid_saturation > 0,
+        return np.where(self.cl.non_wetting_saturation > 0,
                         self.cl.pressure - solution_saturation_pressure,
                         self.cl.pressure - self.cl.vapor_pressure())
 
@@ -161,6 +161,7 @@ class ElectrolyzerCell(FuelCell):
 
         return tafel_overpotential_ca + tafel_overpotential_an
 
+
     def set_conditions(self, stack_temperature, current_density, cathode_conditions, anode_conditions):
         """
         Set the operating conditions of the electrolyzer stack.
@@ -192,14 +193,15 @@ class ElectrolyzerCell(FuelCell):
 
             for component in cell_side.components:
                 try:
-                    component.gas.X = np.zeros_like(self.current_density[..., np.newaxis]) * np.array([0, 0, 0, 0])
+                    component.gas.X = np.ones_like(self.current_density[..., np.newaxis]) * np.array([1, 0, 0, 0])
                 except TypeError:
-                    component.gas.X = self.current_density * np.array([0, 0, 0, 0])
-                component.set_gas_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
+                    component.gas.X = np.array([1, 0, 0, 0])
                 component.set_gas_composition(
                     conditions.dry_o2_mole_fraction,
                     conditions.dry_h2_mole_fraction,
                     conditions.inlet_relative_humidity)
+                component.set_gas_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
+
                 component.set_gas_temperature_and_pressure(stack_temperature, conditions.inlet_pressure)
 
             cell_side.ch.set_fixed_inlet_liquid_flow_rate(conditions.inlet_liquid_flow_rate)
@@ -207,4 +209,4 @@ class ElectrolyzerCell(FuelCell):
 
             for component in cell_side.components:
                 component.electrolyte = cell_side.electrolyte
-                component.liquid_saturation = cell_side.ch.inlet_liquid_saturation
+                component.non_wetting_saturation = cell_side.ch.inlet_liquid_saturation

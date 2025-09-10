@@ -278,57 +278,20 @@ class PorousGasResistanceModel:
             1/diffusion_coefficient + 1/self.knudsen_diffusivity(layer, temperature, molecular_weight))
 
 @dataclass    
-class DarcyLiquidTransportModel: 
+class DarcyTransportModel: 
     """
-    Model for calculating liquid water transport in porous layers using a Darcy-based approach.
+    Model for calculating non-wetting phase transport in porous layers using a Darcy-based approach.
 
     Attributes
     ----------
     J_function_exponent : float
-        Exponent in the capillary pressure-saturation relation.
+        Exponent in the non-wetting phase capillary pressure-saturation relation.
     """
     J_function_exponent: float = 2 
 
-    def vapor_transport_resistance(self, cell_side): 
-        """
-        Calculate the water vapor transport resistance for the cell side.
-
-        Parameters
-        ----------
-        cell_side : FuelCellSide
-            The side of the fuel cell (anode or cathode) containing porous layers.
-
-        Returns
-        -------
-        float
-            The total vapor transport resistance.
-        """
-        return cell_side.gas_transport_resistance('h2o')
-    
-    def calculate_damkholer_number(self, cell_side, water_injection_flux): 
-        """
-        Compute the Damköhler number to compare liquid water injection with maximum vapor removal.
-
-        Parameters
-        ----------
-        cell_side : FuelCellSide
-            The side of the fuel cell (anode or cathode).
-        water_injection_flux : float
-            Flux of water injected into the porous media (kmol/m²/s).
-
-        Returns
-        -------
-        float
-            Damköhler number indicating ratio of liquid flux to vapor removal capacity.
-        """
-        cl_sat_concentration = cell_side.cl.saturation_concentration()
-        ch_vapor_concentration = cell_side.ch.vapor_concentration()
-        max_vapor_removal_flux = (cl_sat_concentration - ch_vapor_concentration) / cell_side.h2ov_transport_resistance
-        return water_injection_flux / max_vapor_removal_flux
-
     def capillary_pressure_from_saturation(self, layer, capillary_pressure):
         """
-        Compute the water saturation from capillary pressure using J-function relation.
+        Compute the non-wetting saturation from capillary pressure using J-function relation.
 
         Parameters
         ----------
@@ -344,9 +307,9 @@ class DarcyLiquidTransportModel:
         """
         return (capillary_pressure / layer.capillary_pressure_J_ratio) ** (1. / self.J_function_exponent)
 
-    def saturation_from_capillary_pressure(self, layer, water_saturation):
+    def saturation_from_capillary_pressure(self, layer, non_wetting_saturation):
         """
-        Compute the capillary pressure from water saturation using inverse J-function relation.
+        Compute the capillary pressure from non-wetting phase saturation using inverse J-function relation.
 
         Parameters
         ----------
@@ -360,18 +323,18 @@ class DarcyLiquidTransportModel:
         float
             Capillary pressure (Pa).
         """
-        return (water_saturation ** self.J_function_exponent) * layer.capillary_pressure_J_ratio
+        return (non_wetting_saturation ** self.J_function_exponent) * layer.capillary_pressure_J_ratio
 
-    def calculate_water_saturation(self, layer, liquid_flux, upstream_capillary_pressure=0): 
+    def calculate_non_wetting_saturation(self, layer, non_wetting_flux, upstream_capillary_pressure=0): 
         """
-        Calculate the water saturation distribution across the porous layer due to liquid flux.
+        Calculate the non-wetting saturation distribution across the porous layer due to non-wetting phase flux.
 
         Parameters
         ----------
         layer : PorousLayer
             Porous layer being analyzed.
-        liquid_flux : float
-            Liquid water flux (kmol/m²/s).
+        non_wetting_flux : float
+            Non-wetting phase molar flux (kmol/m²/s).
         upstream_capillary_pressure : float, optional
             Capillary pressure at the upstream boundary (default is 0).
 
@@ -381,7 +344,7 @@ class DarcyLiquidTransportModel:
             Saturation at upstream side of the layer.
         layer.downstream_saturation : float
             Saturation at downstream side of the layer.
-        layer.liquid_saturation : float
+        layer.non_wetting_saturation : float
             Average or effective saturation in the layer.
         layer.downstream_capillary_pressure : float
             Capillary pressure at the downstream side of the layer.
@@ -391,12 +354,12 @@ class DarcyLiquidTransportModel:
 
         # Compute downstream saturation based on flux and flow resistance
         layer.downstream_saturation = (
-            (layer.saturation_flow_resistance * liquid_flux) ** (1. / (layer.relative_permeability_exponent + self.J_function_exponent))
+            (layer.saturation_flow_resistance * non_wetting_flux) ** (1. / (layer.relative_permeability_exponent + self.J_function_exponent))
             + layer.upstream_saturation
         )
 
         # Compute mean saturation in the layer
-        layer.liquid_saturation = (
+        layer.non_wetting_saturation = (
             (layer.downstream_saturation - layer.upstream_saturation) *
             ( (layer.relative_permeability_exponent + self.J_function_exponent) /
               (layer.relative_permeability_exponent + self.J_function_exponent + 1))

@@ -119,9 +119,8 @@ class CatalystLayer(PorousLayer):
         float
             Electrolyte sheet resistance [Ohm.m²].
         """
-        electrolyte_conductivity = self.electrolyte.calculate_ionic_conductivity(
-            self.electrolyte.molarity, self.electrolyte.weight_percent, temperature)
-        return self.thickness / ((np.maximum(self.liquid_saturation, 1e-12) * self.porosity) ** 1.5 * electrolyte_conductivity)
+        electrolyte_conductivity = self.electrolyte.calculate_ionic_conductivity(temperature)
+        return self.thickness / ((np.maximum(self.non_wetting_saturation, 1e-12) * self.porosity) ** 1.5 * electrolyte_conductivity)
 
 @dataclass
 class PorousTransferLayer(CatalystLayer):

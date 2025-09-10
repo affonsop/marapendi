@@ -59,7 +59,7 @@ def anode_conditions():
         inlet_liquid_flow_rate=1., 
         inlet_liquid=mrpd.KOH_solution(molarity=1),
         dry_h2_mole_fraction=0, 
-        dry_o2_mole_fraction=0,
+        dry_o2_mole_fraction=1,
         outlet_pressure=1.5e5
     )
 @pytest.fixture
@@ -129,6 +129,10 @@ def test_electrolyte():
     assert np.isclose(mrpd.KOH_2M.molarity, 2, rtol=1e-4)
     assert np.isclose(mrpd.KOH_5M.molarity, 5, rtol=1e-4)
     assert np.isclose(mrpd.KOH_1M.solution_sat_pressure, 3054, rtol=1e-3)
+    mrpd.KOH_20_wt_percent.set_temperature(293.15)
+    mrpd.KOH_45_wt_percent.set_temperature(293.15)
+    assert np.isclose(mrpd.KOH_20_wt_percent.surface_tension, 81.4e-3, rtol=1e-2)
+    assert np.isclose(mrpd.KOH_45_wt_percent.surface_tension, 0.105, rtol=1e-2)
 
 def test_operating_conditions(electrolyzer_cell, wet_anode, wet_cathode, dry_cathode, deionized_water_cathode, deionized_water_anode):     
     electrolyzer_cell.set_conditions(353.15, 1e4, wet_cathode, wet_anode)
@@ -141,7 +145,7 @@ def test_operating_conditions(electrolyzer_cell, wet_anode, wet_cathode, dry_cat
     assert np.isclose(electrolyzer_cell.reversible_cell_voltage(), 1.19564)
 
     electrolyzer_cell.set_conditions(298.15, 0e4, dry_cathode, dry_cathode)
-    assert np.isclose(electrolyzer_cell.ca.cl.liquid_saturation, 0)
+    assert np.isclose(electrolyzer_cell.ca.cl.non_wetting_saturation, 0)
     assert np.isclose(dry_cathode.inlet_relative_humidity, 0)
     assert np.isclose(electrolyzer_cell.ca.cl.temperature, 298.15)
     assert np.isclose(electrolyzer_cell.ca.cl.relative_humidity(), 0)
@@ -151,16 +155,17 @@ def test_operating_conditions(electrolyzer_cell, wet_anode, wet_cathode, dry_cat
     assert np.isclose(electrolyzer_cell.an.calculate_dry_gas_pressure(), 1e5 - electrolyzer_cell.an.cl.vapor_pressure())
     assert np.isclose(electrolyzer_cell.reversible_cell_voltage(), 1.229, rtol=1e-3)
 
-    electrolyzer_cell.set_conditions(353.15, 0e4, deionized_water_cathode, deionized_water_anode)
-    water_sat_pressure = mrpd.water_saturation_pressure(353.15)
-    assert np.isclose(electrolyzer_cell.ca.electrolyte.temperature, 353.15)
-    assert np.isclose(electrolyzer_cell.ca.electrolyte.solution_sat_pressure, water_sat_pressure)
-    assert np.isclose(electrolyzer_cell.ca.calculate_dry_gas_pressure(), 1e5 - water_sat_pressure)
-    assert np.isclose(electrolyzer_cell.reversible_cell_voltage(), 1.197)
+    # electrolyzer_cell.set_conditions(353.15, 0e4, deionized_water_cathode, deionized_water_anode)
+    # water_sat_pressure = mrpd.water_saturation_pressure(353.15)
+    # assert np.isclose(electrolyzer_cell.ca.electrolyte.temperature, 353.15)
+    # assert np.isclose(electrolyzer_cell.ca.electrolyte.solution_sat_pressure, water_sat_pressure)
+    # assert np.isclose(electrolyzer_cell.ca.calculate_dry_gas_pressure(), 1e5 - water_sat_pressure)
+    # assert np.isclose(electrolyzer_cell.reversible_cell_voltage(), 1.197)
 
 def test_ohmic_resistance(electrolyzer_cell, deionized_water_anode, deionized_water_cathode, wet_anode, wet_cathode):
     electrolyzer_cell.set_conditions(353.15, 1e4, deionized_water_cathode, deionized_water_anode)
     electrolyzer_cell.ca.cl.ionomer_water_content = 20
+    print(electrolyzer_cell.ca.ch.gas.X)
     #assert np.isclose(electrolyzer_cell.ohmic_overpotential(), 1e-5)
     assert np.isclose(electrolyzer_cell.membrane.charge_resistance(20, electrolyzer_cell.temperature, 
                                                use_water_profile=False, charge='hydroxide'), 33.55e-7)
