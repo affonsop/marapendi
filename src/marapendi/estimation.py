@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
-from scipy.optimize import differential_evolution
+from scipy.optimize import differential_evolution, minimize
 from scipy.stats import qmc
 from scipy.linalg import qr, eigvals
 class DynamicModel:
@@ -98,7 +98,11 @@ class DynamicModel:
         self.p_i_isLinear = np.array([p[2] for p in p_list])
         self.p_i_name = [p[0] for p in p_list]
         self.p_i_label = [p[3] for p in p_list]
-
+        if len(p_list[0]) > 4:
+            self.p_i_guess = [p[4] for p in p_list]
+            
+            self.p.update(dict(zip(self.p_i_name, self.p_i_guess)))
+            print(self.p)
     def solve(self, time, u=None, x0=None, parameters_dict=None):
         """
         Solve the ODE system over the given time vector.
@@ -162,7 +166,8 @@ class DynamicModel:
 
     def estimate(self, y_exp, t, u=None, x0=None, p=None,
                  print_iterations=False, popsize=10, workers=1,
-                 ftol=0, atol=0, penalty_threshold=1e-2):
+                 rtol=0, atol=0, ftol=0, penalty_threshold=1e-2, vectorized=False, 
+                 method='differential_evolution', initial_guess=None, maxiter=120):
         """
         Estimate unknown parameters by minimizing the mean of squared errors using differential evolution.
 
@@ -213,15 +218,30 @@ class DynamicModel:
                 print(param[0], param[1], '{:.2e}'.format(p_est[k]))
             print('------'*5)
             return intermediate_result.fun < ftol
+        if method == 'differential_evolution':
+            sol = differential_evolution(f,
+                                        bounds=tuple(([0, 1] for _ in self.unknown_p_list)),
+                                        disp=True,
+                                        callback=print_res if print_iterations else None,
+                                        popsize=popsize, polish=False,
+                                        workers=workers, mutation=(0, 1), recombination=0.5, vectorized=vectorized, 
+                                        seed=2, init='latinhypercube', tol=rtol, atol=atol, maxiter=maxiter)
+        else: 
+            sol = minimize(f, 
+                        x0=[0 for _ in self.unknown_p_list] if not initial_guess else self.p_to_theta(initial_guess),
+                        method=method,
+                        bounds=tuple(([0, 1] for _ in self.unknown_p_list)),
+                        options={'ftol':ftol, 'maxiter':maxiter},
+                        )
 
-        sol = differential_evolution(f,
-                                     bounds=tuple(([0, 1] for _ in self.unknown_p_list)),
-                                     disp=True,
-                                     callback=print_res if print_iterations else None,
-                                     popsize=popsize, polish=False,
-                                     workers=workers, mutation=(0, 1.6),
-                                     seed=2, init='halton', atol=atol, maxiter=200)
         return sol, self.theta_to_p(sol.x)
+    
+    def p_to_theta(self, unknown_p_values): 
+        theta_i_k = np.where(self.p_i_isLinear,
+                    (unknown_p_values - self.p_i_min) / (self.p_i_max - self.p_i_min),
+                    (np.log(unknown_p_values) - np.log(np.maximum(self.p_i_min, 1e-12))) / (np.log(np.maximum(self.p_i_max, 1e-12)) - np.log(np.maximum(self.p_i_min, 1e-12)))
+        )
+        return theta_i_k
 
     def theta_to_p(self, theta_k):
         """
@@ -248,6 +268,79 @@ class DynamicModel:
                          self.p_i_min * np.exp((np.log(np.maximum(self.p_i_max, 1e-12)) - np.log(np.maximum(self.p_i_min, 1e-12))) * theta_k))
         return p_i_k
 
+    def calculate_local_sensitivity_neighborhood(self, t, u=None, x0=None, p=None, eps_p=0):
+        """
+        Compute local sensitivities by finite differences in the neighborhood of the parameters.
+
+        Follows equation 7 in Goshtasbi et al. (2020).
+
+        Parameters
+        ----------
+        t : array_like
+            Time vector.
+        u, x0, p : optional
+            Same as above.
+        eps_p : float
+            Relative difference for derivative estimation by finite difference.
+
+        Returns
+        -------
+        S : ndarray
+            Local sensitivities.
+        
+        References
+        ----------
+        Goshtasbi, A. et al. J. Electrochem. Soc. 167, 044504 (2020).
+        """
+        # Generate normalized samples in parameter space [0,1]
+        
+
+        y = []  # to store outputs for each parameter
+        for i, p_i in enumerate(self.unknown_p_list):
+            y_i = []
+            # Make sure to start with a fresh copy of parameter dict
+            p_modified = p.copy() if p else self.p.copy()
+            unknown_p_values = np.array([p_modified[unknown_p[0]] for unknown_p in self.unknown_p_list])
+            theta_i = self.p_to_theta(unknown_p_values)[i]
+
+        y = []  # to store outputs for each parameter
+        for i, p_i in enumerate(self.unknown_p_list):
+            y_i = []
+            # Make sure to start with a fresh copy of parameter dict
+            p_modified = p.copy() if p else self.p.copy()
+
+            unknown_p_values = np.array([p_modified[unknown_p[0]] for unknown_p in self.unknown_p_list])
+            theta_i = self.p_to_theta(unknown_p_values)[i]
+            theta = [theta_i, np.minimum(1,theta_i+eps_p)]
+            for k in range(len(theta)):
+                # Get the parameter value at theta[k] for this parameter
+                p_i_k = self.theta_to_p(theta[k])[i]
+                # Update parameter set with this single varied parameter
+                p_modified.update({p_i[0]: p_i_k})
+                # Solve model with updated parameter
+                _, _, y_i_k = self.solve(t, u, x0, p_modified)
+                y_i.append(y_i_k)
+            y.append(y_i)
+
+
+        # Convert collected outputs to numpy array of shape (n_parameters, n_samples, len(y))
+        y = np.array(y)
+
+        # Compute finite differences along sample axis (axis=1)
+        dy = np.diff(y, axis=1)
+        dtheta = np.diff(theta)  # uniform steps
+    
+        # Compute derivative dy/dtheta, broadcast over state dimension
+        dydtheta = dy / dtheta[:, np.newaxis]
+
+        # Compute normalized sensitivity as in equation 7
+        # S = (1 / mean(y)) * mean( dy/dtheta )
+        # Added small epsilon in denominator to avoid division by zero
+        S = 1 / (1e-12 + np.mean(y, axis=1)) * np.mean(dydtheta, axis=1)
+
+        self.S = S
+        return S
+    
     def calculate_local_sensitivity(self, t, u=None, x0=None, p=None, n_samples=7):
         """
         Compute local sensitivities by finite differences.
@@ -311,7 +404,7 @@ class DynamicModel:
 
     def compute_global_sensitivity(self, t, u=None, x0=None, p=None, n_samples=7,
                                 m=8, check_samples=False, y_exp=None,
-                                rmse_limit=0.3, print_px=False):
+                                rmse_limit=0.3, print_px=False, filename_to_save=None):
         """
         Compute global sensitivities using Sobol sampling.
 
@@ -333,6 +426,8 @@ class DynamicModel:
             RMSE threshold.
         print_px : bool
             Print parameter sets.
+        filename_to_save :  str
+            Filename where to save results. Do not save if None. 
 
         Returns
         -------
@@ -380,7 +475,7 @@ class DynamicModel:
                 if print_px:
                     print(px)
                 # Compute local sensitivities for this global sample
-                s_n = self.calculate_local_sensitivity(t, u, x0, px, n_samples)
+                s_n = self.calculate_local_sensitivity_neighborhood(t, u, x0, px, eps_p=1e-6)
                 S_n.append(s_n)
 
         n_valid = len(S_n)
@@ -414,9 +509,38 @@ class DynamicModel:
         self.S_n = S_n
         self.n_valid = n_valid
 
+        # If save results
+        if filename_to_save: 
+            np.savez(filename_to_save, 
+                    cosPhi_med_ij=self.cosPhi_med_ij, 
+                    norm_s_i=self.norm_s_i, 
+                    S_med=self.S_med, 
+                    S_std=self.S_std, 
+                    S_med_i=self.S_med_i, 
+                    S_std_i=self.S_std_i, 
+                    S_n=self.S_n, 
+                    n_valid=self.n_valid) 
         return (self.cosPhi_med_ij, self.norm_s_i, self.S_med, self.S_std, 
                 self.S_med_i, self.S_std_i, self.S_n, self.n_valid)
 
+    def load_global_sensitivity_results(self, filename): 
+        """
+        Load global sensitivity results from file. 
+
+        Parameters
+        ----------
+        filname : str
+            Filename where results are stored. 
+        """
+        npzfile = np.load(filename)
+        self.norm_s_i = npzfile['norm_s_i']
+        self.cosPhi_med_ij = npzfile['cosPhi_med_ij']
+        self.S_med_i = npzfile['S_med_i']
+        self.S_std_i = npzfile['S_std_i']
+        self.S_med = npzfile['S_med']
+        self.S_std = npzfile['S_std']
+        self.S_n = npzfile['S_n']
+        self.n_valid = npzfile['n_valid']
 
     def get_smallest_hessian_eigenvalues(self):
         """
@@ -627,11 +751,11 @@ class DynamicModel:
         fig, ax = plt.subplots(figsize=(12, 2.5))
         
         # Plot the smallest eigenvalues vs parameter ranking
-        ax.semilogy(1 + np.arange(), np.abs(min_eigvals), '-s')
+        ax.semilogy(1 + np.arange(n_unknown_p), np.abs(min_eigvals), '-s')
         
         # X-axis: ranks with parameter names (ordered by pivoting)
         ax.set_xticks(1 + np.arange(n_unknown_p))
-        ax.set_xticklabels([self.unknown_p_list[i][-1] for i in P], rotation=45)
+        ax.set_xticklabels([self.unknown_p_list[i][3] for i in P], rotation=45)
         
         # Twin x-axis: showing simply number of selected parameters
         ax2 = ax.twiny()
