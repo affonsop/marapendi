@@ -73,8 +73,7 @@ h2_lhv = np.vectorize(h2_lhv)
 
 def calculate_reversible_cell_voltage(
     temperature,
-    partial_pressure_o2,
-    partial_pressure_h2):
+    activities_ratio):
     """
     Calculate the reversible cell voltage of a hydrogen fuel cell or electrolyser, 
     using Nernst equation.
@@ -111,10 +110,6 @@ def calculate_reversible_cell_voltage(
     """
     gibbs_formation_h2ol = (- std_formation_gibbs_h2ol +
                              std_formation_entropy_h2ol * (temperature - STD_TEMPERATURE))
-
-    activity_o2 = partial_pressure_o2 / STD_PRESSURE
-    activity_h2 = partial_pressure_h2 / STD_PRESSURE
-    activities_ratio = activity_o2 ** 0.5 * activity_h2
 
     reversible_cell_voltage = (gibbs_formation_h2ol +
                                ct.gas_constant * temperature *
@@ -187,9 +182,56 @@ def calculate_tafel_overpotential(
     ... )
     0.17985
     """
+    
     tafel_slope = (ct.gas_constant * temperature / 
                    (number_of_electrons * charge_transfer_coeff * ct.faraday))
-    return tafel_slope * np.log(np.maximum(current_density / exchange_current_density,1))
+    return tafel_slope * (np.asinh(current_density / exchange_current_density / 2) if charge_transfer_coeff == 0.5
+                          else np.log(np.maximum(current_density / exchange_current_density,1)))
+
+def calculate_linear_overpotential(
+        current_density,
+        exchange_current_density,
+        temperature,
+        number_of_electrons,
+        charge_transfer_coeff):
+    """
+    Calculate the linear overpotential for an electrochemical reaction.
+    This is an approximation of the Butler-Volmer is valid for low 
+    overpotentials (< 0.1 V). 
+
+    Parameters:
+    -----------
+    current_density : float
+        The operating current density in Amperes per square meter (A/m²).
+    exchange_current_density : float
+        The exchange current density in Amperes per square meter (A/m²).
+    temperature : float
+        Temperature in Kelvin (K).
+    number_of_electrons : int
+        Number of electrons transferred in the electrochemical reaction.
+    charge_transfer_coefficient : float
+        Symmetry factor or charge transfer coefficient (dimensionless).
+
+    Returns:
+    --------
+    float
+        The Tafel overpotential in Volts (V).
+
+    Example:
+    --------
+    >>> calculate_tafel_overpotential(
+    ...     current_density=1e4, 
+    ...     exchange_current_density=1e-3, 
+    ...     temperature=298.15, 
+    ...     number_of_electrons=2, 
+    ...     charge_transfer_coeff=0.5
+    ... )
+    0.17985
+    """
+    
+    tafel_slope = (ct.gas_constant * temperature / 
+                   (number_of_electrons * charge_transfer_coeff * ct.faraday))
+    return tafel_slope * current_density / exchange_current_density
 
 @dataclass
 class ElectrochemicalReaction:
@@ -321,6 +363,44 @@ class ElectrochemicalReaction:
         """
         exchange_current_density = self.exchange_current_density(temperature,reactant_activity)
         return calculate_tafel_overpotential(
+            current_density,
+            exchange_current_density,
+            temperature,
+            self.number_of_electrons, 
+            self.charge_transfer_coeff)
+
+    def linear_overpotential(self, current_density, temperature, reactant_activity):
+        """
+        Calculate the linear overpotential for the electrochemical reaction.
+
+        Parameters:
+        -----------
+        current_density : float
+            The operating current density in Amperes per square meter (A/m²).
+        temperature : float
+            Temperature in Kelvin (K).
+        reactant_activity : float
+            Activity of the reactant (dimensionless), typically a ratio or concentration.
+
+        Returns:
+        --------
+        float
+            The linear overpotential in Volts (V).
+
+        Example:
+        --------
+        >>> reaction = ElectrochemicalReaction(
+        ...     reference_exchange_current_density=1e-4,
+        ...     activation_energy=50e6,
+        ...     number_of_electrons=2,
+        ...     charge_transfer_coeff=0.5
+        ... )
+        >>> eta = reaction.linear_overpotential(
+            current_density=1e-3, temperature=310, reactant_activity=0.5
+        )
+        """
+        exchange_current_density = self.exchange_current_density(temperature,reactant_activity)
+        return calculate_linear_overpotential(
             current_density,
             exchange_current_density,
             temperature,

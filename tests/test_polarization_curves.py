@@ -27,12 +27,13 @@ def fuel_cell(cathode_conditions, anode_conditions):
         cell_area = 25e-4, 
         cell_number = 1, 
         ca = mrpd.FuelCellSide(
-            cl=mrpd.CatalystLayer(
+            cl=mrpd.PtCCatalystLayer(
                 ecsa=50e3, 
                 platinum_loading=0.4e-2, 
                 carbon_agglomerate_radius=60e-9,
                 thickness=10e-6,
                 thermal_conductivity=0.25,
+                ionomer = mrpd.PFSAIonomer(),
                 reaction=mrpd.ElectrochemicalReaction(
                     reference_exchange_current_density=2.45e-4,
                     reaction_order=0.54, 
@@ -49,20 +50,17 @@ def fuel_cell(cathode_conditions, anode_conditions):
                 thermal_conductivity=5.75
             ),
             has_mpl=False, 
-            ch=mrpd.GasFlowChannel(
+            ch=mrpd.FlowChannel(
                 height=1e-3,
                 width=1e-3, 
                 length=0.1,
                 n_parallel=20,
                 reactant='o2', 
             ),
-            liq_transport_model=mrpd.DarcyLiquidTransportModel(
-                dry_wet_transition_parameter=0.2
-            ),
             thermal_contact_resistance=2e-4,
         ),
         an = mrpd.FuelCellSide(
-            cl=mrpd.CatalystLayer(
+            cl=mrpd.PtCCatalystLayer(
                 thickness=6e-6, 
                 thermal_conductivity=0.25,
             ),
@@ -71,7 +69,7 @@ def fuel_cell(cathode_conditions, anode_conditions):
                 effective_gas_diffusion_ratio=0.20, 
                 thermal_conductivity=5.75
             ),
-            ch=mrpd.GasFlowChannel(
+            ch=mrpd.FlowChannel(
                 height=1e-3,
                 width=1e-3, 
                 length=0.1,
@@ -80,14 +78,14 @@ def fuel_cell(cathode_conditions, anode_conditions):
             ),
             thermal_contact_resistance=2e-4
         ),
-        membrane = mrpd.Membrane(
+        membrane = mrpd.PFSA(
             equivalent_weight=1100,
             dry_density=1980, 
             dry_thickness=25e-6,
             h2_permeation_model=mrpd.HydrogenPermeationModel(
                 permeability_correction_factor=1
             ), 
-            water_balance_model=mrpd.SimpleMembraneWaterBalanceModel()
+            water_balance_model=mrpd.MembraneWaterBalanceModel()
         )
     )
     
@@ -106,7 +104,7 @@ def test_polarization_curve(fuel_cell, cathode_conditions, anode_conditions):
         ax[0,0].set_ylabel('Cell voltage (V)')
         ax[0,0].set_xlabel('Curent density (A/cm$^2$)')
 
-        ax[0,1].plot(fuel_cell.current_density * 1e-4, fuel_cell.ca.gdl.water_saturation, label=f'{rh_cathode * 100:.0f} %')
+        ax[0,1].plot(fuel_cell.current_density * 1e-4, fuel_cell.ca.gdl.non_wetting_saturation, label=f'{rh_cathode * 100:.0f} %')
         ax[0,1].set_ylabel('GDL water\nsaturation (n.d.)')
         ax[0,1].set_xlabel('Curent density (A/cm$^2$)')
 

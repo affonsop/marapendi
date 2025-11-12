@@ -2,10 +2,15 @@ from .electrochemistry import *
 from .water import *
 from .tools import *
 from .fuelcell import *
+from .aem_electrolyzer import *
 from .membrane import * 
 from .gas_composition import *
 from .flow_channels import *
 from .porous_layers import * 
-from .transport import * 
+from .transport_models import * 
 from .estimation import *
-
+from .electrolyte import *
+from .ionomer import *
+from .water_balance_models import *
+from .membrane_permeation_models import * 
+from .catalyst_layers import *

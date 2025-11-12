@@ -27,7 +27,7 @@ def fuel_cell():
         cell_area = 25e-4, 
         cell_number = 1, 
         ca = mrpd.FuelCellSide(
-            cl=mrpd.CatalystLayer(
+            cl=mrpd.PtCCatalystLayer(
                 ecsa=50e3, 
                 platinum_loading=0.4e-2, 
                 carbon_agglomerate_radius=60e-9,
@@ -49,7 +49,7 @@ def fuel_cell():
                 thermal_conductivity=5.75
             ),
             has_mpl=False, 
-            ch=mrpd.GasFlowChannel(
+            ch=mrpd.FlowChannel(
                 height=1e-3,
                 width=1e-3, 
                 length=0.1,
@@ -63,7 +63,7 @@ def fuel_cell():
             thermal_contact_resistance=2e-4,
         ),
         an = mrpd.FuelCellSide(
-            cl=mrpd.CatalystLayer(
+            cl=mrpd.PtCCatalystLayer(
                 thickness=6e-6, 
                 thermal_conductivity=0.25,
             ),
@@ -72,7 +72,7 @@ def fuel_cell():
                 effective_gas_diffusion_ratio=0.25, 
                 thermal_conductivity=5.75
             ),
-            ch=mrpd.GasFlowChannel(
+            ch=mrpd.FlowChannel(
                 height=1e-3,
                 width=1e-3, 
                 length=0.1,

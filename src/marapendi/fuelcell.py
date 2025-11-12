@@ -6,41 +6,111 @@ from scipy.optimize import root
 import numpy as np 
 import cantera as ct
 
-from .electrochemistry import calculate_reversible_cell_voltage, h2_lhv
-from .porous_layers import PorousLayer, CatalystLayer
-from .flow_channels import GasFlowChannel
+from .electrochemistry import calculate_reversible_cell_voltage, h2_lhv, STD_PRESSURE
+from .porous_layers import PorousLayer
+from .catalyst_layers import PtCCatalystLayer
+from .flow_channels import FlowChannel
 from .membrane import Membrane
 from .gas_composition import species_indexes 
-from .transport import DarcyLiquidTransportModel
 from .water import water_molar_volume
+
+
+from dataclasses import dataclass, field
 
 @dataclass
 class FuelCellSide:
-    cl: PorousLayer = field(default_factory=CatalystLayer) 
+    """
+    A class representing one side (anode or cathode) of a PEM fuel cell, 
+    composed of porous layers (catalyst layer, microporous layer, gas diffusion layer)
+    and flow channels. This class provides methods to calculate transport and 
+    thermal resistances, as well as water management parameters.
+
+    Attributes
+    ----------
+    cl : CatalystLayer
+        Catalyst layer object (defaults to PtCCatalystLayer).
+    gdl : PorousLayer
+        Gas diffusion layer object.
+    mpl : PorousLayer, optional
+        Microporous layer object.
+    ch : FlowChannel
+        Flow channel object for gas transport.
+    has_mpl : bool
+        Whether this side includes a microporous layer.
+    membrane_surface_water_content : float
+        Water content at the membrane surface (lambda).
+    thermal_contact_resistance : float
+        Additional thermal contact resistance at interfaces.
+
+    Derived Attributes
+    ------------------
+    porous_layers : list of PorousLayer
+        Ordered list of porous layers (includes mpl if has_mpl is True).
+    components : list
+        List of all components including porous layers and channel.
+    o2_transport_resistance : float
+        Cached value for O2 transport resistance (initialized as 0).
+    h2ov_transport_resistance : float
+        Cached value for H2O vapor transport resistance (initialized as 0).
+    h2_transport_resistance : float
+        Cached value for H2 transport resistance (initialized as 0).
+    liquid_water_flux : float 
+        Cached value for liquid water flux from the catalyst layer to the channel (initialized as 0).
+    """
+
+    cl: PorousLayer = field(default_factory=PtCCatalystLayer) 
     gdl: PorousLayer = field(default_factory=PorousLayer)
     mpl: PorousLayer = field(default_factory=PorousLayer)
-    ch: GasFlowChannel = field(default_factory=GasFlowChannel)
+    ch: FlowChannel = field(default_factory=FlowChannel)
     has_mpl: bool = False
-    liq_transport_model: DarcyLiquidTransportModel = field(default_factory=DarcyLiquidTransportModel)
     membrane_surface_water_content: float = 0 
     thermal_contact_resistance: float = 0 
 
     def __post_init__(self): 
+        """
+        Post-initialization to update the ordered list of porous layers and all components.
+        Sets up porous_layers and components lists based on whether MPL is present.
+        """
         self.porous_layers = [self.cl, self.mpl, self.gdl] if self.has_mpl else [self.cl, self.gdl]
         self.components = self.porous_layers + [self.ch]
         self.o2_transport_resistance = 0
         self.h2ov_transport_resistance = 0
         self.h2_transport_resistance = 0   
+        self.liquid_water_flux = 0
 
-    def set_catalyst_layer(self,cl): 
+    def set_catalyst_layer(self, cl): 
+        """
+        Set a new catalyst layer and update internal component structure.
+
+        Parameters
+        ----------
+        cl : PorousLayer
+            The new catalyst layer object.
+        """
         self.cl = cl 
         self.__post_init__()
     
     def set_gas_diffusion_layer(self, gdl): 
+        """
+        Set a new gas diffusion layer and update internal component structure.
+
+        Parameters
+        ----------
+        gdl : PorousLayer
+            The new gas diffusion layer object.
+        """
         self.gdl = gdl
         self.__post_init__()
     
     def set_channel(self, ch): 
+        """
+        Set a new flow channel and update internal component structure.
+
+        Parameters
+        ----------
+        ch : FlowChannel
+            The new flow channel object.
+        """
         self.ch = ch 
         self.__post_init__()
 
@@ -51,15 +121,15 @@ class FuelCellSide:
         Parameters
         ----------
         species : str
-            The gas species for which transport resistance is calculated (e.g., 'o2', 'h2o').
+            The gas species ('o2', 'h2o', etc.) for which to compute resistance.
         ionomer_water_content : float, optional
-            The water content in the ionomer, used for O2 film resistance calculation (default is 11).
+            Water content in the ionomer (lambda), relevant for O2 film resistance (default is 11).
 
         Returns
         -------
         float
-            The total gas transport resistance, including contributions from porous layers,
-            channel, and ionomer film for O2.
+            The total gas transport resistance, including porous layers,
+            channel, and O2 ionomer film resistance if applicable.
         """
         return (sum(layer.gas_transport_resistance(species) for layer in self.porous_layers) +
                 self.ch.gas_transport_resistance(species) + 
@@ -67,61 +137,67 @@ class FuelCellSide:
 
     def heat_transfer_resistance(self): 
         """
-        Calculate the total heat transfer resistance.
+        Calculate the total heat transfer resistance across this side.
 
         Returns
         -------
         float
-            The sum of heat transfer resistances from all porous layers and thermal contact resistance.
+            Total heat transfer resistance, summing all porous layers and 
+            the thermal contact resistance.
         """
-        return sum(layer.thermal_resistance() for layer in self.porous_layers) + self.thermal_contact_resistance
+        return sum(layer.thermal_resistance() for layer in self.porous_layers if layer != self.cl) + self.thermal_contact_resistance
                 
     def calculate_water_saturation(self): 
         """
-        Calculate the water saturation for each porous layer.
+        Compute and update the water saturation in each porous layer.
 
-        Updates
-        -------
-        Each layer's `water_saturation` attribute is updated based on the liquid flux and 
-        equivalent flow resistance.
+        Notes
+        -----
+        This method updates each layer's `water_saturation` attribute based on 
+        the liquid flux and upstream capillary pressures. It assumes that 
+        `self.liquid_flux` has been set externally.
         """
-        for layer in self.porous_layers: 
-            layer.water_saturation = self.liq_transport_model.calculate_water_saturation(self.liquid_flux, layer.equivalent_flow_resistance)
-    
+        self.gdl.two_phase_transport_model.calculate_non_wetting_saturation(self.gdl, self.liquid_flux, upstream_capillary_pressure=0)
+        if self.has_mpl: 
+             self.mpl.two_phase_transport_model.calculate_non_wetting_saturation(self.gdl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
+             self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.mpl.downstream_capillary_pressure)
+        else:
+            self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
+
     def calculate_equivalent_flow_resistance(self): 
         """
-        Compute the equivalent flow resistances for each layer.
+        Compute and update equivalent flow resistances for each porous layer.
 
         Returns
         -------
         float
-            The total flow resistance considering all porous layers.
+            The total equivalent flow resistance across all porous layers.
 
-        Updates
-        -------
-        Each layer's `equivalent_flow_resistance` attribute is updated iteratively.
+        Notes
+        -----
+        Updates each layer's `equivalent_flow_resistance` attribute 
+        based on its saturation-dependent flow resistance.
         """
         total_equivalent_flow_resistance = 0 
         for k, layer in enumerate(self.porous_layers[::-1]): 
-            layer_resistance = layer.saturation_flow_resistance()
-            layer.equivalent_flow_resistance = total_equivalent_flow_resistance + layer_resistance / 2
-            total_equivalent_flow_resistance += layer_resistance
+            layer.equivalent_flow_resistance = layer.saturation_flow_resistance
+            total_equivalent_flow_resistance += layer.equivalent_flow_resistance
         return total_equivalent_flow_resistance
 
     def max_water_vapor_removal(self):
         """
-        Calculate the maximum amount of water vapor that can be removed.
-        Considers the dry water vapor transport resistance. 
+        Calculate the maximum removable water vapor concentration.
 
         Returns
         -------
         float
-            The maximum removable water vapor concentration, based on the difference
-            between the vapor concentration for a saturated CL and the gas flow channel.
+            The maximum amount of water vapor that can be removed, 
+            computed from the difference between the saturation 
+            concentration at the CL and the vapor concentration 
+            in the gas flow channel, divided by the vapor transport resistance.
         """
         return ((self.cl.saturation_concentration() - self.ch.vapor_concentration()) 
-                / self.gas_transport_resistance('h2o')) 
-    
+                / self.gas_transport_resistance('h2o'))
 
 @dataclass
 class FuelCell: 
@@ -158,6 +234,9 @@ class FuelCell:
         Increase in membrane electrode assembly (MEA) temperature (default is 0).
     mea_temperature : float, optional
         Operating temperature of the MEA (default is 0 K).
+    use_eq_water_content_for_ionomer : bool, optional
+        Flag indicating if ionomer water content is equal to equilibrium water content at 
+        the CL. If not, use values of water content at the membrane interface
     """
     cell_area: float
     cell_number: int
@@ -171,7 +250,7 @@ class FuelCell:
     heat_release_rate: float = 0
     mea_temperature_increase: float = 0
     mea_temperature: float = 0
-
+    use_eq_water_content_for_ionomer: bool = True
     def reversible_cell_voltage(self): 
         """
         Calculate the reversible cell voltage based on the Nernst equation.
@@ -186,10 +265,11 @@ class FuelCell:
         The calculation considers the temperature of the catalyst layer and the partial pressures
         of oxygen and hydrogen at the cathode and anode, respectively.
         """
+        activity_o2 = self.ca.cl.species_partial_pressure('o2') / STD_PRESSURE
+        activity_h2 = self.an.cl.species_partial_pressure('h2') / STD_PRESSURE
         return calculate_reversible_cell_voltage(
             self.ca.cl.temperature,
-            self.ca.cl.species_partial_pressure('o2'),
-            self.an.cl.species_partial_pressure('h2')
+            activity_o2 ** 0.5 * activity_h2
         )
     
     def activation_overpotential(self, theta_PtO=0): 
@@ -209,8 +289,8 @@ class FuelCell:
         Notes
         -----
         The activation overpotential is calculated using the Tafel equation, considering 
-        the hydrogen crossover current, oxygen partial pressure, and platinum surface coverage.
-        It accounts for the voltage drop due to the PtO coverage effect.
+        the hydrogen crossover current, gases partial pressure, and platinum surface coverage.
+        It accounts for the voltage drop due to the PtO coverage effect in the cathode.
         """
         self.h2_permeation_flux = self.membrane.hydrogen_permeation_flux(self.an.cl.species_partial_pressure('h2'), 
                                                                         self.membrane.temperature, 
@@ -223,12 +303,18 @@ class FuelCell:
         self.crossover_current = self.h2_permeation_flux * (2 * ct.faraday)
         omega_PtO_voltage_drop = self.ca.cl.omega_PtO * theta_PtO / (self.ca.cl.reaction.number_of_electrons *
                                                                       self.ca.cl.reaction.charge_transfer_coeff * ct.faraday)
-        tafel_overpotential = self.ca.cl.reaction.tafel_overpotential(
+        self.orr_overpotential = self.ca.cl.reaction.tafel_overpotential(
             (self.current_density + self.crossover_current) / (self.ca.cl.ecsa * self.ca.cl.platinum_loading * (1-theta_PtO)),
             self.ca.cl.temperature,
             self.ca.cl.species_partial_pressure('o2')
         )
-        return tafel_overpotential + omega_PtO_voltage_drop
+        self.hor_overpotential = 0
+        # self.hor_overpotential = self.an.cl.reaction.linear_overpotential(
+        #     self.current_density / (self.an.cl.ecsa * self.an.cl.platinum_loading),
+        #     self.an.cl.temperature,
+        #     self.an.cl.species_partial_pressure('h2')
+        # )
+        return self.orr_overpotential + omega_PtO_voltage_drop + self.hor_overpotential
     
     def high_frequency_resistance(self): 
         """
@@ -245,7 +331,7 @@ class FuelCell:
         and the electrical resistance of the cell components. It is an important parameter in 
         electrochemical impedance spectroscopy (EIS) measurements.
         """
-        return self.membrane.proton_resistance(self.membrane.temperature, 0, self.membrane.water_content) + self.electrical_resistance
+        return self.membrane.proton_resistance(self.membrane.water_content, self.membrane.temperature, water_saturation=self.ca.cl.non_wetting_saturation) + self.electrical_resistance
 
     def ohmic_overpotential(self): 
         """
@@ -263,11 +349,12 @@ class FuelCell:
         cell components. It is calculated as the product of the current density and 
         the total internal resistance.
         """
-        self.ca.cl.proton_resistance = self.ca.cl.effective_proton_resistance(
-            self.current_density, 
-            self.ca.cl.ionomer_water_content, 
-            self.ca.cl.temperature
-        )
+        for side in (self.ca, ): 
+            side.cl.proton_resistance = side.cl.effective_charge_resistance(
+                self.current_density, 
+                side.cl.ionomer_water_content, 
+                side.cl.temperature
+            )
         return self.current_density * (self.ca.cl.proton_resistance + self.high_frequency_resistance())
 
     def reversible_voltage_vs_RHE(self): 
@@ -287,8 +374,7 @@ class FuelCell:
         """
         return calculate_reversible_cell_voltage(
             self.ca.cl.temperature,
-            self.ca.cl.species_partial_pressure('o2'),
-            1e5,  # Reference hydrogen pressure in Pascals
+            self.ca.cl.species_partial_pressure('o2') / STD_PRESSURE
         )
     def calculate_theta_PtO(self): 
         """
@@ -318,7 +404,7 @@ class FuelCell:
                 theta_PtO = 0.5 * theta_PtO +0.5 / (1 + np.exp(22.4 * (0.818 - E_rev_vs_RHE + eta_act)))
                 eps_max = np.mean(np.abs(eta_act - eta_act_old))
             
-        self.ca.cl.theta_PtO = theta_PtO
+        self.ca.cl.theta_catalyst = theta_PtO
 
     def cell_voltage(self):
         """
@@ -339,7 +425,7 @@ class FuelCell:
         self.calculate_theta_PtO()
         E_rev = self.reversible_cell_voltage()
         eta_ohm = self.ohmic_overpotential()
-        eta_act = self.activation_overpotential(self.ca.cl.theta_PtO)
+        eta_act = self.activation_overpotential(self.ca.cl.theta_catalyst)
         return np.maximum(0, E_rev - eta_act - eta_ohm)
     
     def set_mea_temperature(self, mea_temperature): 
@@ -386,11 +472,20 @@ class FuelCell:
         - The equivalent flow resistance and water saturation in the cathode are recalculated.
         - Finally, the water vapor transport resistance values are updated again for consistency.
         """
+        
         self.ca.h2ov_transport_resistance = self.ca.gas_transport_resistance('h2o')
         self.an.h2ov_transport_resistance = self.an.gas_transport_resistance('h2o')
-        self.membrane.water_balance_model.water_balance(self)
+        self.membrane.water_balance_model.solve_water_balance(self)
+        for cl in (self.ca.cl, self.an.cl): 
+            if self.use_eq_water_content_for_ionomer: 
+                cl.ionomer_water_content = cl.eq_water_content
+            else: 
+                cl.ionomer_water_content = cl.memb_interface_water_content
+            cl.set_ionomer_wet_properties(cl.ionomer_water_content, cl.temperature)
+
         self.ca.calculate_equivalent_flow_resistance()
         self.ca.calculate_water_saturation()
+        self.ca.cl.set_water_film_thickness(self.ca.cl.non_wetting_saturation)
         self.ca.h2ov_transport_resistance = self.ca.gas_transport_resistance('h2o')
         self.an.h2ov_transport_resistance = self.an.gas_transport_resistance('h2o')
     
@@ -571,21 +666,45 @@ class FuelCell:
 
         for side in (self.ca, self.an): 
             for layer in side.components: 
-                layer.water_saturation = 0 
-
+                layer.non_wetting_saturation = 0 
+                layer.temperature = stack_temperature
+            side.cl.set_water_film_thickness(0)
+            
         for cell_side, conditions in zip((self.ca, self.an), (cathode_conditions, anode_conditions)): 
+            cell_side.cl.ionomer_water_content = 10
+            cell_side.cl.set_ionomer_wet_properties(cell_side.cl.ionomer_water_content, self.temperature)
+            cell_side.electrolyte = conditions.inlet_liquid
+            cell_side.electrolyte.set_temperature(self.membrane.temperature)
             for component in cell_side.components: 
-                component.water_saturation = 0
-                component.gas.X = np.zeros_like(self.current_density[...,np.newaxis]) * np.array([0,0,0,0])
+   
+                component.gas.__init__()
+                try: 
+                    component.gas.X = np.zeros_like(self.current_density[...,np.newaxis]) * np.array([1,0,0,0])
+                except TypeError: 
+                    component.gas.X = self.current_density * np.array([1,0,0,0])
                 component.set_gas_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
                 component.set_gas_composition(conditions.dry_o2_mole_fraction, 
                                               conditions.dry_h2_mole_fraction,
                                               conditions.inlet_relative_humidity)
+                component.set_gas_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
+                # component.set_gas_composition(conditions.dry_o2_mole_fraction, 
+                #                               conditions.dry_h2_mole_fraction,
+                #                               conditions.inlet_relative_humidity)
                 component.set_gas_temperature_and_pressure(stack_temperature, conditions.inlet_pressure)
+            
+            cell_side.ch.set_fixed_inlet_liquid_flow_rate(conditions.inlet_liquid_flow_rate)
+            
             cell_side.ch.set_inlet_gas_flow_rate_from_stoichiometry(
-                (self.o2_consumption if cell_side == self.ca else self.h2_consumption) * self.cell_area, conditions.stoichiometry
+                (self.o2_consumption if cell_side == self.ca else self.h2_consumption) * self.cell_area, conditions.stoichiometry, 
+                fixed_inlet_gas_flow_rate=conditions.inlet_gas_flow_rate
             )
-        
+            for component in cell_side.components: 
+                component.electrolyte = cell_side.electrolyte
+                component.non_wetting_saturation = cell_side.ch.inlet_liquid_saturation
+            
+
+from .electrolyte import ElectrolyteSolution
+
 @dataclass
 class OperatingConditions:
     """
@@ -609,6 +728,16 @@ class OperatingConditions:
         The stoichiometric ratio of reactant.
     average_pressure : float
         The average pressure between inlet and outlet (Pa).
+    inlet_liquid_saturation : float 
+        The volume fraction of the liquid phase at the inlet. Defaults to zero. 
+    inlet_liquid : ElectrolyteSolution
+        The nature of the liquid phase.
+    inlet_liquid_volume_flow_rate : float 
+        The inlet liquid flow rate (m3/s).
+    inlet_liquid_volume_flow_rate : float 
+        The inlet liquid flow rate (m3/s).
+    inlet_gas_volume_flow_rate : float 
+        The inlet liquid flow rate (m3/s).
     """
     inlet_temperature: float = 353.15
     inlet_pressure: float = None
@@ -616,8 +745,12 @@ class OperatingConditions:
     dry_o2_mole_fraction: float = 0.2
     dry_h2_mole_fraction: float = 0.0
     inlet_relative_humidity: float = 0.5
-    stoichiometry: float = 2.0
-    
+    stoichiometry: float = 2
+    inlet_liquid_saturation: float = 0
+    inlet_liquid: ElectrolyteSolution = field(default_factory=ElectrolyteSolution)
+    inlet_liquid_flow_rate: float = 0
+    inlet_gas_flow_rate: float = 0
+
     def __post_init__(self):
         if self.inlet_pressure is None:
             self.inlet_pressure = self.outlet_pressure if self.outlet_pressure is not None else 101325.0

@@ -12,6 +12,9 @@ selected_species = [selected_species_dict[sp] for sp in species_list]
 species_names = [sp.lower() for sp in species_list]
 species_indexes = dict(zip(species_names, (0,1,2,3)))
 index_o2, index_n2, index_h2, index_h2ov = 0, 1, 2, 3
+gas.selected_species = species_list
+
+viscosity_polynomials = {sp: gas.get_viscosity_polynomial(gas.species_index(sp))[::-1] for sp in species_list}
 
 class GasComposition:
     """
@@ -62,10 +65,12 @@ class GasComposition:
         pressure : float, optional, default=1e5
             Pressure of the gas mixture in Pascals (Pa).
         """
+        self.molecular_weights = np.array([32., 28., 2., 18.])
         self.X = np.zeros(shape=(4,))
+        self.mixture_molecular_weight = 32.
         self.set_temperature_and_pressure(temperature, pressure)
         self.set_composition(1,0,0)
-        self.molecular_weights = np.array([32., 28., 2., 18.])
+        
 
     def set_pressure(self, new_pressure: float):
         """
@@ -81,7 +86,7 @@ class GasComposition:
 
     def set_temperature(self, new_temperature: float):
         """
-        Set the temperature of the gas mixture and adjust the relative humidity.
+        Set the temperature of the gas mixture and adjust the relative humidity and kinematic viscosity.
 
         Parameters:
         -----------
@@ -89,6 +94,12 @@ class GasComposition:
             The new temperature in Kelvin (K).
         """
         self.temperature = new_temperature
+        self.log_temperature = np.log(self.temperature)
+        self.sqrt_temperature = np.sqrt(self.temperature)
+        self.sqrt_temperature_cubed = self.sqrt_temperature * self.temperature
+        self.species_kinematic_viscosities = np.array([self.calculate_species_kinematic_viscosity(species) 
+                                                      for species in species_list]).transpose()
+        self.mixture_kinematic_viscosity = self.calculate_mixture_kinematic_viscosity()
         self.calculate_relative_humidity()
 
     def set_temperature_and_pressure(self, temperature: float, pressure: float):
@@ -102,9 +113,9 @@ class GasComposition:
         pressure : float
             The pressure in Pascals (Pa).
         """
-        self.temperature = temperature
+        
         self.pressure = pressure
-        self.calculate_relative_humidity()
+        self.set_temperature(temperature)
 
     def pressure(self) -> float:
         """
@@ -155,6 +166,9 @@ class GasComposition:
     def concentration(self): 
         return self.pressure / (ct.gas_constant * self.temperature)
     
+    def density(self): 
+        return self.concentration() * self.mixture_molecular_weight
+
     def get_relative_humidity(self) -> float: 
         """
         Get the current relative humidity in the gas mixture.
@@ -197,16 +211,48 @@ class GasComposition:
 
         self.X = dry_mole_fractions * (1 - vapor_mole_fractions[...,index_h2ov, np.newaxis]) + vapor_mole_fractions
         self.relative_humidity = self.pressure * vapor_mole_fractions[...,index_h2ov] / self.saturation_pressure
-      
-    def species_diffusion_coefficient(self, species): 
-        if species == 'o2': 
-            reference_diffusion_coeff = 0.26652e-4 
-        elif species == 'h2': 
-            reference_diffusion_coeff = 1.005e-4
-        elif species == 'h2o':
-            if np.max(self.X[...,index_h2]) > 0: 
-                reference_diffusion_coeff = 1.005e-4
-            else: 
-                reference_diffusion_coeff = 0.2982e-4
+        self.mixture_molecular_weight = np.sum(self.molecular_weights * self.X, axis=-1)
+        self.mixture_kinematic_viscosity = self.calculate_mixture_kinematic_viscosity()
 
-        return reference_diffusion_coeff * (self.temperature / 333.15) ** 1.5 * (101325 / self.pressure)
+    def calculate_species_diffusion_coefficient(self, species):
+        """
+        Calculate the binary diffusion coefficient for a given species in the gas phase.
+
+        Uses empirical correlations based on reference values adjusted for
+        temperature and pressure. Data from Vetter and Schumacher (2019).
+
+        Parameters
+        ----------
+        species : str
+            The chemical species ('o2', 'h2', or 'h2o') for which to compute the diffusion coefficient.
+
+        Returns
+        -------
+        float
+            The adjusted diffusion coefficient [m^2/s].
+
+        Reference
+        ----------
+        Vetter, R. & Schumacher, J. O. Comput. Phys. Commun. 234, 223–234 (2019).
+        """
+        # Set the reference diffusion coefficient based on species
+        if species == 'o2':
+            reference_diffusion_coeff = 0.28e-4  # [m^2/s]
+        elif species == 'h2':
+            reference_diffusion_coeff = 1.24e-4
+        elif species == 'h2o':
+            # If H2 is present, assume H2-H2O; else O2-H2O
+            if np.max(self.X[..., index_h2]) > 0:
+                reference_diffusion_coeff = 1.24e-4
+            else:
+                reference_diffusion_coeff = 0.36e-4
+
+        # Apply temperature and pressure correction
+        # Fick's law adjustment: D ~ T^1.5 / P
+        return reference_diffusion_coeff * (self.sqrt_temperature_cubed / self.pressure) * 15.0682 # 15.0682 = 100000 / 353.15**1.5
+    
+    def calculate_species_kinematic_viscosity(self,species): 
+        return np.polyval(viscosity_polynomials[species], self.log_temperature) ** 2 * self.sqrt_temperature
+    
+    def calculate_mixture_kinematic_viscosity(self):
+        return np.sum(self.X * self.species_kinematic_viscosities * self.molecular_weights, axis=-1) / self.mixture_molecular_weight

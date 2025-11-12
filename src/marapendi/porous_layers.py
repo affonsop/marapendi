@@ -1,45 +1,53 @@
 """
-Module providing a classes to model porous layers in electrochemical cells. 
+Module providing classes to model porous layers in electrochemical cells.
 """
 from dataclasses import dataclass, field
 import numpy as np 
 import cantera as ct
 
 from .gas_composition import GasComposition, index_h2, index_o2, index_h2ov, species_indexes
-from .tools import calculate_arrhenius_term
-from .electrochemistry import ElectrochemicalReaction 
-from .transport import PorousGasResistanceModel
-from .water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight, water_molar_volume, water_density
-from .membrane import Membrane
+from .transport_models import PorousGasResistanceModel, DarcyTransportModel
+from .water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight
 
 @dataclass
-class PorousLayer(): 
+class PorousLayer():
     """
-    Represents a porous layer in a fuel cell or electrolyzer, defining its properties related 
-    to gas transport, permeability, and thermal characteristics.
+    Represents a porous layer in a fuel cell or electrolyzer, defining its
+    properties related to gas transport, permeability, capillarity, and thermal behavior.
 
     Attributes
     ----------
     thickness : float
-        Thickness of the porous layer in meters (default is 1 mm).
+        Thickness of the porous layer in meters (default is 1e-3 m).
     gas : GasComposition
         Gas composition object representing the gas properties in the layer.
     porosity : float
-        Porosity of the layer (default is 1).
+        Porosity of the layer (0 < porosity < 1).
     effective_gas_diffusion_ratio : float
-        Ratio accounting for gas diffusion efficiency through the porous layer (default is 1).
+        Ratio accounting for effective gas diffusion through the porous medium (default is 1).
     pore_diameter : float
-        Average pore diameter in meters (default is 1e12, with negligible Knudsen diffusion).
+        Average pore diameter in meters (default is large, so Knudsen diffusion negligible).
     transport_resistance_model : PorousGasResistanceModel
         Model used to calculate gas transport resistance.
-    water_saturation : float
-        Fraction of the pore volume occupied by liquid water (default is 0).
+    two_phase_transport_model : DarcyTransportModel
+        Model used to compute liquid water flow and capillarity.
+    non_wetting_saturation : float
+        Fraction of the pore volume occupied by non-wetting phase (0 to 1).
     thermal_conductivity : float
-        Thermal conductivity in W/(m·K) (default is 1e12, high conductivity).
+        Thermal conductivity in W/(m·K).
     absolute_permeability : float
-        Absolute permeability of the layer in m² (default is 10000).
+        Absolute permeability in m².
+    relative_permeability_exponent : float
+        Exponent for relative permeability model (default is 3, often used for cubic relationship).
     contact_angle : float
         Contact angle for liquid water in degrees (default is 120°).
+    non_wetting_phase : str
+        Non-wetting phase (liquid or gas).
+
+    Notes
+    -----
+    This class internally computes quantities like capillary pressure scaling
+    and liquid flow resistance based on current temperature, saturation, and geometry.
     """
 
     thickness: float = 1e-3
@@ -48,17 +56,21 @@ class PorousLayer():
     effective_gas_diffusion_ratio: float = 1
     pore_diameter: float=1e12
     transport_resistance_model: PorousGasResistanceModel = field(default_factory=PorousGasResistanceModel)
-    water_saturation: float = 0
+    two_phase_transport_model: DarcyTransportModel = field(default_factory=DarcyTransportModel)
+    non_wetting_saturation: float = 0
     thermal_conductivity: float = 1e12 
-    absolute_permeability: float = 10000
+    absolute_permeability: float = 1e6
+    relative_permeability_exponent: float = 3
     contact_angle: float = 120. 
+    non_wetting_phase: str = 'water'
+    wetting_phase: str = 'gas'
 
     def __post_init__(self): 
-        self.temperature = self.gas.temperature
-        self.RT = ct.gas_constant * self.temperature
-        self.pressure = self.gas.pressure 
         self.sqrt_abs_permeability_porosity = np.sqrt(self.absolute_permeability * self.porosity)
         self.cosinus_contact_angle = np.abs(np.cos(np.pi / 180 * self.contact_angle))
+        self.capillary_pressure_J_ratio = 1
+        self.saturation_flow_resistance = 1
+        self.set_gas_temperature_and_pressure(self.gas.temperature, self.gas.pressure)
 
     def o2_mole_fraction(self):
         """
@@ -112,7 +124,7 @@ class PorousLayer():
         float
             Diffusion coefficient of the specified species (m²/s).
         """
-        return self.gas.species_diffusion_coefficient(species)
+        return self.gas.calculate_species_diffusion_coefficient(species)
 
     def species_molecular_weight(self, species):
         """
@@ -191,6 +203,8 @@ class PorousLayer():
         self.temperature = temperature
         self.RT = ct.gas_constant * self.temperature
         self.gas.set_temperature(temperature)
+        self.capillary_pressure_J_ratio = (water_surface_tension(self.temperature) * self.cosinus_contact_angle) / np.sqrt(self.absolute_permeability / self.porosity)
+        self.saturation_flow_resistance = self.calculate_saturation_flow_resistance()
 
     def set_gas_temperature_and_pressure(self, temperature, pressure):
         """
@@ -203,8 +217,7 @@ class PorousLayer():
         pressure : float
             Gas pressure in Pascals (Pa).
         """
-        self.temperature = temperature
-        self.RT = ct.gas_constant * self.temperature
+        self.set_gas_temperature(temperature)
         self.pressure = pressure
         self.gas.set_temperature_and_pressure(temperature, pressure)
 
@@ -315,7 +328,7 @@ class PorousLayer():
             self.temperature, 
             self.species_diffusion_coefficient(species), 
             self.species_molecular_weight(species), 
-            self.water_saturation
+            self.non_wetting_saturation
         )
 
     def thermal_resistance(self):
@@ -329,9 +342,9 @@ class PorousLayer():
         """
         return self.thickness / self.thermal_conductivity
 
-    def saturation_flow_resistance(self):
+    def calculate_saturation_flow_resistance(self, electrolyte=None):
         """
-        Computes the resistance to liquid water flow of the layer. 
+        Computes the resistance to non-wetting phase flow of the layer. 
         Based on a water saturation gradient.
 
         Returns
@@ -339,244 +352,50 @@ class PorousLayer():
         float
             Saturation flow resistance in s.m²/mol.
         """
-        return ((self.thickness / self.sqrt_abs_permeability_porosity) *
-                water_kinematic_viscosity(self.temperature) * water_molecular_weight /
-                (self.cosinus_contact_angle * water_surface_tension(self.temperature)))
-
-        
-
-@dataclass 
-class CatalystLayerIonomerModel(Membrane): 
-    dry_density: float = 2004 
-    equivalent_weight: float = 952. 
+        if self.non_wetting_phase == 'water': 
+            non_wetting_kinematic_viscosity = water_kinematic_viscosity(self.temperature)
+            non_wetting_molecular_weight = water_molecular_weight
+            non_wetting_surface_tension = water_surface_tension(self.temperature)
+        elif self.non_wetting_phase == 'gas': 
+            non_wetting_kinematic_viscosity = self.gas.mixture_kinematic_viscosity 
+            non_wetting_molecular_weight = self.gas.mixture_molecular_weight
+            non_wetting_surface_tension = water_surface_tension(self.temperature) if self.wetting_phase == 'water' else electrolyte.surface_tension
+            
+        return ((self.thickness * non_wetting_kinematic_viscosity * non_wetting_molecular_weight) / 
+                    (self.sqrt_abs_permeability_porosity * self.cosinus_contact_angle * non_wetting_surface_tension))
     
-    hydrated_proton_conductivity: float = 11 # S/m
-    proton_conductivity_activation_energy: float = 11e6
-    hydrated_o2_diffusion: float = 1.14698e-10*14**0.708
-    o2_diffusion_exponent: float = 0.708
-    o2_diffusion_activation_energy: float = 24e6
 
-    def __post_init__(self): 
-        Membrane.__post_init__(self)
-
-    def wet_density(self, water_content, temperature):
-        water_mass = water_molecular_weight * water_content
-        return self.equivalent_weight + water_mass / (self.equivalent_weight / self.dry_density + water_mass / water_density(temperature))
-
-    def wet_expansion_factor(self, water_content, temperature):
-        water_mass = water_molecular_weight * water_content 
-        return 1 + self.dry_density * water_mass / self.equivalent_weight / water_density(temperature)
-
-    def o2_film_diffusion_coefficient(self, water_content, temperature= 353.15):
-        # Linear regression of data from Jinnouchi et al. (2021), neglecting bulk diffusion.
-        # Activation energy obtained by Kudo et al. (2006).
-        return (self.hydrated_o2_diffusion * 
-                (water_content/14) ** self.o2_diffusion_exponent *
-                calculate_arrhenius_term(self.o2_diffusion_activation_energy, temperature, 353.15)) 
-
-    def o2_permeability(self, water_content, temperature= 353.15):
-        fv = self.water_vol_fraction(water_content, water_molar_volume(temperature))
-        RT = ct.gas_constant * temperature
-        return (6.74e-12 * np.exp(-21280e3/RT) + fv * 50.5e-12 * np.exp(-20470e3/RT)) * 1e-3
-
-    def proton_conductivity(self, water_content, temperature):
-        fv = self.water_vol_fraction(water_content ,water_molar_volume(temperature))
-        return self.conductivity_correction * 50 * (np.maximum(fv, 0.061) - 0.06 ) ** self.conductivity_exp * calculate_arrhenius_term(self.proton_conductivity_activation_energy, temperature, 303.15)
-    
-    def equilibrium_water_content(self, rh):
-        return 21.669 * rh ** 3 - 27.692* rh **2 + 17.624 * rh + 0.688 # Fit from Jinnouchi et al. (2021), sup. material
-
-NafionD2020 = CatalystLayerIonomerModel(dry_density=2004., equivalent_weight=952.)
-
-
-from dataclasses import dataclass, field
-import numpy as np
-
-@dataclass
-class CatalystLayer(PorousLayer):
-    """
-    Represents the catalyst layer in a fuel cell, containing platinum, ionomer, and carbon structure.
-    Catalyst properties are calculated based on the work of Hao et al. (2015)
-
-    Attributes
-    ----------
-    thickness : float
-        Thickness of the catalyst layer (default: 10 µm).
-    porosity : float
-        Initial porosity of the layer (default: 0, will be recalculated).
-    ionomer : CatalystLayerIonomerModel
-        Ionomer model associated with the layer.
-    reaction : ElectrochemicalReaction
-        Electrochemical reaction model.
-    platinum_loading : float
-        Platinum loading in g/cm² (default: 0.2 mg/cm²).
-    catalyst_platinum_weight_percent : float
-        Percentage of platinum in the catalyst (default: 50%).
-    ionomer_to_carbon_ratio : float
-        Ratio of ionomer to carbon content.
-    platinum_density : float
-        Density of platinum (21450 kg/m³).
-    carbon_density : float
-        Density of carbon (1950 kg/m³).
-    ecsa : float
-        Electrochemically active surface area (70 m²/g).
-    platinum_vol_surface_area : float
-        Volume-specific platinum surface area (calculated if not provided).
-    carbon_agglomerate_radius : float
-        Radius of carbon agglomerates (default: 20 nm).
-    ionomer_vol_fraction : float
-        Volume fraction of ionomer (calculated).
-    ionomer_film_thickness : float
-        Thickness of ionomer film around carbon agglomerates.
-    contact_angle : float
-        Contact angle for water (default: 95°).
-    omega_PtO : float
-        Oxide coverage parameter for Pt (default: 3000 kJ/mol).
-    theta_PtO : float
-        PtO surface coverage.
-    """
-    thickness: float = 10e-6 
-    porosity: float = 0  # Will be recalculated
-    ionomer: CatalystLayerIonomerModel = field(default_factory=CatalystLayerIonomerModel)
-    reaction: ElectrochemicalReaction = field(default_factory=ElectrochemicalReaction)
-    platinum_loading: float = 0.2e-6 * 1e4  # 0.2 mg/cm²
-    catalyst_platinum_weight_percent: float = 0.5
-    ionomer_to_carbon_ratio: float = 0.75
-    platinum_density: float = 21450  # kg/m³
-    carbon_density: float = 1950  # kg/m³
-    ecsa: float = 70e3  # m²/g
-    platinum_vol_surface_area: float = 0  # Will be calculated if zero
-    carbon_agglomerate_radius: float = 25e-9 # Vulcan XC-72 radius according to Hao et al. (2015)
-    ionomer_vol_fraction: float = 0  # Will be calculated
-    ionomer_film_thickness: float = 0  # Will be calculated
-    contact_angle: float = 95.  # degrees
-    omega_PtO: float = 3000e3  # kJ/mol
-    theta_PtO: float = 0
-    ionomer_k1: float = 8.5
-    ionomer_k2: float = 5.4
-
-    def __post_init__(self):
-        if self.platinum_vol_surface_area == 0:
-            self.platinum_vol_surface_area = self.platinum_loading * self.ecsa / self.thickness
-
-        if self.porosity == 0:
-            self.carbon_loading = self.platinum_loading * (1 / self.catalyst_platinum_weight_percent - 1)
-            self.carbon_vol_fraction = self.carbon_loading / (self.thickness * self.carbon_density)
-            self.platinum_vol_fraction = self.platinum_loading / (self.thickness * self.platinum_density)
-            self.catalyst_vol_fraction = self.platinum_vol_fraction + self.carbon_vol_fraction
-            self.ionomer_vol_fraction = (self.carbon_vol_fraction * self.carbon_density *
-                                         self.ionomer_to_carbon_ratio / self.ionomer.dry_density)
-            self.porosity = 1 - self.catalyst_vol_fraction - self.ionomer_vol_fraction
-        else:
-            self.catalyst_vol_fraction = 1 - self.ionomer_vol_fraction - self.porosity
-
-        # Carbon agglomerate properties
-        self.carbon_agglomerate_surface = 4 * np.pi * self.carbon_agglomerate_radius ** 2
-        self.carbon_agglomerate_volume = self.carbon_agglomerate_surface * self.carbon_agglomerate_radius / 3.
-        self.carbon_agglomerate_number_density = self.catalyst_vol_fraction / self.carbon_agglomerate_volume
-
-        # Ionomer properties 
-        if self.ionomer_film_thickness == 0:
-            self.ionomer_film_thickness = (self.ionomer_vol_fraction /
-                                           (self.carbon_agglomerate_number_density * self.carbon_agglomerate_surface))
-        self.ionomer_vol_surface_area = (4 * np.pi *
-                                         (self.carbon_agglomerate_radius + self.ionomer_film_thickness) ** 2 *
-                                         self.carbon_agglomerate_number_density)
-        self.ionomer_to_carbon_vol_ratio = (1 + self.ionomer_film_thickness / self.carbon_agglomerate_radius)**3 - 1 # According to eq. 1 in Liu ett al. (2010)
-        self.effective_gas_diffusion_ratio = self.porosity ** 1.5
-        PorousLayer.__post_init__(self)
-
-    def o2_ionomer_film_bulk_resistance(self, ionomer_water_content, temperature): 
+    def saturation_from_capillary_pressure(self, capillary_pressure):
         """
-        Calculate the oxygen bulk resistance in the ionomer film.
+        Computes the non-wetting phase saturation given a capillary pressure
+        using the layer's two-phase transport model.
 
         Parameters
         ----------
-        ionomer_water_content : float
-            Water content in the ionomer film.
-        temperature : float
-            Operating temperature in Kelvin.
+        capillary_pressure : float
+            Capillary pressure in Pascals (Pa).
 
         Returns
         -------
         float
-            Oxygen film resistance [s/m].
+            Non-wetting phase saturation (0 to 1).
         """
+        return self.two_phase_transport_model.saturation_from_capillary_pressure(self, capillary_pressure) 
 
-       
-        return  (self.ionomer_film_thickness * self.ionomer.wet_expansion_factor(ionomer_water_content, temperature) / 
-                 (ct.gas_constant * temperature * self.ionomer.o2_permeability(ionomer_water_content, temperature)))
-    
-    def o2_ionomer_film_resistance(self, ionomer_water_content, temperature): 
+    def capillary_pressure_from_saturation(self, saturation):
         """
-        Calculate the oxygen film resistance in the ionomer film.
-        Uses the formulation from Hao et al. (2015).
+        Computes the capillary pressure given a liquid saturation
+        using the layer's liquid transport model.
 
         Parameters
         ----------
-        ionomer_water_content : float
-            Water content in the ionomer film.
-        temperature : float
-            Operating temperature in Kelvin.
+        saturation : float
+            Liquid saturation (0 to 1).
 
         Returns
         -------
         float
-            Oxygen film resistance [s/m].
+            Capillary pressure in Pascals (Pa).
         """
+        return self.two_phase_transport_model.capillary_pressur_from_saturation(self, saturation)
 
-        # k1 and k2 default values from Hao et al. (2015)
-        ionomer_pt_interface_term = (self.ionomer_k2 + 1) / (1 - self.theta_PtO) / (self.platinum_loading * self.ecsa)
-        ionomer_gas_interface_term = self.ionomer_k1 / (self.ionomer_vol_surface_area * self.thickness)
-        return  (ionomer_gas_interface_term + ionomer_pt_interface_term) * self.o2_ionomer_film_bulk_resistance(ionomer_water_content, temperature)
-    
-    def ionomer_sheet_proton_resistance(self, ionomer_water_content, temperature): 
-        """
-        Calculate the proton resistance of the ionomer film.
-
-        Parameters
-        ----------
-        relative_humidity : float
-            Relative humidity in the catalyst layer.
-        ionomer_water_content : float
-            Water content in the ionomer.
-        temperature : float
-            Operating temperature in Kelvin.
-
-        Returns
-        -------
-        float
-            Ionomer film proton resistance [Ohm.m2].
-        """
-        # Consider ionomer_tortuosity = 1
-        ionomer_proton_conductivity = self.ionomer.proton_conductivity(ionomer_water_content, temperature)
-        eps_ion = (self.ionomer_vol_fraction * self.ionomer.wet_expansion_factor(ionomer_water_content, temperature))**1.5
-        tort_ion = np.where(eps_ion > 0.16, 1, 0.0845 * (eps_ion - 0.04) ** -1.17) # eq. 54 in Hao et al. (2015)
-        return self.thickness / (eps_ion / tort_ion * ionomer_proton_conductivity)
-    
-    def effective_proton_resistance(self,current_density, ionomer_water_content, temperature): 
-        """
-        Calculate the effective proton resistance in the catalyst layer 
-        based on Goshtasbi et al. (2020) and Neyerlin et al. (2007).
-
-        Parameters
-        ----------
-        current_density : float
-            Current density [A/m²].
-        relative_humidity : float
-            Relative humidity in the catalyst layer.
-        ionomer_water_content : float
-            Water content in the ionomer.
-        temperature : float
-            Operating temperature in Kelvin.
-
-        Returns
-        -------
-        float
-            Effective catalyst layer proton resistance [Ohm.m2].
-        """
-        # Based on the method proposed by Goshtasbi et al. (2020), based on Neyerlin et al. (2007)
-        self.ionomer_sheet_resistance = self.ionomer_sheet_proton_resistance(ionomer_water_content, temperature)
-        nu = np.minimum(self.ionomer_sheet_resistance * current_density / self.reaction.tafel_slope(temperature), 10) # Goshtasbi parametrization valid for nu < 10
-        self.xi_neyerlin = nu * (-8.287e-3 * nu + 0.7184) - 2.072e-3
-        return self.ionomer_sheet_resistance / (3 + self.xi_neyerlin)

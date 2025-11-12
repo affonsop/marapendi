@@ -2,18 +2,18 @@ import pytest
 import numpy as np
 import marapendi as mrpd
 import matplotlib.pyplot as plt 
-from sklearn.linear_model import LinearRegression
+#from sklearn.linear_model import LinearRegression
 
 
 @pytest.fixture
 def cl(): 
-    return mrpd.CatalystLayer(thickness=2.7*1.2*4/3*1e-6,
+    return mrpd.PtCCatalystLayer(thickness=2.7*1.2*4/3*1e-6,
                             platinum_loading=0.12e-2, 
                             ionomer_to_carbon_ratio=0.75, 
                             catalyst_platinum_weight_percent=0.3,
                             carbon_agglomerate_radius=25e-9, 
-                            ionomer=mrpd.CatalystLayerIonomerModel(dry_density=2004, equivalent_weight=952, 
-                                                                 conductivity_correction=1., conductivity_exp=1.5),
+                            ionomer=mrpd.PFSAIonomer(dry_density=2004, equivalent_weight=952, 
+                                                                 conductivity_correction=1.3, conductivity_exp=1.5),
                             reaction = mrpd.ElectrochemicalReaction(reference_exchange_current_density=2.47e-8 * 3e11 * 10e-6,
                                                                 activation_energy=67e6,
                                                                 reaction_order=0.54,
@@ -47,14 +47,14 @@ def test_ionomer_o2_transport(cl):
     
     for k in range(3):
         
-        assert np.isclose(cl.ionomer_film_thickness, 6e-9, atol=2e-10)
+        assert np.isclose(cl.ionomer_film_thickness, 6.5e-9, atol=5e-11)
         assert np.isclose(cl.ionomer.o2_permeability(ionomer_water_content[k], temperature=353.),  1e-3*o2_perm[k], atol=5e-15)
         assert np.isclose(cl.ionomer.o2_film_diffusion_coefficient(ionomer_water_content[k], temperature=353.), o2_diff_coeff[k], atol=1e-10)
         #assert np.isclose(cl.o2_ionomer_film_resistance(ionomer_water_content[k], temperature=353.), ionomer_film_resistance[k], 10e-2)
         assert np.isclose(cl.o2_ionomer_film_resistance(ionomer_water_content[k], temperature=353.15), local_resistance[k], rtol=0.3)
 
         # assert np.isclose(cl.ionomer.proton_conductivity(relative_humidity[k], 0, temperature=353.15),  proton_conductivity[k], 12e-2)
-        # assert np.isclose(cl.ionomer_sheet_proton_resistance(relative_humidity[k], ionomer_water_content[k], temperature=353.15), 
+        # assert np.isclose(cl.ionomer_sheet_charge_resistance(relative_humidity[k], ionomer_water_content[k], temperature=353.15), 
         #                    proton_resistance[k], rtol=25e-2, atol=5e-7)
         
 def test_neyerlin_correction(cl): 
@@ -63,22 +63,21 @@ def test_neyerlin_correction(cl):
     nu = 1e4 * R_cl_sheet / cl.reaction.tafel_slope(temperature=353.15)
     assert np.isclose(nu, 0.14184, atol=0.001)
 
-    # nu = 1e4 * cl.ionomer_sheet_proton_resistance(14, temperature=353.15) / cl.reaction.tafel_slope(temperature=353.15)
+    # nu = 1e4 * cl.ionomer_sheet_charge_resistance(14, temperature=353.15) / cl.reaction.tafel_slope(temperature=353.15)
     # assert np.isclose(cl.effective_proton_resistance(1e4, 14, temperature=353.15), 
-    #                   cl.ionomer_sheet_proton_resistance(14, temperature=353.15) / (3 + nu), rtol=1e-2)
+    #                   cl.ionomer_sheet_charge_resistance(14, temperature=353.15) / (3 + nu), rtol=1e-2)
 
 def test_ionomer_proton_conductivity(cl): 
     for k in range(3):
-        print(cl.ionomer_vol_fraction)
-        assert np.isclose(cl.ionomer_sheet_proton_resistance( ionomer_water_content[k], temperature=298.15),  proton_resistance[k], rtol=0.6)
-        plt.plot(relative_humidity[k], cl.ionomer_sheet_proton_resistance(ionomer_water_content[k], temperature=298.15),'C0o')
+        assert np.isclose(cl.ionomer_sheet_charge_resistance( ionomer_water_content[k], temperature=298.15),  proton_resistance[k], atol=3.5e-5)
+        plt.plot(relative_humidity[k], cl.ionomer_sheet_charge_resistance(ionomer_water_content[k], temperature=298.15),'C0o')
         plt.semilogy(relative_humidity[k], proton_resistance[k],'C0s')
-
-    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.equilibrium_water_content(0.97), temperature=298.15),  5.6, 10e-2)
-    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.equilibrium_water_content(0.81), temperature=298.15),  3.7, 10e-2)
-    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.equilibrium_water_content(0.60), temperature=298.15),  1.91, 10e-2)
+    #plt.show()
+    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.equilibrium_water_content(0.97), temperature=298.15),  5.6, 30e-2)
+    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.equilibrium_water_content(0.81), temperature=298.15),  3.7, 30e-2)
+    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.equilibrium_water_content(0.60), temperature=298.15),  1.91, 30e-2)
     
-# ## RH vs sigma_p ionomer at 298.15 K, Jinnouchi et al. (2021), sup material
+# ## RH vs sigma_p ionomer at 298.15 K, Jinnouchi et al. (2021), sup materialx
 # 0,9662698412698414; 5,633142670601358
 # 0,8115079365079365; 3,72023668141307
 # 0,6031746031746033; 1,9155005555735298

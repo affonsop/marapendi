@@ -5,17 +5,17 @@ import cantera as ct
 
 @pytest.fixture
 def thick_membrane(): 
-    return mrpd.Membrane(equivalent_weight=1100, dry_density=1980, dry_thickness=125e-6)
+    return mrpd.PFSA(equivalent_weight=1100, dry_density=1980, dry_thickness=125e-6)
 
 @pytest.fixture
 def thin_membrane(): 
-    return mrpd.Membrane(equivalent_weight=1100, dry_density=1980, dry_thickness=25e-6)
+    return mrpd.PFSA(equivalent_weight=1100, dry_density=1980, dry_thickness=25e-6)
 
 @pytest.fixture
 def membrane_liso_2016(): 
-    return mrpd.Membrane(equivalent_weight=1100, dry_density=2000, dry_thickness=51e-6, 
+    return mrpd.PFSA(equivalent_weight=1100, dry_density=2000, dry_thickness=51e-6, 
                        water_balance_model=mrpd.MembraneWaterBalanceModel(reference_absorption_coefficient=1.e-5, 
-                                                                        reference_water_chemical_diffusion_coefficient=4e-10))   
+                                                                          reference_water_diffusivity=4e-10))   
  
 @pytest.fixture
 def fuel_cell_liso_2016(membrane_liso_2016): 
@@ -72,15 +72,15 @@ def test_membrane_water_transport_model(fuel_cell_liso_2016, liso_2016_exp_data)
     fc.calculate_water_transport()
     #fc.membrane.water_balance_model.water_balance(fc)
     fc.ca.h2ov_outlet_mass_flow_rate = (fc.ca.ch.h2ov_inlet_mass_flow_rate + fc.product_water_mass_source +
-                                        fc.membrane.water_balance_model.cathode_flux(fc) * fc.cell_area * fc.cell_number) 
+                                        fc.membrane.water_balance_model.calculate_cathode_flux(fc) * fc.cell_area * fc.cell_number) 
     plt.figure(figsize=(4,3))
     plt.plot(fc.current_density * 1e-4, 60e3*fc.ca.h2ov_outlet_mass_flow_rate, 'C0')
     plt.plot(fc.current_density * 1e-4, 60e3*liso_2016_exp_data[0.2], 'C0s', label='20 %')
     fc.an.ch.gas.set_composition(0, 1.0, 0.8)
     
-    fc.membrane.water_balance_model.water_balance(fc)
+    fc.membrane.water_balance_model.solve_water_balance(fc)
     fc.ca.h2ov_outlet_mass_flow_rate = (fc.ca.ch.h2ov_inlet_mass_flow_rate + fc.product_water_mass_source +
-                                        fc.membrane.water_balance_model.cathode_flux(fc) * fc.cell_area * fc.cell_number)
+                                        fc.membrane.water_balance_model.calculate_cathode_flux(fc) * fc.cell_area * fc.cell_number)
     plt.plot(fc.current_density * 1e-4, 60e3*fc.ca.h2ov_outlet_mass_flow_rate, 'C1')
     plt.plot(fc.current_density * 1e-4, 60e3*liso_2016_exp_data[0.8], 'C1s', label='80 %')
     plt.ylim(0,0.35*60)
