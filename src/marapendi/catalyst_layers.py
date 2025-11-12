@@ -49,7 +49,7 @@ class CatalystLayer(PorousLayer):
     ionomer_film_thickness: float = 2e-9
     contact_angle: float = 95.
     theta_catalyst: float = 0
-
+    electrolyte_saturation: float = 0
     def ionomer_sheet_charge_resistance(self, ionomer_water_content, temperature, charge='proton'):
         """
         Calculate charge resistance of the ionomer film using Bruggeman model.
@@ -120,7 +120,7 @@ class CatalystLayer(PorousLayer):
             Electrolyte sheet resistance [Ohm.m²].
         """
         electrolyte_conductivity = self.electrolyte.calculate_ionic_conductivity(temperature)
-        return self.thickness / ((np.maximum(self.non_wetting_saturation, 1e-12) * self.porosity) ** 1.5 * electrolyte_conductivity)
+        return self.thickness / ((np.maximum(self.electrolyte_saturation, 1e-12) * self.porosity) ** 1.5 * electrolyte_conductivity) 
 
 @dataclass
 class PorousTransferLayer(CatalystLayer):
