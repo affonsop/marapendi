@@ -289,8 +289,8 @@ class FuelCell:
         Notes
         -----
         The activation overpotential is calculated using the Tafel equation, considering 
-        the hydrogen crossover current, oxygen partial pressure, and platinum surface coverage.
-        It accounts for the voltage drop due to the PtO coverage effect.
+        the hydrogen crossover current, gases partial pressure, and platinum surface coverage.
+        It accounts for the voltage drop due to the PtO coverage effect in the cathode.
         """
         self.h2_permeation_flux = self.membrane.hydrogen_permeation_flux(self.an.cl.species_partial_pressure('h2'), 
                                                                         self.membrane.temperature, 
@@ -303,12 +303,18 @@ class FuelCell:
         self.crossover_current = self.h2_permeation_flux * (2 * ct.faraday)
         omega_PtO_voltage_drop = self.ca.cl.omega_PtO * theta_PtO / (self.ca.cl.reaction.number_of_electrons *
                                                                       self.ca.cl.reaction.charge_transfer_coeff * ct.faraday)
-        tafel_overpotential = self.ca.cl.reaction.tafel_overpotential(
+        self.orr_overpotential = self.ca.cl.reaction.tafel_overpotential(
             (self.current_density + self.crossover_current) / (self.ca.cl.ecsa * self.ca.cl.platinum_loading * (1-theta_PtO)),
             self.ca.cl.temperature,
             self.ca.cl.species_partial_pressure('o2')
         )
-        return tafel_overpotential + omega_PtO_voltage_drop
+        self.hor_overpotential = 0
+        # self.hor_overpotential = self.an.cl.reaction.linear_overpotential(
+        #     self.current_density / (self.an.cl.ecsa * self.an.cl.platinum_loading),
+        #     self.an.cl.temperature,
+        #     self.an.cl.species_partial_pressure('h2')
+        # )
+        return self.orr_overpotential + omega_PtO_voltage_drop + self.hor_overpotential
     
     def high_frequency_resistance(self): 
         """
@@ -343,11 +349,12 @@ class FuelCell:
         cell components. It is calculated as the product of the current density and 
         the total internal resistance.
         """
-        self.ca.cl.proton_resistance = self.ca.cl.effective_charge_resistance(
-            self.current_density, 
-            self.ca.cl.ionomer_water_content, 
-            self.ca.cl.temperature
-        )
+        for side in (self.ca, ): 
+            side.cl.proton_resistance = side.cl.effective_charge_resistance(
+                self.current_density, 
+                side.cl.ionomer_water_content, 
+                side.cl.temperature
+            )
         return self.current_density * (self.ca.cl.proton_resistance + self.high_frequency_resistance())
 
     def reversible_voltage_vs_RHE(self): 
@@ -660,18 +667,22 @@ class FuelCell:
         for side in (self.ca, self.an): 
             for layer in side.components: 
                 layer.non_wetting_saturation = 0 
+                layer.temperature = stack_temperature
             side.cl.set_water_film_thickness(0)
             
         for cell_side, conditions in zip((self.ca, self.an), (cathode_conditions, anode_conditions)): 
             cell_side.cl.ionomer_water_content = 10
             cell_side.cl.set_ionomer_wet_properties(cell_side.cl.ionomer_water_content, self.temperature)
+            cell_side.electrolyte = conditions.inlet_liquid
+            cell_side.electrolyte.set_temperature(self.membrane.temperature)
             for component in cell_side.components: 
-                cell_side.electrolyte = conditions.inlet_liquid
-                cell_side.electrolyte.set_temperature(self.membrane.temperature)
+   
+                component.gas.__init__()
                 try: 
                     component.gas.X = np.zeros_like(self.current_density[...,np.newaxis]) * np.array([1,0,0,0])
                 except TypeError: 
                     component.gas.X = self.current_density * np.array([1,0,0,0])
+                component.set_gas_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
                 component.set_gas_composition(conditions.dry_o2_mole_fraction, 
                                               conditions.dry_h2_mole_fraction,
                                               conditions.inlet_relative_humidity)

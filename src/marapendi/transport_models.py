@@ -192,7 +192,7 @@ class PorousGasResistanceModel:
         float
             Correction factor [-].
         """
-        return np.maximum(1 - water_saturation, 0.3) ** self.water_saturation_exponent
+        return (1 - water_saturation) ** self.water_saturation_exponent
     
     def molecular_diffusion_effective_length(self, layer, water_saturation=0):
         """
@@ -289,7 +289,7 @@ class DarcyTransportModel:
     """
     J_function_exponent: float = 2 
 
-    def capillary_pressure_from_saturation(self, layer, capillary_pressure):
+    def saturation_from_capillary_pressure(self, layer, capillary_pressure):
         """
         Compute the non-wetting saturation from capillary pressure using J-function relation.
 
@@ -307,7 +307,7 @@ class DarcyTransportModel:
         """
         return (capillary_pressure / layer.capillary_pressure_J_ratio) ** (1. / self.J_function_exponent)
 
-    def saturation_from_capillary_pressure(self, layer, non_wetting_saturation):
+    def capillary_pressure_from_saturation(self, layer, non_wetting_saturation):
         """
         Compute the capillary pressure from non-wetting phase saturation using inverse J-function relation.
 
@@ -323,7 +323,7 @@ class DarcyTransportModel:
         float
             Capillary pressure (Pa).
         """
-        return (non_wetting_saturation ** self.J_function_exponent) * layer.capillary_pressure_J_ratio
+        return np.minimum((non_wetting_saturation ** self.J_function_exponent) * layer.capillary_pressure_J_ratio, 1)
 
     def calculate_non_wetting_saturation(self, layer, non_wetting_flux, upstream_capillary_pressure=0): 
         """
@@ -350,13 +350,13 @@ class DarcyTransportModel:
             Capillary pressure at the downstream side of the layer.
         """
         # Compute upstream saturation from upstream capillary pressure
-        layer.upstream_saturation = self.capillary_pressure_from_saturation(layer, upstream_capillary_pressure)
+        layer.upstream_saturation = self.saturation_from_capillary_pressure(layer, upstream_capillary_pressure)
 
         # Compute downstream saturation based on flux and flow resistance
-        layer.downstream_saturation = (
+        layer.downstream_saturation = np.minimum(0.9, (
             (layer.saturation_flow_resistance * non_wetting_flux) ** (1. / (layer.relative_permeability_exponent + self.J_function_exponent))
             + layer.upstream_saturation
-        )
+        ))
 
         # Compute mean saturation in the layer
         layer.non_wetting_saturation = (
@@ -367,4 +367,4 @@ class DarcyTransportModel:
         )
 
         # Compute downstream capillary pressure
-        layer.downstream_capillary_pressure = self.saturation_from_capillary_pressure(layer, layer.downstream_saturation)
+        layer.downstream_capillary_pressure = self.capillary_pressure_from_saturation(layer, layer.downstream_saturation)
