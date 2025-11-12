@@ -25,14 +25,18 @@ class ElectrolyzerCellSide(FuelCellSide):
     components : list
         All components (porous layers + channel) in the cell side.
     """
-    has_gdl: bool = False
+    has_gdl: bool = True
 
     def __post_init__(self):
         self.porous_layers = [self.cl]
         if self.has_mpl:
             self.porous_layers += [self.mpl]
+        else: 
+            self.mpl = None
         if self.has_gdl:
             self.porous_layers += [self.gdl]
+        else: 
+            self.gdl = None 
         self.components = self.porous_layers + [self.ch]
         self.o2_transport_resistance = 0
         self.h2ov_transport_resistance = 0
@@ -52,12 +56,40 @@ class ElectrolyzerCellSide(FuelCellSide):
                         self.cl.pressure - solution_saturation_pressure,
                         self.cl.pressure - self.cl.vapor_pressure())
 
+    def calculate_channel_gas_saturation(self): 
+        self.ch.non_wetting_saturation = self.total_gas_flux  / (self.ch.inlet_liquid_flow_rate * self.ch.gas.concentration())
+
+    def calculate_gas_saturation(self): 
+        """
+        Compute and update the gas saturation in each porous layer.
+
+        Notes
+        -----
+        This method updates each layer's `gas_saturation` attribute based on 
+        the liquid flux and upstream capillary pressures. It assumes that 
+        `self.gas_flux` has been set externally.
+        """
+        self.calculate_channel_gas_saturation()
+
+        if self.has_gdl: 
+            self.gdl.two_phase_transport_model.calculate_non_wetting_saturation(self.gdl, self.gas_flux, 
+                    upstream_capillary_pressure=0)
+            if self.has_mpl: 
+                self.mpl.two_phase_transport_model.calculate_non_wetting_saturation(self.gdl, self.gas_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
+                self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.gas_flux, upstream_capillary_pressure=self.mpl.downstream_capillary_pressure)
+            else:
+                self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.gas_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
+        else: 
+            self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.gas_flux, 
+                    upstream_capillary_pressure=0)
+       
 @dataclass
 class ElectrolyzerCell(FuelCell):
     """
     Class representing an AEM water electrolyzer cell.
     """
-
+    electrolyte_saturation_exponent: float = 2 
+    
     def reversible_cell_voltage(self):
         """
         Calculate the reversible cell voltage based on the Nernst equation.
@@ -156,11 +188,16 @@ class ElectrolyzerCell(FuelCell):
         self.crossover_current = self.h2_permeation_flux * (2 * ct.faraday)
 
         unity_activity = 1.0
-        tafel_overpotential_ca = self.ca.cl.activation_overpotential(self.current_density, unity_activity)
-        tafel_overpotential_an = self.an.cl.activation_overpotential(self.current_density, unity_activity)
+        tafel_overpotential_ca = self.ca.cl.activation_overpotential(self.current_density / self.ca.cl.electrolyte_saturation ** self.electrolyte_saturation_exponent, unity_activity)
+        tafel_overpotential_an = self.an.cl.activation_overpotential(self.current_density / self.an.cl.electrolyte_saturation ** self.electrolyte_saturation_exponent, unity_activity)
 
         return tafel_overpotential_ca + tafel_overpotential_an
+    
 
+    def calculate_bubble_transport(self): 
+        for side in (self.ca, self.an): 
+            side.calculate_gas_saturation()
+            side.cl.electrolyte_saturation = 1 - side.cl.non_wetting_saturation
 
     def set_conditions(self, stack_temperature, current_density, cathode_conditions, anode_conditions):
         """
@@ -182,7 +219,11 @@ class ElectrolyzerCell(FuelCell):
         self.h2_production = 2 * self.o2_production
         self.ca.h2o_consumption = 2 * self.h2_production
         self.an.h2o_production = self.h2_production
-
+        self.ca.gas_flux = self.h2_production
+        self.an.gas_flux = self.o2_production 
+        self.ca.total_gas_flux = self.h2_production * self.cell_area    
+        self.an.total_gas_flux = self.o2_production * self.cell_area
+    
         self.temperature = stack_temperature
         self.membrane.temperature = stack_temperature
         self.mea_temperature = stack_temperature
@@ -190,6 +231,7 @@ class ElectrolyzerCell(FuelCell):
         for cell_side, conditions in zip((self.ca, self.an), (cathode_conditions, anode_conditions)):
             cell_side.electrolyte = conditions.inlet_liquid
             cell_side.electrolyte.set_temperature(self.membrane.temperature)
+            cell_side.cl.electrolyte_saturation = 1
 
             for component in cell_side.components:
                 try:
