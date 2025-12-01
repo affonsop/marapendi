@@ -60,3 +60,7 @@ build/lib/marapendi/tools.py
 build/lib/marapendi/transport.py
 build/lib/marapendi/water.py
 .vscode/launch.json
+.src/marapendi/__pycache__/*
+.src/tests/__pycache__/* 
+
+
