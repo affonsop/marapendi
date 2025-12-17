@@ -306,3 +306,43 @@ class FlowChannel(PorousLayer):
         diffusion_coeff = self.species_diffusion_coefficient(species)
         return self.transport_resistance_model.total_resistance(
             self, diffusion_coeff, volume_flow_rate if volume_flow_rate else self.inlet_gas_flow_rate)
+
+    def inlet_molar_flow_rates(self) -> np.ndarray: 
+        """
+        Calculate the molar flow rates at the inlet of the channels for all species.
+
+        Returns
+        -------
+        np.ndarray
+            Vector of molar flow rates at the outlet for all species (O₂, H₂, H₂O, N₂).
+            Units: kmol/s.
+        """
+
+        # Total inlet molar flow rate (kmol/s)
+        total_inlet_molar_flow = self.inlet_gas_flow_rate * self.gas.concentration()
+
+        # Inlet molar flow rates for all species (kmol/s)
+        inlet_molar_flow_rates = total_inlet_molar_flow * self.gas.X
+        return inlet_molar_flow_rates 
+    
+    def gas_superficial_speed(self, volumetric_flow_rate: float = None) -> float:
+        """
+        Calculate the gas superficial speed in the channel.
+
+        Parameters
+        ----------
+        volumetric_flow_rate : float, optional
+            Volumetric flow rate of the gas (m³/s). If None, uses the inlet gas flow rate.
+
+        Returns
+        -------
+        float
+            Gas superficial speed in the channel (m/s).
+        """
+        # Use inlet gas flow rate if no volumetric flow rate is provided
+        vol_flow = volumetric_flow_rate if volumetric_flow_rate is not None else self.inlet_gas_flow_rate
+
+        # Calculate gas speed (m/s)
+        superficial_speed = vol_flow / self.total_flow_section
+
+        return superficial_speed
