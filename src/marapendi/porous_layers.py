@@ -397,5 +397,5 @@ class PorousLayer():
         float
             Capillary pressure in Pascals (Pa).
         """
-        return self.two_phase_transport_model.capillary_pressur_from_saturation(self, saturation)
+        return self.two_phase_transport_model.capillary_pressure_from_saturation(self, saturation)
 
