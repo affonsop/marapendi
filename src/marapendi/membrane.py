@@ -55,7 +55,7 @@ class Membrane:
     h2_permeation_model: HydrogenPermeationModel = field(default_factory=HydrogenPermeationModel)
     water_balance_model: MembraneWaterBalanceModel = field(default_factory=MembraneWaterBalanceModel)
     water_content: float = 14
-
+    
 
     def __post_init__(self):
         """
@@ -63,7 +63,8 @@ class Membrane:
         """
         self.dry_concentration = self.dry_density / self.equivalent_weight  # kmol/m³
         self.dry_molar_volume = 1. / self.dry_concentration  # m³/kmol
-        
+        self.surface_concentration = self.dry_concentration * self.dry_thickness
+
     def water_vol_fraction(self, water_content: float, water_molar_volume: float) -> float:
         """
         Calculate the volume fraction of water in the membrane.
@@ -182,6 +183,8 @@ class PFSA(Membrane):
         Exponent for the proton conductivity correlation. Default is 1.5.
     conductivity_activation_energy : float
         Activation energy for proton conductivity in Joules. Default is 15e6.
+    xi_phi : float
+        Swelling proportionality constant, default to 0.014 as in Grimaldi et al. (2023).
 
     Methods
     -------
@@ -200,9 +203,9 @@ class PFSA(Membrane):
     conductivity_correction: float = 1
     conductivity_exp: float = 1.5
     conductivity_activation_energy: float = 15e6 
-    
+    xi_phi: float = 0.014
 
-    def equilibrium_water_content(self, rh, temperature, s_relax=0, xi_phi=0.014, lmbd=0):
+    def equilibrium_water_content(self, rh, temperature, s_relax=0, lmbd=0):
             """
             Calculate the equilibrium water content based on relative humidity and temperature.
             Uses the polynomial interpolation obtained by Springer et al. (1991) for Nafion N117 at 30ºC. 
@@ -215,8 +218,7 @@ class PFSA(Membrane):
                 Temperature in Kelvin (K).
             s_relax : float
                 Membrane relaxation term, a value between 0 and 1.
-            xi_phi : float
-                Swelling proportionality constant, default to 0.014 as in Grimaldi et al. (2023).
+
             lmbd : float
                 Membrane water content 
 
@@ -232,10 +234,10 @@ class PFSA(Membrane):
             """
             rh = np.minimum(np.maximum(rh, 0), 1)
             lmbd_eq_relaxed = (0.043 + 17.18 * rh - 39.85 * rh**2 + 36 * rh**3)
-            phi = xi_phi * lmbd  
+            phi = self.xi_phi * lmbd  
             return (1 - phi) * lmbd_eq_relaxed + s_relax 
 
-    def equilibrium_water_content_derivative(self, rh, temperature, s_relax=0, xi_phi=0.014, lmbd=0):
+    def equilibrium_water_content_derivative(self, rh, temperature, s_relax=0, lmbd=0):
         """
         Calculate the derivative of the equilibrium water content with respect to relative humidity.
         Uses the polynomial interpolation obtained by Springer et al. (1991) for Nafion N117 at 30ºC. 
@@ -248,8 +250,6 @@ class PFSA(Membrane):
             Temperature in Kelvin (K).
         s_relax : float
             Membrane relaxation term, a value between 0 and 1.
-        xi_phi : float
-            Swelling proportionality constant, default to 0.014 as in Grimaldi et al. (2023).
         lmbd : float
             Membrane water content 
 
@@ -265,7 +265,7 @@ class PFSA(Membrane):
         """
         rh = np.minimum(np.maximum(rh, 0), 1)
         d_lmbd_eq_relaxed = (17.18 - 79.70 * rh + 108 * rh**2)
-        phi = xi_phi * lmbd
+        phi = self.xi_phi * lmbd
         return (1 - phi) * d_lmbd_eq_relaxed + s_relax
 
     def liquid_equilibrium_water_content(self, temperature):
