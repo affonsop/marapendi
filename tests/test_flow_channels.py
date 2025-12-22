@@ -58,3 +58,20 @@ def test_gas_speed(flow_channel):
     outlet_volumetric_flow = 1.2e-6  # m³/s
     outlet_speed = flow_channel.gas_superficial_speed(outlet_volumetric_flow)
     assert outlet_speed == outlet_volumetric_flow / flow_channel.total_flow_section
+
+def test_calculate_liquid_to_gas_velocity_ratio(flow_channel):
+    # Mock the non_wetting_saturation attribute
+    flow_channel.non_wetting_saturation = 0.3
+    flow_channel.wetting_phase = 'gas'
+
+    # Calculate the liquid-to-gas velocity ratio
+    velocity_ratio = flow_channel.liquid_to_gas_velocity_ratio()
+
+    # Expected liquid saturation
+    liquid_saturation = flow_channel.non_wetting_saturation
+
+    # Expected velocity ratio
+    expected_ratio = (liquid_saturation / (1 - liquid_saturation)) ** 3 * (flow_channel.gas.mixture_kinematic_viscosity / mrpd.water.water_kinematic_viscosity(flow_channel.gas.temperature))
+
+    # Assert the calculated ratio matches the expected ratio
+    assert velocity_ratio == pytest.approx(expected_ratio)

@@ -91,3 +91,17 @@ def test_membrane_water_transport_model(fuel_cell_liso_2016, liso_2016_exp_data)
     plt.savefig('./tests/figures/test_membrane.png',dpi=300)
     for m_dot_h2o, m_dot_h2o_exp in zip(fc.ca.h2ov_outlet_mass_flow_rate, liso_2016_exp_data[0.2]): 
         assert np.isclose(m_dot_h2o, m_dot_h2o_exp, atol=3e-5, rtol=0.1)
+
+
+def test_equilibrium_water_content_basic(thin_membrane):
+    rh, temperature = 0.5, 303.15
+    result = thin_membrane.equilibrium_water_content(rh, temperature)
+    expected = (0.043 + 17.18 * 0.5 - 39.85 * 0.5**2 + 36 * 0.5**3)
+    assert np.isclose(result, expected)
+
+def test_equilibrium_water_content_with_s_relax(thin_membrane):
+    rh, temperature, s_relax = 0.5, 303.15, 0.5
+    result = thin_membrane.equilibrium_water_content(rh, temperature, s_relax=0.5, xi_phi=0.014, lmbd=8)
+    phi = 0.014 * 8 
+    expected = (1-phi) * (0.043 + 17.18 * 0.5 - 39.85 * 0.5**2 + 36 * 0.5**3) + s_relax
+    assert np.isclose(result, expected)
