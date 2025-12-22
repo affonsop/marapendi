@@ -103,7 +103,7 @@ class DynamicModel:
             
             self.p.update(dict(zip(self.p_i_name, self.p_i_guess)))
             print(self.p)
-    def solve(self, time, u=None, x0=None, parameters_dict=None):
+    def solve(self, time, u=None, x0=None, parameters_dict=None, rtol=1e-4, atol=1e-5):
         """
         Solve the ODE system over the given time vector.
 
@@ -134,7 +134,7 @@ class DynamicModel:
                         y0=x0,
                         t_eval=time,
                         args=(u, parameters_dict),
-                        method=self.ode_solution_method)
+                        method=self.ode_solution_method, rtol=rtol, atol=atol)
         y = self.h(sol.t, sol.y, u, parameters_dict)
         self.t, self.x, self.y = sol.t, sol.y, y
         return sol.t, sol.y, y
