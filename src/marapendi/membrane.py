@@ -202,10 +202,10 @@ class PFSA(Membrane):
     conductivity_activation_energy: float = 15e6 
     
 
-    def equilibrium_water_content(self, rh, temperature):
+    def equilibrium_water_content(self, rh, temperature, s_relax=0, xi_phi=0.014, lmbd=0):
             """
             Calculate the equilibrium water content based on relative humidity and temperature.
-            Uses the olynomial interpolation obtained by Springer et al. (1991) for Nafion N117 at 30ºC. 
+            Uses the polynomial interpolation obtained by Springer et al. (1991) for Nafion N117 at 30ºC. 
 
             Parameters
             ----------
@@ -213,6 +213,12 @@ class PFSA(Membrane):
                 Relative humidity, a value between 0 and 1.
             temperature : float
                 Temperature in Kelvin (K).
+            s_relax : float
+                Membrane relaxation term, a value between 0 and 1.
+            xi_phi : float
+                Swelling proportionality constant, default to 0.014 as in Grimaldi et al. (2023).
+            lmbd : float
+                Membrane water content 
 
             Returns
             -------
@@ -222,14 +228,17 @@ class PFSA(Membrane):
             References
             ----------
             Springer, T. E. et al. J. Electrochem. Soc. 138, 2334 (1991).
+            Grimaldi et al. J. Power Sources (2023).
             """
             rh = np.minimum(np.maximum(rh, 0), 1)
-            return (0.043 + 17.18 * rh - 39.85 * rh**2 + 36 * rh**3)
+            lmbd_eq_relaxed = (0.043 + 17.18 * rh - 39.85 * rh**2 + 36 * rh**3)
+            phi = xi_phi * lmbd  
+            return (1 - phi) * lmbd_eq_relaxed + s_relax 
 
-    def equilibrium_water_content_derivative(self, rh, temperature):
+    def equilibrium_water_content_derivative(self, rh, temperature, s_relax=0, xi_phi=0.014, lmbd=0):
         """
         Calculate the derivative of the equilibrium water content with respect to relative humidity.
-        Uses the olynomial interpolation obtained by Springer et al. (1991) for Nafion N117 at 30ºC. 
+        Uses the polynomial interpolation obtained by Springer et al. (1991) for Nafion N117 at 30ºC. 
 
         Parameters
         ----------
@@ -237,6 +246,12 @@ class PFSA(Membrane):
             Relative humidity, a value between 0 and 1.
         temperature : float
             Temperature in Kelvin (K).
+        s_relax : float
+            Membrane relaxation term, a value between 0 and 1.
+        xi_phi : float
+            Swelling proportionality constant, default to 0.014 as in Grimaldi et al. (2023).
+        lmbd : float
+            Membrane water content 
 
         Returns
         -------
@@ -246,9 +261,12 @@ class PFSA(Membrane):
         References
         ----------
         Springer, T. E. et al. J. Electrochem. Soc. 138, 2334 (1991).
+        Grimaldi et al. J. Power Sources (2023).
         """
         rh = np.minimum(np.maximum(rh, 0), 1)
-        return (17.18 - 79.70 * rh + 108 * rh**2) # Springer et al. (1991)
+        d_lmbd_eq_relaxed = (17.18 - 79.70 * rh + 108 * rh**2)
+        phi = xi_phi * lmbd
+        return (1 - phi) * d_lmbd_eq_relaxed + s_relax
 
     def liquid_equilibrium_water_content(self, temperature):
         """
