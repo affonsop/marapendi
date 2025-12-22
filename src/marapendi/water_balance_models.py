@@ -234,8 +234,8 @@ class MembraneWaterBalanceModel:
         cell.membrane.water_content = np.mean(self.water_content_profile, axis=0)
 
         # Set water content at the interface of each catalyst layer 
-        cell.ca.cl.memb_interface_water_content = self.water_content_profile[-1,:]
-        cell.an.cl.memb_interface_water_content = self.water_content_profile[0,:]
+        cell.ca.cl.memb_interface_water_content = self.water_content_profile[-1,...]
+        cell.an.cl.memb_interface_water_content = self.water_content_profile[0,...]
 
         # Calculate equilibrium water contents at the CL
         for side in (cell.ca, cell.an):
@@ -325,7 +325,7 @@ class MembraneWaterBalanceModel:
         float
             The calculated water flux at the cathode (kmol/m²/s).
         """
-        lmbd_ca = self.water_content_profile[-1, :]
+        lmbd_ca = self.water_content_profile[-1, ...]
         return (
             (
                 cell.ca.modified_Bi * (lmbd_ca - cell.ca.est_water_content) +
@@ -356,7 +356,7 @@ class MembraneWaterBalanceModel:
         max_vapor_removal_flux = (cl_sat_concentration - ch_vapor_concentration) / cell_side.h2ov_transport_resistance
 
         # Calculate liquid flux, ensuring it is above a minimum threshold
-        cell_side.liquid_flux = np.maximum(cell_side.water_flux - max_vapor_removal_flux, 1e-12)
+        cell_side.liquid_flux = np.maximum(cell_side.water_flux - max_vapor_removal_flux, 0)
 
         # Calculate vapor flux
         cell_side.vapor_flux = cell_side.water_flux - cell_side.liquid_flux
