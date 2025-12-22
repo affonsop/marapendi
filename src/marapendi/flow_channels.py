@@ -21,12 +21,12 @@ import cantera as ct
 from .gas_composition import species_indexes
 from .porous_layers import PorousLayer
 from .transport_models import ChannelGasResistanceModel
-
+from .water import water_kinematic_viscosity, water_molar_volume
 
 @dataclass 
 class ChannelConditions:  
     """
-    Class to encapsulate the operating conditions of the gas in a flow channel.
+    Class to encapsulate the operating conditions of the gas in a flow channels.
 
     Attributes
     ----------
@@ -101,8 +101,9 @@ class ChannelConditions:
 @dataclass
 class FlowChannel(PorousLayer):
     """
-    Class to represent a fuel cell flow channel, inheriting from PorousLayer 
-    to allow similar interface for transport calculations.
+    Class to represent a fuel cell flow channels, inheriting from PorousLayer 
+    to allow similar interface for transport calculations. Corresponds to channels of
+    a single cell. 
 
     Attributes
     ----------
@@ -346,3 +347,33 @@ class FlowChannel(PorousLayer):
         superficial_speed = vol_flow / self.total_flow_section
 
         return superficial_speed
+    
+    def liquid_to_gas_velocity_ratio(self): 
+        """
+        Calculate the liquid-to-gas velocity ratio in the channel. Uses the eq. 10 of Zhang et al. (2026).
+
+        Note: Supposes kinematic viscosity of water for the inlet liquid.
+
+        Returns
+        -------
+        float
+            Ratio between liquid and gas velocity in the channel (n.d.).
+
+        Reference
+        ---------
+        Zhang et al. Advancing Next-Generation Proton Exchange Membrane Fuel Cell Design through Multi-Physics and AI Modeling. 
+        Energy Environ. Sci. 2026. https://doi.org/10.1039/d5ee04599a.
+
+        """
+        liquid_saturation = self.non_wetting_saturation if self.wetting_phase == 'gas' else (1-self.non_wetting_saturation)
+    
+        return (liquid_saturation / (1-liquid_saturation)) ** 3 * (self.gas.mixture_kinematic_viscosity / water_kinematic_viscosity(self.gas.temperature))
+    
+    def outlet_liquid_speed(self): 
+        return self.liquid_to_gas_velocity_ratio() * self.gas_superficial_speed()
+    
+    def outlet_liquid_flow_rate(self): 
+        return self.outlet_liquid_speed() * self.total_flow_section
+    
+    def outlet_liquid_molar_flow_rate(self): 
+        return self.outlet_liquid_flow_rate() /  water_molar_volume(self.gas.temperature)
