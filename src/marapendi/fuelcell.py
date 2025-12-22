@@ -147,7 +147,7 @@ class FuelCellSide:
         """
         return sum(layer.thermal_resistance() for layer in self.porous_layers if layer != self.cl) + self.thermal_contact_resistance
                 
-    def calculate_water_saturation(self): 
+    def  calculate_water_saturation(self): 
         """
         Compute and update the water saturation in each porous layer.
 
@@ -449,6 +449,7 @@ class FuelCell:
         It also calculates the temperature increase of the MEA relative to the initial temperature.
         """
         self.mea_temperature = mea_temperature
+        self.mea_temperature_increase = mea_temperature - self.temperature
         self.ca.cl.set_gas_temperature(mea_temperature)
         self.an.cl.set_gas_temperature(mea_temperature)
 
@@ -456,7 +457,7 @@ class FuelCell:
         self.membrane.temperature = mea_temperature
         self.mea_temperature_increase = self.mea_temperature - self.temperature
     
-    def calculate_water_transport(self): 
+    def calculate_water_transport(self, dynamic=False): 
         """
         Calculate the water balance across the fuel cell components.
 
@@ -482,12 +483,13 @@ class FuelCell:
             else: 
                 cl.ionomer_water_content = cl.memb_interface_water_content
             cl.set_ionomer_wet_properties(cl.ionomer_water_content, cl.temperature)
-
-        self.ca.calculate_equivalent_flow_resistance()
-        self.ca.calculate_water_saturation()
-        self.ca.cl.set_water_film_thickness(self.ca.cl.non_wetting_saturation)
-        self.ca.h2ov_transport_resistance = self.ca.gas_transport_resistance('h2o')
-        self.an.h2ov_transport_resistance = self.an.gas_transport_resistance('h2o')
+       
+        if not dynamic: 
+            self.ca.calculate_equivalent_flow_resistance()
+            self.ca.calculate_water_saturation()
+            self.ca.cl.set_water_film_thickness(self.ca.cl.non_wetting_saturation)
+            self.ca.h2ov_transport_resistance = self.ca.gas_transport_resistance('h2o')
+            self.an.h2ov_transport_resistance = self.an.gas_transport_resistance('h2o')
     
     def calculate_gas_concentrations_at_cl(self): 
         """
@@ -541,8 +543,8 @@ class FuelCell:
         This calculation assumes a thermal resistance network in parallel.
         """
         self.thermal_resistance = 1/sum(1./side.heat_transfer_resistance() for side in (self.ca, self.an))
-
-    def calculate_heat_transport(self): 
+    
+    def calculate_heat_transport(self, dynamic=False): 
         """
         Compute the heat transport parameters in the fuel cell.
 
@@ -558,7 +560,8 @@ class FuelCell:
         """ 
         self.calculate_heat_transfer_resistance()
         self.heat_release_rate = (-h2_lhv(self.temperature) / (2 * ct.faraday) - self.cell_voltage()) * self.current_density
-        self.mea_temperature_increase = self.heat_release_rate * self.thermal_resistance
+        if not dynamic: 
+            self.mea_temperature_increase = self.heat_release_rate * self.thermal_resistance
 
     def solve_transport(self):
         def f(dT): 
@@ -599,6 +602,9 @@ class FuelCell:
         self.set_conditions(stack_temperature, current_density,cathode_conditions, anode_conditions)
         if model == 'explicit_steady_state': 
             return self.explicit_steady_state_model()
+        elif model == 'steady_state_with_temp_solution': 
+            self.solve_transport()
+            return self.cell_voltage()
         
     def explicit_steady_state_model(self): 
         """
@@ -623,7 +629,68 @@ class FuelCell:
         self.calculate_water_transport()
         self.calculate_gas_concentrations_at_cl()
         return self.cell_voltage()
-    
+
+    # def f(t,x,u,p): 
+    #     self.set_conditions()
+  
+
+    def explicit_transient_model(self, x):
+
+        self.set_non_wetting_saturation(x)
+
+        self.calculate_heat_transfer_resistance()
+        mea_temperature = self.temperature + (self.current_density * 0.7) * self.thermal_resistance
+        self.set_mea_temperature(mea_temperature)
+
+        self.calculate_water_transport()
+        self.ca.h2ov_transport_resistance = self.ca.gas_transport_resistance('h2o')
+        self.an.h2ov_transport_resistance = self.an.gas_transport_resistance('h2o')
+        self.membrane.water_balance_model.solve_water_balance(self)
+        for cl in (self.ca.cl, self.an.cl): 
+            if self.use_eq_water_content_for_ionomer: 
+                cl.ionomer_water_content = cl.eq_water_content
+            else: 
+                cl.ionomer_water_content = cl.memb_interface_water_content
+            cl.set_ionomer_wet_properties(cl.ionomer_water_content, cl.temperature)
+       
+        if not dynamic: 
+            self.ca.calculate_equivalent_flow_resistance()
+            self.ca.calculate_water_saturation()
+            self.ca.cl.set_water_film_thickness(self.ca.cl.non_wetting_saturation)
+
+        self.calculate_heat_transfer_resistance()
+        mea_temperature = self.temperature + (self.current_density * 0.7) * self.thermal_resistance
+        self.set_mea_temperature(mea_temperature)
+        self.calculate_water_transport()
+
+        self.calculate_gas_concentrations_at_cl()
+
+    def set_conditions_from_input_dict(self, u, t): 
+        current_density = u['current-density'](t)
+
+        stack_temperature = u['cell-temperature'](t) 
+        for side in ('ca','an'):
+            try: 
+                u[f'{side}-inlet-liquid']
+            except KeyError: 
+                u[f'{side}-inlet-liquid'] = lambda t: ElectrolyteSolution()
+
+        cathode_conditions, anode_conditions =  [OperatingConditions(
+                inlet_temperature=u[f'{side}-inlet-temperature'](t),
+                inlet_pressure=u[f'{side}-inlet-pressure'](t),
+                outlet_pressure=u[f'{side}-outlet-pressure'](t),
+                inlet_relative_humidity=u[f'{side}-inlet-rh'](t),      
+                stoichiometry=u[f'{side}-stoichiometry'](t),
+                dry_o2_mole_fraction=u[f'{side}-dry-o2-mole-fraction'](t),
+                dry_h2_mole_fraction=u[f'{side}-dry-h2-mole-fraction'](t),
+                inlet_liquid_saturation=u[f'{side}-inlet-liquid-saturation'](t),
+                inlet_gas_flow_rate=u[f'{side}-inlet-gas-flow-rate'](t),
+                inlet_liquid_flow_rate=u[f'{side}-inlet-liquid-flow-rate'](t),
+                inlet_liquid=u[f'{side}-inlet-liquid'](t),
+            ) for side in ('ca','an')]
+        self.set_conditions(stack_temperature, current_density, cathode_conditions, anode_conditions)
+
+
     def set_conditions(self, stack_temperature, current_density, cathode_conditions, anode_conditions):  
         """
         Set the operating conditions of the fuel cell stack.
@@ -760,3 +827,87 @@ class OperatingConditions:
         self.average_pressure = 0.5 * (self.inlet_pressure + self.outlet_pressure)
 
 
+
+class DynamicOperatingConditions:
+    """
+    Represents the operating conditions of a fuel cell system side (anode/cathode), considering 
+    dynamic data as a function of time.
+
+    Attributes
+    ----------
+    inlet_temperature : function
+        The temperature of the gas at the inlet (K).
+    inlet_pressure : function
+        The pressure at the inlet (Pa). Defaults to outlet_pressure if not provided.
+    outlet_pressure : function
+        The pressure at the outlet (Pa). Defaults to inlet_pressure if not provided.
+    dry_o2_mole_fraction : function
+        The mole fraction of oxygen in the dry gas mixture.
+    dry_h2_mole_fraction : function
+        The mole fraction of hydrogen in the dry gas mixture.
+    inlet_relative_humidity : function
+        The relative humidity of the gas at the inlet (0 to 1).
+    stoichiometry : function
+        The stoichiometric ratio of reactant.
+    average_pressure : function
+        The average pressure between inlet and outlet (Pa).
+    inlet_liquid_saturation : function 
+        The volume fraction of the liquid phase at the inlet. Defaults to zero. 
+    inlet_liquid : ElectrolyteSolution
+        The nature of the liquid phase.
+    inlet_liquid_volume_flow_rate : function 
+        The inlet liquid flow rate (m3/s).
+    inlet_liquid_volume_flow_rate : function 
+        The inlet liquid flow rate (m3/s).
+    inlet_gas_volume_flow_rate : function 
+        The inlet liquid flow rate (m3/s).
+    """
+
+
+    def __init__(
+                self, 
+                inlet_temperature = lambda t: 353.15,
+                inlet_pressure = None,
+                outlet_pressure =  None,
+                dry_o2_mole_fraction = lambda t: 0.2,
+                dry_h2_mole_fraction = lambda t: 0.0,
+                inlet_relative_humidity = lambda t: 0.5,
+                stoichiometry = lambda t: 2,
+                inlet_liquid_saturation = lambda t: 0,
+                inlet_liquid = ElectrolyteSolution(),
+                inlet_liquid_flow_rate = lambda t: 0,
+                inlet_gas_flow_rate = lambda t: 0
+            ):
+        self.inlet_temperature = inlet_temperature
+        self.inlet_pressure = inlet_pressure
+        self.outlet_pressure =  outlet_pressure
+        self.dry_o2_mole_fraction = dry_o2_mole_fraction
+        self.dry_h2_mole_fraction = dry_h2_mole_fraction
+        self.inlet_relative_humidity = inlet_relative_humidity
+        self.stoichiometry = stoichiometry
+        self.inlet_liquid_saturation = inlet_liquid_saturation
+        self.inlet_liquid = inlet_liquid
+        self.inlet_liquid_flow_rate = inlet_liquid_flow_rate
+        self.inlet_gas_flow_rate = inlet_gas_flow_rate
+        
+        if self.inlet_pressure is None:
+            self.inlet_pressure = self.outlet_pressure if self.outlet_pressure is not None else lambda t: 101325.0
+        if self.outlet_pressure is None:
+            self.outlet_pressure = self.inlet_pressure
+
+    def get_operating_conditions(self, t): 
+        return OperatingConditions(
+                self.inlet_temperature(t),
+                self.inlet_pressure(t),
+                self.outlet_pressure(t),
+                self.dry_o2_mole_fraction(t),
+                self.dry_h2_mole_fraction(t),
+                self.inlet_relative_humidity(t),
+                self.stoichiometry(t),
+                self.inlet_liquid_saturation(t),
+                self.inlet_liquid,
+                self.inlet_liquid_flow_rate(t),
+                self.inlet_gas_flow_rate(t)
+            )
+    
+ 
