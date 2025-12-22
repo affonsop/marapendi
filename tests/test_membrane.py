@@ -101,7 +101,7 @@ def test_equilibrium_water_content_basic(thin_membrane):
 
 def test_equilibrium_water_content_with_s_relax(thin_membrane):
     rh, temperature, s_relax = 0.5, 303.15, 0.5
-    result = thin_membrane.equilibrium_water_content(rh, temperature, s_relax=0.5, xi_phi=0.014, lmbd=8)
+    result = thin_membrane.equilibrium_water_content(rh, temperature, s_relax=0.5, lmbd=8)
     phi = 0.014 * 8 
     expected = (1-phi) * (0.043 + 17.18 * 0.5 - 39.85 * 0.5**2 + 36 * 0.5**3) + s_relax
     assert np.isclose(result, expected)
