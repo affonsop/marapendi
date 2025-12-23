@@ -103,7 +103,8 @@ class DynamicModel:
             
             self.p.update(dict(zip(self.p_i_name, self.p_i_guess)))
             print(self.p)
-    def solve(self, time, u=None, x0=None, parameters_dict=None, rtol=1e-4, atol=1e-5):
+
+    def solve(self, time, u=None, x0=None, parameters_dict=None, rtol=1e-4, atol=1e-5, vectorized=False):
         """
         Solve the ODE system over the given time vector.
 
@@ -134,7 +135,7 @@ class DynamicModel:
                         y0=x0,
                         t_eval=time,
                         args=(u, parameters_dict),
-                        method=self.ode_solution_method, rtol=rtol, atol=atol)
+                        method=self.ode_solution_method, rtol=rtol, atol=atol, vectorized=vectorized)
         y = self.h(sol.t, sol.y, u, parameters_dict)
         self.t, self.x, self.y = sol.t, sol.y, y
         return sol.t, sol.y, y
@@ -164,7 +165,7 @@ class DynamicModel:
         _, _, y = self.solve(t, u, x0, p)
         return y_exp - y
 
-    def estimate(self, y_exp, t, u=None, x0=None, p=None,
+    def estimate(self, y_exp=None, t=0, u=None, x0=None, p=None, residuals=None,
                  print_iterations=False, popsize=10, workers=1,
                  rtol=0, atol=0, ftol=0, penalty_threshold=1e-2, vectorized=False, 
                  method='differential_evolution', initial_guess=None, maxiter=120):
@@ -198,13 +199,15 @@ class DynamicModel:
         """
         if not p:
             p = self.p if self.p else {}
+        if not residuals: 
+            residuals = lambda px: self.residuals(y_exp, t, u, x0, px)
 
         # Define objective function 
         def f(x):
             # Build parameter dict with current candidate
             px = p.copy()
             px.update({p_i[0]: v for p_i, v in zip(self.unknown_p_list, self.theta_to_p(x))})
-            res = self.residuals(y_exp, t, u, x0, px)
+            res = residuals(px)
             if penalty_threshold > 0:
                 penalty = np.where(np.abs(res) > penalty_threshold, 10 * (res - penalty_threshold), 0)
             return np.dot(res, res) / len(res) + (np.dot(penalty, penalty) if penalty_threshold > 0 else 0)
@@ -268,7 +271,7 @@ class DynamicModel:
                          self.p_i_min * np.exp((np.log(np.maximum(self.p_i_max, 1e-12)) - np.log(np.maximum(self.p_i_min, 1e-12))) * theta_k))
         return p_i_k
 
-    def calculate_local_sensitivity_neighborhood(self, t, u=None, x0=None, p=None, eps_p=0):
+    def calculate_local_sensitivity_neighborhood(self, t, u=None, x0=None, p=None, eps_p=0, measures=None):
         """
         Compute local sensitivities by finite differences in the neighborhood of the parameters.
 
@@ -293,7 +296,10 @@ class DynamicModel:
         Goshtasbi, A. et al. J. Electrochem. Soc. 167, 044504 (2020).
         """
         # Generate normalized samples in parameter space [0,1]
-        
+        if not measures: 
+            def measures(px): 
+                _, _, y_i_k = self.solve(t, u, x0, px)
+                return y_i_k
 
         y = []  # to store outputs for each parameter
         for i, p_i in enumerate(self.unknown_p_list):
@@ -318,7 +324,7 @@ class DynamicModel:
                 # Update parameter set with this single varied parameter
                 p_modified.update({p_i[0]: p_i_k})
                 # Solve model with updated parameter
-                _, _, y_i_k = self.solve(t, u, x0, p_modified)
+                y_i_k = measures(p_modified)
                 y_i.append(y_i_k)
             y.append(y_i)
 
@@ -341,7 +347,7 @@ class DynamicModel:
         self.S = S
         return S
     
-    def calculate_local_sensitivity(self, t, u=None, x0=None, p=None, n_samples=7):
+    def calculate_local_sensitivity(self, t, u=None, x0=None, p=None, n_samples=7, measures=None):
         """
         Compute local sensitivities by finite differences.
 
@@ -367,7 +373,10 @@ class DynamicModel:
         """
         # Generate normalized samples in parameter space [0,1]
         theta = np.linspace(0, 1, n_samples)
-
+        if not measures: 
+            def measures(px): 
+                _, _, y_i_k = self.solve(t, u, x0, px)
+                return y_i_k
         y = []  # to store outputs for each parameter
         for i, p_i in enumerate(self.unknown_p_list):
             y_i = []
@@ -379,7 +388,7 @@ class DynamicModel:
                 # Update parameter set with this single varied parameter
                 p_modified.update({p_i[0]: p_i_k})
                 # Solve model with updated parameter
-                _, _, y_i_k = self.solve(t, u, x0, p_modified)
+                y_i_k = measures(p_modified)
                 y_i.append(y_i_k)
             y.append(y_i)
 
@@ -403,7 +412,7 @@ class DynamicModel:
 
 
     def compute_global_sensitivity(self, t, u=None, x0=None, p=None, n_samples=7,
-                                m=8, check_samples=False, y_exp=None,
+                                m=8, check_samples=False, y_exp=None, residuals=None, measures=None,
                                 rmse_limit=0.3, print_px=False, filename_to_save=None):
         """
         Compute global sensitivities using Sobol sampling.
@@ -455,6 +464,8 @@ class DynamicModel:
 
         # Use provided parameter dict, else self.p or empty
         p = p if p else self.p if self.p else {}
+        if not residuals: 
+            residuals = lambda px: self.residuals(y_exp, t, u, x0, px)
 
         S_n = []
         for n in range(2**m):
@@ -466,7 +477,7 @@ class DynamicModel:
 
             # Optionally check RMSE to reject unrealistic samples
             if check_samples:
-                res = self.residuals(y_exp, t, u, x0, px)
+                res = residuals(px)
                 isValid = np.sqrt(np.dot(res, res) / len(res)) < rmse_limit
             else:
                 isValid = True
@@ -475,7 +486,7 @@ class DynamicModel:
                 if print_px:
                     print(px)
                 # Compute local sensitivities for this global sample
-                s_n = self.calculate_local_sensitivity_neighborhood(t, u, x0, px, eps_p=1e-6)
+                s_n = self.calculate_local_sensitivity_neighborhood(t, u, x0, px, eps_p=1e-6, measures=measures)
                 S_n.append(s_n)
 
         n_valid = len(S_n)
