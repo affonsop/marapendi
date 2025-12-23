@@ -523,7 +523,6 @@ class FuelCell:
             # reactant concentration
             side.reactant_transport_resistance = side.gas_transport_resistance(reactant, self.ca.cl.ionomer_water_content)
             gas_concentration = side.cl.gas.concentration()
-
             side.cl.gas.X[...,species_indexes[reactant]] = np.maximum(1e-12, 
                 side.ch.species_concentration(reactant) - 
                 side.reactant_consumption * side.reactant_transport_resistance) / gas_concentration
@@ -698,14 +697,13 @@ class FuelCell:
         
         
     def f_transient(self, t,x,u,p, n_memb_mesh=3): 
-        self.set_conditions_from_input_dict(u,t)
-        
+        self.set_conditions_from_input_dict(u,t * np.ones_like(x[0,...]))
         # Get variables 
         k = 1 + n_memb_mesh
         water_profile = x[1:k,...]
-        saturation_profile = np.clip(x[k:k+len(self.porous_layers)],0,1)
-        self.ca.s_relax = x[-2]
-        self.an.s_relax = x[-1]
+        saturation_profile = np.clip(x[k:k+len(self.porous_layers),...],0,0.9)
+        self.ca.s_relax = x[-2,...]
+        self.an.s_relax = x[-1,...]
         
         # Set conditions
         self.set_mea_temperature(x[0,...])
@@ -720,6 +718,16 @@ class FuelCell:
         dsdt = self.saturation_rate_of_change()
         dsrlxdt = self.relaxation_rate_of_change()
         return [dTdt] + list(dlmbddt) + list(dsdt) + list(dsrlxdt)
+
+    def f_relax(self, t,x,u,p, n_memb_mesh=3): 
+        self.set_conditions_from_input_dict(u,t * np.ones_like(x[0,...]))
+        self.explicit_steady_state_model()
+
+        self.ca.s_relax = x[-2,...]
+        self.an.s_relax = x[-1,...]
+        
+        dsrlxdt = self.relaxation_rate_of_change()
+        return list(dsrlxdt)
 
     def set_conditions_from_input_dict(self, u, t): 
         current_density = u['current-density'](t)
@@ -965,4 +973,3 @@ class DynamicOperatingConditions:
                 self.inlet_gas_flow_rate(t)
             )
     
- 
