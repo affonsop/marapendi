@@ -250,7 +250,12 @@ class FuelCell:
     heat_release_rate: float = 0
     mea_temperature_increase: float = 0
     mea_temperature: float = 0
+    mea_surface_heat_capacity: float = 10000.
     use_eq_water_content_for_ionomer: bool = True
+
+    def __post_init__(self): 
+        self.porous_layers = [layer for side in (self.an, self.ca) for layer in side.porous_layers]
+
     def reversible_cell_voltage(self): 
         """
         Calculate the reversible cell voltage based on the Nernst equation.
@@ -297,7 +302,7 @@ class FuelCell:
                                                                         self.an.cl.pressure - self.ca.cl.pressure,
                                                                         self.membrane.water_vol_fraction(
                                                                             self.membrane.water_content, 
-                                                                            water_molar_volume(self.membrane.temperature)
+                                                                            self.mea_water_molar_volume
                                                                             )
                                                                         )
         self.crossover_current = self.h2_permeation_flux * (2 * ct.faraday)
@@ -406,7 +411,7 @@ class FuelCell:
             
         self.ca.cl.theta_catalyst = theta_PtO
 
-    def cell_voltage(self):
+    def calculate_cell_voltage(self):
         """
         Compute the cell voltage of the fuel cell.
 
@@ -426,7 +431,8 @@ class FuelCell:
         E_rev = self.reversible_cell_voltage()
         eta_ohm = self.ohmic_overpotential()
         eta_act = self.activation_overpotential(self.ca.cl.theta_catalyst)
-        return np.maximum(0, E_rev - eta_act - eta_ohm)
+        self.cell_voltage = np.maximum(0, E_rev - eta_act - eta_ohm)
+        return self.cell_voltage
     
     def set_mea_temperature(self, mea_temperature): 
         """
@@ -456,7 +462,8 @@ class FuelCell:
         # self.ca.gdl.gas.set_temperature(mea_temperature)
         self.membrane.temperature = mea_temperature
         self.mea_temperature_increase = self.mea_temperature - self.temperature
-    
+        self.mea_water_molar_volume = water_molar_volume(self.mea_temperature)
+
     def calculate_water_transport(self, dynamic=False): 
         """
         Calculate the water balance across the fuel cell components.
@@ -559,7 +566,7 @@ class FuelCell:
         and the cell voltage, considering the electrochemical reaction energy balance.
         """ 
         self.calculate_heat_transfer_resistance()
-        self.heat_release_rate = (-h2_lhv(self.temperature) / (2 * ct.faraday) - self.cell_voltage()) * self.current_density
+        self.heat_release_rate = (-h2_lhv(self.temperature) / (2 * ct.faraday) - self.cell_voltage) * self.current_density
         if not dynamic: 
             self.mea_temperature_increase = self.heat_release_rate * self.thermal_resistance
 
@@ -569,6 +576,7 @@ class FuelCell:
             self.set_mea_temperature(mea_temperature)
             self.calculate_water_transport()
             self.calculate_gas_concentrations_at_cl()
+            self.calculate_cell_voltage()
             self.calculate_heat_transport()
             return dT - self.mea_temperature_increase 
         
@@ -628,46 +636,93 @@ class FuelCell:
         self.set_mea_temperature(mea_temperature)
         self.calculate_water_transport()
         self.calculate_gas_concentrations_at_cl()
-        return self.cell_voltage()
+        self.calculate_cell_voltage()
+        return self.cell_voltage
 
-    # def f(t,x,u,p): 
-    #     self.set_conditions()
-  
-
-    def explicit_transient_model(self, x):
-
-        self.set_non_wetting_saturation(x)
-
-        self.calculate_heat_transfer_resistance()
-        mea_temperature = self.temperature + (self.current_density * 0.7) * self.thermal_resistance
-        self.set_mea_temperature(mea_temperature)
-
-        self.calculate_water_transport()
-        self.ca.h2ov_transport_resistance = self.ca.gas_transport_resistance('h2o')
-        self.an.h2ov_transport_resistance = self.an.gas_transport_resistance('h2o')
-        self.membrane.water_balance_model.solve_water_balance(self)
-        for cl in (self.ca.cl, self.an.cl): 
-            if self.use_eq_water_content_for_ionomer: 
-                cl.ionomer_water_content = cl.eq_water_content
-            else: 
-                cl.ionomer_water_content = cl.memb_interface_water_content
-            cl.set_ionomer_wet_properties(cl.ionomer_water_content, cl.temperature)
-       
-        if not dynamic: 
-            self.ca.calculate_equivalent_flow_resistance()
-            self.ca.calculate_water_saturation()
-            self.ca.cl.set_water_film_thickness(self.ca.cl.non_wetting_saturation)
-
-        self.calculate_heat_transfer_resistance()
-        mea_temperature = self.temperature + (self.current_density * 0.7) * self.thermal_resistance
-        self.set_mea_temperature(mea_temperature)
-        self.calculate_water_transport()
-
+    def temperature_rate_of_change(self):
+        self.calculate_heat_transport(dynamic=True) 
+        return (self.heat_release_rate -  
+                (self.mea_temperature_increase / self.thermal_resistance)) / self.mea_surface_heat_capacity
+    
+    def membrane_water_rate_of_change(self, water_profile, n_membrane_mesh):        
+        return (self.membrane.water_balance_model.membrane_water_net_flux /
+                   (self.membrane.surface_concentration / n_membrane_mesh))
+    
+    def saturation_rate_of_change(self): 
+        dsdt = []
+        for side in (self.an,self.ca): 
+            for layer in side.porous_layers: 
+                layer.flow_resistance_with_rel_permeability = layer.saturation_flow_resistance * layer.capillary_pressure_J_ratio / np.maximum(layer.non_wetting_saturation,1e-1) ** (layer.relative_permeability_exponent + 2)
+                layer.capillary_pressure = layer.capillary_pressure_from_saturation(layer.non_wetting_saturation)
+            
+            if side.has_mpl: 
+                side.cl_to_mpl_liquid_flux = (2/(side.cl.flow_resistance_with_rel_permeability + side.mpl.flow_resistance_with_rel_permeability) *
+                                    (side.cl.capillary_pressure - side.mpl.capillary_pressure))
+                side.mpl_to_gdl_liquid_flux = (2/(side.mpl.flow_resistance_with_rel_permeability + side.gdl.flow_resistance_with_rel_permeability) *
+                                (side.mpl.capillary_pressure - side.gdl.capillary_pressure))
+            else:
+                side.cl_to_gdl_liquid_flux = (2/(side.cl.flow_resistance_with_rel_permeability + side.gdl.flow_resistance_with_rel_permeability) *
+                                                    (side.cl.capillary_pressure - side.gdl.capillary_pressure))
+            side.gdl_to_ch_liquid_flux = (2/side.gdl.flow_resistance_with_rel_permeability *
+                                                (side.gdl.capillary_pressure - 0))
+            if side.has_mpl: 
+                side.cl.liquid_balance = (side.liquid_flux - side.cl_to_gdl_liquid_flux)
+                side.mpl.liquid_balance = (side.cl_to_mpl_liquid_flux - side.mpl_to_gdl_liquid_flux)
+                side.gdl.liquid_balance = (side.mpl_to_gdl_liquid_flux - side.gdl_to_ch_liquid_flux)
+            else:
+                side.cl.liquid_balance = (side.liquid_flux - side.cl_to_gdl_liquid_flux)
+                side.gdl.liquid_balance = (side.cl_to_gdl_liquid_flux - side.gdl_to_ch_liquid_flux)
+        
+            for layer in side.porous_layers: 
+                dsdt.append(layer.liquid_balance / (layer.porosity * layer.thickness) * self.mea_water_molar_volume)
+        return np.array(dsdt)
+    
+    def relaxation_rate_of_change(self): 
+        dxdt = []
+        for side in (self.ca, self.an):
+            side.t_relax = (self.membrane.relaxation_time_constant * 
+                            np.exp((self.membrane.relaxation_time_activation_energy/ct.gas_constant)/self.mea_temperature) / 
+                            np.where(side.membrane_water_flux < 0,1.,2.))
+            dxdt += [-(side.s_relax - self.membrane.uptake_relaxed_fraction_constant * side.est_water_content)/side.t_relax]
+        return np.array(dxdt)
+    
+    def set_water_saturation_in_porous_layers(self, saturation_profile): 
+        k = 0
+        for side in (self.an,self.ca): 
+            for layer in side.porous_layers:
+                layer.non_wetting_saturation = saturation_profile[k,...]
+                k+=1
+        for side in (self.an,self.ca): 
+            side.h2ov_transport_resistance = side.gas_transport_resistance('h2o')
+            side.cl.set_water_film_thickness(side.cl.non_wetting_saturation)
+        
+        
+    def f_transient(self, t,x,u,p, n_memb_mesh=3): 
+        self.set_conditions_from_input_dict(u,t)
+        
+        # Get variables 
+        k = 1 + n_memb_mesh
+        water_profile = x[1:k,...]
+        saturation_profile = np.clip(x[k:k+len(self.porous_layers)],0,1)
+        self.ca.s_relax = x[-2]
+        self.an.s_relax = x[-1]
+        
+        # Set conditions
+        self.set_mea_temperature(x[0,...])
+        self.set_water_saturation_in_porous_layers(saturation_profile)
+        self.membrane.water_balance_model.solve_water_balance(self,water_profile,True)
         self.calculate_gas_concentrations_at_cl()
+        self.calculate_cell_voltage()
+
+        # Calculate rates of change
+        dlmbddt = self.membrane_water_rate_of_change(water_profile, n_memb_mesh)
+        dTdt = self.temperature_rate_of_change()
+        dsdt = self.saturation_rate_of_change()
+        dsrlxdt = self.relaxation_rate_of_change()
+        return [dTdt] + list(dlmbddt) + list(dsdt) + list(dsrlxdt)
 
     def set_conditions_from_input_dict(self, u, t): 
         current_density = u['current-density'](t)
-
         stack_temperature = u['cell-temperature'](t) 
         for side in ('ca','an'):
             try: 

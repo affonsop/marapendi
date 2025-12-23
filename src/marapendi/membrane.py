@@ -55,8 +55,9 @@ class Membrane:
     h2_permeation_model: HydrogenPermeationModel = field(default_factory=HydrogenPermeationModel)
     water_balance_model: MembraneWaterBalanceModel = field(default_factory=MembraneWaterBalanceModel)
     water_content: float = 14
-    
-
+    relaxation_time_constant: float = 0.067 # Default from Grimaldi et al. (2023)
+    relaxation_time_activation_energy: float = 28e6 # Default from Grimaldi et al. (2023)
+    uptake_relaxed_fraction_constant: float = 0.014 # Default from Grimaldi et al. (2023)
     def __post_init__(self):
         """
         Compute derived properties of the membrane after initialization.
@@ -267,6 +268,9 @@ class PFSA(Membrane):
         d_lmbd_eq_relaxed = (17.18 - 79.70 * rh + 108 * rh**2)
         phi = self.xi_phi * lmbd
         return (1 - phi) * d_lmbd_eq_relaxed + s_relax
+    
+    
+
 
     def liquid_equilibrium_water_content(self, temperature):
         """
