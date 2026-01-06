@@ -159,7 +159,7 @@ class FuelCellSide:
         """
         self.gdl.two_phase_transport_model.calculate_non_wetting_saturation(self.gdl, self.liquid_flux, upstream_capillary_pressure=0)
         if self.has_mpl: 
-             self.mpl.two_phase_transport_model.calculate_non_wetting_saturation(self.gdl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
+             self.mpl.two_phase_transport_model.calculate_non_wetting_saturation(self.mpl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
              self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.mpl.downstream_capillary_pressure)
         else:
             self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
