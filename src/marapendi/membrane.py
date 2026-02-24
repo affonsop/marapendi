@@ -5,7 +5,7 @@ Module providing a membrane class intended to be the base class for different me
 import numpy as np
 import cantera as ct 
 from dataclasses import dataclass, field
-from marapendi.tools import calculate_arrhenius_term
+from marapendi.tools import arrhenius_term
 from marapendi.water import water_molar_volume
 from marapendi.water_balance_models import MembraneWaterBalanceModel
 from marapendi.membrane_permeation_models import HydrogenPermeationModel 
@@ -184,8 +184,8 @@ class PFSA(Membrane):
         Exponent for the proton conductivity correlation. Default is 1.5.
     conductivity_activation_energy : float
         Activation energy for proton conductivity in Joules. Default is 15e6.
-    xi_phi : float
-        Swelling proportionality constant, default to 0.014 as in Grimaldi et al. (2023).
+    phi : float
+        Contribution of relaxation phenomena to the ionomer water uptake, according to Goshtasbi et al. (2019).
 
     Methods
     -------
@@ -199,14 +199,20 @@ class PFSA(Membrane):
         Calculate the proton conductivity based on water content and temperature.
     proton_resistance(water_content, temperature, use_water_profile=True, water_saturation=0)
         Calculate the proton resistance through the membrane.
+    
+    References
+    ----------
+    Springer, T. E. et al. J. Electrochem. Soc. 138, 2334 (1991).
+    Grimaldi et al. J. Power Sources (2023).
+    Goshtasbi et al. J. Electrochem. Soc. 2019, 166 (7), F3154.
     """
 
     conductivity_correction: float = 1
     conductivity_exp: float = 1.5
     conductivity_activation_energy: float = 15e6 
-    xi_phi: float = 0.014
+    phi: float = 0.15
 
-    def equilibrium_water_content(self, rh, temperature, s_relax=0, lmbd=0):
+    def equilibrium_water_content(self, rh, temperature, s_relax=None):
             """
             Calculate the equilibrium water content based on relative humidity and temperature.
             Uses the polynomial interpolation obtained by Springer et al. (1991) for Nafion N117 at 30ºC. 
@@ -232,13 +238,14 @@ class PFSA(Membrane):
             ----------
             Springer, T. E. et al. J. Electrochem. Soc. 138, 2334 (1991).
             Grimaldi et al. J. Power Sources (2023).
+            Goshtasbi et al. J. Electrochem. Soc. 2019, 166 (7), F3154.
             """
             rh = np.minimum(np.maximum(rh, 0), 1)
             lmbd_eq_relaxed = (0.043 + 17.18 * rh - 39.85 * rh**2 + 36 * rh**3)
-            phi = self.xi_phi * lmbd  
-            return (1 - phi) * lmbd_eq_relaxed + s_relax 
+            
+            return ((1 - self.phi) * lmbd_eq_relaxed + s_relax) if s_relax is not None else lmbd_eq_relaxed 
 
-    def equilibrium_water_content_derivative(self, rh, temperature, s_relax=0, lmbd=0):
+    def equilibrium_water_content_derivative(self, rh, temperature, s_relax=None):
         """
         Calculate the derivative of the equilibrium water content with respect to relative humidity.
         Uses the polynomial interpolation obtained by Springer et al. (1991) for Nafion N117 at 30ºC. 
@@ -263,11 +270,11 @@ class PFSA(Membrane):
         ----------
         Springer, T. E. et al. J. Electrochem. Soc. 138, 2334 (1991).
         Grimaldi et al. J. Power Sources (2023).
+        Goshtasbi et al. J. Electrochem. Soc. 2019, 166 (7), F3154.
         """
         rh = np.minimum(np.maximum(rh, 0), 1)
         d_lmbd_eq_relaxed = (17.18 - 79.70 * rh + 108 * rh**2)
-        phi = self.xi_phi * lmbd
-        return (1 - phi) * d_lmbd_eq_relaxed + s_relax
+        return ((1 - self.phi) * d_lmbd_eq_relaxed + s_relax) if s_relax is not None else d_lmbd_eq_relaxed 
     
     
 
@@ -314,10 +321,10 @@ class PFSA(Membrane):
         """
         if use_water_profile:
             fv = self.water_vol_fraction(self.water_balance_model.water_content_profile, water_molar_volume(temperature))
-            return 1/np.mean(1/(self.conductivity_correction * 50 * (np.maximum(fv, 0.11) - 0.1 ) ** self.conductivity_exp * calculate_arrhenius_term(self.conductivity_activation_energy, temperature, 298.15)), axis=0)
+            return 1/np.mean(1/(self.conductivity_correction * 50 * (np.maximum(fv, 0.11) - 0.1 ) ** self.conductivity_exp * arrhenius_term(self.conductivity_activation_energy, temperature, 298.15)), axis=0)
         else:
             fv = self.water_vol_fraction(water_content, water_molar_volume(temperature))
-            return self.conductivity_correction * 50 * (np.maximum(fv, 0.11) - 0.1 ) ** self.conductivity_exp * calculate_arrhenius_term(self.conductivity_activation_energy, temperature, 298.15)
+            return self.conductivity_correction * 50 * (np.maximum(fv, 0.11) - 0.1 ) ** self.conductivity_exp * arrhenius_term(self.conductivity_activation_energy, temperature, 298.15)
 
     def proton_resistance(self, water_content, temperature, use_water_profile=True, water_saturation=0):
         """
@@ -393,7 +400,7 @@ class FAA3(Membrane):
         """
         # Room-temperature conductivity from Luo et al. (2020) with
         # activation energy from Khalid et al. (2022) for FAA3-50. Liquid-equilibrated.
-        return 3.1 * calculate_arrhenius_term(activation_energy=11.1e6,
+        return 3.1 * arrhenius_term(activation_energy=11.1e6,
                                               temperature=temperature,
                                               reference_temperature=298.15)
 
@@ -443,7 +450,7 @@ class PAP85(Membrane):
         """
         # Room-temperature conductivity for liquid-equilibrated from Luo et al. (2020) with
         # activation energy from Khalid et al. (2022) for PAP-20. Liquid-equilibrated.
-        return 5.8 * calculate_arrhenius_term(activation_energy=22.5e6,
+        return 5.8 * arrhenius_term(activation_energy=22.5e6,
                                               temperature=temperature,
                                               reference_temperature=298.15)
     
