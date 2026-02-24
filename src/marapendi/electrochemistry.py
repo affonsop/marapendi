@@ -4,7 +4,7 @@ Module providing electrochemistry functions.
 from dataclasses import dataclass
 import numpy as np
 import cantera as ct
-from marapendi.tools import calculate_arrhenius_term
+from marapendi.tools import arrhenius_term
 
 h2o2 = ct.Solution('gri30.yaml')
 h2 = h2o2.species('H2').thermo
@@ -442,7 +442,7 @@ def calculate_exchange_current_density(
     """
     activity_correction = np.maximum(reactant_activity / params.reference_activity, 
                                      1e-12) ** params.reaction_order
-    arrhenius_term = calculate_arrhenius_term(params.activation_energy,
+    arrhenius = arrhenius_term(params.activation_energy,
                                               temperature,
                                               params.reference_temperature)
-    return params.reference_exchange_current_density * activity_correction * arrhenius_term
+    return params.reference_exchange_current_density * activity_correction * arrhenius

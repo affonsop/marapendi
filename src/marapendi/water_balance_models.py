@@ -1,7 +1,7 @@
 import numpy as np
 import cantera as ct 
 from dataclasses import dataclass, field
-from marapendi.tools import calculate_arrhenius_term
+from marapendi.tools import arrhenius_term
 
 @dataclass
 class MembraneWaterBalanceModel:
@@ -64,7 +64,7 @@ class MembraneWaterBalanceModel:
         """
         return  (
                     self.reference_absorption_coefficient * 
-                    calculate_arrhenius_term(
+                    arrhenius_term(
                         self.water_absorption_activation_energy, 
                         temperature, 
                         self.reference_temperature
@@ -90,7 +90,7 @@ class MembraneWaterBalanceModel:
         The calculation uses the reference water diffusivity and the Arrhenius term.
         """
         return (self.reference_water_diffusivity *
-                calculate_arrhenius_term(self.water_diffusivity_activation_energy,
+                arrhenius_term(self.water_diffusivity_activation_energy,
                                         temperature,
                                         self.reference_temperature))
     
@@ -207,10 +207,10 @@ class MembraneWaterBalanceModel:
             # Get estimated values for equilibrium water content and its derivative in CL 
             side.est_water_content = cell.membrane.equilibrium_water_content(
                 side.rh_at_cl_without_crossover, cell.membrane.temperature, 
-                side.s_relax, side.cl.memb_interface_water_content
+                side.s_relax
             )
             side.est_water_content_derivative = cell.membrane.equilibrium_water_content_derivative(
-                side.rh_at_cl_without_crossover, cell.membrane.temperature, side.s_relax, side.cl.memb_interface_water_content
+                side.rh_at_cl_without_crossover, cell.membrane.temperature, side.s_relax
             )
 
     def update_water_contents(self, cell):
@@ -454,7 +454,7 @@ class MembraneWaterBalanceModel:
         else: 
             for side in (cell.ca, cell.an):
                 side.cl.memb_interface_water_content = 0
-                side.s_relax=0
+    
 
         # Calculate membrane water absorption and diffusivity
         self.absorption_coefficient = self.calculate_water_absorption_coefficient(cell.membrane.temperature)

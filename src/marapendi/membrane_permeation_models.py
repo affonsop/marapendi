@@ -2,7 +2,7 @@
 Module providing classes for different membrane permeation models. 
 """
 from dataclasses import dataclass
-from marapendi.tools import calculate_arrhenius_term
+from marapendi.tools import arrhenius_term
 
 
 @dataclass
@@ -84,7 +84,7 @@ class HydrogenPermeationModel:
 
         diffusion_permeability_coeff = (
             self.reference_diffusion_permeability_coefficient *
-            calculate_arrhenius_term(
+            arrhenius_term(
                 self.diffusion_permeability_activation_energy,
                 temperature,
                 self.permeability_reference_temperature
@@ -93,7 +93,7 @@ class HydrogenPermeationModel:
 
         convection_permeability_coeff = (
             self.reference_convection_permeability_coefficient *
-            calculate_arrhenius_term(
+            arrhenius_term(
                 self.convection_permeability_activation_energy,
                 temperature,
                 self.permeability_reference_temperature

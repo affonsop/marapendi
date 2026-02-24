@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 import numpy as np
 import cantera as ct
 
-from .tools import calculate_arrhenius_term
+from .tools import arrhenius_term
 from .water import water_molecular_weight, water_molar_volume, water_density
 from .membrane import Membrane, PAP85, PFSA
 
@@ -133,7 +133,7 @@ class PFSAIonomer(CatalystLayerIonomer):
         """
         return (self.hydrated_o2_diffusion * 
                 (water_content / 14) ** self.o2_diffusion_exponent *
-                calculate_arrhenius_term(self.o2_diffusion_activation_energy, temperature, 353.15))
+                arrhenius_term(self.o2_diffusion_activation_energy, temperature, 353.15))
 
     def o2_permeability(self, water_content, temperature=353.15):
         """
@@ -163,7 +163,7 @@ class PFSAIonomer(CatalystLayerIonomer):
             Proton conductivity [S/m].
         """
         fv = self.water_vol_fraction(water_content, water_molar_volume(temperature))
-        return self.conductivity_correction * 50 * (np.maximum(fv, 0.11) - 0.1) ** self.conductivity_exp * calculate_arrhenius_term(self.conductivity_activation_energy, temperature, 298.15)
+        return self.conductivity_correction * 50 * (np.maximum(fv, 0.11) - 0.1) ** self.conductivity_exp * arrhenius_term(self.conductivity_activation_energy, temperature, 298.15)
 
     def equilibrium_water_content(self, rh):
         """
@@ -233,7 +233,7 @@ class PAPIonomer(CatalystLayerIonomer):
         """
         # Room-temperature conductivity for liquid-equilibrated from Luo et al. (2020) with
         # activation energy from Khalid et al. (2022) for PAP-20. Liquid-equilibrated.
-        return 5.8 * calculate_arrhenius_term(activation_energy=22.5e6,
+        return 5.8 * arrhenius_term(activation_energy=22.5e6,
                                               temperature=temperature,
                                               reference_temperature=298.15)
     
