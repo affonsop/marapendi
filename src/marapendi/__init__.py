@@ -14,3 +14,4 @@ from .ionomer import *
 from .water_balance_models import *
 from .membrane_permeation_models import * 
 from .catalyst_layers import *
+from .degradation import * 
