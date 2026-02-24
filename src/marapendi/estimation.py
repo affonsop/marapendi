@@ -4,6 +4,7 @@ from scipy.integrate import solve_ivp
 from scipy.optimize import differential_evolution, minimize
 from scipy.stats import qmc
 from scipy.linalg import qr, eigvals
+
 class DynamicModel:
     """
     A class to define, simulate, and analyze non-linear dynamic systems in control engineering notation.
