@@ -77,6 +77,7 @@ class FuelCellSide:
         self.h2ov_transport_resistance = 0
         self.h2_transport_resistance = 0   
         self.liquid_water_flux = 0
+        self.s_relax = None
 
     def set_catalyst_layer(self, cl): 
         """
@@ -178,7 +179,9 @@ class FuelCellSide:
         Updates each layer's `equivalent_flow_resistance` attribute 
         based on its saturation-dependent flow resistance.
         """
-        total_equivalent_flow_resistance = 0 
+        total_equivalent_flow_resistance = np.zeros_like(
+            self.porous_layers[0].saturation_flow_resistance
+        )
         for k, layer in enumerate(self.porous_layers[::-1]): 
             layer.equivalent_flow_resistance = layer.saturation_flow_resistance
             total_equivalent_flow_resistance += layer.equivalent_flow_resistance
@@ -609,11 +612,13 @@ class FuelCell:
         self.set_conditions(stack_temperature, current_density,cathode_conditions, anode_conditions)
         if model == 'explicit_steady_state': 
             return self.explicit_steady_state_model()
+        elif model == 'explicit_steady_state_with_mea_temp_estimation': 
+            return self.explicit_steady_state_model(mea_tempearture_estimation=True)
         elif model == 'steady_state_with_temp_solution': 
             self.solve_transport()
             return self.cell_voltage()
         
-    def explicit_steady_state_model(self): 
+    def explicit_steady_state_model(self, mea_tempearture_estimation=False): 
         """
         Simplified steady-state model where all calculations are explicit. 
         
@@ -631,7 +636,15 @@ class FuelCell:
             The fuel cell voltage in volts.
         """
         self.calculate_heat_transfer_resistance()
-        mea_temperature = self.temperature + (self.current_density * 0.7) * self.thermal_resistance
+        if mea_tempearture_estimation: 
+            self.set_mea_temperature(self.temperature)
+            self.calculate_water_transport()
+            self.calculate_gas_concentrations_at_cl()
+            v0 = self.calculate_cell_voltage()
+            mea_temperature = self.temperature + (self.current_density * (-h2_lhv(self.temperature) / (2 * ct.faraday) - v0) *
+                                                       self.thermal_resistance)
+        else: 
+            mea_temperature = self.temperature + (self.current_density * 0.7) * self.thermal_resistance
         self.set_mea_temperature(mea_temperature)
         self.calculate_water_transport()
         self.calculate_gas_concentrations_at_cl()
@@ -729,29 +742,33 @@ class FuelCell:
         dsrlxdt = self.relaxation_rate_of_change()
         return list(dsrlxdt)
 
-    def set_conditions_from_input_dict(self, u, t): 
-        current_density = u['current-density'](t)
-        stack_temperature = u['cell-temperature'](t) 
-        for side in ('ca','an'):
-            try: 
-                u[f'{side}-inlet-liquid']
-            except KeyError: 
-                u[f'{side}-inlet-liquid'] = lambda t: ElectrolyteSolution()
+    def set_conditions_from_input_functions(self, u, t): 
+        self.set_conditions_from_input_dict({key: u_function(t) for key, u_function in u.items()})
+
+    def set_conditions_from_input_dict(self, u): 
+        current_density = u['current-density']
+        stack_temperature = u['cell-temperature']
+        # for side in ('ca','an'):
+        #     try: 
+        #         u[f'{side}-inlet-liquid']
+        #     except KeyError: 
+        #         u[f'{side}-inlet-liquid'] = lambda t: ElectrolyteSolution()
 
         cathode_conditions, anode_conditions =  [OperatingConditions(
-                inlet_temperature=u[f'{side}-inlet-temperature'](t),
-                inlet_pressure=u[f'{side}-inlet-pressure'](t),
-                outlet_pressure=u[f'{side}-outlet-pressure'](t),
-                inlet_relative_humidity=u[f'{side}-inlet-rh'](t),      
-                stoichiometry=u[f'{side}-stoichiometry'](t),
-                dry_o2_mole_fraction=u[f'{side}-dry-o2-mole-fraction'](t),
-                dry_h2_mole_fraction=u[f'{side}-dry-h2-mole-fraction'](t),
-                inlet_liquid_saturation=u[f'{side}-inlet-liquid-saturation'](t),
-                inlet_gas_flow_rate=u[f'{side}-inlet-gas-flow-rate'](t),
-                inlet_liquid_flow_rate=u[f'{side}-inlet-liquid-flow-rate'](t),
-                inlet_liquid=u[f'{side}-inlet-liquid'](t),
+                inlet_temperature=u[f'{side}-inlet-temperature'],
+                inlet_pressure=u[f'{side}-inlet-pressure'],
+                outlet_pressure=u[f'{side}-outlet-pressure'],
+                inlet_relative_humidity=u[f'{side}-inlet-rh'],      
+                stoichiometry=u[f'{side}-stoichiometry'],
+                dry_o2_mole_fraction=u[f'{side}-dry-o2-mole-fraction'],
+                dry_h2_mole_fraction=u[f'{side}-dry-h2-mole-fraction'],
+                inlet_liquid_saturation=u[f'{side}-inlet-liquid-saturation'],
+                inlet_gas_flow_rate=u[f'{side}-inlet-gas-flow-rate'],
+                inlet_liquid_flow_rate=u[f'{side}-inlet-liquid-flow-rate'],
+                inlet_liquid=u[f'{side}-inlet-liquid'] if f'{side}-inlet-liquid' in u.keys() else  ElectrolyteSolution(),
             ) for side in ('ca','an')]
         self.set_conditions(stack_temperature, current_density, cathode_conditions, anode_conditions)
+
 
 
     def set_conditions(self, stack_temperature, current_density, cathode_conditions, anode_conditions):  
