@@ -50,6 +50,7 @@ class CatalystLayer(PorousLayer):
     contact_angle: float = 95.
     theta_catalyst: float = 0
     electrolyte_saturation: float = 0
+
     def ionomer_sheet_charge_resistance(self, ionomer_water_content, temperature, charge='proton'):
         """
         Calculate charge resistance of the ionomer film using Bruggeman model.
@@ -121,7 +122,29 @@ class CatalystLayer(PorousLayer):
         """
         electrolyte_conductivity = self.electrolyte.calculate_ionic_conductivity(temperature)
         return self.thickness / ((np.maximum(self.electrolyte_saturation, 1e-12) * self.porosity) ** 1.5 * electrolyte_conductivity) 
+    
+    def activation_overpotential(self, current_density, activity):
+        """
+        Compute activation overpotential based on current density.
 
+        Parameters
+        ----------
+        current_density : float
+            Current density [A/m²].
+        activity : float
+            Effective activity of reactant.
+
+        Returns
+        -------
+        float
+            Activation overpotential [V].
+        """
+        return self.reaction.tafel_overpotential(
+            (current_density) / (self.ecsa * self.catalyst_loading),
+            self.temperature,
+            activity
+        )
+    
 @dataclass
 class PorousTransferLayer(CatalystLayer):
     """
@@ -161,27 +184,7 @@ class PorousTransferLayer(CatalystLayer):
         self.effective_gas_diffusion_ratio = self.porosity ** 1.5
         PorousLayer.__post_init__(self)
 
-    def activation_overpotential(self, current_density, activity):
-        """
-        Compute activation overpotential based on current density.
 
-        Parameters
-        ----------
-        current_density : float
-            Current density [A/m²].
-        activity : float
-            Effective activity of reactant.
-
-        Returns
-        -------
-        float
-            Activation overpotential [V].
-        """
-        return self.reaction.tafel_overpotential(
-            (current_density) / (self.ecsa * self.catalyst_loading),
-            self.temperature,
-            activity
-        )
 
 
 @dataclass
