@@ -165,6 +165,26 @@ class PFSAIonomer(CatalystLayerIonomer):
         fv = self.water_vol_fraction(water_content, water_molar_volume(temperature))
         return self.conductivity_correction * 50 * (np.maximum(fv, 0.11) - 0.1) ** self.conductivity_exp * arrhenius_term(self.conductivity_activation_energy, temperature, 298.15)
 
+    def hydroxide_conductivity(self, water_content, temperature):
+        """
+        Calculate the hydroxide conductivity of the ionomer based on water content and temperature.
+
+        Parameters
+        ----------
+        water_content : float
+            The water content of the membrane (not used in calculation but kept for consistency).
+        temperature : float
+            The temperature in Kelvin (K).
+
+        Returns
+        -------
+        float
+            The hydroxide conductivity of the membrane in Siemens per meter (S/m).
+        
+        """
+        # No hydroxide conductivity 
+        return 1e-6 
+
     def equilibrium_water_content(self, rh):
         """
         Equilibrium water content as function of RH from Jinnouchi et al. (2021), fig S3a.
