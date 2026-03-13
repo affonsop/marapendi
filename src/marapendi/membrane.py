@@ -454,3 +454,50 @@ class PAP85(Membrane):
                                               temperature=temperature,
                                               reference_temperature=298.15)
     
+@dataclass
+class SustainionX3750RT(Membrane):
+    """
+    A class representing a Sustainion X37-50 RT membrane membrane, extending the Membrane class.
+    This class includes properties and methods for calculating hydroxide conductivity.
+
+   
+    Attributes
+    ----------
+    dry_density : float
+        Density of the membrane in kg/m³. Default is 1220 kg/m³.
+    equivalent_weight : float
+        Equivalent weight of the membrane in kg/kmol. Default is 1000/2.35 kg/kmol.
+
+    Methods
+    -------
+    hydroxide_conductivity(water_content, temperature)
+        Calculate the hydroxide conductivity based on water content and temperature.
+    """
+    # Data from Luo et al. (2020), table 1. 
+    dry_density: float = 1220.
+    equivalent_weight: float = 1000/2.35
+    dry_thickness: float = 50e-6 
+    ref_hydroxide_conductivity: float = 11.6
+    conductivity_activation_energy: float = 10.7e6
+    def hydroxide_conductivity(self, water_content, temperature):
+        """
+        Calculate the hydroxide conductivity of the membrane based on water content and temperature.
+
+        Parameters
+        ----------
+        water_content : float
+            The water content of the membrane (not used in calculation but kept for consistency).
+        temperature : float
+            The temperature in Kelvin (K).
+
+        Returns
+        -------
+        float
+            The hydroxide conductivity of the membrane in Siemens per meter (S/m).
+        """
+        # Room-temperature conductivity for liquid-equilibrated from Luo et al. (2020) with
+        # activation energy from Khalid et al. (2022) for PAP-20. Liquid-equilibrated.
+        return self.ref_hydroxide_conductivity * arrhenius_term(activation_energy=self.conductivity_activation_energy,
+                                              temperature=temperature,
+                                              reference_temperature=333.15)
+    
