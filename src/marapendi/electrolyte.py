@@ -73,7 +73,7 @@ class ElectrolyteSolution():
         Returns
         -------
         float
-            Weight percent [0-1].
+            Weight percent [0-100].
         """
         return 100. * self.electrolyte_molecular_weight * self.molality / (1 + self.electrolyte_molecular_weight * self.molality)
 
@@ -99,15 +99,6 @@ class ElectrolyteSolution():
         """
         return self.weight_percent / 100. * self.calculate_density() / self.electrolyte_molecular_weight
 
-    def calculate_weight_percent(self):
-        """
-        Calculate weight percent from molality [kmol/kg].
-
-        Returns
-        -------
-        float
-            Weight percent [0-1].
-        """
 
 @dataclass
 class KOH_solution(ElectrolyteSolution):
@@ -120,14 +111,14 @@ class KOH_solution(ElectrolyteSolution):
         super().__post_init__()
         self.electrolyte_molecular_weight = 56.105
 
-    def calculate_density(self):
+    def calculate_density(self, temperature=None):
         """
         Calculate solution density using correlation from Hodges et al. (2023).
 
         Parameters
         ----------
         weight_percent : float
-            Weight percent [0-1].
+            Weight percent [0-100].
         temperature : float
             Temperature [K].
 
@@ -140,7 +131,9 @@ class KOH_solution(ElectrolyteSolution):
         ---------
         Hodges, A. et al. J. Chem. Eng. Data 68, 1485–1506 (2023).
         """
-        T = self.temperature - 273.15
+        if not temperature: 
+            temperature = self.temperature
+        T = temperature - 273.15
         return (5.1998e-6 * T ** 3 - 39.771334e-4 * T ** 2 -
                 848.089182e-4 * T + 1001.5409980109) * np.exp(0.0086 * self.weight_percent)
 
