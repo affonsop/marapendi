@@ -227,7 +227,7 @@ class DynamicModel:
                                         bounds=tuple(([0, 1] for _ in self.unknown_p_list)),
                                         disp=True,
                                         callback=print_res if print_iterations else None,
-                                        popsize=popsize, polish=False,
+                                        popsize=popsize, polish=True,
                                         workers=workers, mutation=(0, 1), recombination=0.5, vectorized=vectorized, 
                                         seed=2, init='latinhypercube', tol=rtol, atol=atol, maxiter=maxiter)
         else: 
