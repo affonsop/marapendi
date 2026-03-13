@@ -59,7 +59,8 @@ class ElectrolyzerCellSide(FuelCellSide):
     def calculate_channel_gas_saturation(self): 
         self.ch.non_wetting_saturation = self.total_gas_flux  / (self.ch.inlet_liquid_flow_rate * self.ch.gas.concentration())
 
-    def calculate_gas_saturation(self): 
+    
+    def calculate_phase_saturation(self): 
         """
         Compute and update the gas saturation in each porous layer.
 
@@ -67,22 +68,39 @@ class ElectrolyzerCellSide(FuelCellSide):
         -----
         This method updates each layer's `gas_saturation` attribute based on 
         the liquid flux and upstream capillary pressures. It assumes that 
-        `self.gas_flux` has been set externally.
+        `self.reaction_gas_flux` has been set externally.
         """
         self.calculate_channel_gas_saturation()
 
-        if self.has_gdl: 
-            self.gdl.two_phase_transport_model.calculate_non_wetting_saturation(self.gdl, self.gas_flux, 
-                    upstream_capillary_pressure=0)
-            if self.has_mpl: 
-                self.mpl.two_phase_transport_model.calculate_non_wetting_saturation(self.gdl, self.gas_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
-                self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.gas_flux, upstream_capillary_pressure=self.mpl.downstream_capillary_pressure)
-            else:
-                self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.gas_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
-        else: 
-            self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.gas_flux, 
-                    upstream_capillary_pressure=0)
-       
+  
+        for i, layer in enumerate(self.porous_layers): 
+            layer.non_wetting_flux = (self.membrane_liquid_flux + self.reaction_liquid_flux) if layer.contact_angle > 90 else (self.membrane_gas_flux + self.reaction_gas_flux)
+            layer.downstream_saturation = np.zeros_like(layer.non_wetting_flux)
+            layer.upstream_saturation = np.zeros_like(layer.non_wetting_flux)
+            layer.non_wetting_saturation = np.zeros_like(layer.non_wetting_flux)
+            layer.downstream_capillary_pressure = np.zeros_like(layer.non_wetting_flux)
+
+        self.left_out =  self.cl.non_wetting_flux < 0
+        self.right_out = self.porous_layers[-1].non_wetting_flux > 0
+        
+        def solve_left_to_right(layers, mask):
+            upstream_cp = np.zeros_like(layers[0].non_wetting_flux)
+            for layer in layers:
+                layer.two_phase_transport_model.calculate_non_wetting_saturation(
+                            layer,
+                            np.abs(layer.non_wetting_flux),
+                            upstream_capillary_pressure=upstream_cp,
+                            mask=mask
+                        )
+                upstream_cp = layer.downstream_capillary_pressure
+        
+
+        if np.any(self.left_out):
+            solve_left_to_right(self.porous_layers, self.left_out)
+        if np.any(self.right_out):
+            solve_left_to_right(self.porous_layers[::-1], self.right_out)
+
+
 @dataclass
 class ElectrolyzerCell(FuelCell):
     """
@@ -188,16 +206,16 @@ class ElectrolyzerCell(FuelCell):
         self.crossover_current = self.h2_permeation_flux * (2 * ct.faraday)
 
         unity_activity = 1.0
-        tafel_overpotential_ca = self.ca.cl.activation_overpotential(self.current_density / self.ca.cl.electrolyte_saturation ** self.electrolyte_saturation_exponent, unity_activity)
-        tafel_overpotential_an = self.an.cl.activation_overpotential(self.current_density / self.an.cl.electrolyte_saturation ** self.electrolyte_saturation_exponent, unity_activity)
+        tafel_overpotential_ca = self.ca.cl.activation_overpotential(self.current_density / self.ca.cl.electrolyte_saturation ** self.electrolyte_saturation_exponent, self.ca.cl.electrolyte.molarity)
+        tafel_overpotential_an = self.an.cl.activation_overpotential(self.current_density / self.an.cl.electrolyte_saturation ** self.electrolyte_saturation_exponent, self.ca.cl.electrolyte.molarity)
 
         return tafel_overpotential_ca + tafel_overpotential_an
     
 
     def calculate_bubble_transport(self): 
         for side in (self.ca, self.an): 
-            side.calculate_gas_saturation()
-            side.cl.electrolyte_saturation = 1 - side.cl.non_wetting_saturation
+            # side.calculate_phase_saturation()
+            side.cl.electrolyte_saturation = 1#(1 - side.cl.non_wetting_saturation) if side.cl.contact_angle < 90 else side.cl.non_wetting_saturation
 
     def set_conditions(self, stack_temperature, current_density, cathode_conditions, anode_conditions):
         """
@@ -219,8 +237,13 @@ class ElectrolyzerCell(FuelCell):
         self.h2_production = 2 * self.o2_production
         self.ca.h2o_consumption = 2 * self.h2_production
         self.an.h2o_production = self.h2_production
-        self.ca.gas_flux = self.h2_production
-        self.an.gas_flux = self.o2_production 
+        self.ca.reaction_gas_flux = self.h2_production
+        self.an.reaction_liquid_flux = self.an.h2o_production 
+        self.ca.reaction_liquid_flux = -self.ca.h2o_consumption
+        self.an.reaction_gas_flux = self.o2_production 
+        for side in (self.ca, self.an): 
+            side.membrane_gas_flux = 0 
+            side.membrane_liquid_flux = 0
         self.ca.total_gas_flux = self.h2_production * self.cell_area    
         self.an.total_gas_flux = self.o2_production * self.cell_area
     

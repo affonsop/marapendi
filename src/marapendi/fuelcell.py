@@ -78,7 +78,7 @@ class FuelCellSide:
         self.h2_transport_resistance = 0   
         self.liquid_water_flux = 0
         self.s_relax = None
-
+            
     def set_catalyst_layer(self, cl): 
         """
         Set a new catalyst layer and update internal component structure.
@@ -158,7 +158,14 @@ class FuelCellSide:
         the liquid flux and upstream capillary pressures. It assumes that 
         `self.liquid_flux` has been set externally.
         """
-        self.gdl.two_phase_transport_model.calculate_non_wetting_saturation(self.gdl, self.liquid_flux, upstream_capillary_pressure=0)
+        for i, layer in enumerate(self.porous_layers): 
+            layer.non_wetting_flux = self.liquid_flux
+            layer.downstream_saturation = np.zeros_like(layer.non_wetting_flux)
+            layer.upstream_saturation = np.zeros_like(layer.non_wetting_flux)
+            layer.non_wetting_saturation = np.zeros_like(layer.non_wetting_flux)
+            layer.downstream_capillary_pressure = np.zeros_like(layer.non_wetting_flux)
+        
+        self.gdl.two_phase_transport_model.calculate_non_wetting_saturation(self.gdl, self.liquid_flux, upstream_capillary_pressure=np.zeros_like(self.liquid_flux))
         if self.has_mpl: 
              self.mpl.two_phase_transport_model.calculate_non_wetting_saturation(self.mpl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
              self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.mpl.downstream_capillary_pressure)
