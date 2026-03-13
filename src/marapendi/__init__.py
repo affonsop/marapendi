@@ -15,3 +15,5 @@ from .water_balance_models import *
 from .membrane_permeation_models import * 
 from .catalyst_layers import *
 from .degradation import * 
+from .load_cycles import *
+from .cross_validation import *
