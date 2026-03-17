@@ -127,7 +127,7 @@ def water_density(temperature=300):
     """
     # Source : https://onlinelibrary.wiley.com/doi/pdf/10.1002/9780470516430.app3
     T_Celsius = temperature - 273.15
-    return 1001.3 - 0.155 * T_Celsius - 2.658e-3 * T_Celsius ** 2 # kg/m3
+    return np.polyval([- 2.658e-3, - 0.155, 1001.3], T_Celsius) # kg/m3
 
     # h2o = ct.SolutionArray(h2o_phase, np.shape(temperature))
     # h2o.TQ = temperature, 0 
