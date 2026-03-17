@@ -365,7 +365,7 @@ class DarcyTransportModel:
         flux = np.maximum(0.0, non_wetting_flux[mask])
 
         # ---- downstream saturation ----
-        ds = (layer.saturation_flow_resistance * flux) ** exponent
+        ds = (layer.saturation_flow_resistance * flux * (q+n)/n) ** exponent
 
         s_down = np.clip(us + ds, 0.0, 0.9)
 
