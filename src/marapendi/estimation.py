@@ -243,7 +243,7 @@ class DynamicModel:
     def p_to_theta(self, unknown_p_values): 
         theta_i_k = np.where(self.p_i_isLinear,
                     (unknown_p_values - self.p_i_min) / (self.p_i_max - self.p_i_min),
-                    (np.log(unknown_p_values) - np.log(np.maximum(self.p_i_min, 1e-12))) / (np.log(np.maximum(self.p_i_max, 1e-12)) - np.log(np.maximum(self.p_i_min, 1e-12)))
+                    (np.log(unknown_p_values) - np.log(self.p_i_min)) / (np.log(self.p_i_max) - np.log(self.p_i_min))
         )
         return theta_i_k
 
@@ -629,7 +629,7 @@ class DynamicModel:
         return fig, ax
 
     def plot_global_sensitivity(self, fig=None, ax=None, cmap='viridis', color='C0',
-                                xlabel_angle=45, xlabel_ha='center', figsize=(4, 3)):
+                                xlabel_angle=45, xlabel_ha='center', figsize=(4, 3), parameter_order=None):
         """
         Plot global sensitivity metrics.
 
@@ -654,12 +654,15 @@ class DynamicModel:
         if not ax:
             fig, ax = plt.subplots(figsize=figsize)
         
-        # Generate x positions for each parameter
-        xi = np.arange(len(self.unknown_p_list))
-        
+        # Generate parameter order if not specified
+        if not parameter_order:
+            xi = np.arange(len(self.unknown_p_list)) 
+        else: 
+            xi = parameter_order 
+
         # Scatter individual samples (light dots) for each parameter
-        for i in xi:
-            ax.plot(i * np.ones_like(self.norm_s_i[:, i]), self.norm_s_i[:, i], '.' + color, alpha=0.2)
+        for position, parameter in enumerate(xi):
+            ax.plot(position * np.ones_like(self.norm_s_i[:, parameter]), self.norm_s_i[:, parameter], '.' + color, alpha=0.2)
         
         # Plot median sensitivity values on top, as semilogy line
         ax.semilogy(xi, self.S_med_i, '-s' + color)
