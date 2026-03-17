@@ -269,7 +269,7 @@ def plot_rmse_vs_complexity(
 
             test_case = fold["test_case"]
             model_parameters = fold["model_parameters"]
-            cell_model = model_builder(model_parameters)
+            cell_model = model_builder(model_parameters, test_case)
 
             for case in case_list:
 
