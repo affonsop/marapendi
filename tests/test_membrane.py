@@ -13,21 +13,22 @@ def thin_membrane():
 
 @pytest.fixture
 def membrane_liso_2016(): 
-    return mrpd.PFSA(equivalent_weight=1100, dry_density=2000, dry_thickness=51e-6, 
-                       water_balance_model=mrpd.MembraneWaterBalanceModel(reference_absorption_coefficient=1.e-5, 
-                                                                          reference_water_diffusivity=4e-10))   
+    return mrpd.PFSA(equivalent_weight=1100., dry_density=2000., dry_thickness=51e-6, 
+                     reference_absorption_coefficient=1.e-6, reference_water_diffusivity=5e-10,
+                       water_balance_model=mrpd.MembraneWaterBalanceModel2())   
  
 @pytest.fixture
 def fuel_cell_liso_2016(membrane_liso_2016): 
-    fc = mrpd.FuelCell(cell_area=96e-4, cell_number=16, membrane=membrane_liso_2016)
+    fc = mrpd.FuelCell(cell_area=96e-4, cell_number=16, membrane=membrane_liso_2016, 
+                       ca=mrpd.FuelCellSide(cl=mrpd.PtCCatalystLayer(ionomer=mrpd.NafionD2020), 
+                                            gdl=mrpd.PorousLayer(thickness=200e-6, effective_gas_diffusion_ratio=0.3, thermal_conductivity=0.2)),
+                       an=mrpd.FuelCellSide(cl=mrpd.PtCCatalystLayer(ionomer=mrpd.NafionD2020), 
+                                            gdl=mrpd.PorousLayer(thickness=200e-6, effective_gas_diffusion_ratio=0.3, thermal_conductivity=0.2)),)
     fc.membrane.temperature = 337.8842
     fc.current_density = np.linspace(0.25e4,1e4,4)
     fc.ca.cl.gas.set_temperature_and_pressure(337.8842, 135e3)
-    fc.an.cl.gas.set_temperature_and_pressure(337.8842, 135e3)
     fc.ca.ch.gas.set_temperature_and_pressure(337.8842, 135e3)
-    fc.ca.ch.gas.set_composition(0.2, 0, 1.)
-    fc.an.ch.gas.set_temperature_and_pressure(337.8842, 135e3)
-    fc.an.ch.gas.set_composition(0, 1.0, 0.2)
+    fc.ca.ch.gas.set_composition(0.21, 0, 1.)
     fc.product_water_mass_source = fc.current_density * fc.cell_area * fc.cell_number / (2 * ct.faraday) * fc.ca.ch.gas.molecular_weights[-1]
     fc.ca.ch.o2_inlet_molar_flow_rate = fc.current_density * fc.cell_area * fc.cell_number / (4 * ct.faraday)
     fc.ca.ch.h2ov_inlet_molar_flow_rate = fc.ca.ch.o2_inlet_molar_flow_rate / fc.ca.ch.gas.X[0] * fc.ca.ch.gas.X[-1]
@@ -66,23 +67,35 @@ import matplotlib.pyplot as plt
 
 def test_membrane_water_transport_model(fuel_cell_liso_2016, liso_2016_exp_data):
     fc = fuel_cell_liso_2016
-    assert np.isclose(fc.ca.ch.gas.X[0], 0.1634, 1e-3)
-    assert fc.ca.ch.gas.X[2] == 0
-    fc.h2o_production = fc.current_density / (2 * ct.faraday)
-    fc.calculate_water_transport()
-    #fc.membrane.water_balance_model.water_balance(fc)
-    fc.ca.h2ov_outlet_mass_flow_rate = (fc.ca.ch.h2ov_inlet_mass_flow_rate + fc.product_water_mass_source +
-                                        fc.membrane.water_balance_model.calculate_cathode_flux(fc) * fc.cell_area * fc.cell_number) 
     plt.figure(figsize=(4,3))
-    plt.plot(fc.current_density * 1e-4, 60e3*fc.ca.h2ov_outlet_mass_flow_rate, 'C0')
-    plt.plot(fc.current_density * 1e-4, 60e3*liso_2016_exp_data[0.2], 'C0s', label='20 %')
-    fc.an.ch.gas.set_composition(0, 1.0, 0.8)
-    
-    fc.membrane.water_balance_model.solve_water_balance(fc)
-    fc.ca.h2ov_outlet_mass_flow_rate = (fc.ca.ch.h2ov_inlet_mass_flow_rate + fc.product_water_mass_source +
-                                        fc.membrane.water_balance_model.calculate_cathode_flux(fc) * fc.cell_area * fc.cell_number)
-    plt.plot(fc.current_density * 1e-4, 60e3*fc.ca.h2ov_outlet_mass_flow_rate, 'C1')
-    plt.plot(fc.current_density * 1e-4, 60e3*liso_2016_exp_data[0.8], 'C1s', label='80 %')
+    for k, rh_an in enumerate([0.2, 0.8]):
+        fc.set_conditions(337.8842, np.array([0.25, 0.5, 0.75, 1]) * 1e4, 
+            cathode_conditions = mrpd.OperatingConditions(
+                inlet_temperature = 337.8842,
+                inlet_relative_humidity = 1,
+                outlet_pressure = 1.35e5,
+                dry_o2_mole_fraction=0.21,
+                dry_h2_mole_fraction=0,
+                stoichiometry=2.4
+            ),
+            anode_conditions = mrpd.OperatingConditions(
+                    inlet_temperature = 337.8842,
+                    inlet_relative_humidity = rh_an,
+                    outlet_pressure = 1.35e5,
+                    dry_o2_mole_fraction=0,
+                    dry_h2_mole_fraction=1,
+                    stoichiometry=1.7
+            )
+        )
+        
+        fc.explicit_steady_state_model()
+        
+        fc.ca.h2ov_outlet_mass_flow_rate = (fc.ca.ch.h2ov_inlet_mass_flow_rate +
+                                            fc.ca.water_flux * fc.cell_area * fc.cell_number * mrpd.water.water_molecular_weight) 
+        print(fc.ca.water_flux, fc.an.water_flux, fc.ca.water_flux + fc.an.water_flux - fc.h2o_production)
+        plt.plot(fc.current_density * 1e-4, 60e3*fc.ca.h2ov_outlet_mass_flow_rate, f'C{k}')
+        plt.plot(fc.current_density * 1e-4, 60e3*liso_2016_exp_data[rh_an], f'C{k}s', label=f'{rh_an*100:.0f} %')
+
     plt.ylim(0,0.35*60)
     plt.legend(title='RH$_{in,an}$')
     plt.xlabel('Current density (A/cm$^2$)')
@@ -90,7 +103,7 @@ def test_membrane_water_transport_model(fuel_cell_liso_2016, liso_2016_exp_data)
     plt.tight_layout()
     plt.savefig('./tests/figures/test_membrane.png',dpi=300)
     for m_dot_h2o, m_dot_h2o_exp in zip(fc.ca.h2ov_outlet_mass_flow_rate, liso_2016_exp_data[0.2]): 
-        assert np.isclose(m_dot_h2o, m_dot_h2o_exp, atol=3e-5, rtol=0.1)
+        assert np.isclose(m_dot_h2o, m_dot_h2o_exp, atol=3e-5, rtol=0.05)
 
 
 def test_equilibrium_water_content_basic(thin_membrane):
@@ -101,7 +114,7 @@ def test_equilibrium_water_content_basic(thin_membrane):
 
 def test_equilibrium_water_content_with_s_relax(thin_membrane):
     rh, temperature, s_relax = 0.5, 303.15, 0.5
-    result = thin_membrane.equilibrium_water_content(rh, temperature, s_relax=0.5, lmbd=8)
-    phi = 0.014 * 8 
+    result = thin_membrane.equilibrium_water_content(rh, temperature, s_relax=0.5)
+    phi = 0.15
     expected = (1-phi) * (0.043 + 17.18 * 0.5 - 39.85 * 0.5**2 + 36 * 0.5**3) + s_relax
     assert np.isclose(result, expected)

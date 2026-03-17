@@ -19,6 +19,7 @@ class Membrane:
 
     Attributes:
     -----------
+    
     equivalent_weight : float
         Equivalent weight of the membrane in kg/kmol. Default is 1100 kg/kmol.
     dry_density : float
@@ -31,7 +32,17 @@ class Membrane:
         Water content of the membrane. 
     water_balance_model: MembraneWaterBalanceModel
         Water balance model allowing to calculate water contents in the membrane and CL. 
-    
+    reference_water_diffusivity : float, optional
+        Reference value for water diffusivity, in m2/s (default is 4.3e-10).
+    reference_absorption_coefficient : float, optional
+        Reference value for the absorption coefficient (default is 1e-5).
+    reference_temperature : float, optional
+        Reference temperature for calculations, in Kelvin (default is 353.15 K).
+    water_diffusivity_activation_energy : float, optional
+        Activation energy for water diffusivity, in J/kmol (default is 20e6).
+    water_absorption_activation_energy : float, optional
+        Activation energy for water absorption, in J/kmol (default is 20e6).
+
     Computed Attributes:
     --------------------
     dry_concentration : float
@@ -58,6 +69,13 @@ class Membrane:
     relaxation_time_constant: float = 0.067 # Default from Grimaldi et al. (2023)
     relaxation_time_activation_energy: float = 28e6 # Default from Grimaldi et al. (2023)
     uptake_relaxed_fraction_constant: float = 0.014 # Default from Grimaldi et al. (2023)
+
+    reference_water_diffusivity: float = 4.3e-10
+    reference_absorption_coefficient: float = 1e-5
+    reference_temperature: float = 353.15
+    water_diffusivity_activation_energy: float = 20e6
+    water_absorption_activation_energy: float = 20e6
+
     def __post_init__(self):
         """
         Compute derived properties of the membrane after initialization.
@@ -169,7 +187,97 @@ class Membrane:
             The charge resistance of the membrane in ohm square meters (Ohm.m²).
         """
         return self.dry_thickness / self.charge_conductivity(water_content, temperature, use_water_profile, charge)
+
+    def calculate_water_absorption_coefficient(self, temperature): 
+        """
+        Calculate the water absorption coefficient based on temperature.
+
+        Parameters
+        ----------
+        temperature : float 
+            The temperature at which to calculate the water absorption coefficient (K).
+
+        Returns
+        -------
+        float
+            The calculated water absorption coefficient (m/s).
+
+        Notes
+        -----
+        The calculation uses the reference water absorption coefficient and the Arrhenius term.
+        """
+        return  (
+                    self.reference_absorption_coefficient * 
+                    arrhenius_term(
+                        self.water_absorption_activation_energy, 
+                        temperature, 
+                        self.reference_temperature
+                    )
+                )
     
+    def calculate_water_diffusivity(self, temperature):
+        """
+        Calculate the water diffusivity based on temperature.
+
+        Parameters
+        ----------
+        temperature : float
+            The temperature at which to calculate the water diffusivity (K).
+
+        Returns
+        -------
+        float
+            The calculated water diffusivity (m2/s).
+
+        Notes
+        -----
+        The calculation uses the reference water diffusivity and the Arrhenius term.
+        """
+        return (self.reference_water_diffusivity *
+                arrhenius_term(self.water_diffusivity_activation_energy,
+                                        temperature,
+                                        self.reference_temperature))
+    
+    def calculate_electroosmotic_drag_coefficient(self, temperature, water_content):
+        """
+        Calculate the electroosmotic drag coefficient based on temperature and water content.
+
+        Parameters
+        ----------
+        temperature : float 
+            The temperature at which to calculate the EOD coefficient (K).
+        water_content : float
+            The membrane water content (n.d.).
+
+        Returns
+        -------
+        float
+            The calculated electroosmotic drag coefficient (n.d.).
+        """
+        return (0.02 * temperature - 3.86) / 22.5 * water_content
+    
+    def calculate_electroosmotic_drag_speed(self, temperature, current_density):
+        """
+        Calculate the electroosmotic drag speed using temperature, current density, and membrane properties.
+
+        Parameters
+        ----------
+        temperature : float
+            The temperature at which to calculate the drag speed (K).
+        current_density : float
+            The current density crossing the membrane (A/m2).
+        membrane : object
+            An object with membrane properties, including dry concentration.
+
+        Returns
+        -------
+        float
+            The calculated electroosmotic drag speed (m/s).
+        """
+        # Calculate and return the electroosmotic drag speed
+        return (self.calculate_electroosmotic_drag_coefficient(temperature, 1) *
+                current_density / ct.faraday /
+                self.dry_concentration)
 @dataclass
 class PFSA(Membrane):
     """
@@ -240,8 +348,10 @@ class PFSA(Membrane):
             Grimaldi et al. J. Power Sources (2023).
             Goshtasbi et al. J. Electrochem. Soc. 2019, 166 (7), F3154.
             """
-            rh = np.minimum(np.maximum(rh, 0), 1)
-            lmbd_eq_relaxed = (0.043 + 17.18 * rh - 39.85 * rh**2 + 36 * rh**3)
+            lmbd_eq_relaxed = np.where(rh <= 1, 
+                                       np.polyval([36, -39.85, 17.18, 0.043], rh), 
+                                       14 + (self.liquid_equilibrium_water_content(temperature) - 14) *
+                                       np.where(rh <=3, 0.5 * (rh - 1), 1.)) 
             
             return ((1 - self.phi) * lmbd_eq_relaxed + s_relax) if s_relax is not None else lmbd_eq_relaxed 
 
@@ -273,12 +383,13 @@ class PFSA(Membrane):
         Goshtasbi et al. J. Electrochem. Soc. 2019, 166 (7), F3154.
         """
         rh = np.minimum(np.maximum(rh, 0), 1)
-        d_lmbd_eq_relaxed = (17.18 - 79.70 * rh + 108 * rh**2)
+        d_lmbd_eq_relaxed = np.where(rh <= 1, 
+                                       np.polyval([108, -79.70, 17.18], rh),
+                                       14 + (self.liquid_equilibrium_water_content(temperature) - 14) *
+                                       np.where(rh <=3, 0.5, 0.)) 
+        
         return ((1 - self.phi) * d_lmbd_eq_relaxed + s_relax) if s_relax is not None else d_lmbd_eq_relaxed 
     
-    
-
-
     def liquid_equilibrium_water_content(self, temperature):
         """
         Calculate the liquid equilibrium water content based on temperature.
@@ -299,7 +410,7 @@ class PFSA(Membrane):
         """
         return 9.22 + 0.181 * (temperature - 273.15) # From Goshtasbi et al. (2020)
 
-    def proton_conductivity(self, water_content, temperature, use_water_profile=True, water_saturation=0):
+    def proton_conductivity(self, water_content, temperature, use_water_profile=True):
         """
         Calculate the proton conductivity based on water content, water saturation and temperature.
 
@@ -311,8 +422,6 @@ class PFSA(Membrane):
             Temperature in Kelvin (K).
         use_water_profile : bool, optional
             Whether to use the membrane water profile in calculations (default is True).
-        water_saturation : float, optional
-            The water saturation level (default is 0).
 
         Returns
         -------
@@ -347,7 +456,7 @@ class PFSA(Membrane):
         -------
         float
             The proton resistance of the membrane in ohm square meters (Ω·m²).
-        """
+        """       
         liquid_water_content = self.liquid_equilibrium_water_content(temperature)
         liquid_equilibrated_conductivity =  self.proton_conductivity(liquid_water_content, temperature, use_water_profile=False)
         vapor_equilibrated_conductivity = self.proton_conductivity(water_content, temperature, use_water_profile)

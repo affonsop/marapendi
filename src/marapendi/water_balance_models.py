@@ -2,6 +2,7 @@ import numpy as np
 import cantera as ct 
 from dataclasses import dataclass, field
 from marapendi.tools import arrhenius_term
+from marapendi.water import water_kinematic_viscosity, water_molecular_weight
 
 @dataclass
 class MembraneWaterBalanceModel:
@@ -10,16 +11,6 @@ class MembraneWaterBalanceModel:
 
     Attributes
     ----------
-    reference_water_diffusivity : float, optional
-        Reference value for water diffusivity, in m2/s (default is 4.3e-10).
-    reference_absorption_coefficient : float, optional
-        Reference value for the absorption coefficient (default is 1e-5).
-    reference_temperature : float, optional
-        Reference temperature for calculations, in Kelvin (default is 353.15 K).
-    water_diffusivity_activation_energy : float, optional
-        Activation energy for water diffusivity, in J/kmol (default is 20e6).
-    water_absorption_activation_energy : float, optional
-        Activation energy for water absorption, in J/kmol (default is 20e6).
     sorption_activity_driving_force : bool, optional
         Boolean flag indicating whether water activity is the driving force for water absorption (default is False).
         If false, water content difference is considered as the driving force. 
@@ -36,104 +27,10 @@ class MembraneWaterBalanceModel:
     -----------
     Ferrara, A. et al. J. Power Sources 390, 197–207 (2018).
     """
-    reference_water_diffusivity: float = 4.3e-10
-    reference_absorption_coefficient: float = 1e-5
-    reference_temperature: float = 353.15
-    water_diffusivity_activation_energy: float = 20e6
-    water_absorption_activation_energy: float = 20e6
     sorption_activity_driving_force: bool = False
     eod_parallel_to_sorption: bool = False                            
 
-    def calculate_water_absorption_coefficient(self, temperature): 
-        """
-        Calculate the water absorption coefficient based on temperature.
 
-        Parameters
-        ----------
-        temperature : float 
-            The temperature at which to calculate the water absorption coefficient (K).
-
-        Returns
-        -------
-        float
-            The calculated water absorption coefficient (m/s).
-
-        Notes
-        -----
-        The calculation uses the reference water absorption coefficient and the Arrhenius term.
-        """
-        return  (
-                    self.reference_absorption_coefficient * 
-                    arrhenius_term(
-                        self.water_absorption_activation_energy, 
-                        temperature, 
-                        self.reference_temperature
-                    )
-                )
-    
-    def calculate_water_diffusivity(self, temperature):
-        """
-        Calculate the water diffusivity based on temperature.
-
-        Parameters
-        ----------
-        temperature : float
-            The temperature at which to calculate the water diffusivity (K).
-
-        Returns
-        -------
-        float
-            The calculated water diffusivity (m2/s).
-
-        Notes
-        -----
-        The calculation uses the reference water diffusivity and the Arrhenius term.
-        """
-        return (self.reference_water_diffusivity *
-                arrhenius_term(self.water_diffusivity_activation_energy,
-                                        temperature,
-                                        self.reference_temperature))
-    
-    def calculate_electroosmotic_drag_coefficient(self, temperature, water_content):
-        """
-        Calculate the electroosmotic drag coefficient based on temperature and water content.
-
-        Parameters
-        ----------
-        temperature : float 
-            The temperature at which to calculate the EOD coefficient (K).
-        water_content : float
-            The membrane water content (n.d.).
-
-        Returns
-        -------
-        float
-            The calculated electroosmotic drag coefficient (n.d.).
-        """
-        return (0.02 * temperature - 3.86) / 22.5 * water_content
-    
-    def calculate_electroosmotic_drag_speed(self, temperature, current_density, membrane):
-        """
-        Calculate the electroosmotic drag speed using temperature, current density, and membrane properties.
-
-        Parameters
-        ----------
-        temperature : float
-            The temperature at which to calculate the drag speed (K).
-        current_density : float
-            The current density crossing the membrane (A/m2).
-        membrane : object
-            An object with membrane properties, including dry concentration.
-
-        Returns
-        -------
-        float
-            The calculated electroosmotic drag speed (m/s).
-        """
-        # Calculate and return the electroosmotic drag speed
-        return (self.calculate_electroosmotic_drag_coefficient(temperature, 1) *
-                current_density / ct.faraday /
-                membrane.dry_concentration)
     
     def calculate_peclet_number(self, temperature, current_density, membrane, water_diffusivity):
         """
@@ -156,7 +53,7 @@ class MembraneWaterBalanceModel:
             The calculated Peclet number, dimensionless.
         """
         # Calculate and return the Peclet number
-        return (self.calculate_electroosmotic_drag_speed(temperature, current_density, membrane) *
+        return (membrane.calculate_electroosmotic_drag_speed(temperature, current_density) *
                 membrane.dry_thickness / water_diffusivity)
     
     def calculate_biot_number(self, absorption_coefficient, membrane, water_diffusivity):
@@ -196,22 +93,23 @@ class MembraneWaterBalanceModel:
 
         for side in (cell.ca, cell.an):
             # Calculate RH at catalyst layer supposing no water crossover from cathode to anode  
-            side.rh_at_cl_without_crossover = np.minimum(
-                (side.ch.vapor_concentration() + ((cell.current_density / (2*ct.faraday) * side.h2ov_transport_resistance)
-                                                if side == cell.ca else np.zeros_like(cell.current_density)))
-                
-                / side.cl.saturation_concentration(),
-                1
+            side.rh_at_cl_without_crossover = (
+                (side.ch.vapor_concentration() + side.h2o_production * side.h2ov_transport_resistance)
+                / side.cl.saturation_concentration()
             )
 
             # Get estimated values for equilibrium water content and its derivative in CL 
+            
             side.est_water_content = cell.membrane.equilibrium_water_content(
-                side.rh_at_cl_without_crossover, cell.membrane.temperature, 
-                side.s_relax
-            )
+                    side.rh_at_cl_without_crossover, 
+                    cell.membrane.temperature, 
+                    side.s_relax
+                )
             side.est_water_content_derivative = cell.membrane.equilibrium_water_content_derivative(
-                side.rh_at_cl_without_crossover, cell.membrane.temperature, side.s_relax
-            )
+                    side.rh_at_cl_without_crossover, 
+                    cell.membrane.temperature, 
+                    side.s_relax
+                )
 
     def update_water_contents(self, cell):
         """
@@ -241,7 +139,9 @@ class MembraneWaterBalanceModel:
         # Calculate equilibrium water contents at the CL
         for side in (cell.ca, cell.an):
             side.cl.eq_water_content = side.cl.memb_interface_water_content - side.membrane_water_flux / self.absorption_coefficient / cell.membrane.dry_concentration
+    
         
+
     def update_water_profile(self, cell): 
         """
         Calculate the water content profile across the cell based on various parameters.
@@ -258,17 +158,11 @@ class MembraneWaterBalanceModel:
         accounting for non-equilibrium conditions at the membrane interfaces. 
         Parameters are calculated in the water_balance functions. 
         """
-        # Generate evenly spaced points over the interval
-        xi = np.linspace(0, np.ones_like(cell.current_density), 20)
-        ePe = np.exp(cell.membrane.Pe)
-        ePexi = np.exp(xi * cell.membrane.Pe)
+        Pe = cell.membrane.Pe 
+        ePe = cell.membrane.ePe
+        ePexi = cell.membrane.ePexi
 
-        # Calculate the water content profile using a detailed mathematical formula
-        self.water_content_profile = (
-            (
-                cell.an.est_water_content * ((ePe - ePexi) * (1 - cell.ca.alpha * cell.ca.Pe_over_mod_Bi) + ePe * cell.ca.Pe_over_mod_Bi) +
-                cell.ca.est_water_content * ((ePexi - 1) * (1 + cell.an.alpha * cell.an.Pe_over_mod_Bi) + cell.an.Pe_over_mod_Bi)
-            ) / (
+        denominator = (
                 (ePe - 1) * (
                     1 + cell.an.alpha * cell.an.Pe_over_mod_Bi - cell.ca.alpha * cell.ca.Pe_over_mod_Bi +
                     -cell.ca.alpha * cell.an.alpha * cell.an.Pe_over_mod_Bi * cell.ca.Pe_over_mod_Bi
@@ -276,8 +170,20 @@ class MembraneWaterBalanceModel:
                 cell.an.Pe_over_mod_Bi + ePe * cell.ca.Pe_over_mod_Bi +
                 cell.an.Pe_over_mod_Bi * cell.ca.Pe_over_mod_Bi * (ePe * cell.an.alpha - cell.ca.alpha)
             )
+        
+        # Calculate the water content profile using a detailed mathematical formula
+        self.water_content_profile = (
+            (
+                cell.an.est_water_content * ((ePe - ePexi) * (1 - cell.ca.alpha * cell.ca.Pe_over_mod_Bi) + ePe * cell.ca.Pe_over_mod_Bi) +
+                cell.ca.est_water_content * ((ePexi - 1) * (1 + cell.an.alpha * cell.an.Pe_over_mod_Bi) + cell.an.Pe_over_mod_Bi)
+            ) / denominator
         )
-    
+        self.water_content_derivative_profile = (
+            (
+                cell.an.est_water_content * (ePexi * Pe * (cell.ca.alpha * cell.ca.Pe_over_mod_Bi - 1)) +
+                cell.ca.est_water_content * (ePexi * Pe * (1 + cell.an.alpha * cell.an.Pe_over_mod_Bi) )
+            ) / denominator 
+        )
     def update_non_dimensional_parameters(self, cell):
         """
         Calculate various non-dimensional parameters related to water transport and equilibrium in a cell.
@@ -296,13 +202,19 @@ class MembraneWaterBalanceModel:
         # Calculate Peclet number for the membrane
         cell.membrane.Pe = self.calculate_peclet_number(cell.membrane.temperature, cell.current_density, cell.membrane, self.water_diffusivity)
 
+        # Generate evenly spaced points over the interval
+        cell.membrane.xi = np.linspace(0, np.ones_like(cell.current_density), 10)
+        cell.membrane.ePexi = np.exp(cell.membrane.xi * cell.membrane.Pe)
+        cell.membrane.ePe = np.exp(cell.membrane.Pe)
+
         for side in (cell.ca, cell.an):
             # Calculate non-dimensional water vapor resistance based on a water content driving force
             side.R_v_star = side.h2ov_transport_resistance / (side.cl.saturation_concentration() * cell.K_mb) * side.est_water_content_derivative
 
             # Calculate Biot number
             side.Bi = self.calculate_biot_number(
-                self.absorption_coefficient / (side.est_water_content_derivative if self.sorption_activity_driving_force else 1),
+                self.absorption_coefficient / 
+                (side.est_water_content_derivative if self.sorption_activity_driving_force else 1),
                 cell.membrane, self.water_diffusivity
             )
 
@@ -312,9 +224,9 @@ class MembraneWaterBalanceModel:
             side.Pe_over_mod_Bi = cell.membrane.Pe / side.modified_Bi
             side.alpha = 1 - (1 if self.eod_parallel_to_sorption else 0) / side.Bi / side.R_eq_star
 
-    def calculate_cathode_flux(self, cell):
+    def calculate_cathode_membrane_flux(self, cell):
         """
-        Calculate the water flux at the cathode.
+        Calculate the water flux at the cathode/membrane interface.
 
         Parameters
         ----------
@@ -326,17 +238,14 @@ class MembraneWaterBalanceModel:
         float
             The calculated water flux at the cathode (kmol/m²/s).
         """
-        lmbd_ca = self.water_content_profile[-1, ...]
-        return (
-            (
-                cell.ca.modified_Bi * (lmbd_ca - cell.ca.est_water_content) +
-                (1 if self.eod_parallel_to_sorption else 0) / cell.ca.Bi / cell.ca.R_eq_star * cell.membrane.Pe
-            ) / cell.K_mb
-        )
+        
+        non_dimensional_membrane_water_flux = - self.water_content_derivative_profile[-1,...] + cell.membrane.Pe * self.water_content_profile[-1, ...]
+   
+        return non_dimensional_membrane_water_flux / cell.K_mb
 
-    def calculate_anode_flux(self, cell):
+    def calculate_anode_membrane_flux(self, cell):
         """
-        Calculate the water flux at the anode.
+        Calculate the water flux at the anode/membrane interface.
 
         Parameters
         ----------
@@ -348,15 +257,10 @@ class MembraneWaterBalanceModel:
         float
             The calculated water flux at the anode (kmol/m²/s).
         """
-        lmbd_an = self.water_content_profile[0, ...]
-        return (
-            (
-                cell.an.modified_Bi * (lmbd_an - cell.an.est_water_content) -
-                (1 if self.eod_parallel_to_sorption else 0) / cell.an.Bi / cell.an.R_eq_star * cell.membrane.Pe
-            ) / cell.K_mb
-        )
+        non_dimensional_membrane_water_flux = self.water_content_derivative_profile[0,...] - cell.membrane.Pe * self.water_content_profile[0,...]
+        return non_dimensional_membrane_water_flux / cell.K_mb 
 
-    def update_cell_side_water_fluxes(self, cell_side):
+    def update_cell_side_water_fluxes(self, cell_side, dynamic):
         """
         Calculate the liquid and vapor fluxes for a given side of the cell (cathode or anode).
 
@@ -371,12 +275,9 @@ class MembraneWaterBalanceModel:
         This function calculates the maximum vapor removal flux and then determines the liquid flux
         by comparing the water flux with the maximum vapor removal flux.
         """
-        # Get saturation and vapor concentrations
-        cl_sat_concentration = cell_side.cl.saturation_concentration()
-        ch_vapor_concentration = cell_side.ch.vapor_concentration()
 
         # Calculate maximum vapor removal flux
-        max_vapor_removal_flux = (cl_sat_concentration - ch_vapor_concentration) / cell_side.h2ov_transport_resistance
+        max_vapor_removal_flux = cell_side.max_water_vapor_removal()
 
         # Calculate liquid flux, ensuring it is above a minimum threshold
         cell_side.liquid_flux = np.maximum(cell_side.water_flux - max_vapor_removal_flux, 0)
@@ -384,8 +285,10 @@ class MembraneWaterBalanceModel:
         # Calculate vapor flux
         cell_side.vapor_flux = cell_side.water_flux - cell_side.liquid_flux
 
+        cell_side.is_liquid_equilibrated = cell_side.liquid_flux > 0 
 
-    def update_water_fluxes(self, cell):
+
+    def update_water_fluxes(self, cell, dynamic=False):
         """
         Calculate water fluxes for both the cathode and anode sides of the cell.
 
@@ -401,25 +304,23 @@ class MembraneWaterBalanceModel:
         and then calculates the liquid flux for each side.
         """
         # Calculate water flux for cathode and anode
-        cell.ca.membrane_water_flux = self.calculate_cathode_flux(cell)
-        cell.an.membrane_water_flux = self.calculate_anode_flux(cell)
-        cell.ca.water_flux = cell.h2o_production + cell.ca.membrane_water_flux
-        cell.an.water_flux = cell.an.membrane_water_flux
+        cell.ca.membrane_water_flux = self.calculate_cathode_membrane_flux(cell)
+        cell.an.membrane_water_flux = self.calculate_anode_membrane_flux(cell)
+        cell.ca.water_flux = cell.ca.h2o_production + cell.ca.membrane_water_flux
+        cell.an.water_flux = cell.an.h2o_production + cell.an.membrane_water_flux
         
         # Calculate liquid flux for both cathode and anode sides
-        self.update_cell_side_water_fluxes(cell.ca)
-        self.update_cell_side_water_fluxes(cell.an)
+        self.update_cell_side_water_fluxes(cell.ca, dynamic)
+        self.update_cell_side_water_fluxes(cell.an, dynamic)
         
-        self.membrane_diffusion_flux = (- cell.membrane.dry_concentration * self.water_diffusivity * np.diff(self.water_content_profile,axis=0) /
-                                         (cell.membrane.dry_thickness / self.water_content_profile.shape[0]))
-        self.membrane_eod_flux = (self.calculate_electroosmotic_drag_coefficient(cell.membrane.temperature, self.water_content_profile[:-1,...]) * 
-                                  (cell.current_density / ct.faraday))
+        self.membrane_diffusion_flux = (- self.water_content_derivative_profile / cell.K_mb)
+        self.membrane_eod_flux = cell.membrane.Pe * self.water_content_profile
         self.membrane_water_flux = self.membrane_diffusion_flux + self.membrane_eod_flux
         
         self.membrane_water_net_flux = -np.diff(self.membrane_diffusion_flux,
                                                 prepend=0,
                                                 append=0, axis=0)
-        
+
         self.membrane_water_net_flux[0,...] -= cell.an.membrane_water_flux
         self.membrane_water_net_flux[-1,...] -= cell.ca.membrane_water_flux
 
@@ -454,11 +355,10 @@ class MembraneWaterBalanceModel:
         else: 
             for side in (cell.ca, cell.an):
                 side.cl.memb_interface_water_content = 0
-    
 
         # Calculate membrane water absorption and diffusivity
-        self.absorption_coefficient = self.calculate_water_absorption_coefficient(cell.membrane.temperature)
-        self.water_diffusivity = self.calculate_water_diffusivity(cell.membrane.temperature)
+        self.absorption_coefficient = cell.membrane.calculate_water_absorption_coefficient(cell.membrane.temperature)
+        self.water_diffusivity = cell.membrane.calculate_water_diffusivity(cell.membrane.temperature)
 
         # Calculate ratio between membrane thickness and water diffusivity x concentration, to be used later
         cell.K_mb = cell.membrane.dry_thickness / (self.water_diffusivity * cell.membrane.dry_concentration)
@@ -472,8 +372,109 @@ class MembraneWaterBalanceModel:
             self.update_water_profile(cell)
 
         # Calculate water fluxes and set water contents
-        self.update_water_fluxes(cell)
-        self.update_water_contents(cell)
+        self.update_water_fluxes(cell, dynamic)
         
 
+        self.update_water_contents(cell)
+        
+        return self.water_content_profile
+
+class MembraneWaterBalanceModel2(MembraneWaterBalanceModel): 
+        
+    def compute_saturation(self, cell): 
+        Pe = cell.membrane.Pe 
+        ePe = cell.membrane.ePe
+        
+        cell.ca.Pe_over_mod_Bi = np.where(cell.ca.is_liquid_equilibrated, Pe / cell.ca.Bi , cell.ca.Pe_over_mod_Bi) 
+        a_ca = Pe / (ePe - 1 + ePe * cell.an.Pe_over_mod_Bi + Pe * cell.ca.Pe_over_mod_Bi) / cell.K_mb
+        a_an = ePe * a_ca 
+        gdl = cell.ca.gdl
+
+        n = gdl.relative_permeability_exponent + gdl.two_phase_transport_model.J_function_exponent
+
+        J_l_1 = 1./gdl.saturation_flow_resistance * gdl.two_phase_transport_model.J_function_exponent / n
+        
+
+        c = ((cell.an.est_water_content * a_an - 
+             a_ca * lmbd_eq_v + 
+             - cell.ca.max_water_vapor_removal() + cell.h2o_production)/J_l_1)[cell.ca.is_liquid_equilibrated]
+        b = (a_ca * delta_lmbd_eq_vl /J_l_1)[cell.ca.is_liquid_equilibrated]
+
+        s_0 = c/b
+
+        def halley(s):
+            sn1 = s**(n-1)
+            sn = sn1 * s
+
+            f  = sn + b*s - c
+            fp = n*sn1 + b
+            fpp = n*(n-1)*s**(n-2)
+
+            return s - (2*f*fp) / (2*fp**2 - f*fpp)
+
+        s_1 = halley(s_0) 
+        s_2 = halley(s_1) 
+        # s_2 = np.clip(s_2, 0, .99)
+        cell.ca.cl.non_wetting_saturation[cell.ca.is_liquid_equilibrated] = s_2
+        s = cell.ca.cl.non_wetting_saturation
+        cell.ca.cl.saturated_water_content = lmbd_eq_v + delta_lmbd_eq_vl * s
+        cell.an.cl.saturated_water_content = 0
+        cell.ca.est_water_content = np.where(cell.ca.is_liquid_equilibrated, 
+                                             lmbd_eq_v + delta_lmbd_eq_vl * s, 
+                                             cell.ca.est_water_content) 
+
+    def solve_water_balance(self, cell, water_profile=None, dynamic=False):
+        """
+        Calculate and update the water balance properties in the cell.
+
+        Parameters
+        ----------
+        cell : FuelCell object
+            An object representing the cell with properties related to water content, transport,
+            membrane properties, and other physical and structural properties.
+
+        Notes
+        -----
+        The water balance calculation is an extension of the work of Ferrara et al. (2018) accounting 
+        for non-equilibrium conditions at the membrane interfaces. Gas transport resistances are calculated
+        supposing that there is no liquid water present. 
+
+        The function performs the following steps:
+        1. Calculates the water absorption coefficient and diffusivity.
+        2. Computes a ratio involving membrane thickness and water diffusivity.
+        3. Calculates the Peclet number and estimates equilibrium water contents.
+        4. Computes non-dimensional water vapor resistance, Biot number, and other parameters.
+        5. Computes the water content profile and sets water contents in the cell.
+        """
+        if dynamic: 
+            # Set the water profile
+            self.water_content_profile = water_profile
+            cell.ca.cl.memb_interface_water_content = self.water_content_profile[-1,...]
+            cell.an.cl.memb_interface_water_content = self.water_content_profile[0,...]
+        else: 
+            for side in (cell.ca, cell.an):
+                side.cl.memb_interface_water_content = 0
+
+        # Calculate membrane water absorption and diffusivity
+        self.absorption_coefficient = cell.membrane.calculate_water_absorption_coefficient(cell.membrane.temperature)
+        self.water_diffusivity = cell.membrane.calculate_water_diffusivity(cell.membrane.temperature)
+
+        # Calculate ratio between membrane thickness and water diffusivity x concentration, to be used later
+        cell.K_mb = cell.membrane.dry_thickness / (self.water_diffusivity * cell.membrane.dry_concentration)
+
+        # Calculate Peclet number and exponentials
+        self.estimate_equilibrium_water_contents(cell)
+        self.update_non_dimensional_parameters(cell)
+
+        if not dynamic: 
+            # Calculate water profile
+            self.update_water_profile(cell)
+
+        # Calculate water fluxes and set water contents
+        self.update_water_fluxes(cell, dynamic)
+        self.compute_saturation(cell)
+        self.update_water_profile(cell)
+        self.update_water_fluxes(cell, dynamic)
+        self.update_water_contents(cell)
+        
         return self.water_content_profile

@@ -2,7 +2,7 @@
 Module providing a fuel cell class intended to be the base class for different fuel cell models. 
 """
 from dataclasses import dataclass, field
-from scipy.optimize import root
+from scipy.optimize import root, least_squares
 import numpy as np 
 import cantera as ct
 
@@ -65,6 +65,7 @@ class FuelCellSide:
     has_mpl: bool = False
     membrane_surface_water_content: float = 0 
     thermal_contact_resistance: float = 0 
+    is_liquid_equilibrated: bool = False
 
     def __post_init__(self): 
         """
@@ -171,7 +172,9 @@ class FuelCellSide:
              self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.mpl.downstream_capillary_pressure)
         else:
             self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
-
+        for layer in self.porous_layers: 
+            layer.liquid_saturation = layer.non_wetting_saturation if layer.contact_angle > 90. else (1-layer.non_wetting_saturation)
+    
     def calculate_equivalent_flow_resistance(self): 
         """
         Compute and update equivalent flow resistances for each porous layer.
@@ -196,7 +199,7 @@ class FuelCellSide:
 
     def max_water_vapor_removal(self):
         """
-        Calculate the maximum removable water vapor concentration.
+        Calculate the maximum removable water vapor rate.
 
         Returns
         -------
@@ -346,7 +349,7 @@ class FuelCell:
         and the electrical resistance of the cell components. It is an important parameter in 
         electrochemical impedance spectroscopy (EIS) measurements.
         """
-        return self.membrane.proton_resistance(self.membrane.water_content, self.membrane.temperature, water_saturation=self.ca.cl.non_wetting_saturation) + self.electrical_resistance
+        return self.membrane.proton_resistance(self.membrane.water_content, self.membrane.temperature, water_saturation=0) + self.electrical_resistance
 
     def ohmic_overpotential(self): 
         """
@@ -490,16 +493,10 @@ class FuelCell:
         - The equivalent flow resistance and water saturation in the cathode are recalculated.
         - Finally, the water vapor transport resistance values are updated again for consistency.
         """
-        
+            
         self.ca.h2ov_transport_resistance = self.ca.gas_transport_resistance('h2o')
         self.an.h2ov_transport_resistance = self.an.gas_transport_resistance('h2o')
         self.membrane.water_balance_model.solve_water_balance(self)
-        for cl in (self.ca.cl, self.an.cl): 
-            if self.use_eq_water_content_for_ionomer: 
-                cl.ionomer_water_content = cl.eq_water_content
-            else: 
-                cl.ionomer_water_content = cl.memb_interface_water_content
-            cl.set_ionomer_wet_properties(cl.ionomer_water_content, cl.temperature)
        
         if not dynamic: 
             self.ca.calculate_equivalent_flow_resistance()
@@ -508,6 +505,17 @@ class FuelCell:
             self.ca.h2ov_transport_resistance = self.ca.gas_transport_resistance('h2o')
             self.an.h2ov_transport_resistance = self.an.gas_transport_resistance('h2o')
     
+        for cl in (self.ca.cl, self.an.cl): 
+            if self.use_eq_water_content_for_ionomer: 
+                cl.ionomer_water_content = np.where(cl.non_wetting_saturation > 0,
+                                                    self.membrane.equilibrium_water_content(rh=1.0, 
+                                                                                            temperature=self.membrane.temperature) * (1-cl.non_wetting_saturation) +
+                                                    self.membrane.liquid_equilibrium_water_content(self.ca.cl.temperature) * cl.non_wetting_saturation, # lmbd_eq_v * (1-s) + lmbd_eq_l * s
+                                                    cl.eq_water_content)
+            else: 
+                cl.ionomer_water_content = cl.memb_interface_water_content
+            cl.set_ionomer_wet_properties(cl.ionomer_water_content, cl.temperature)
+
     def calculate_gas_concentrations_at_cl(self): 
         """
         Calculate gas concentrations at the catalyst layer (CL) for both cathode and anode.
@@ -538,9 +546,11 @@ class FuelCell:
                 side.reactant_consumption * side.reactant_transport_resistance) / gas_concentration
             
             # water concentration
-            side.cl.gas.X[...,species_indexes['h2o']] = np.maximum(1e-12,
+            side.cl.gas.X[...,species_indexes['h2o']] = np.where(side.liquid_flux > 0, 
+                side.cl.saturation_concentration()  / gas_concentration,                                    
+                np.maximum(1e-12,
                 side.ch.species_concentration('h2o') +
-                side.vapor_flux * side.h2ov_transport_resistance) / gas_concentration
+                side.vapor_flux * side.h2ov_transport_resistance) / gas_concentration)
             side.cl.gas.calculate_relative_humidity()
 
             # n2 concentration (from species balance)
@@ -817,13 +827,17 @@ class FuelCell:
         self.h2o_production = self.h2_consumption
         self.temperature = stack_temperature
         self.membrane.temperature = stack_temperature
+        self.ca.h2o_production = self.h2o_production
+        self.an.h2o_production = np.zeros_like(self.h2o_production)
 
         for side in (self.ca, self.an): 
             for layer in side.components: 
                 layer.non_wetting_saturation = 0 
+                layer.liquid_saturation = 0
                 layer.temperature = stack_temperature
             side.cl.set_water_film_thickness(0)
-            
+            side.is_liquid_equilibrated = False
+
         for cell_side, conditions in zip((self.ca, self.an), (cathode_conditions, anode_conditions)): 
             cell_side.cl.ionomer_water_content = 10
             cell_side.cl.set_ionomer_wet_properties(cell_side.cl.ionomer_water_content, self.temperature)
