@@ -507,11 +507,7 @@ class FuelCell:
     
         for cl in (self.ca.cl, self.an.cl): 
             if self.use_eq_water_content_for_ionomer: 
-                cl.ionomer_water_content = np.where(cl.non_wetting_saturation > 0,
-                                                    self.membrane.equilibrium_water_content(rh=1.0, 
-                                                                                            temperature=self.membrane.temperature) * (1-cl.non_wetting_saturation) +
-                                                    self.membrane.liquid_equilibrium_water_content(self.ca.cl.temperature) * cl.non_wetting_saturation, # lmbd_eq_v * (1-s) + lmbd_eq_l * s
-                                                    cl.eq_water_content)
+                cl.ionomer_water_content = cl.eq_water_content
             else: 
                 cl.ionomer_water_content = cl.memb_interface_water_content
             cl.set_ionomer_wet_properties(cl.ionomer_water_content, cl.temperature)
