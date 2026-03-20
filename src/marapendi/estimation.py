@@ -239,12 +239,14 @@ class DynamicModel:
                         )
 
         return sol, self.theta_to_p(sol.x)
-    
-    def p_to_theta(self, unknown_p_values): 
-        theta_i_k = np.where(self.p_i_isLinear,
-                    (unknown_p_values - self.p_i_min) / (self.p_i_max - self.p_i_min),
-                    (np.log(unknown_p_values) - np.log(self.p_i_min)) / (np.log(self.p_i_max) - np.log(self.p_i_min))
-        )
+    def p_to_theta(self, unknown_p_values):
+       
+        log_mask = ~self.p_i_isLinear
+        theta_i_k = (unknown_p_values - self.p_i_min) / (self.p_i_max - self.p_i_min)
+
+        theta_i_k[log_mask] = ((np.log(unknown_p_values[log_mask]) - np.log(self.p_i_min[log_mask])) / 
+                               (np.log(self.p_i_max[log_mask]) - np.log(self.p_i_min[log_mask])))
+        
         return theta_i_k
 
     def theta_to_p(self, theta_k):
@@ -269,15 +271,13 @@ class DynamicModel:
         """
         p_i_k = np.where(self.p_i_isLinear,
                          self.p_i_min + (self.p_i_max - self.p_i_min) * theta_k,
-                         self.p_i_min * np.exp((np.log(np.maximum(self.p_i_max, 1e-12)) - np.log(np.maximum(self.p_i_min, 1e-12))) * theta_k))
+                         self.p_i_min * np.exp((np.log(self.p_i_max + 1e-20) - np.log(self.p_i_min + 1e-20)) * theta_k))
         return p_i_k
 
     def calculate_local_sensitivity_neighborhood(self, t, u=None, x0=None, p=None, eps_p=0, measures=None):
         """
         Compute local sensitivities by finite differences in the neighborhood of the parameters.
-
-        Follows equation 7 in Goshtasbi et al. (2020).
-
+        
         Parameters
         ----------
         t : array_like
@@ -343,7 +343,7 @@ class DynamicModel:
         # Compute normalized sensitivity as in equation 7
         # S = (1 / mean(y)) * mean( dy/dtheta )
         # Added small epsilon in denominator to avoid division by zero
-        S = 1 / (1e-12 + np.mean(y, axis=1)) * np.mean(dydtheta, axis=1)
+        S = 1 / (1e-20 + np.mean(y, axis=1)) * np.mean(dydtheta, axis=1)
 
         self.S = S
         return S
@@ -467,7 +467,8 @@ class DynamicModel:
         p = p if p else self.p if self.p else {}
         if not residuals: 
             residuals = lambda px: self.residuals(y_exp, t, u, x0, px)
-
+        
+        p_valid = []
         S_n = []
         for n in range(2**m):
             # Transform Sobol sample to actual parameter values
@@ -482,13 +483,14 @@ class DynamicModel:
                 isValid = np.sqrt(np.dot(res, res) / len(res)) < rmse_limit
             else:
                 isValid = True
-
-            if isValid:
+                
+            if isValid: 
                 if print_px:
                     print(px)
                 # Compute local sensitivities for this global sample
                 s_n = self.calculate_local_sensitivity_neighborhood(t, u, x0, px, eps_p=1e-6, measures=measures)
                 S_n.append(s_n)
+                p_valid.append(px)
 
         n_valid = len(S_n)
         S_n = np.array(S_n)
@@ -533,7 +535,7 @@ class DynamicModel:
                     S_n=self.S_n, 
                     n_valid=self.n_valid) 
         return (self.cosPhi_med_ij, self.norm_s_i, self.S_med, self.S_std, 
-                self.S_med_i, self.S_std_i, self.S_n, self.n_valid)
+                self.S_med_i, self.S_std_i, self.S_n, self.n_valid, p_valid)
 
     def load_global_sensitivity_results(self, filename): 
         """
@@ -629,7 +631,7 @@ class DynamicModel:
         return fig, ax
 
     def plot_global_sensitivity(self, fig=None, ax=None, cmap='viridis', color='C0',
-                                xlabel_angle=45, xlabel_ha='center', figsize=(4, 3), parameter_order=None):
+                                xlabel_angle=45, xlabel_ha='center', figsize=(4, 3), parameter_order=[]):
         """
         Plot global sensitivity metrics.
 
@@ -655,8 +657,9 @@ class DynamicModel:
             fig, ax = plt.subplots(figsize=figsize)
         
         # Generate parameter order if not specified
-        if not parameter_order:
-            xi = np.arange(len(self.unknown_p_list)) 
+        n_params = len(self.unknown_p_list)
+        if len(parameter_order) == 0:
+            xi = np.arange(n_params) 
         else: 
             xi = parameter_order 
 
@@ -665,11 +668,11 @@ class DynamicModel:
             ax.plot(position * np.ones_like(self.norm_s_i[:, parameter]), self.norm_s_i[:, parameter], '.' + color, alpha=0.2)
         
         # Plot median sensitivity values on top, as semilogy line
-        ax.semilogy(xi, self.S_med_i, '-s' + color)
+        ax.semilogy(np.arange(n_params), self.S_med_i[xi], '-s' + color)
         
         # Set x-axis ticks and labels
-        ax.set_xticks(xi, labels=self.p_i_label)
-        ax.set_xlim(xi[0] - 0.5, xi[-1] + 0.5)
+        ax.set_xticks(np.arange(n_params), labels=np.array(self.p_i_label)[xi])
+        ax.set_xlim( - 0.5, n_params - 0.5)
         
         # Rotate x labels if needed
         if xlabel_angle > 0:

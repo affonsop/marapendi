@@ -242,7 +242,10 @@ def plot_rmse_vs_complexity(
     quantity_name="Cell voltage",
     quantity_unit="mV",
     quantity_multiplier=1000,
+    use_median = True, 
+    plot_one_sigma_interval=False,
     figsize=(10,4),
+    xrotation=45,
     save_path=None,
     dpi=300,
 ):
@@ -297,8 +300,10 @@ def plot_rmse_vs_complexity(
     train_df = rmse_df[rmse_df["case"] != rmse_df["test_case"]]
 
     test_mean = test_df.groupby("n_parameters")["rmse"].mean()
+    test_median = test_df.groupby("n_parameters")["rmse"].median()
     test_std = test_df.groupby("n_parameters")["rmse"].std()
     train_mean = train_df.groupby("n_parameters")["rmse"].mean()
+    train_median = train_df.groupby("n_parameters")["rmse"].median()
 
     # ------------------------------------------------------------
     # Optimal number of parameters based on 1 std deviaiton rule 
@@ -345,27 +350,27 @@ def plot_rmse_vs_complexity(
     # Average test/train curves
     ax.plot(
         complexity_levels,
-        test_mean.values,
+        (test_median if use_median else test_mean).values,
         color="dimgray",
-        label="Average RMSE - test"
+        label=("Median" if use_median else "Average") + " RMSE - test"
     )
 
     ax.plot(
         complexity_levels,
-        train_mean.values,
+        (train_median if use_median else train_mean).values,
         color="dimgray",
         linestyle="--",
-        label="Average RMSE - train"
+        label=("Median" if use_median else "Average") + " RMSE - train"
     )
-
-    ax.fill_between(
-        complexity_levels,
-        test_mean.values - test_std.values,
-        test_mean.values + test_std.values,
-        color="dimgray",
-        alpha=0.3,
-        label="$\pm$ 1$\sigma$ RMSE - test"
-    )
+    if plot_one_sigma_interval: 
+        ax.fill_between(
+            complexity_levels,
+            test_mean.values - test_std.values,
+            test_mean.values + test_std.values,
+            color="dimgray",
+            alpha=0.3,
+            label="$\pm$ 1$\sigma$ RMSE - test"
+        )
 
 
     # ------------------------------------------------------------
@@ -386,7 +391,7 @@ def plot_rmse_vs_complexity(
         for idx in parameter_indices
     ]
 
-    ax.set_xticklabels(param_labels, rotation=45)
+    ax.set_xticklabels(param_labels, rotation=xrotation)
 
     # Top x-axis: number of selected parameters
     ax_top = ax.twiny()
@@ -635,6 +640,7 @@ def plot_cross_validation_curves(
     quantity_name="Cell voltage",
     quantity_symbol=r"$V_{cell}$",
     quantity_unit="V",
+    case_titles = None,
     x_label=r"$i$ (A/cm$^2$)",
     save_path=None,
     dpi=300
@@ -655,7 +661,7 @@ def plot_cross_validation_curves(
         nrows=n_cases,
         ncols=n_cases,
         sharex=True,
-        sharey='row'
+        sharey=True
     )
 
     fig.set_tight_layout(True)
@@ -671,7 +677,7 @@ def plot_cross_validation_curves(
         case_left_out = fold["test_case"]
 
         # Rebuild model from stored parameters
-        cell_model = model_builder(fold["model_parameters"])
+        cell_model = model_builder(fold["model_parameters"], case_left_out)
 
         for i, case in enumerate(case_list):
 
@@ -699,7 +705,8 @@ def plot_cross_validation_curves(
                 x_exp,
                 y_exp,
                 's' + condition_color[case],
-                markersize=4
+                markersize=3.5, 
+                alpha=0.5
             )
 
             if i == k:
@@ -708,10 +715,7 @@ def plot_cross_validation_curves(
             # Column titles
             if k == 0:
                 ax[0, i].set_title(
-                    f'Condition {i+1}\n'
-                    r'$T_{cell}$: '
-                    f'{case_table.loc[case, "temperature"]:.0f} °C\n'
-                    f'{case_table.loc[case, "koh_concentration"]:.1f} M KOH',
+                    case_titles[case],
                     fontsize=9
                 )
 
@@ -730,11 +734,12 @@ def plot_cross_validation_curves(
     # ------------------------------------------------------------
     fig.legend(
         handles=[
-            plt.Line2D([0], [0], color='black'),
-            plt.Line2D([0], [0], marker='s', linestyle='None', color='black')
+            plt.Line2D([0], [0], color='dimgray'),
+            plt.Line2D([0], [0], marker='s', linestyle='None', color='dimgray')
         ],
         labels=['Sim.', 'Exp.'],
-        loc='upper left'
+        loc='upper left', 
+        bbox_to_anchor=(1.05,1.)
     )
 
     fig.tight_layout()
