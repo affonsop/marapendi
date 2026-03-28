@@ -4,6 +4,7 @@ import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt 
+from matplotlib.patches import Patch
 from scipy import stats
 
 def run_cross_validation(
@@ -232,6 +233,160 @@ def load_cross_validation_results(
 
     return cross_validation_results
 
+def plot_rmse_vs_complexity_extrapolation(
+    cv_results,
+    training_test_case,
+    extrapolation_cases,
+    parameter_indices,
+    base_model,
+    model_builder,
+    simulate_callback,
+    ylabel="RMSE",
+    quantity_multiplier=1000,
+    condition_color={},
+    use_median=True,
+    figsize=(10, 4),
+    xrotation=45,
+    save_path=None,
+    dpi=300,
+):
+    """
+    Plot RMSE vs model complexity for conditions that are neither in the
+    training nor the testing dataset, for a given fixed test case.
+
+    Parameters
+    ----------
+    cv_results : dict
+        Cross-validation results.
+    training_test_case : int or str
+        The test case (left-out condition) used to select the fold.
+    extrapolation_cases : list
+        Conditions not included in training or testing, to evaluate on.
+    """
+
+    complexity_levels = get_complexity_levels(cv_results)
+
+    rmse_values = []
+    case_column = []
+    complexity_column = []
+
+    # ------------------------------------------------------------
+    # Collect RMSE values
+    # ------------------------------------------------------------
+    for n_parameters in complexity_levels:
+
+        folds = get_folds_for_complexity(cv_results, n_parameters)
+
+        # Select only the fold corresponding to the fixed test case
+        matching_folds = [f for f in folds if f["test_case"] == training_test_case]
+
+        for fold in matching_folds:
+
+            model_parameters = fold["model_parameters"]
+            cell_model = model_builder(model_parameters, training_test_case)
+
+            for case in extrapolation_cases:
+
+                x_sim, y_sim, x_exp, y_exp = simulate_callback(case, cell_model)
+
+                residuals = y_exp - y_sim
+                rmse = np.sqrt(np.dot(residuals, residuals) / len(residuals)) * quantity_multiplier
+
+                rmse_values.append(rmse)
+                case_column.append(case)
+                complexity_column.append(n_parameters)
+
+    rmse_df = pd.DataFrame({
+        "rmse": rmse_values,
+        "case": case_column,
+        "n_parameters": complexity_column,
+    })
+
+    # ------------------------------------------------------------
+    # Aggregate
+    # ------------------------------------------------------------
+    agg_fn = "median" if use_median else "mean"
+    overall_trend = rmse_df.groupby("n_parameters")["rmse"].agg(agg_fn)
+
+    # ------------------------------------------------------------
+    # Plot
+    # ------------------------------------------------------------
+    fig, ax = plt.subplots(1, 1, figsize=figsize)
+    if len(condition_color) == 0: 
+        condition_color = {
+            case: f"C{k}" for k, case in enumerate(extrapolation_cases)
+        }
+
+    handles, labels = [], []
+
+    # Individual RMSE per extrapolation condition
+    for k, case in enumerate(extrapolation_cases):
+
+        case_df = rmse_df[rmse_df["case"] == case]
+
+        line, = ax.semilogy(
+            case_df["n_parameters"],
+            case_df["rmse"],
+            "s" + condition_color[case],
+            markersize=5,
+            alpha=1,
+        )
+
+        handles.append(line)
+        labels.append(f"{case}")
+
+    # Overall trend
+    ax.semilogy(
+        complexity_levels,
+        overall_trend.values,
+        color="dimgray",
+        label=("Median" if use_median else "Average") + " RMSE - extrapolation",
+    )
+
+    # ------------------------------------------------------------
+    # Formatting
+    # ------------------------------------------------------------
+    full_parameter_range = range(1, len(parameter_indices) + 1)
+
+    ax.set_ylabel(ylabel)
+    ax.grid()
+
+    ax.set_xticks(full_parameter_range)
+    ax.set_xlim(0.5, len(parameter_indices) + 0.5)
+
+    param_labels = [
+        base_model.unknown_p_list[idx][-1]
+        for idx in parameter_indices
+    ]
+    ax.set_xticklabels(param_labels, rotation=xrotation)
+
+    # Top x-axis
+    ax_top = ax.twiny()
+    ax_top.set_xticks(full_parameter_range)
+    ax_top.set_xlim(ax.get_xlim())
+    ax_top.set_xlabel("Number of selected parameters")
+
+    # Legends
+    leg1 = ax.legend(loc=0)
+    fig.legend(
+        handles=handles,
+        labels=labels,
+        loc="upper left",
+        bbox_to_anchor=(0.99, 0.9),
+        fontsize=9,
+        title="Condition",
+    )
+    ax.add_artist(leg1)
+
+    # ax.set_title(f"Extrapolation RMSE (fold: test case = {training_test_case})")
+
+    fig.tight_layout()
+
+    if save_path is not None:
+        fig.savefig(save_path, dpi=dpi, bbox_inches="tight")
+
+    return fig, ax, rmse_df
+
 def plot_rmse_vs_complexity(
     cv_results,
     case_list,
@@ -239,8 +394,7 @@ def plot_rmse_vs_complexity(
     base_model,
     model_builder,
     simulate_callback,
-    quantity_name="Cell voltage",
-    quantity_unit="mV",
+    ylabel="RMSE",
     quantity_multiplier=1000,
     use_median = True, 
     plot_one_sigma_interval=False,
@@ -354,7 +508,7 @@ def plot_rmse_vs_complexity(
         color="dimgray",
         label=("Median" if use_median else "Average") + " RMSE - test"
     )
-
+ 
     ax.plot(
         complexity_levels,
         (train_median if use_median else train_mean).values,
@@ -378,7 +532,7 @@ def plot_rmse_vs_complexity(
     # ------------------------------------------------------------
     full_parameter_range = range(1, len(parameter_indices) + 1)
 
-    ax.set_ylabel(f"{quantity_name}\nRMSE ({quantity_unit})")
+    ax.set_ylabel(ylabel)
     ax.set_ylim(bottom=0)
     ax.grid()
 
@@ -643,7 +797,8 @@ def plot_cross_validation_curves(
     case_titles = None,
     x_label=r"$i$ (A/cm$^2$)",
     save_path=None,
-    dpi=300
+    dpi=300,
+    uncertainty=0.1
 ):
     """
     Cross-validation curve plotting compatible with new cv_results format.
@@ -700,6 +855,12 @@ def plot_cross_validation_curves(
                 y_sim,
                 '-' + condition_color[case]
             )
+            if uncertainty:  
+                ax[k, i].fill_between(
+                    x_sim, 
+                    (1-uncertainty)*y_sim,(1+uncertainty)*y_sim, 
+                    color=condition_color[case],
+                    alpha=0.3)
 
             ax[k, i].plot(
                 x_exp,
@@ -734,12 +895,13 @@ def plot_cross_validation_curves(
     # ------------------------------------------------------------
     fig.legend(
         handles=[
-            plt.Line2D([0], [0], color='dimgray'),
-            plt.Line2D([0], [0], marker='s', linestyle='None', color='dimgray')
+            plt.Line2D([0], [0], color='C0'),
+            plt.Line2D([0], [0], marker='s', linestyle='None', color='C0'),
+            Patch(facecolor='C0', alpha=0.3)
         ],
-        labels=['Sim.', 'Exp.'],
+        labels=['Sim.', 'Exp.', f'± {uncertainty*100:.0f} %'],
         loc='upper left', 
-        bbox_to_anchor=(1.05,1.)
+        bbox_to_anchor=(0, 1.05)
     )
 
     fig.tight_layout()
@@ -791,3 +953,60 @@ def get_folds_for_complexity(cv_results, n_parameters):
         f"n_parameters={n_parameters} not available. "
         f"Available levels: {available}"
     )
+
+def rmse_complexity_table(rmse_vs_complexity_df, filename=None):
+    
+    group = (rmse_vs_complexity_df[rmse_vs_complexity_df.case == rmse_vs_complexity_df.test_case]
+        .groupby(['n_parameters', 'test_case']).mean()
+        .reset_index()
+        .groupby('n_parameters'))
+
+    per_case = (rmse_vs_complexity_df[rmse_vs_complexity_df.case == rmse_vs_complexity_df.test_case]
+        .groupby(['n_parameters', 'test_case']).mean()
+        .reset_index()
+        .pivot(index='n_parameters', columns='test_case', values='rmse'))
+
+    stats_df = (group.agg(['min', 'max', 'median', 'mean'])
+        .drop(columns=['case', 'test_case'], level=0))
+    stats_df.columns = ['_'.join(col) for col in stats_df.columns]
+
+    stats_df = stats_df.join(per_case)
+
+    # reorder
+    stat_cols = [c for c in stats_df.columns if isinstance(c, str) and '_' in c]
+    case_cols = [c for c in stats_df.columns if c not in stat_cols]
+    stats_df = stats_df[case_cols + stat_cols]
+
+    # rename
+    stats_df = stats_df.rename(columns={
+        'rmse_min': 'Min.',
+        'rmse_max': 'Max.',
+        'rmse_median': 'Median',
+        'rmse_mean': 'Mean',
+    })
+
+    stats_df.rename(
+        columns={c: f'{c:.0f}' for c in case_cols}
+    )
+    # build latex
+    n_cases = len(case_cols)
+    latex = (stats_df.to_latex(
+            float_format="%.1f",
+            na_rep="-",
+            caption="RMSE vs complexity",
+            label="tab:rmse_complexity",
+            position="h"
+        ).replace(
+            r'\toprule',
+            r'\toprule' + '\n' +
+            rf' & \multicolumn{{{n_cases}}}{{c}}{{Cases}} \\' + '\n' +
+            rf'\cmidrule(lr){{2-{n_cases + 1}}}'
+        )
+    )
+
+    if filename:
+        with open(filename, 'w') as f:
+            f.write(latex)
+
+    return stats_df, latex
+
