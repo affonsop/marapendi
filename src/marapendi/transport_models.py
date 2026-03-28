@@ -192,7 +192,7 @@ class PorousGasResistanceModel:
         float
             Correction factor [-].
         """
-        return (1 - water_saturation) ** self.water_saturation_exponent
+        return np.clip(1 - water_saturation, 0, 1) ** self.water_saturation_exponent
     
     def molecular_diffusion_effective_length(self, layer, water_saturation=0):
         """

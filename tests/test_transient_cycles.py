@@ -107,44 +107,13 @@ def fuel_cell():
 
 time = np.linspace(0,1000,1001)
 
-class LoadCycle: 
-    def __init__(self, duration, time_step, u=None): 
-        self.duration = duration
-        self.time_step = time_step 
-        self.u = u 
-        self.cycle_time = np.linspace(0, self.duration, int(self.duration // self.time_step + 1))
-
-    def set_input_dict(self, u): 
-        self.u = u 
-    
-    def get_input_vectors(self, t): 
-        u_vectors = {}
-        for u_key, u_value in self.u.items(): 
-            if np.any(u_value(0) == None): 
-                u_vectors[u_key] = None  
-            else: 
-                u_vectors[u_key] = np.array(u_value(t), ndmin=1)
-        return u_vectors
-    
-    def get_n_cycles(self,n_cycles):
-        total_time = np.cumsum(np.concat([self.cycle_time] * n_cycles))
-        u_full = {}
-        for u_key, u_value in self.get_input_vectors(self.cycle_time).items(): 
-            if np.any(u_value == None): 
-                u_full[u_key] = None  
-            else: 
-                u_full[u_key] =np.concat([u_value * np.ones_like(self.cycle_time)] * n_cycles) 
-        u_full['total_time'] = total_time
-        return u_full
-    
-
 @pytest.fixture 
 def cycle(fuel_cell): 
-    cycle = LoadCycle(
-        duration=30.,
+    cycle = mrpd.LoadCycle(
+        duration=500.,
         time_step=1.,
     )
-    current_density = lambda t: np.where( t > 10., 1e4, 0.5e4)
+    current_density = lambda t: np.where( t > 400., 1.2e4, 0.2e4)
     cell_temperature = 353.15
     cell_pressure = 1.5e5
     
@@ -179,6 +148,7 @@ def cycle(fuel_cell):
 def model(fuel_cell, cycle):
     
     def f(t,x,u,p=None): 
+
         fuel_cell.set_conditions_from_input_functions(u,t)
         fuel_cell.ca.s_relax = x[0]
         fuel_cell.an.s_relax = x[1]
@@ -202,7 +172,7 @@ def model(fuel_cell, cycle):
 def test_equilibrium(model, fuel_cell, cycle):   
     t, x, y = model.solve(np.linspace(0,3*3600,120), x0 = [0,0], u=cycle.u, rtol=1e-3)
     
-    u_cycles = cycle.get_n_cycles(25)
+    u_cycles = cycle.repeat_cycles(25)
     
     fuel_cell.set_conditions_from_input_dict(u_cycles)
     fuel_cell.ca.s_relax = np.interp(u_cycles['total_time'], t, x[0,...])

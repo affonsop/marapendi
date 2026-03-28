@@ -348,10 +348,8 @@ class PFSA(Membrane):
             Grimaldi et al. J. Power Sources (2023).
             Goshtasbi et al. J. Electrochem. Soc. 2019, 166 (7), F3154.
             """
-            lmbd_eq_relaxed = np.where(rh <= 1, 
-                                       np.polyval([36, -39.85, 17.18, 0.043], rh), 
-                                       14 + (self.liquid_equilibrium_water_content(temperature) - 14) *
-                                       np.where(rh <=3, 0.5 * (rh - 1), 1.)) 
+            rh = np.clip(rh,0,1)
+            lmbd_eq_relaxed = np.polyval([36, -39.85, 17.18, 0.043], rh)
             
             return ((1 - self.phi) * lmbd_eq_relaxed + s_relax) if s_relax is not None else lmbd_eq_relaxed 
 
@@ -382,11 +380,8 @@ class PFSA(Membrane):
         Grimaldi et al. J. Power Sources (2023).
         Goshtasbi et al. J. Electrochem. Soc. 2019, 166 (7), F3154.
         """
-        rh = np.minimum(np.maximum(rh, 0), 1)
-        d_lmbd_eq_relaxed = np.where(rh <= 1, 
-                                       np.polyval([108, -79.70, 17.18], rh),
-                                       14 + (self.liquid_equilibrium_water_content(temperature) - 14) *
-                                       np.where(rh <=3, 0.5, 0.)) 
+        rh = np.clip(rh,0,1)
+        d_lmbd_eq_relaxed = np.polyval([108, -79.70, 17.18], rh)
         
         return ((1 - self.phi) * d_lmbd_eq_relaxed + s_relax) if s_relax is not None else d_lmbd_eq_relaxed 
     
@@ -410,7 +405,7 @@ class PFSA(Membrane):
         """
         return 9.22 + 0.181 * (temperature - 273.15) # From Goshtasbi et al. (2020)
 
-    def proton_conductivity(self, water_content, temperature, use_water_profile=True):
+    def proton_conductivity(self, water_content_profile, temperature):
         """
         Calculate the proton conductivity based on water content, water saturation and temperature.
 
@@ -428,14 +423,12 @@ class PFSA(Membrane):
         float
             The proton conductivity of the membrane in Siemens per meter (S/m).
         """
-        if use_water_profile:
-            fv = self.water_vol_fraction(self.water_balance_model.water_content_profile, water_molar_volume(temperature))
-            return 1/np.mean(1/(self.conductivity_correction * 50 * (np.maximum(fv, 0.11) - 0.1 ) ** self.conductivity_exp * arrhenius_term(self.conductivity_activation_energy, temperature, 298.15)), axis=0)
-        else:
-            fv = self.water_vol_fraction(water_content, water_molar_volume(temperature))
-            return self.conductivity_correction * 50 * (np.maximum(fv, 0.11) - 0.1 ) ** self.conductivity_exp * arrhenius_term(self.conductivity_activation_energy, temperature, 298.15)
-
-    def proton_resistance(self, water_content, temperature, use_water_profile=True, water_saturation=0):
+        
+            
+        fv = self.water_vol_fraction(water_content_profile, water_molar_volume(temperature))
+        return 1/np.mean(1/(self.conductivity_correction * 50 * (np.maximum(fv, 0.11) - 0.1) ** self.conductivity_exp * arrhenius_term(self.conductivity_activation_energy, temperature, 298.15)), axis=0)
+    
+    def proton_resistance(self, temperature, water_saturation=0):
         """
         Calculate the proton resistance through the membrane. 
         Considers an average conductivity from liquid and vapor equilibrated conditions if liquid saturation is greater 
@@ -457,9 +450,8 @@ class PFSA(Membrane):
         float
             The proton resistance of the membrane in ohm square meters (Ω·m²).
         """       
-        liquid_water_content = self.liquid_equilibrium_water_content(temperature)
-        liquid_equilibrated_conductivity =  self.proton_conductivity(liquid_water_content, temperature, use_water_profile=False)
-        vapor_equilibrated_conductivity = self.proton_conductivity(water_content, temperature, use_water_profile)
+        liquid_equilibrated_conductivity =  self.proton_conductivity(self.liquid_eq_sat_water_profile, temperature)
+        vapor_equilibrated_conductivity = self.proton_conductivity(self.vapor_eq_sat_water_profile, temperature)
         average_conductivity = (1-water_saturation) * vapor_equilibrated_conductivity + water_saturation * liquid_equilibrated_conductivity
         return self.dry_thickness / average_conductivity
 

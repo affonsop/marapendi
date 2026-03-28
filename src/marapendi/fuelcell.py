@@ -149,7 +149,7 @@ class FuelCellSide:
         """
         return sum(layer.thermal_resistance() for layer in self.porous_layers if layer != self.cl) + self.thermal_contact_resistance
                 
-    def  calculate_water_saturation(self): 
+    def calculate_water_saturation(self): 
         """
         Compute and update the water saturation in each porous layer.
 
@@ -159,7 +159,7 @@ class FuelCellSide:
         the liquid flux and upstream capillary pressures. It assumes that 
         `self.liquid_flux` has been set externally.
         """
-        for i, layer in enumerate(self.porous_layers): 
+        for i, layer in enumerate(self.porous_layers[1:]): 
             layer.non_wetting_flux = self.liquid_flux
             layer.downstream_saturation = np.zeros_like(layer.non_wetting_flux)
             layer.upstream_saturation = np.zeros_like(layer.non_wetting_flux)
@@ -168,10 +168,10 @@ class FuelCellSide:
         
         self.gdl.two_phase_transport_model.calculate_non_wetting_saturation(self.gdl, self.liquid_flux, upstream_capillary_pressure=np.zeros_like(self.liquid_flux))
         if self.has_mpl: 
-             self.mpl.two_phase_transport_model.calculate_non_wetting_saturation(self.mpl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
-             self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.mpl.downstream_capillary_pressure)
+            self.mpl.two_phase_transport_model.calculate_non_wetting_saturation(self.mpl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
+            #self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.mpl.downstream_capillary_pressure)
         else:
-            self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
+            pass# self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
         for layer in self.porous_layers: 
             layer.liquid_saturation = layer.non_wetting_saturation if layer.contact_angle > 90. else (1-layer.non_wetting_saturation)
     
@@ -349,7 +349,7 @@ class FuelCell:
         and the electrical resistance of the cell components. It is an important parameter in 
         electrochemical impedance spectroscopy (EIS) measurements.
         """
-        return self.membrane.proton_resistance(self.membrane.water_content, self.membrane.temperature, water_saturation=0) + self.electrical_resistance
+        return self.membrane.proton_resistance(self.membrane.temperature, water_saturation=self.ca.cl.liquid_saturation) + self.electrical_resistance
 
     def ohmic_overpotential(self): 
         """
@@ -368,11 +368,15 @@ class FuelCell:
         the total internal resistance.
         """
         for side in (self.ca, ): 
-            side.cl.proton_resistance = side.cl.effective_charge_resistance(
+            side.cl.proton_resistance = 1./(side.cl.non_wetting_saturation/side.cl.effective_charge_resistance(
                 self.current_density, 
-                side.cl.ionomer_water_content, 
+                side.liquid_eq_water_content, 
                 side.cl.temperature
-            )
+            ) + (1-side.cl.non_wetting_saturation)/side.cl.effective_charge_resistance(
+                self.current_density, 
+                side.vapor_eq_water_content, 
+                side.cl.temperature
+            ))
         return self.current_density * (self.ca.cl.proton_resistance + self.high_frequency_resistance())
 
     def reversible_voltage_vs_RHE(self): 
@@ -542,7 +546,7 @@ class FuelCell:
                 side.reactant_consumption * side.reactant_transport_resistance) / gas_concentration
             
             # water concentration
-            side.cl.gas.X[...,species_indexes['h2o']] = np.where(side.liquid_flux > 0, 
+            side.cl.gas.X[...,species_indexes['h2o']] = np.where(side.cl.liquid_saturation > 0, 
                 side.cl.saturation_concentration()  / gas_concentration,                                    
                 np.maximum(1e-12,
                 side.ch.species_concentration('h2o') +

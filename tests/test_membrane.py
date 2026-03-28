@@ -15,15 +15,15 @@ def thin_membrane():
 def membrane_liso_2016(): 
     return mrpd.PFSA(equivalent_weight=1100., dry_density=2000., dry_thickness=51e-6, 
                      reference_absorption_coefficient=1.e-6, reference_water_diffusivity=5e-10,
-                       water_balance_model=mrpd.MembraneWaterBalanceModel2())   
+                       water_balance_model=mrpd.MembraneWaterBalanceModel())   
  
 @pytest.fixture
 def fuel_cell_liso_2016(membrane_liso_2016): 
     fc = mrpd.FuelCell(cell_area=96e-4, cell_number=16, membrane=membrane_liso_2016, 
                        ca=mrpd.FuelCellSide(cl=mrpd.PtCCatalystLayer(ionomer=mrpd.NafionD2020), 
-                                            gdl=mrpd.PorousLayer(thickness=200e-6, effective_gas_diffusion_ratio=0.3, thermal_conductivity=0.2)),
+                                            gdl=mrpd.PorousLayer(thickness=200e-6, effective_gas_diffusion_ratio=0.3, absolute_permeability=1e-11, thermal_conductivity=.1)),
                        an=mrpd.FuelCellSide(cl=mrpd.PtCCatalystLayer(ionomer=mrpd.NafionD2020), 
-                                            gdl=mrpd.PorousLayer(thickness=200e-6, effective_gas_diffusion_ratio=0.3, thermal_conductivity=0.2)),)
+                                            gdl=mrpd.PorousLayer(thickness=200e-6, effective_gas_diffusion_ratio=0.3, absolute_permeability=1e-11,  thermal_conductivity=.1)),)
     fc.membrane.temperature = 337.8842
     fc.current_density = np.linspace(0.25e4,1e4,4)
     fc.ca.cl.gas.set_temperature_and_pressure(337.8842, 135e3)
