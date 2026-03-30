@@ -12,7 +12,7 @@ selected_species = [selected_species_dict[sp] for sp in species_list]
 species_names = [sp.lower() for sp in species_list]
 species_indexes = dict(zip(species_names, (0,1,2,3)))
 index_o2, index_n2, index_h2, index_h2ov = 0, 1, 2, 3
-gas.selected_species = species_list
+gas = ct.Solution("gri30.yaml", selected_species=selected_species)
 
 viscosity_polynomials = {sp: gas.get_viscosity_polynomial(gas.species_index(sp))[::-1] for sp in species_list}
 
