@@ -10,6 +10,7 @@ dependencies :
   - cantera
   - pip :
     - cython
+    - xarray
     - pytest
     - pytest-cov
     - sphinx
