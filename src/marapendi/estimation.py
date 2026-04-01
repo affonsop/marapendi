@@ -25,7 +25,7 @@ class DynamicModel:
         Integration method passed to `scipy.integrate.solve_ivp`.
     """
 
-    def __init__(self, f, h, x0=None, p=None, u=None, ode_solution_method='BDF'):
+    def __init__(self, f, h, x0=[], p=None, u=None, ode_solution_method='BDF'):
         """
         Initialize the dynamic model.
 
@@ -105,7 +105,7 @@ class DynamicModel:
             self.p.update(dict(zip(self.p_i_name, self.p_i_guess)))
             print(self.p)
 
-    def solve(self, time, u=None, x0=None, parameters_dict=None, rtol=1e-4, atol=1e-5, vectorized=False):
+    def solve(self, time, u=None, x0=[], parameters_dict=None, rtol=1e-4, atol=1e-5, vectorized=False):
         """
         Solve the ODE system over the given time vector.
 
@@ -131,7 +131,7 @@ class DynamicModel:
         """
         parameters_dict = parameters_dict if parameters_dict else self.p
         u = u if u else self.u
-        x0 = x0 if x0 else self.x0
+        x0 = x0 if len(x0)>0 else self.x0
         sol = solve_ivp(self.f, (time[0], time[-1]),
                         y0=x0,
                         t_eval=time,
