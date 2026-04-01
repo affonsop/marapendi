@@ -22,6 +22,7 @@ import cantera as ct
 from .tools import potential_activation
 from .catalyst_layers import CatalystLayer
 from scipy.stats import lognorm, norm
+from scipy.interpolate import interp1d 
 import matplotlib.pyplot as plt
 
 
@@ -69,7 +70,7 @@ class PtSizeDistribution:
     def __post_init__(self):
         """Initialize statistical distribution and derived quantities."""
 
-        self.platinum_loading = self.initial_platinum_loading
+        self.initial_platinum_loading
         self.cl_thickness = self.initial_cl_thickness
 
         # ---- Build particle size distribution
@@ -91,19 +92,28 @@ class PtSizeDistribution:
             )
 
         # Radius discretization
-        self.r_array = np.linspace(
+        self.r_edges = np.linspace(
             *self.initial_dist.interval(0.999),
-            self.n_points
+            self.n_points + 1
         )
-
+        self.r_array = 0.5 * (self.r_edges[...,1:]
+                              + self.r_edges[...,:-1])
+        self.dr_array = np.diff(self.r_edges)
+        
         # Normalized PDF
         self.normalized_distrib_array = \
             self.initial_dist.pdf(self.r_array)
 
         # Particle number density distribution
         self.number_density_distrib_array = (
-            self.number_density()
+            self.initial_number_density()
             * self.normalized_distrib_array
+        )
+
+        # Particle number density for each radius
+        self.number_density_array = (
+            self.number_density_distrib_array
+            * self.dr_array 
         )
 
         # Conversion between geometrical surface and ECSA
@@ -117,20 +127,20 @@ class PtSizeDistribution:
             (self.average_particle_surface()
              / self.average_particle_mass())
         )
-
+    
     # ------------------------------------------------------------------
     def average_particle_volume(self):
         """Return average particle volume [m³]."""
         return (
             4 * np.pi/3 *
-            np.trapezoid(
+            np.sum(
                 self.normalized_distrib_array
-                * self.r_array ** 3,
-                self.r_array
+                * self.r_array ** 3 
+                * self.dr_array, axis=0
             )
-            / np.trapezoid(
-                self.normalized_distrib_array,
-                self.r_array
+            / np.sum(
+                self.normalized_distrib_array
+                * self.dr_array, axis=0
             )
         )
 
@@ -138,12 +148,22 @@ class PtSizeDistribution:
         """Return average particle mass [kg]."""
         return platinum.density * self.average_particle_volume()
 
-    def number_density(self):
+    def platinum_loading(self): 
+        return (
+            self.number_density()
+            * self.cl_thickness
+            * self.average_particle_mass()
+        )
+    
+    def number_density(self): 
+        return np.sum(self.number_density_array, axis=0)
+    
+    def initial_number_density(self):
         """
         Particle number density inside catalyst layer [1/m³].
         """
         return (
-            self.platinum_loading
+            self.initial_platinum_loading
             / self.cl_thickness
             / self.average_particle_mass()
         )
@@ -152,14 +172,14 @@ class PtSizeDistribution:
         """Return average particle surface area [m²]."""
         return (
             4 * np.pi *
-            np.trapezoid(
+            np.sum(
                 self.normalized_distrib_array
-                * self.r_array**2,
-                self.r_array
+                * self.r_array**2 
+                * self.dr_array, axis=0
             )
-            / np.trapezoid(
-                self.normalized_distrib_array,
-                self.r_array
+            / np.sum(
+                self.normalized_distrib_array
+                * self.dr_array, axis=0
             )
         )
 
@@ -177,7 +197,8 @@ class PtSizeDistribution:
         """
         return (
             self.average_particle_surface()
-            * self.ecsa_to_particle_average_surface_ratio
+            / self.average_particle_mass()
+            * self.initial_utilization_ratio
         )
 
     def plot_distribution(self, ax=None,
@@ -190,6 +211,7 @@ class PtSizeDistribution:
                 self.normalized_distrib_array,
                 label=label)
 
+    
 
 # ======================================================================
 # Platinum thermodynamic species
@@ -212,7 +234,7 @@ class PlatinumSpecies:
     density: float
     molecular_weight: float
     surface_tension: float
-    reference_pontial: float = 0
+    reference_pontential: float = 0
 
     def __post_init__(self):
         """Compute molar volume."""
@@ -229,7 +251,7 @@ class PlatinumSpecies:
         nanoparticle curvature.
         """
         return (
-            self.reference_pontial +
+            self.reference_pontential +
             self.surface_tension
             * self.molar_volume
             / particle_radius
@@ -240,14 +262,15 @@ class PlatinumSpecies:
 platinum = PlatinumSpecies(
     density=21450.,
     molecular_weight=195.08,
-    surface_tension=2.37
+    surface_tension=2.37,
+    reference_pontential=0.
 )
 
 platinum_oxide = PlatinumSpecies(
     density=14100.,
     molecular_weight=211.08,
     surface_tension=1.00,
-    reference_pontial=-42.3e6
+    reference_pontential=-42.3e6
 )
 
 
@@ -256,7 +279,7 @@ platinum_oxide = PlatinumSpecies(
 # ======================================================================
 
 @dataclass
-class PlatinumDissoultion:
+class PlatinumDissolution:
     """
     Platinum electrochemical dissolution reaction.
 
@@ -265,7 +288,7 @@ class PlatinumDissoultion:
     Schneider et al. J. Electrochem. Soc. 2019, 166 (4), F322–F333.
     """
 
-    rate_constant: float = 3.43e-12
+    rate_constant: float = 3.43e-23
     reference_potential: float = 1.188
     transfer_coeff_ca: float = 0.5
     transfer_coeff_an: float = 0.5
@@ -363,7 +386,7 @@ class PlatinumOxideFormation:
 
     rate_constant: float = 1.36e-10
     reference_potential: float = 0.98
-    transfer_coeff_ca: float = 0.15
+    transfer_coeff_ca: float = 0.5
     transfer_coeff_an: float = 0.35
     omega_platinum_oxide_formation: float = 30e6
     proton_reference_concentration: float = 1.
@@ -471,7 +494,7 @@ class PlatinumOxideDissolution:
         """
 
         # Equilibrium constant derived from reaction potentials
-        K3 = potential_activation(
+        K3 =  potential_activation(
             1,
             2,
             temperature,
@@ -490,7 +513,6 @@ class PlatinumOxideDissolution:
             -
             dissolved_platinum_concentration / K3
         )
-
 
 # ======================================================================
 # Global platinum dissolution model
@@ -513,8 +535,8 @@ class PtDissolution:
     using surface-integrated reaction rates.
     """
 
-    platinum_dissolution: PlatinumDissoultion = field(
-        default_factory=PlatinumDissoultion
+    platinum_dissolution: PlatinumDissolution = field(
+        default_factory=PlatinumDissolution
     )
 
     platinum_oxide_formation: PlatinumOxideFormation = field(
@@ -556,8 +578,8 @@ class PtDissolution:
         Darling; Meyers. J. Electrochem. Soc. 2003, 150 (11), A1523.
         """
 
-        r_particles = self.catalyst_layer.platinum_size_distribution.r_array[:,np.newaxis]
-        N_particles = self.catalyst_layer.platinum_size_distribution.number_density_distrib_array[:,np.newaxis]
+        r_particles = self.catalyst_layer.platinum_size_distribution.r_array
+        N_particles = self.catalyst_layer.platinum_size_distribution.number_density_array
         # ---- Reaction rates
         r1 = self.platinum_dissolution.rate_of_reaction(
             dissolved_platinum_concentration,
@@ -603,9 +625,9 @@ class PtDissolution:
         # figure 9 of that paper. 
         # --------------------------------------------------------------
         reference_temperature = 353.15
-        diffusion_time = 3 * (temperature * relative_humidity 
+        diffusion_time = 9.5/2.8 * (temperature * relative_humidity 
                               / reference_temperature ) ** -2 
-        platinum_band_sink = - (dissolved_platinum_concentration / 
+        platinum_band_sink = (dissolved_platinum_concentration / 
                                 diffusion_time)
 
         
@@ -614,13 +636,12 @@ class PtDissolution:
         # Surface-integrated source term
         # --------------------------------------------------------------
         dissolved_platinum_concentration_time_derivative = (
-            1 / self.catalyst_layer.ionomer_vol_fraction
-            * np.trapezoid(
+            1. / self.catalyst_layer.ionomer_vol_fraction
+            * np.sum(
                 4 * np.pi
                 * r_particles**2
                 * (r1 + r3)
                 * N_particles,
-                r_particles,
                 axis=0
                 ) - platinum_band_sink
         )
@@ -628,12 +649,14 @@ class PtDissolution:
         # --------------------------------------------------------------
         # Oxide coverage 
         # ------------------------------------------------------------
-        active_sites_per_platinum_area = 218e-6 # Assumes 210 uC/cm2 Pt in the H2 adsorption region, as in Schneider et al. (2019). 
+        active_sites_per_platinum_area = 2.18e-8 # Assumes 210 uC/cm2 Pt in the H2 adsorption region, as in Schneider et al. (2019). 
         platinum_oxide_coverage_time_derivative = (
             (r2 - r3) / active_sites_per_platinum_area  + 
             - r_particles_time_derivative * 
             (2 * platinum_oxide_coverage / r_particles)
         ) 
+
+
         return (
             r_particles_time_derivative,
             dissolved_platinum_concentration_time_derivative,
