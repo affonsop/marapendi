@@ -724,7 +724,9 @@ class PtDissolution:
         proton_concentration,
         potential,
         temperature,
-        relative_humidity,
+        relative_humidity, 
+        particle_radius,
+        particle_number_density
     ):
         """
         Compute degradation time derivatives.
@@ -743,9 +745,6 @@ class PtDissolution:
         Schneider et al. J. Electrochem. Soc. 2019, 166 (4), F322–F333.
         Darling; Meyers. J. Electrochem. Soc. 2003, 150 (11), A1523.
         """
-        
-        r_particles = self.catalyst_layer.platinum_size_distribution.r_array
-        N_particles = self.catalyst_layer.platinum_size_distribution.number_density_array
 
         # ---- Reaction rates
         r_a_diss = self.platinum_dissolution.rate_of_reaction(
@@ -754,7 +753,7 @@ class PtDissolution:
             potential,
             temperature,
             relative_humidity,
-            r_particles,
+            particle_radius,
         )
 
         r_ox = self.platinum_oxide_formation.rate_of_reaction(
@@ -763,7 +762,7 @@ class PtDissolution:
             proton_concentration,
             potential,
             temperature,
-            r_particles,
+            particle_radius,
         )
 
         r_chem = self.platinum_oxide_dissolution.rate_of_reaction(
@@ -771,7 +770,7 @@ class PtDissolution:
             platinum_oxide_coverage,
             proton_concentration,
             temperature,
-            r_particles,
+            particle_radius,
             self.platinum_dissolution,
             self.platinum_oxide_formation,
         )
@@ -824,9 +823,9 @@ class PtDissolution:
             1. / self.catalyst_layer.ionomer_vol_fraction
             * np.sum(
                 4 * np.pi
-                * r_particles**2
+                * particle_radius**2
                 * (r_a_diss + r_chem + r_c_diss)
-                * N_particles,
+                * particle_number_density,
                 axis=0
                 ) - platinum_band_sink
         )
@@ -838,7 +837,7 @@ class PtDissolution:
         platinum_oxide_coverage_time_derivative = (
             (r_ox - r_chem - r_pe) / active_sites_per_platinum_area  + 
             - r_particles_time_derivative * 
-            (2 * platinum_oxide_coverage / r_particles)
+            (2 * platinum_oxide_coverage / particle_radius)
         ) 
 
         # --------------------------------------------------------------
@@ -847,7 +846,7 @@ class PtDissolution:
         place_exchanged_oxide_coverage_time_derivative = (
             (r_pe - r_c_diss) / active_sites_per_platinum_area  + 
             - r_particles_time_derivative * 
-            (2 * place_exchanged_oxide_coverage / r_particles)
+            (2 * place_exchanged_oxide_coverage / particle_radius)
         ) 
 
         # --------------------------------------------------------------
@@ -855,7 +854,7 @@ class PtDissolution:
         # ------------------------------------------------------------
         number_density_time_derivative = (
             - self.carbon_corrosion.reaction_rate(potential)
-            * N_particles / r_particles
+            * particle_number_density / particle_radius
         )
 
         return (
