@@ -18,6 +18,8 @@ The module includes:
 
 from dataclasses import dataclass, field
 import numpy as np
+from numpy.typing import NDArray
+
 import cantera as ct
 from .tools import potential_activation
 from .catalyst_layers import CatalystLayer
@@ -59,63 +61,67 @@ class PtSizeDistribution:
     distribution_type : {"norm","lognorm"}
         Type of statistical radius distribution.
     """
-
+    number_density_array: NDArray[np.float64]
+    r_array: NDArray[np.float64]
     n_points: int = 32
-    r_mean: float = 1.5e-9
+    r_mean: float = 0
     r_std: float = 1e-9
     initial_platinum_loading: float = 0.2e-2
     initial_cl_thickness: float = 10e-6
     initial_ecsa: float = 40e3
     distribution_type: str = "norm"
 
+
     def __post_init__(self):
         """Initialize statistical distribution and derived quantities."""
 
         self.initial_platinum_loading
         self.cl_thickness = self.initial_cl_thickness
+        if self.r_mean > 0: 
+            # ---- Build particle size distribution
+            if self.distribution_type == "lognorm":
+                sigma = np.sqrt(
+                    np.log(1 + (self.r_std**2) / (self.r_mean**2))
+                )
+                mu = np.log(
+                    self.r_mean**2 /
+                    np.sqrt(self.r_mean**2 + self.r_std**2)
+                )
+                self.initial_dist = lognorm(s=sigma,
+                                            scale=np.exp(mu))
 
-        # ---- Build particle size distribution
-        if self.distribution_type == "lognorm":
-            sigma = np.sqrt(
-                np.log(1 + (self.r_std**2) / (self.r_mean**2))
+            elif self.distribution_type == "norm":
+                self.initial_dist = norm(
+                    loc=self.r_mean,
+                    scale=self.r_std
+                )
+
+            # Radius discretization
+            self.r_edges = np.linspace(
+                *self.initial_dist.interval(0.999),
+                self.n_points + 1
             )
-            mu = np.log(
-                self.r_mean**2 /
-                np.sqrt(self.r_mean**2 + self.r_std**2)
+            self.r_array = 0.5 * (self.r_edges[...,1:]
+                                + self.r_edges[...,:-1])
+            self.dr_array = np.diff(self.r_edges)
+            
+            # Normalized PDF
+            self.normalized_distrib_array = \
+                self.initial_dist.pdf(self.r_array)
+
+            # Particle number density distribution
+            self.number_density_distrib_array = (
+                self.initial_number_density()
+                * self.normalized_distrib_array
             )
-            self.initial_dist = lognorm(s=sigma,
-                                        scale=np.exp(mu))
 
-        elif self.distribution_type == "norm":
-            self.initial_dist = norm(
-                loc=self.r_mean,
-                scale=self.r_std
+            # Particle number density for each radius
+            self.number_density_array = (
+                self.number_density_distrib_array
+                * self.dr_array 
             )
-
-        # Radius discretization
-        self.r_edges = np.linspace(
-            *self.initial_dist.interval(0.999),
-            self.n_points + 1
-        )
-        self.r_array = 0.5 * (self.r_edges[...,1:]
-                              + self.r_edges[...,:-1])
-        self.dr_array = np.diff(self.r_edges)
-        
-        # Normalized PDF
-        self.normalized_distrib_array = \
-            self.initial_dist.pdf(self.r_array)
-
-        # Particle number density distribution
-        self.number_density_distrib_array = (
-            self.initial_number_density()
-            * self.normalized_distrib_array
-        )
-
-        # Particle number density for each radius
-        self.number_density_array = (
-            self.number_density_distrib_array
-            * self.dr_array 
-        )
+        else: 
+            n_poins = len(self.r_array)
 
         # Conversion between geometrical surface and ECSA
         self.ecsa_to_particle_average_surface_ratio = (
@@ -126,28 +132,29 @@ class PtSizeDistribution:
         self.initial_utilization_ratio = (
             self.initial_ecsa /
             (self.average_particle_surface()
-             / self.average_particle_mass())
+             / self.average_particle_mass(normalized=False))
         )
     
     # ------------------------------------------------------------------
-    def average_particle_volume(self):
+    def average_particle_volume(self, normalized=False):
         """Return average particle volume [m³]."""
+        if normalized: 
+            n = self.normalized_distrib_array * self.dr_array 
+        else: 
+            n = self.number_density_array
         return (
             4 * np.pi/3 *
             np.sum(
-                self.normalized_distrib_array
-                * self.r_array ** 3 
-                * self.dr_array, axis=0
+                n * self.r_array ** 3, axis=0
             )
             / np.sum(
-                self.normalized_distrib_array
-                * self.dr_array, axis=0
+                n, axis=0
             )
         )
 
-    def average_particle_mass(self):
+    def average_particle_mass(self, normalized=False):
         """Return average particle mass [kg]."""
-        return platinum.density * self.average_particle_volume()
+        return platinum.density * self.average_particle_volume(normalized)
 
     def platinum_loading(self): 
         return (
@@ -166,21 +173,23 @@ class PtSizeDistribution:
         return (
             self.initial_platinum_loading
             / self.cl_thickness
-            / self.average_particle_mass()
+            / self.average_particle_mass(normalized=True)
         )
 
-    def average_particle_surface(self):
+    def average_particle_surface(self,normalized=False):
         """Return average particle surface area [m²]."""
+        if normalized: 
+            n = self.normalized_distrib_array * self.dr_array 
+        else: 
+            n = self.number_density_array
         return (
             4 * np.pi *
             np.sum(
-                self.normalized_distrib_array
-                * self.r_array**2 
-                * self.dr_array, axis=0
+                self.number_density_array
+                * self.r_array**2, axis=0
             )
             / np.sum(
-                self.normalized_distrib_array
-                * self.dr_array, axis=0
+                self.number_density_array, axis=0
             )
         )
 
@@ -209,7 +218,7 @@ class PtSizeDistribution:
             _, ax = plt.subplots()
 
         ax.plot(self.r_array,
-                self.normalized_distrib_array,
+                self.number_density_array,
                 label=label)
 
     
