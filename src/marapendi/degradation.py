@@ -23,6 +23,7 @@ from .tools import potential_activation
 from .catalyst_layers import CatalystLayer
 from scipy.stats import lognorm, norm
 from scipy.interpolate import interp1d 
+from scipy.special import lambertw
 import matplotlib.pyplot as plt
 
 
@@ -460,8 +461,130 @@ class PlatinumOxideFormation:
             )
             * proton_ratio**2
         )
+    
+# ======================================================================
+# Oxide place-exchange kinetics
+# ======================================================================
 
+@dataclass
+class OxidePlaceExchange:
+    """
+    Oxide place exchange reaction kinetics.
 
+    Model based on:
+    Schneider et al. (2019), J. Electrochem. Soc.
+    """
+
+    forward_rate_constant: float = 1.e-21
+    backward_rate_constant: float = 1.e-19
+    reference_potential: float = 1.2
+    transfer_coeff: float = 0.5
+    omega_forward: float = 10e6
+    omega_backward: float = 90e6
+
+    def forward_rate(
+            self, 
+            potential,
+            platinum_oxide_coverage,
+            temperature 
+    ): 
+        return (
+            self.forward_rate_constant 
+            * platinum_oxide_coverage 
+            * potential_activation(
+                self.transfer_coeff,
+                1,
+                temperature,
+                potential
+                - self.reference_potential
+                + (
+                    self.omega_forward
+                    * platinum_oxide_coverage
+                    / (ct.faraday * self.transfer_coeff)
+                )
+            )
+        )
+    def rate_of_reaction(
+        self,
+        platinum_oxide_coverage,
+        place_exchanged_oxide_coverage, 
+        potential,
+        temperature,
+    ):
+        """
+        Net place-exchanged oxide formation rate [kmol/m²/s].
+        """
+        RT = ct.gas_constant * temperature
+
+        forward_rate = self.forward_rate(
+            potential, 
+            platinum_oxide_coverage, 
+            temperature
+        )
+        backward_rate = (
+            self.backward_rate_constant
+            * place_exchanged_oxide_coverage
+            * potential_activation(
+                self.transfer_coeff,
+                1,
+                temperature,
+                + (
+                    self.omega_backward
+                    * place_exchanged_oxide_coverage
+                    / (ct.faraday * self.transfer_coeff)
+                )
+            )
+        )
+
+        return forward_rate - backward_rate
+    
+    def limiting_coverage(
+        self, 
+        potential, 
+        platinum_oxide_coverage, 
+        temperature
+    ): 
+        RT = ct.gas_constant * temperature 
+        forward_rate = self.forward_rate(
+            potential, 
+            platinum_oxide_coverage, 
+            temperature
+        )
+        return (
+            RT / self.omega_backward 
+            * np.real(lambertw(
+                forward_rate 
+                * self.omega_backward 
+                / (self.backward_rate_constant * RT))
+            )
+        )
+    
+# ======================================================================
+# Cathodic dissolution
+# ======================================================================            
+
+@dataclass
+class CathodicDissolution:
+    """
+    Cathodic platinum dissolution kinetics.
+
+    Model based on:
+    Schneider et al. (2019), J. Electrochem. Soc.
+    """
+
+    rate_constant: float = 1.4e-8
+
+    def rate_of_reaction(
+            self, 
+            place_exchanged_oxide_coverage, 
+            limiting_place_exchanged_coverage
+    ):
+        return self.rate_constant * np.maximum(
+            place_exchanged_oxide_coverage 
+            - limiting_place_exchanged_coverage, 
+            0
+        )
+    
 # ======================================================================
 # Platinum oxide dissolution
 # ======================================================================
@@ -547,6 +670,13 @@ class PtDissolution:
         default_factory=PlatinumOxideDissolution
     )
 
+    platinum_cathodic_dissolution: CathodicDissolution = field(
+        default_factory=CathodicDissolution
+    )
+    platinum_oxide_place_exchange: OxidePlaceExchange = field(
+        default_factory=OxidePlaceExchange
+    )
+
     catalyst_layer: CatalystLayer = field(
         default_factory=CatalystLayer
     )
@@ -555,6 +685,7 @@ class PtDissolution:
         self,
         dissolved_platinum_concentration,
         platinum_oxide_coverage,
+        place_exchanged_oxide_coverage, 
         proton_concentration,
         potential,
         temperature,
@@ -577,7 +708,7 @@ class PtDissolution:
         Schneider et al. J. Electrochem. Soc. 2019, 166 (4), F322–F333.
         Darling; Meyers. J. Electrochem. Soc. 2003, 150 (11), A1523.
         """
-
+        
         r_particles = self.catalyst_layer.platinum_size_distribution.r_array
         N_particles = self.catalyst_layer.platinum_size_distribution.number_density_array
         # ---- Reaction rates
@@ -609,11 +740,29 @@ class PtDissolution:
             self.platinum_oxide_formation,
         )
 
+        r4 = self.platinum_oxide_place_exchange.rate_of_reaction(
+            platinum_oxide_coverage,
+            place_exchanged_oxide_coverage,
+            potential, 
+            temperature
+        )
+
+        theta_OPt_lim = self.platinum_oxide_place_exchange.limiting_coverage(
+            potential,
+            platinum_oxide_coverage,
+            temperature 
+        )
+
+        r5 = self.platinum_cathodic_dissolution.rate_of_reaction(
+            place_exchanged_oxide_coverage, 
+            theta_OPt_lim
+        )
+
         # --------------------------------------------------------------
         # Particle shrinkage due to Pt dissolution and oxide formation 
         # --------------------------------------------------------------
         r_particles_time_derivative = (
-            -platinum.molar_volume * (r1 + r2)
+            -platinum.molar_volume * (r1 + r3 + r5)
         )
 
         # --------------------------------------------------------------
@@ -640,7 +789,7 @@ class PtDissolution:
             * np.sum(
                 4 * np.pi
                 * r_particles**2
-                * (r1 + r3)
+                * (r1 + r3 + r5)
                 * N_particles,
                 axis=0
                 ) - platinum_band_sink
@@ -651,14 +800,23 @@ class PtDissolution:
         # ------------------------------------------------------------
         active_sites_per_platinum_area = 2.18e-8 # Assumes 210 uC/cm2 Pt in the H2 adsorption region, as in Schneider et al. (2019). 
         platinum_oxide_coverage_time_derivative = (
-            (r2 - r3) / active_sites_per_platinum_area  + 
+            (r2 - r3 - r4) / active_sites_per_platinum_area  + 
             - r_particles_time_derivative * 
             (2 * platinum_oxide_coverage / r_particles)
         ) 
 
+        # --------------------------------------------------------------
+        # Place-exchanged oxide coverage
+        # ------------------------------------------------------------
+        place_exchanged_oxide_coverage_time_derivative = (
+            (r4 - r5) / active_sites_per_platinum_area  + 
+            - r_particles_time_derivative * 
+            (2 * place_exchanged_oxide_coverage / r_particles)
+        ) 
 
         return (
             r_particles_time_derivative,
             dissolved_platinum_concentration_time_derivative,
-            platinum_oxide_coverage_time_derivative
+            platinum_oxide_coverage_time_derivative, 
+            place_exchanged_oxide_coverage_time_derivative
         )
