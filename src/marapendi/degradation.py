@@ -121,7 +121,7 @@ class PtSizeDistribution:
                 * self.dr_array 
             )
         else: 
-            n_poins = len(self.r_array)
+            self.n_points = len(self.r_array)
 
         # Conversion between geometrical surface and ECSA
         self.ecsa_to_particle_average_surface_ratio = (
@@ -424,7 +424,6 @@ class PlatinumOxideFormation:
 
     def rate_of_reaction(
         self,
-        dissolved_platinum_concentration,
         platinum_oxide_coverage,
         proton_concentration,
         potential,
@@ -757,7 +756,6 @@ class PtDissolution:
         )
 
         r_ox = self.platinum_oxide_formation.rate_of_reaction(
-            dissolved_platinum_concentration,
             platinum_oxide_coverage,
             proton_concentration,
             potential,
@@ -821,13 +819,13 @@ class PtDissolution:
         # --------------------------------------------------------------
         dissolved_platinum_concentration_time_derivative = (
             1. / self.catalyst_layer.ionomer_vol_fraction
-            * np.sum(
+            * (np.sum(
                 4 * np.pi
                 * particle_radius**2
                 * (r_a_diss + r_chem + r_c_diss)
                 * particle_number_density,
                 axis=0
-                ) - platinum_band_sink
+                ) - platinum_band_sink)
         )
 
         # --------------------------------------------------------------
