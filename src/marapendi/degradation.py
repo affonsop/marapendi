@@ -650,8 +650,8 @@ class PlatinumOxideDissolution:
 # ======================================================================
 @dataclass
 class CarbonCorrosion: 
-    rate_constant: float = 1.5e-19
-    potenital_dependency: float = 19 
+    rate_constant: float = 1.5e-22
+    potential_dependency: float = 19 
     reference_potential: float = 0.2
 
     def reaction_rate(
@@ -661,7 +661,7 @@ class CarbonCorrosion:
         return (
             self.rate_constant 
             * np.exp(
-                self.potenital_dependency
+                self.potential_dependency
                 * (potential - self.reference_potential) 
             )
         )
