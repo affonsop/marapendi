@@ -111,7 +111,7 @@ class KOH_solution(ElectrolyteSolution):
         super().__post_init__()
         self.electrolyte_molecular_weight = 56.105
 
-    def calculate_density(self, temperature=None):
+    def calculate_density(self, temperature=300):
         """
         Calculate solution density using correlation from Hodges et al. (2023).
 
@@ -131,13 +131,11 @@ class KOH_solution(ElectrolyteSolution):
         ---------
         Hodges, A. et al. J. Chem. Eng. Data 68, 1485–1506 (2023).
         """
-        if not temperature: 
-            temperature = self.temperature
         T = temperature - 273.15
         return (5.1998e-6 * T ** 3 - 39.771334e-4 * T ** 2 -
                 848.089182e-4 * T + 1001.5409980109) * np.exp(0.0086 * self.weight_percent)
 
-    def calculate_ionic_conductivity(self, temperature=None):
+    def calculate_ionic_conductivity(self, temperature=300):
         """
         Calculate ionic conductivity using correlations from Hodges et al. (2023).
 
@@ -150,8 +148,6 @@ class KOH_solution(ElectrolyteSolution):
         ---------
         Hodges, A. et al. J. Chem. Eng. Data 68, 1485–1506 (2023).
         """
-        if not temperature: 
-            temperature = self.temperature
         low_temp_cond = 100 * self.molarity * (-2.041 - 0.0028 * self.molarity +
             0.005332 * temperature + 207.2 / temperature +
             0.001043 * self.molarity ** 2 - 3e-7 * self.molarity * temperature ** 2)

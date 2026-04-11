@@ -64,7 +64,7 @@ class BakerChannelGasResistanceModel:
         float
             Channel convection resistance [s/m].
         """
-        return self.B_ch * channel.length / channel.half_width * channel.total_flow_section / volume_flow_rate
+        return self.B_ch * channel.length / channel.half_width * channel.total_flow_section / (volume_flow_rate + 1e-12)
 
     def total_resistance(self, channel, diffusion_coefficient, volume_flow_rate):
         """
@@ -143,7 +143,7 @@ class ChannelGasResistanceModel:
         float
             Channel convection resistance [s/m].
         """
-        return self.B_ch * channel.length * channel.width * (1 + 1/channel.channel_land_ratio) / 2 * channel.n_parallel / volume_flow_rate
+        return self.B_ch * channel.length * channel.width * (1 + 1/channel.channel_land_ratio) / 2 * channel.n_parallel / (volume_flow_rate + 1e-12)
 
     def total_resistance(self, channel, diffusion_coefficient, volume_flow_rate):
         """
@@ -192,7 +192,7 @@ class PorousGasResistanceModel:
         float
             Correction factor [-].
         """
-        return np.clip(1 - water_saturation, 0, 1) ** self.water_saturation_exponent
+        return np.clip(1 - water_saturation, 1e-6, 1) ** self.water_saturation_exponent
     
     def molecular_diffusion_effective_length(self, layer, water_saturation=0):
         """

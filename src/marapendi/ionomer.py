@@ -74,7 +74,10 @@ class CatalystLayerIonomer(Membrane):
         """
         water_mass = water_molecular_weight * water_content
         return 1 + self.dry_density * water_mass / self.equivalent_weight / water_density(temperature)
-
+    
+    def tortuosity(self, volume_fraction): 
+        return volume_fraction ** (-0.5)
+    
     def charge_conductivity(self, water_content, temperature, charge='proton'):
         """
         Compute charge conductivity (proton or hydroxide).
@@ -200,10 +203,16 @@ class PFSAIonomer(CatalystLayerIonomer):
         """
         return 21.669 * rh ** 3 - 27.692 * rh ** 2 + 17.624 * rh + 0.688
 
+    def tortuosity(self, volume_fraction): 
+        """"
+        Tortuosity is calculated according to the equation used by Hao et al. (2016)
+        """
+        return np.where(volume_fraction > 0.16, 1, 0.0845 * (np.maximum(0.1, volume_fraction) - 0.04) ** -1.17)
+
 NafionD2020 = PFSAIonomer(dry_density=2004., equivalent_weight=952.)
 
 @dataclass
-class PAPIonomer(CatalystLayerIonomer):
+class PAPIonomer(PAP85, CatalystLayerIonomer):
     """
     A class representing a PAP ionomer, extending the CatalystLayerIonomer class.
     This class includes properties and methods for calculating hydroxide conductivity.
@@ -227,33 +236,5 @@ class PAPIonomer(CatalystLayerIonomer):
         Calculate the hydroxide conductivity based on water content and temperature.
     """
     # Data from Luo et al. (2020), table 1. 
-    dry_density: float = 1220.
-    equivalent_weight: float = 1000/2.35
 
-    def hydroxide_conductivity(self, water_content, temperature):
-        """
-        Calculate the hydroxide conductivity of the ionomer based on water content and temperature.
-
-        Parameters
-        ----------
-        water_content : float
-            The water content of the membrane (not used in calculation but kept for consistency).
-        temperature : float
-            The temperature in Kelvin (K).
-
-        Returns
-        -------
-        float
-            The hydroxide conductivity of the membrane in Siemens per meter (S/m).
-        
-        References
-        ----------
-        Luo, X. et al. J. Memb. Sci. 598, 117680 (2020)
-        Khalid, H. et al. Membranes (Basel) 12, 989 (2022).
-        """
-        # Room-temperature conductivity for liquid-equilibrated from Luo et al. (2020) with
-        # activation energy from Khalid et al. (2022) for PAP-20. Liquid-equilibrated.
-        return 5.8 * arrhenius_term(activation_energy=22.5e6,
-                                              temperature=temperature,
-                                              reference_temperature=298.15)
     

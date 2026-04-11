@@ -275,7 +275,6 @@ class PtCCatalystLayer(CatalystLayer):
     def ionomer_sheet_charge_resistance(self, ionomer_water_content, temperature, charge='proton'):
         """
         Compute ionomer film proton resistance.
-        Tortuosity is calculated according to the equation used by Hao et al. (2016)
 
         Parameters
         ----------
@@ -297,7 +296,7 @@ class PtCCatalystLayer(CatalystLayer):
         """
         ionomer_charge_conductivity = self.ionomer.charge_conductivity(ionomer_water_content, temperature, charge)
         eps_ion = self.ionomer_vol_fraction
-        tort_ion = np.where(eps_ion > 0.16, 1, 0.0845 * (np.maximum(0.1, eps_ion) - 0.04) ** -1.17)
+        tort_ion = self.ionomer.tortuosity(self.ionomer_vol_fraction)
         return self.thickness / (eps_ion / tort_ion * ionomer_charge_conductivity)
 
     def o2_ionomer_film_bulk_resistance(self, ionomer_water_content, temperature):

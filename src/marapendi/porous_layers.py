@@ -70,6 +70,9 @@ class PorousLayer():
         self.cosinus_contact_angle = np.abs(np.cos(np.pi / 180 * self.contact_angle))
         self.capillary_pressure_J_ratio = 1
         self.saturation_flow_resistance = 1
+        if self.contact_angle < 90: 
+            self.non_wetting_phase = 'gas'
+            self.wetting_phase = 'water'
         self.set_gas_temperature_and_pressure(self.gas.temperature, self.gas.pressure)
 
     def o2_mole_fraction(self):
@@ -293,7 +296,7 @@ class PorousLayer():
         Returns
         -------
         float
-            Saturation concentration in mol/m³.
+            Saturation concentration in kmol/m³.
         """
         return self.saturation_pressure() / self.RT
 
@@ -304,7 +307,7 @@ class PorousLayer():
         Returns
         -------
         float
-            Vapor concentration in mol/m³.
+            Vapor concentration in kmol/m³.
         """
         return self.vapor_pressure() / self.RT
     
@@ -342,6 +345,18 @@ class PorousLayer():
         """
         return self.thickness / self.thermal_conductivity
 
+    def calculate_darcy_flow_resistance(self): 
+        self.darcy_flow_resistance = {
+            'water': (
+                (self.thickness * water_kinematic_viscosity(self.temperature) * water_molecular_weight) / 
+                self.absolute_permeability
+            ),
+            'gas': (
+                (self.thickness * self.gas.mixture_kinematic_viscosity * self.gas.mixture_molecular_weight) / 
+                self.absolute_permeability
+            )
+        }
+        
     def calculate_saturation_flow_resistance(self, electrolyte=None):
         """
         Computes the resistance to non-wetting phase flow of the layer. 
@@ -398,3 +413,9 @@ class PorousLayer():
             Capillary pressure in Pascals (Pa).
         """
         return self.two_phase_transport_model.capillary_pressure_from_saturation(self, saturation)
+
+    def set_ionomer_wet_properties(self, ionomer_water_content, temperature):
+        pass
+
+    def set_water_film_thickness(self, water_saturation): 
+        pass
