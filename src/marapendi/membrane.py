@@ -6,7 +6,7 @@ import numpy as np
 import cantera as ct 
 from dataclasses import dataclass, field
 from marapendi.tools import arrhenius_term
-from marapendi.water import water_molar_volume
+from marapendi.water import water_molar_volume, water_molecular_weight, water_density
 from marapendi.water_balance_models import MembraneWaterBalanceModel
 from marapendi.membrane_permeation_models import HydrogenPermeationModel 
 
@@ -76,6 +76,11 @@ class Membrane:
     water_diffusivity_activation_energy: float = 20e6
     water_absorption_activation_energy: float = 20e6
 
+    reference_water_content: float = 15.01 # Default from Grimaldi et al. (2023)
+    reference_liquid_water_content: float = 22. 
+    eta_adsorption: float = 0.4712 # Default from Grimaldi et al. (2023)
+    characteristic_adsorption_energy: float = 1.047e6 # Default from Grimaldi et al. (2023)
+
     def __post_init__(self):
         """
         Compute derived properties of the membrane after initialization.
@@ -84,6 +89,48 @@ class Membrane:
         self.dry_molar_volume = 1. / self.dry_concentration  # m³/kmol
         self.surface_concentration = self.dry_concentration * self.dry_thickness
 
+    def wet_density(self, water_content, temperature):
+        """
+        Compute the wet density of the ionomer.
+
+        Parameters
+        ----------
+        water_content : float
+            Water content in the ionomer [n.d.].
+        temperature : float
+            Temperature [K].
+
+        Returns
+        -------
+        float
+            Wet density [kg/m3].
+        """
+        water_mass = water_molecular_weight * water_content
+        return self.equivalent_weight + water_mass / (self.equivalent_weight / self.dry_density + water_mass / water_density(temperature))
+
+    
+    def wet_expansion_factor(self, water_content, temperature):
+        """
+        Compute volumetric expansion factor due to water uptake.
+
+        Parameters
+        ----------
+        water_content : float
+            Water content [n.d.].
+        temperature : float
+            Temperature [K].
+
+        Returns
+        -------
+        float
+            Expansion factor relative to dry volume.
+        """
+        water_mass = water_molecular_weight * water_content
+        return 1 + self.dry_density * water_mass / self.equivalent_weight / water_density(temperature)
+    
+    def tortuosity(self, volume_fraction): 
+        return volume_fraction ** (-0.5)
+    
     def water_vol_fraction(self, water_content: float, water_molar_volume: float) -> float:
         """
         Calculate the volume fraction of water in the membrane.
@@ -278,6 +325,80 @@ class Membrane:
         return (self.calculate_electroosmotic_drag_coefficient(temperature, 1) *
                 current_density / ct.faraday /
                 self.dry_concentration)
+    
+    def equilibrium_water_content(self, rh, temperature, s_relax=None):
+        """
+        Calculate the equilibrium water content based on relative humidity and temperature.
+        Uses the Dubinin–Astakhov (DA) model as in Grimaldi et al. (2023). 
+
+        Parameters
+        ----------
+        rh : float
+            Relative humidity, a value between 0 and 1.
+        temperature : float
+            Temperature in Kelvin (K).
+        s_relax : float
+            Membrane relaxation term, a value between 0 and 1.
+
+        Returns
+        -------
+        float
+            The equilibrium water content of the membrane.
+        
+        References
+        ----------
+        Grimaldi et al. J. Power Sources (2023).
+        """
+        rh = np.clip(rh, .01, .99)
+        A = -ct.gas_constant * temperature * np.log(rh) 
+        return np.exp(-(A / self.characteristic_adsorption_energy)**self.eta_adsorption) * self.reference_water_content
+    
+    def equilibrium_water_content_derivative(self, rh, temperature, s_relax=None):
+        """
+        Calculate the equilibrium water content based on relative humidity and temperature.
+        Uses the Dubinin–Astakhov (DA) model as in Grimaldi et al. (2023). 
+
+        Parameters
+        ----------
+        rh : float
+            Relative humidity, a value between 0 and 1.
+        temperature : float
+            Temperature in Kelvin (K).
+        s_relax : float
+            Membrane relaxation term, a value between 0 and 1.
+
+        Returns
+        -------
+        float
+            The equilibrium water content of the membrane.
+        
+        References
+        ----------
+        Grimaldi et al. J. Power Sources (2023).
+        """
+        rh = np.clip(rh, .01, .99)
+        A = -ct.gas_constant * temperature * np.log(rh) 
+        K = self.eta_adsorption * (A / self.characteristic_adsorption_energy)**(self.eta_adsorption-1) * (ct.gas_constant * temperature / rh / self.characteristic_adsorption_energy)
+        return K * np.exp(-(A / self.characteristic_adsorption_energy)**self.eta_adsorption) * self.reference_water_content
+
+    def liquid_equilibrium_water_content(self, temperature):
+        """
+        Calculate the liquid-equilibrated water content based on temperature.
+
+        Parameters
+        ----------
+        temperature : float
+            Temperature in Kelvin (K).
+
+
+        Returns
+        -------
+        float
+            The equilibrium water content of the membrane.
+        
+        """
+        return self.reference_liquid_water_content
+
 @dataclass
 class PFSA(Membrane):
     """
@@ -455,8 +576,40 @@ class PFSA(Membrane):
         average_conductivity = (1-water_saturation) * vapor_equilibrated_conductivity + water_saturation * liquid_equilibrated_conductivity
         return self.dry_thickness / average_conductivity
 
+@dataclass 
+class AEM(Membrane): 
+    
+    def proton_conductivity(self, water_content, temperature):
+        """
+        Proton conductivity using empirical fits.
+
+        Returns
+        -------
+        float
+            Proton conductivity [S/m].
+        """
+        return 1e-6 
+    
+    def calculate_electroosmotic_drag_coefficient(self, temperature, water_content):
+        """
+        Calculate the electroosmotic drag coefficient based on temperature and water content.
+
+        Parameters
+        ----------
+        temperature : float 
+            The temperature at which to calculate the EOD coefficient (K).
+        water_content : float
+            The membrane water content (n.d.).
+
+        Returns
+        -------
+        float
+            The calculated electroosmotic drag coefficient (n.d.).
+        """
+        return - water_content / 14
+
 @dataclass
-class FAA3(Membrane):
+class FAA3(AEM):
     """
     A class representing an FAA3 membrane, extending the Membrane class.
     This class includes properties and methods for calculating hydroxide conductivity.
@@ -506,7 +659,7 @@ class FAA3(Membrane):
                                               reference_temperature=298.15)
 
 @dataclass
-class PAP85(Membrane):
+class PAP85(AEM):
     """
     A class representing a PAP85 membrane, extending the Membrane class.
     This class includes properties and methods for calculating hydroxide conductivity.
@@ -532,7 +685,16 @@ class PAP85(Membrane):
     # Data from Luo et al. (2020), table 1. 
     dry_density: float = 1220.
     equivalent_weight: float = 1000/2.35
+    reference_water_diffusivity: float = 4e-10
+    reference_absorption_coefficient: float = 1e-6
+    reference_temperature: float = 303.15
+    reference_liquid_water_content: float = 14. 
+    water_diffusivity_activation_energy: float = 20e6 * 2.37
+    water_absorption_activation_energy: float = 20e6 * 2.37
 
+    def equilibrium_water_content(self, rh, temperature, s_relax=None):
+        return np.polyval([14.41, -14.81, 13.13, 0], rh) 
+    
     def hydroxide_conductivity(self, water_content, temperature):
         """
         Calculate the hydroxide conductivity of the membrane based on water content and temperature.
@@ -556,7 +718,7 @@ class PAP85(Membrane):
                                               reference_temperature=298.15)
     
 @dataclass
-class SustainionX3750RT(Membrane):
+class SustainionX3750RT(AEM):
     """
     A class representing a Sustainion X37-50 RT membrane membrane, extending the Membrane class.
     This class includes properties and methods for calculating hydroxide conductivity.
@@ -580,6 +742,7 @@ class SustainionX3750RT(Membrane):
     dry_thickness: float = 50e-6 
     ref_hydroxide_conductivity: float = 11.6
     conductivity_activation_energy: float = 10.7e6
+
     def hydroxide_conductivity(self, water_content, temperature):
         """
         Calculate the hydroxide conductivity of the membrane based on water content and temperature.
