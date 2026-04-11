@@ -1,5 +1,6 @@
 import numpy as np
 import cantera as ct 
+from scipy.linalg import solve
 from dataclasses import dataclass, field
 from marapendi.tools import arrhenius_term
 from marapendi.water import water_molar_volume, water_dynamic_viscosity
@@ -424,12 +425,12 @@ class MembraneWaterBalanceModel:
 
     def _store_vapor_equilibrium_state(self, cell):
         """Store water fluxes and profiles after applying the vapor-equilibrium condition."""
-        cell.ca.vapor_eq_sat_membrane_water_flux   = cell.ca.membrane_water_flux
-        cell.ca.vapor_eq_sat_water_flux            = cell.ca.water_flux
-        cell.ca.vapor_eq_sat_liquid_flux           = cell.ca.liquid_flux
-        cell.ca.vapor_eq_water_content              = cell.ca.cl.eq_water_content 
-        cell.membrane.vapor_eq_sat_water_profile         = self.water_content_profile
-        cell.membrane.vapor_eq_sat_water_derivative_profile = self.water_content_derivative_profile
+        cell.ca.vapor_eq_sat_membrane_water_flux   = cell.ca.membrane_water_flux.copy()
+        cell.ca.vapor_eq_sat_water_flux            = cell.ca.water_flux.copy()
+        cell.ca.vapor_eq_sat_liquid_flux           = cell.ca.liquid_flux.copy()
+        cell.ca.vapor_eq_water_content              = cell.ca.cl.eq_water_content.copy()
+        cell.membrane.vapor_eq_sat_water_profile         = self.water_content_profile.copy()
+        cell.membrane.vapor_eq_sat_water_derivative_profile = self.water_content_derivative_profile.copy()
 
 
     def _apply_liquid_equilibrium_condition(self, cell):
@@ -457,12 +458,12 @@ class MembraneWaterBalanceModel:
 
     def _store_liquid_equilibrium_state(self, cell):
         """Store water fluxes and profiles after applying the liquid-equilibrium condition."""
-        cell.ca.liquid_eq_sat_membrane_water_flux    = cell.ca.membrane_water_flux
-        cell.ca.liquid_eq_sat_water_flux             = cell.ca.water_flux
-        cell.ca.liquid_eq_sat_liquid_flux            = cell.ca.liquid_flux
-        cell.ca.liquid_eq_water_content              = cell.ca.cl.eq_water_content 
-        cell.membrane.liquid_eq_sat_water_profile          = self.water_content_profile
-        cell.membrane.liquid_eq_sat_water_derivative_profile = self.water_content_derivative_profile
+        cell.ca.liquid_eq_sat_membrane_water_flux    = cell.ca.membrane_water_flux.copy()
+        cell.ca.liquid_eq_sat_water_flux             = cell.ca.water_flux.copy()
+        cell.ca.liquid_eq_sat_liquid_flux            = cell.ca.liquid_flux.copy()
+        cell.ca.liquid_eq_water_content              = cell.ca.cl.eq_water_content.copy()
+        cell.membrane.liquid_eq_sat_water_profile          = self.water_content_profile.copy()
+        cell.membrane.liquid_eq_sat_water_derivative_profile = self.water_content_derivative_profile.copy()
 
 
     def _compute_non_wetting_saturation(self, cell, n_iter=5):
@@ -513,8 +514,10 @@ class MembraneWaterBalanceModel:
             cathode.cl.capillary_pressure_J_ratio
             / cathode.gdl.capillary_pressure_J_ratio
         )
+
         modified_abs_permeability = (
-            1. / cathode.gdl.saturation_flow_resistance
+            np.ones_like(cell.current_density)
+            * 1. / cathode.gdl.saturation_flow_resistance
             * gdl_J_function_exponent / (gdl_permeability_exponent + gdl_J_function_exponent)
             * cl_to_gdl_capillary_pressure_ratio ** (gdl_permeability_exponent / gdl_J_function_exponent + 1)
         )[liquid_equilibrated_mask]
@@ -560,18 +563,18 @@ class MembraneWaterBalanceModel:
 
     def _blend_equilibrium_profiles(self, cell):
         """Linearly interpolate water content profiles between vapor- and liquid-equilibrium states, weighted by non-wetting saturation."""
-        non_wetting_saturation = cell.ca.cl.non_wetting_saturation
+        liquid_saturation = cell.ca.cl.liquid_saturation
         self.water_content_profile = (
-            cell.membrane.vapor_eq_sat_water_profile * (1 - non_wetting_saturation)
-            + cell.membrane.liquid_eq_sat_water_profile * non_wetting_saturation
+            cell.membrane.vapor_eq_sat_water_profile * (1 - liquid_saturation)
+            + cell.membrane.liquid_eq_sat_water_profile * liquid_saturation
         )
         self.water_content_derivative_profile = (
-            cell.membrane.vapor_eq_sat_water_derivative_profile * (1 - non_wetting_saturation)
-            + cell.membrane.liquid_eq_sat_water_derivative_profile * non_wetting_saturation
+            cell.membrane.vapor_eq_sat_water_derivative_profile * (1 - liquid_saturation)
+            + cell.membrane.liquid_eq_sat_water_derivative_profile * liquid_saturation
         )
         cell.ca.cl.eq_water_content =  (
-            cell.ca.vapor_eq_water_content * (1 - non_wetting_saturation)
-            + cell.ca.liquid_eq_water_content * non_wetting_saturation
+            cell.ca.vapor_eq_water_content * (1 - liquid_saturation)
+            + cell.ca.liquid_eq_water_content * liquid_saturation
         )
         cell.membrane.water_content = np.mean(self.water_content_profile, axis=0)
 
@@ -590,3 +593,97 @@ class MembraneWaterBalanceModel:
         cell.an.membrane_water_flux = -cell.ca.membrane_water_flux
         cell.ca.water_flux = cell.ca.h2o_production + cell.ca.membrane_water_flux
         cell.an.water_flux = cell.an.h2o_production + cell.an.membrane_water_flux
+
+@dataclass 
+class MatrixMembraneWaterBalanceModel: 
+    def solve_water_balance(self, cell): 
+        
+        memb = cell.membrane
+        memb.water_diffusion_resistance = (
+            memb.dry_thickness
+            / (memb.calculate_water_diffusivity(memb.temperature) * memb.dry_concentration)
+        )
+
+        liquid_to_vapor_absorption_factor = 1 
+
+        for side in (cell.ca, cell.an): 
+            cl = side.cl
+            s = cl.liquid_saturation 
+
+            cl.ionomer_absorption_coefficient = cl.ionomer.calculate_water_absorption_coefficient(
+                cl.temperature) 
+            
+            cl.vapor_eq_water_content = cl.ionomer.equilibrium_water_content(cl.relative_humidity(), cl.temperature)
+            cl.liquid_eq_water_content = cl.ionomer.liquid_equilibrium_water_content(cl.temperature)
+            cl.eq_water_content = (
+                (1-s) * cl.vapor_eq_water_content 
+                + s * cl.liquid_eq_water_content * liquid_to_vapor_absorption_factor
+            ) / (1-s + s * liquid_to_vapor_absorption_factor)
+            cl.absorption_coefficient = (
+                ((1-s) +  s * liquid_to_vapor_absorption_factor) 
+                * cl.ionomer.calculate_water_absorption_coefficient(cl.temperature) 
+            ) * cl.ionomer.dry_concentration
+            cl.ionomer_water_resistance = (
+                cl.thickness / 
+                (
+                    cl.ionomer.dry_concentration
+                    * cl.ionomer.calculate_water_diffusivity(cl.temperature)
+                    * cl.ionomer_vol_fraction 
+                    / cl.ionomer.tortuosity(cl.ionomer_vol_fraction)
+                )
+            )
+
+            side.eq_water_resistance = 0.5 * (memb.water_diffusion_resistance + cl.ionomer_water_resistance)
+            side.biot_number = cl.absorption_coefficient * side.eq_water_resistance
+            side.peclet_number = (
+                memb.calculate_electroosmotic_drag_speed(memb.temperature, cell.current_density)
+                * memb.dry_concentration * side.eq_water_resistance
+            )
+        
+        # EOD flux goes from side 2 to side 1 
+        if np.any(cell.an.peclet_number > 0): 
+            side_1 = cell.ca
+            side_2 = cell.an 
+        else: 
+            side_1 = cell.an
+            side_2 = cell.ca
+
+        resistance_ratio = side_1.eq_water_resistance / side_2.eq_water_resistance
+        A = np.zeros((len(cell.current_density), 3, 3))
+        b = np.zeros((len(cell.current_density), 3, 1))
+
+        A[...,0,0] = 1
+        A[...,0,1] = (resistance_ratio + np.abs(side_1.peclet_number))
+        A[...,0,2] = - (1 + resistance_ratio + np.abs(side_1.peclet_number))
+        A[...,1,0] = (1 + side_1.biot_number)
+        A[...,1,2] = -(1 + np.abs(side_1.peclet_number))
+        A[...,2,1] = (1 + np.abs(side_2.peclet_number) + side_2.biot_number)
+        A[...,2,2] = -1
+        
+        b[...,1,0] = side_1.h2o_production * side_1.eq_water_resistance + side_1.biot_number * side_1.cl.eq_water_content
+        b[...,2,0] = side_2.h2o_production * side_2.eq_water_resistance + side_2.biot_number * side_2.cl.eq_water_content
+        
+        x = solve(A,b)
+        x = x.reshape(len(cell.current_density), 3)
+        side_1.cl.ionomer_water_content = x[...,0].copy()
+        memb.water_content      = x[...,2].copy()
+        side_2.cl.ionomer_water_content = x[...,1].copy()
+
+        for side in (side_1, side_2): 
+            cl = side.cl
+            side.water_flux = side.biot_number / side.eq_water_resistance * (cl.ionomer_water_content - cl.eq_water_content)
+            
+            side.membrane_water_flux = (
+                (memb.water_content - cl.ionomer_water_content) + 
+                np.abs(side.peclet_number) * (
+                    memb.water_content if side == side_1 
+                    else - cl.ionomer_water_content
+                )
+            ) / side.eq_water_resistance
+            if side == cell.an: 
+                print(side.water_flux, side.membrane_water_flux, side.membrane_water_flux + side.h2o_production)
+        side_1.eod_flux = side_1.peclet_number / side_1.eq_water_resistance * memb.water_content
+        side_2.eod_flux = side_2.peclet_number / side_2.eq_water_resistance * side_2.cl.ionomer_water_content
+
+        cell.ca.diff_flux = (memb.water_content - cell.ca.cl.ionomer_water_content) / cell.ca.eq_water_resistance
+        cell.an.diff_flux = (memb.water_content - cell.an.cl.ionomer_water_content) / cell.an.eq_water_resistance
