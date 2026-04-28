@@ -6,7 +6,7 @@ import numpy as np
 import cantera as ct 
 from dataclasses import dataclass, field
 from marapendi.tools import arrhenius_term
-from marapendi.water import water_molar_volume
+from .water import water_molecular_weight, water_molar_volume, water_density
 from marapendi.water_balance_models import MembraneWaterBalanceModel
 from marapendi.membrane_permeation_models import HydrogenPermeationModel 
 
@@ -104,6 +104,44 @@ class Membrane:
         membrane_water_molar_volume = water_molar_volume * water_content
         return membrane_water_molar_volume / (self.dry_molar_volume +
                                                membrane_water_molar_volume)
+
+    def wet_density(self, water_content, temperature):
+        """
+        Compute the wet density of the ionomer.
+
+        Parameters
+        ----------
+        water_content : float
+            Water content in the ionomer [n.d.].
+        temperature : float
+            Temperature [K].
+
+        Returns
+        -------
+        float
+            Wet density [kg/m3].
+        """
+        water_mass = water_molecular_weight * water_content
+        return (self.equivalent_weight + water_mass) / (self.equivalent_weight / self.dry_density + water_mass / water_density(temperature))
+
+    def wet_expansion_factor(self, water_content, temperature):
+        """
+        Compute volumetric expansion factor due to water uptake.
+
+        Parameters
+        ----------
+        water_content : float
+            Water content [n.d.].
+        temperature : float
+            Temperature [K].
+
+        Returns
+        -------
+        float
+            Expansion factor relative to dry volume.
+        """
+        water_mass = water_molecular_weight * water_content
+        return 1 + self.dry_density * water_mass / self.equivalent_weight / water_density(temperature)
 
     def hydrogen_permeation_flux(self,
                                  partial_pressure_h2: float,
