@@ -8,19 +8,19 @@ def cathode():
     return mrpd.ElectrolyzerCellSide(
         cl=mrpd.PtCCatalystLayer(
             thickness=10e-6,
-            ionomer_to_carbon_ratio=0.5,
+            ionomer_to_carbon_ratio=1./0.8,
             carbon_agglomerate_radius=25e-9,
-            platinum_loading=0.3e-2, 
-            catalyst_platinum_weight_percent=0.4,
+            platinum_loading=0.5e-2, 
+            catalyst_platinum_weight_percent=0.6,
             ionomer=mrpd.PAPIonomer(),
             contact_angle=95.,
             absolute_permeability=1e-12
         ),
         gdl=mrpd.PorousLayer(
             thickness=245e-6, 
-            porosity=0.79, 
+            porosity=0.6, 
             absolute_permeability=1e-11,
-            contact_angle=120., 
+            contact_angle=130., 
         ),
         has_mpl=False, 
         has_gdl=True, 
@@ -41,7 +41,7 @@ def anode():
             contact_angle=60.,
         ),
         gdl=mrpd.PorousTransferLayer(
-            thickness=200e-6,
+            thickness=450e-6,
             porosity=0.83, 
             ionomer_to_catalyst_ratio=0,
             fiber_diameter=20e-6,
@@ -193,33 +193,20 @@ def test_water_balance(electrolyzer_cell, wet_anode, dry_cathode):
     electrolyzer_cell.set_conditions(353.15, i, wet_anode, dry_cathode)
     electrolyzer_cell.calculate_water_transport()
     electrolyzer_cell.explicit_steady_state_model()
-    plt.plot(i, electrolyzer_cell.ca.cl.liquid_saturation)
-    plt.plot(i, electrolyzer_cell.an.cl.liquid_saturation)
-    plt.plot(i, electrolyzer_cell.ca.cl.relative_humidity())
-    plt.figure()
-    plt.plot(i, electrolyzer_cell.ca.water_flux, alpha=0.4,label='water')
-    # plt.plot(i, electrolyzer_cell.ca.f_water_flux, alpha=0.4, label='f_water')
-    plt.plot(i, electrolyzer_cell.ca.vapor_flux, alpha=0.4, label='vapor')
-    plt.plot(i, electrolyzer_cell.ca.liquid_flux, alpha=0.4, label='liquid')
-    plt.legend()
-    plt.figure()
-    plt.plot(i, electrolyzer_cell.membrane.water_content)
-    plt.plot(i, electrolyzer_cell.ca.cl.ionomer_water_content)
-    plt.plot(i, electrolyzer_cell.an.cl.ionomer_water_content)
-    plt.figure()
-    plt.plot(i, electrolyzer_cell.cell_voltage)
 
-    plt.figure()
-    plt.plot(i, electrolyzer_cell.ca.eod_flux * 1e5, '.C0')
-    plt.plot(i, electrolyzer_cell.ca.diff_flux * 1e5, 'sC0', alpha=0.5)
-    plt.plot(i, electrolyzer_cell.ca.h2o_production * 1e5, '-.C0')
-    plt.plot(i, electrolyzer_cell.ca.water_flux * 1e5, '--C0')
-    plt.plot(i, electrolyzer_cell.ca.membrane_water_flux * 1e5, '-C0')
-    plt.plot(i, electrolyzer_cell.an.membrane_water_flux * 1e5, '-C1')
-    plt.plot(i, electrolyzer_cell.an.water_flux * 1e5, '--C1')
-    plt.plot(i, electrolyzer_cell.an.h2o_production * 1e5, '-.C1')
-    plt.plot(i, electrolyzer_cell.an.eod_flux * 1e5, '.C1')
-    plt.plot(i, electrolyzer_cell.an.diff_flux * 1e5, 'sC1', alpha=0.5)
+    plt.figure(figsize=(4,3))
+    plt.plot([1,2,3,4,5], electrolyzer_cell.ca.membrane_water_flux * 1e5, '-oC1')
+    plt.bar([1,2,3,4,5],height=-electrolyzer_cell.ca.h2o_production * 1e5, bottom=0, width=.4, color='C0',alpha=0.4)
+    plt.bar([1,2,3,4,5],
+        height=(electrolyzer_cell.ca.membrane_water_flux+electrolyzer_cell.ca.h2o_production) * 1e5, 
+        bottom= -electrolyzer_cell.ca.h2o_production * 1e5, width=.4)
+    plt.ylim([0,40])
+    plt.ylabel('Water crossover rate ($\mu$mol/cm$^2$.s)')
+    plt.xlabel('Current density (A/cm$^2$)')
+    plt.xlim([0.5,5.5])
+    plt.xticks([1,2,3,4,5], labels=i*1e-4)
+    plt.tight_layout()
+    plt.savefig('./figures/test_aemwe_water_balance.png', bbox_inches='tight', dpi=300)
     plt.show()
 
     for side in (electrolyzer_cell.ca, electrolyzer_cell.an):

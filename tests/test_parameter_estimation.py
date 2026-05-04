@@ -30,9 +30,8 @@ def compute_ui_curve(current_density, fuel_cell, stack_pressure):
             stoichiometry=np.maximum(1.2, 1.2 * 0.1e4 / (current_density+1e-4))
         )
 
-        fuel_cell.set_conditions(stack_temperature, current_density,cathode_conditions, anode_conditions)
-        fuel_cell.calculate_water_transport()
-        return fuel_cell.cell_voltage()
+        fuel_cell.compute_ui_curve(current_density, stack_temperature, cathode_conditions, anode_conditions)
+        return fuel_cell.cell_voltage
 
 
 def create_fuel_cell(params): 
@@ -106,10 +105,12 @@ def create_fuel_cell(params):
 
     
 def h(params): 
-    fuel_cell = create_fuel_cell(params)
+    cell_voltages = []
+    for p in pressure_list: 
+        fuel_cell = create_fuel_cell(params)
+        cell_voltages.append(compute_ui_curve(exp_data[p]['i'].values*1e4, fuel_cell, p*1e5))
     return np.concatenate(
-         [compute_ui_curve(exp_data[p]['i'].values*1e4, fuel_cell, p*1e5)
-          for p in pressure_list]
+         cell_voltages
     )
 
 exp_voltage_list = np.concatenate(
@@ -137,7 +138,7 @@ def test_global_sensitivity(estimator):
     estimator.set_unknown_params(
         [('ecsa', (40e3, 80e3), True, '$ECSA$')]
     )
-    cosPhi_med_ij, norm_s_i, S_med, S_std, S_med_i, S_std_i, S_n, n_valid = estimator.compute_global_sensitivity(t=0, m=2,  check_samples=False, y_exp=simulated_data, rmse_limit=0.02)
+    cosPhi_med_ij, norm_s_i, S_med, S_std, S_med_i, S_std_i, S_n, n_valid, n_opt = estimator.compute_global_sensitivity(t=0, m=2,  check_samples=False, y_exp=simulated_data, rmse_limit=0.02)
     fig1, ax1 = estimator.plot_global_sensitivity(xlabel_angle=0) 
     fig2, ax2 = estimator.plot_colinearity_map(xlabel_angle=0, cmap='Blues',figsize=(5,4))
     fig1.tight_layout()
