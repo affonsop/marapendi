@@ -185,6 +185,9 @@ class FlowChannel(PorousLayer):
         self.total_flow_section = self.n_parallel * self.channel_flow_section
         PorousLayer.__post_init__(self)
 
+    def get_thickness(self):
+        return self.height
+    
     def set_inlet_stoichiometry(self, stoichiometry):
         """
         Set the inlet stoichiometric ratio.

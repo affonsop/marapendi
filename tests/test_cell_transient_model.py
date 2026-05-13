@@ -12,6 +12,7 @@ def toray_gdl_060():
     lmbd = 0.86 # Data for figure 9 in Baker et al. (2009)
     f = 1 + 0.803 * np.exp(-1.17 * lmbd) + 0.197 * np.exp(-0.164 * lmbd)
     gdl = mrpd.PorousLayer(thickness=160e-6, 
+                         porosity=0.72,
                          absolute_permeability=1e-12,
                          thermal_conductivity=1.24,
                          contact_angle=115.,
@@ -61,6 +62,7 @@ def cell(cl, toray_gdl_060):
                                                                                 number_of_electrons=2,
                                                                                 charge_transfer_coeff=1)), 
                                         gdl = mrpd.PorousLayer(thickness=160e-6, 
+                                            porosity=0.72,
                                             absolute_permeability=1e-12,
                                             thermal_conductivity=1.24,
                                             contact_angle=115.,
@@ -93,33 +95,34 @@ def cell(cl, toray_gdl_060):
                                    membrane=mrpd.PFSA())
 def test(cell):
 
-    x = np.array(
-        [[0,0,10,10,10,0,0] + 
-        [353.15] * cell.n_layers +
-        ([1e5/ct.gas_constant/353.15 * .4] * cell.n_layers + 
-         [1e5/ct.gas_constant/353.15 * .2] * cell.n_layers + 
-         [1e5/ct.gas_constant/353.15 * .0] * cell.n_layers + 
-         [1e5/ct.gas_constant/353.15 * 0.4] * cell.n_layers)  + 
-        [0.1] * cell.n_layers,
-         [0,0,12,10,7,0,0] + 
-        [343.15] * cell.n_layers +
-        [1e5/ct.gas_constant/353.15] * 4 * cell.n_layers + 
-        [0] * cell.n_layers]
+    x0 = np.array(
+        [[[10] * cell.n_layers,
+        [353.15] * cell.n_layers ,
+        [1e5/ct.gas_constant/353.15 * .4] * cell.n_layers , 
+         [1e5/ct.gas_constant/353.15 * .2] * cell.n_layers, 
+         [1e5/ct.gas_constant/353.15 * .0] * cell.n_layers, 
+         [1e5/ct.gas_constant/353.15 * 0.4] * cell.n_layers , 
+        [0.1] * cell.n_layers],
+         [[10] * cell.n_layers,
+        [353.15] * cell.n_layers ,
+        [1e5/ct.gas_constant/353.15 * .4] * cell.n_layers , 
+         [1e5/ct.gas_constant/353.15 * .2] * cell.n_layers, 
+         [1e5/ct.gas_constant/353.15 * .0] * cell.n_layers, 
+         [1e5/ct.gas_constant/353.15 * 0.4] * cell.n_layers , 
+        [0.1] * cell.n_layers]]
     ).transpose()
-    x0 = x[...,0]
+
     def f(t,x): 
-        dxdt = np.zeros_like(x)
-        dlmbddt, dsdt, dcgdt = cell.rates_of_change(x, current_density=np.where(t > 50, 1e4,0))
-       
-        dxdt[:cell.n_layers,...] = dlmbddt 
-        dxdt[2*cell.n_layers:6*cell.n_layers] = dcgdt.reshape(1,4*cell.n_layers,dcgdt.shape[-1])
-        dxdt[6*cell.n_layers:7*cell.n_layers,...] = dsdt 
+
+        dxdt = cell.rates_of_change(x, current_density=np.where(t > 50, 1e4,0))
+
         return dxdt 
     import time
     t1 = time.time()
     tf=200
-    sol = solve_ivp(f,t_span=(0,tf), y0=x0, method='BDF', vectorized=True)
-    lmbd, T, cg, s = cell.get_states_from_x(sol.y)
+
+    sol = solve_ivp(f,t_span=(0,tf), y0=x0[...,1].reshape(cell.n_layers* cell.n_variables), method='BDF', vectorized=True)
+    lmbd, T, cg, s = cell.get_states_from_x(sol.y.reshape(cell.n_layers, cell.n_variables, sol.y.shape[-1]))
     t2 = time.time()
     print(sol, tf/(t2-t1))
     plt.figure()
@@ -131,12 +134,12 @@ def test(cell):
     plt.plot(sol.t, s[cell.ca.gdl.ix,...])
     plt.figure()
     for k in [3]:
-        plt.plot(sol.t, cg[k,cell.ca.cl.ix,...] / mrpd.water_saturation_concentration(T[cell.ca.cl.ix,...]),label='ca')
-        plt.plot(sol.t, cg[k,cell.ca.gdl.ix,...]  / mrpd.water_saturation_concentration(T[cell.ca.cl.ix,...]),label='ca')
-        plt.plot(sol.t, cg[k,cell.an.cl.ix,...]  / mrpd.water_saturation_concentration(T[cell.ca.cl.ix,...]),label='an')
+        plt.plot(sol.t, cg[cell.ca.cl.ix,k,...] / mrpd.water_saturation_concentration(T[cell.ca.cl.ix,...]),label='ca')
+        plt.plot(sol.t, cg[cell.ca.gdl.ix,k,...]  / mrpd.water_saturation_concentration(T[cell.ca.cl.ix,...]),label='ca')
+        plt.plot(sol.t, cg[cell.an.cl.ix,k,...]  / mrpd.water_saturation_concentration(T[cell.ca.cl.ix,...]),label='an')
         plt.legend()
-    plt.figure()
-    plt.plot(sol.t, np.sum(cg[:,cell.ca.cl.ix,...], axis=0) * ct.gas_constant * T[cell.ca.cl.ix,...],label='ca')
-    plt.plot(sol.t, np.sum(cg[:,cell.ca.gdl.ix,...], axis=0) * ct.gas_constant * T[cell.ca.gdl.ix,...],label='ca')
+    # plt.figure()
+    # plt.plot(sol.t, np.sum(cg[cell.ca.cl.ix,...], axis=0) * ct.gas_constant * T[cell.ca.cl.ix,...],label='ca')
+    # plt.plot(sol.t, np.sum(cg[cell.ca.gdl.ix,...], axis=0) * ct.gas_constant * T[cell.ca.gdl.ix,...],label='ca')
     plt.show()
     assert False

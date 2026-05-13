@@ -74,7 +74,10 @@ class PorousLayer():
             self.non_wetting_phase = 'gas'
             self.wetting_phase = 'water'
         self.set_gas_temperature_and_pressure(self.gas.temperature, self.gas.pressure)
-
+    
+    def get_thickness(self): 
+        return self.thickness
+    
     def o2_mole_fraction(self):
         """
         Returns the mole fraction of oxygen (O₂) in the gas phase.
@@ -311,7 +314,7 @@ class PorousLayer():
         """
         return self.vapor_pressure() / self.RT
     
-    def calculate_gas_transport_resistance(self, diffusion_coefficients, temperature, liquid_saturation=0): 
+    def calculate_gas_transport_resistance(self, diffusion_coefficients, temperature, liquid_saturation=0):
         return self.transport_resistance_model.total_diffusion_resistance(
             self, 
             temperature, 

@@ -28,104 +28,133 @@ class TransientCellModel(FuelCell):
         for i, layer in enumerate(self.layers): 
             layer.ix = i 
 
-        self.x = np.zeros(
-            self.n_layers * (
+        self.n_variables = (
                 1 # ionomer
                 + 1 # temperature 
                 + 4 # gas concentrations 
-                + 1 # liquid water 
-            )
+                + 1 # liquid water
         )
+        self.i_lmbd = 0 
+        self.i_T = 1
+        self.i_cg = [2,3,4,5]
+        self.i_s = 6
+        self.thickness = np.array([layer.get_thickness() for layer in self.layers])
 
-        self.dxdt = np.zeros_like(self.x)
-        
     def get_states_from_x(self,x): 
-        lmbd = x[:self.n_layers,...]
-        T = x[self.n_layers:2*self.n_layers,...]
-        cg = x[2*self.n_layers:6*self.n_layers,...]
-        cg = cg.reshape(4, cg.shape[0] // 4, *cg.shape[1:])
-        s = x[6*self.n_layers:7*self.n_layers,...]
-        return lmbd, T, cg, s
+        lmbd = x[:, self.i_lmbd,...]
+        T = x[:, self.i_T,...]
+        cg_k = x[:, self.i_cg,...]
+        s = x[:, self.i_s,...]
+        return lmbd, T, cg_k, s
     
     def rates_of_change(self, x, current_density=0.):
-        lmbd, T, cg, s = self.get_states_from_x(x)
-        c_sat = water_saturation_concentration(T)
-        c_v = cg[-1, ...]
-        iF = current_density/ (ct.faraday)
-
-        rh = c_v / c_sat
-
-        # membrane 
-        dlmbddt = np.zeros_like(lmbd)
-        R_lmbd = np.array([layer.calculate_membrane_water_resistance(T[layer.ix,...], lmbd[layer.ix,...]) 
-                  for layer in self.ionomer_layers])
-        eff_R_lmbd = (R_lmbd[:-1,...] + R_lmbd[1:,...])/2
+        # x is a n_layers x n_states x m matrix  
         
+        x = x.reshape(self.n_layers,self.n_variables, x.shape[-1])
+
+        dxdt = np.zeros_like(x) 
+        R = np.zeros_like(x)
+        J = np.zeros((self.n_layers+1,self.n_variables, x.shape[-1]))
+        S = np.zeros_like(x) 
+        C = np.ones_like(x)
+
+        lmbd, T, cg_k, s = self.get_states_from_x(x)
+        phi = x.copy()
+
+        c_sat = water_saturation_concentration(T)
+        c_v = cg_k[:,-1, ...]
+        iF = current_density/ (ct.faraday)
+        c_g = np.sum(cg_k, axis=1)
+        
+        p_g = c_g * ct.gas_constant * T
+        
+        x_g_k = cg_k / c_g[...,np.newaxis,:] 
+        D_g = calculate_species_diffusion_coefficient(T, p_g, x_h2 = self.x_h2_mask)
+        rh = c_v / c_sat
+        rho_l = water_density(T)
+        
+        # Resistances
+        for layer in self.layers:
+            if layer in self.ionomer_layers:
+                R[layer.ix, self.i_lmbd, ...] = layer.calculate_membrane_water_resistance(T[layer.ix,...], lmbd[layer.ix,...]) 
+
+            if layer in self.porous_layers:
+                R[layer.ix, self.i_s, ...] = layer.calculate_liquid_darcy_flow_resistance(T[layer.ix,...], s[layer.ix,...])
+                R[layer.ix, self.i_cg, ...] = layer.calculate_gas_transport_resistance( 
+                        D_g[:,layer.ix,...],
+                        T[np.newaxis,layer.ix,...],
+                        liquid_saturation=s[np.newaxis,layer.ix,...], 
+                    )
+            elif layer in (self.ca.ch, self.an.ch): 
+                R[layer.ix,self.i_s,...] = 0   
+                R[layer.ix, self.i_cg, ...] = layer.transport_resistance_model.molecular_diffusion_resistance(layer, D_g[:,layer.ix,...])
+        
+        eff_R = (R[:-1,...] + R[1:,...]) / 2 + 1e-16
+   
+        # For water saturation, it is p_l which is conserved 
+        phi[:,self.i_s,...] = p_g
+        for l in self.porous_layers: 
+            phi[l.ix,self.i_s,...] += l.capillary_pressure_from_saturation(s[l.ix,...])
+        
+        # Fluxes
+        J[1:-1,...] = - (phi[1:,...] - phi[:-1,...]) / eff_R 
+        
+        # Flux boundary conditions 
+        for i_var in (self.i_cg, self.i_s):
+            J[self.an.cl.ix+1,i_var,...] = 0
+            J[self.ca.cl.ix,i_var,...] = 0
+        J[self.an.cl.ix,self.i_lmbd, ...] = 0
+        J[self.ca.cl.ix+1,self.i_lmbd, ...] = 0
+
+        # EOD flux 
         J_eod = self.membrane.calculate_electroosmotic_drag_coefficient(T, lmbd)[self.ionomer_domain,...] * iF
-        J_lmbd = - np.diff(lmbd[self.ionomer_domain,...], axis=0) / eff_R_lmbd + J_eod[:1,...]
+        J[[self.an.cl.ix+1, self.membrane.ix+1],self.i_lmbd,...] += J_eod[:1,...]
+
+        # Membrane water absorption 
         k_abs = self.membrane.calculate_water_absorption_coefficient(T)
         lmbd_eq = ((1-s) * self.membrane.equilibrium_water_content(rh, T) 
                    + s * self.membrane.liquid_equilibrium_water_content(T))
         J_abs = (k_abs * (lmbd - lmbd_eq) * self.membrane.dry_concentration)
-    
-        dlmbddt[self.an.cl.ix,...] = (-J_lmbd[0,...] - J_abs[self.an.cl.ix,...]) / (self.an.cl.ionomer_vol_fraction * self.an.cl.ionomer.dry_concentration * self.an.cl.thickness)
-        dlmbddt[self.membrane.ix,...] = (J_lmbd[0,...] - J_lmbd[1,...]) / (self.membrane.dry_concentration * self.membrane.dry_thickness)
-        dlmbddt[self.ca.cl.ix,...] = (J_lmbd[1,...] - J_abs[self.ca.cl.ix,...] + iF/2) / (self.ca.cl.ionomer_vol_fraction * self.ca.cl.ionomer.dry_concentration * self.ca.cl.thickness)
-        
-        # liquid water 
-        dsdt = np.zeros_like(s)
-        p_c = np.zeros_like(s)
-        for l in self.porous_layers: 
-            p_c[l.ix,...] = l.capillary_pressure_from_saturation(s[l.ix,...])
-        p_g = np.sum(cg, axis=0) * ct.gas_constant * T
-        print(p_c, s ** 2 * self.ca.gdl.capillary_pressure_J_ratio)
-        p_l = p_c + p_g
-
-        R_l = np.zeros_like(s)
-        for layer in self.layers:
-            R_l[layer.ix, :] = layer.calculate_liquid_darcy_flow_resistance(T[layer.ix,...], s[layer.ix,...])
-        for side in (self.an,self.ca): 
-            R_l[side.ch.ix,...] = 0  
-
-        eff_R_l = (R_l[:-1,...] + R_l[1:,...])/2
-        dp_l = np.diff(p_l, axis=0) 
-        J_l = -dp_l / eff_R_l
-        J_l[self.ca.cl.ix-1,...] = 0
-        J_l[self.an.cl.ix,...] = 0
+       
+        # Water evaporation 
         factor = np.where(c_sat > c_v, s, 1 - s)
         S_vl = 1000.0 * (c_v - c_sat) * factor
-        rho_l = water_density(T)
-        for layer in self.porous_layers: 
-            dsdt[layer.ix, ...] = ((J_l[layer.ix-1,...] - J_l[layer.ix,...]) / layer.thickness + S_vl[layer.ix, ...]) / (rho_l[layer.ix, ...] * layer.porosity)
 
-        # gas concentrations 
-        dcgdt = np.zeros_like(cg)
-        R_g = np.zeros_like(cg)
-        D_g = calculate_species_diffusion_coefficient(T, p_g, x_h2 = self.x_h2_mask)
-        for layer in self.porous_layers:
-            R_g[:,layer.ix, ...] = layer.calculate_gas_transport_resistance( 
-                T[layer.ix,...],
-                D_g[:,layer.ix,...],
-                liquid_saturation=s[layer.ix,...], 
-                )
-        R_g[:,self.membrane.ix, ...] = 1e18
+        # Source terms
+        S[self.an.cl.ix, self.i_lmbd, ...] +=  (      - J_abs[self.an.cl.ix,...]) / self.an.cl.thickness
+        S[self.ca.cl.ix, self.i_lmbd, ...] +=  (iF/2  - J_abs[self.ca.cl.ix,...]) / self.ca.cl.thickness
+        
+        S[:, self.i_s, ...] = S_vl
+        S[self.membrane.ix, self.i_s, ...] = 0
+
+        S[:, self.i_cg[-1], ...] = -S_vl 
+        
+        S[self.ca.cl.ix,self.i_cg[0],...] = (-iF/4) / self.ca.cl.thickness
+        S[self.an.cl.ix,self.i_cg[2],...] = (-iF/2) / self.an.cl.thickness
+        
         for side in (self.an, self.ca):
-            R_g[:,side.ch.ix, ...] = side.ch.transport_resistance_model.molecular_diffusion_resistance(side.ch, D_g[:,side.ch.ix,...])
-    
-        eff_R_g = (R_g[:,:-1,...] + R_g[:,1:,...])/2
-        dc_g = np.diff(cg, axis=1)
-        J_g = -dc_g / eff_R_g
-        S_g = np.zeros_like(cg)
-        S_g[-1,...] = - S_vl
-        for side in (self.an, self.ca):
-            S_g[-1,side.cl.ix] += J_abs[side.cl.ix,...] / side.cl.thickness
-        S_g[0,self.ca.cl.ix,...] = (-iF/4) / self.an.cl.thickness
-        S_g[2,self.an.cl.ix,...] = (-iF/2) / self.ca.cl.thickness
-        J_g[:,self.ca.cl.ix-1,...] = 0
-        J_g[:,self.an.cl.ix,...] = 0
-        for layer in self.porous_layers: 
-            dcgdt[:,layer.ix, ...] = ((J_g[:,layer.ix-1,...] - J_g[:,layer.ix,...]) / layer.thickness + S_g[:,layer.ix, ...]) / layer.porosity
-        return dlmbddt, dsdt, dcgdt
+            S[side.cl.ix, self.i_cg[-1], ...] += J_abs[side.cl.ix,...] / side.cl.thickness
+        S[self.membrane.ix, self.i_cg, ...] = 0
+
+        # Capacities
+        for side in (self.ca, self.an): 
+            C[side.cl.ix,self.i_lmbd,...] = (side.cl.ionomer_vol_fraction * side.cl.ionomer.dry_concentration * side.cl.thickness)
+        C[self.membrane.ix,self.i_lmbd,...] = (self.membrane.dry_concentration * self.membrane.dry_thickness)
+        for layer in self.layers: 
+            if layer != self.membrane: 
+                C[layer.ix, self.i_s, ...] = rho_l[layer.ix, ...] * layer.porosity
+                C[layer.ix, self.i_cg, ...] = layer.porosity
+
+        dxdt = ((J[:-1,...]-J[1:,...]) / self.thickness[:, np.newaxis, np.newaxis] + S) / C
+        layer = self.ca.cl
+        
+        dxdt[:,self.i_T,:] = 0
+        dxdt[self.ca.ch.ix, self.i_cg,:]=0
+        dxdt[self.an.ch.ix, self.i_cg,:]=0
+        dxdt[self.ca.ch.ix, self.i_s,:]=0
+        dxdt[self.an.ch.ix, self.i_s,:]=0
+        #print(dxdt)
+        return dxdt.reshape(self.n_layers*self.n_variables, x.shape[-1])
     
     def gas_concentration_rate_of_change(self,x, current_density=0.): 
         pass

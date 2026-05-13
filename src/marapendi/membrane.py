@@ -89,6 +89,9 @@ class Membrane:
         self.dry_molar_volume = 1. / self.dry_concentration  # m³/kmol
         self.surface_concentration = self.dry_concentration * self.dry_thickness
 
+    def get_thickness(self): 
+        return self.dry_thickness
+    
     def wet_density(self, water_content, temperature):
         """
         Compute the wet density of the ionomer.
@@ -261,7 +264,7 @@ class Membrane:
                         self.reference_temperature
                     )
                 )
-    
+
     def calculate_water_diffusivity(self, temperature, water_content=None):
         """
         Calculate the water diffusivity based on temperature.

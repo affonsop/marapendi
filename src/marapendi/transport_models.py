@@ -250,6 +250,7 @@ class PorousGasResistanceModel:
         float
             Knudsen diffusivity [m2/s].
         """
+  
         return layer.pore_diameter / 3 * np.sqrt(8 * ct.gas_constant * temperature / molecular_weight / np.pi)
     
     def total_diffusion_resistance(self, layer, temperature, diffusion_coefficient, molecular_weight, water_saturation):
