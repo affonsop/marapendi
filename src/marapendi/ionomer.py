@@ -77,6 +77,46 @@ class CatalystLayerIonomer(Membrane):
     
     def tortuosity(self, volume_fraction): 
         return volume_fraction ** (-0.5)
+
+    def hydroxide_conductivity(self, water_content, temperature):
+        """
+        Calculate the hydroxide conductivity of the ionomer based on water content and temperature.
+
+        Parameters
+        ----------
+        water_content : float
+            The water content of the membrane (not used in calculation but kept for consistency).
+        temperature : float
+            The temperature in Kelvin (K).
+
+        Returns
+        -------
+        float
+            The hydroxide conductivity of the membrane in Siemens per meter (S/m).
+        
+        """
+        # No hydroxide conductivity 
+        return 1e-6 
+    
+    def proton_conductivity(self, water_content, temperature):
+        """
+        Calculate the proton conductivity of the ionomer based on water content and temperature.
+
+        Parameters
+        ----------
+        water_content : float
+            The water content of the membrane (not used in calculation but kept for consistency).
+        temperature : float
+            The temperature in Kelvin (K).
+
+        Returns
+        -------
+        float
+            The proton conductivity of the membrane in Siemens per meter (S/m).
+        
+        """
+        # No proton conductivity 
+        return 1e-6 
     
     def charge_conductivity(self, water_content, temperature, charge='proton'):
         """
@@ -168,27 +208,8 @@ class PFSAIonomer(CatalystLayerIonomer):
         fv = self.water_vol_fraction(water_content, water_molar_volume(temperature))
         return self.conductivity_correction * 50 * (np.maximum(fv, 0.11) - 0.1) ** self.conductivity_exp * arrhenius_term(self.conductivity_activation_energy, temperature, 298.15)
 
-    def hydroxide_conductivity(self, water_content, temperature):
-        """
-        Calculate the hydroxide conductivity of the ionomer based on water content and temperature.
 
-        Parameters
-        ----------
-        water_content : float
-            The water content of the membrane (not used in calculation but kept for consistency).
-        temperature : float
-            The temperature in Kelvin (K).
-
-        Returns
-        -------
-        float
-            The hydroxide conductivity of the membrane in Siemens per meter (S/m).
-        
-        """
-        # No hydroxide conductivity 
-        return 1e-6 
-
-    def equilibrium_water_content(self, rh):
+    def equilibrium_water_content(self, rh, temperature):
         """
         Equilibrium water content as function of RH from Jinnouchi et al. (2021), fig S3a.
 
@@ -237,4 +258,3 @@ class PAPIonomer(PAP85, CatalystLayerIonomer):
     """
     # Data from Luo et al. (2020), table 1. 
 
-    

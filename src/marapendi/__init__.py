@@ -17,3 +17,4 @@ from .catalyst_layers import *
 from .degradation import * 
 from .load_cycles import *
 from .cross_validation import *
+from .cell_transient import * 

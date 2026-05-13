@@ -256,3 +256,29 @@ class GasComposition:
     
     def calculate_mixture_kinematic_viscosity(self):
         return np.sum(self.X * self.species_kinematic_viscosities * self.molecular_weights, axis=-1) / self.mixture_molecular_weight
+
+def calculate_species_diffusion_coefficient(temperature, pressure, x_h2=0):
+    """
+    Calculate the binary diffusion coefficient for a given species in the gas phase.
+
+    Uses empirical correlations based on reference values adjusted for
+    temperature and pressure. Data from Vetter and Schumacher (2019).
+
+   
+    Returns
+    -------
+    float
+        The adjusted diffusion coefficient [m^2/s].
+
+    Reference
+    ----------
+    Vetter, R. & Schumacher, J. O. Comput. Phys. Commun. 234, 223–234 (2019).
+    """
+    ("O2", "N2", "H2", "H2O")
+    reference_diffusion_coeff =np.where(x_h2 < 0, np.array([0.28e-4, 0.28e-4, 0.28e-4, 0.36e-4])[...,np.newaxis] ,
+                                np.array([1.24e-4, 1.24e-4, 1.24e-4, 1.24e-4])[...,np.newaxis])
+
+
+    # Apply temperature and pressure correction
+    # Fick's law adjustment: D ~ T^1.5 / P
+    return reference_diffusion_coeff[...,np.newaxis] * temperature ** 1.5 / pressure * 15.0682

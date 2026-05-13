@@ -279,8 +279,8 @@ class FuelCell:
     use_eq_water_content_for_ionomer: bool = True
 
     def __post_init__(self): 
-        self.porous_layers = [layer for side in (self.an, self.ca) for layer in side.porous_layers]
-
+        self.porous_layers = self.an.porous_layers[::-1] + self.ca.porous_layers 
+        self.layers = [self.an.ch] + self.an.porous_layers[::-1] + [self.membrane] + self.ca.porous_layers + [self.ca.ch]
     def reversible_cell_voltage(self): 
         """
         Calculate the reversible cell voltage based on the Nernst equation.

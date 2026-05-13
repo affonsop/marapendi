@@ -5,9 +5,9 @@ from dataclasses import dataclass, field
 import numpy as np 
 import cantera as ct
 
-from .gas_composition import GasComposition, index_h2, index_o2, index_h2ov, species_indexes
+from .gas_composition import GasComposition, index_h2, index_o2, index_h2ov, species_indexes, calculate_species_diffusion_coefficient
 from .transport_models import PorousGasResistanceModel, DarcyTransportModel
-from .water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight
+from .water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight, water_dynamic_viscosity, water_density
 
 @dataclass
 class PorousLayer():
@@ -311,6 +311,14 @@ class PorousLayer():
         """
         return self.vapor_pressure() / self.RT
     
+    def calculate_gas_transport_resistance(self, diffusion_coefficients, temperature, liquid_saturation=0): 
+        return self.transport_resistance_model.total_diffusion_resistance(
+            self, 
+            temperature, 
+            diffusion_coefficients, 
+            self.gas.molecular_weights[...,np.newaxis], 
+            liquid_saturation
+        )
     def gas_transport_resistance(self, species='o2'):
         """
         Computes the gas transport resistance for a given species.
@@ -345,7 +353,12 @@ class PorousLayer():
         """
         return self.thickness / self.thermal_conductivity
 
-    def calculate_darcy_flow_resistance(self): 
+    def calculate_liquid_darcy_flow_resistance(self, temperature, saturation=1):
+        # on a mass basis 
+        return ((self.thickness * water_kinematic_viscosity(temperature)) / 
+                (self.absolute_permeability * np.maximum(1e-3,saturation) ** self.relative_permeability_exponent))
+        
+    def calculate_darcy_flow_resistance(self, saturation=1): 
         self.darcy_flow_resistance = {
             'water': (
                 (self.thickness * water_kinematic_viscosity(self.temperature) * water_molecular_weight) / 

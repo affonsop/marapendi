@@ -145,6 +145,15 @@ class CatalystLayer(PorousLayer):
             activity
         )
     
+    def calculate_membrane_water_resistance(self, temperature, water_content):
+            return (
+                self.thickness
+                / (
+                    self.ionomer.calculate_water_diffusivity(temperature, water_content) 
+                    * self.ionomer.dry_concentration 
+                    * self.ionomer_vol_fraction 
+                    / self.ionomer.tortuosity(self.ionomer_vol_fraction))
+            )
 @dataclass
 class PorousTransferLayer(CatalystLayer):
     """

@@ -3,7 +3,7 @@ Module providing an AEM water electrolyzer class.
 """
 
 from dataclasses import dataclass, field
-from scipy.optimize import root_scalar
+from scipy.optimize import root_scalar, fsolve
 import numpy as np 
 import cantera as ct
 
@@ -39,7 +39,7 @@ class ElectrolyzerCellSide(FuelCellSide):
             Dry gas pressure in Pa.
         """
         solution_saturation_pressure = self.electrolyte.solution_sat_pressure
-        return np.where(self.cl.non_wetting_saturation > 0,
+        return np.where(self.cl.liquid_saturation > 0,
                         self.cl.pressure - solution_saturation_pressure,
                         self.cl.pressure - self.cl.vapor_pressure())
 
@@ -48,7 +48,7 @@ class ElectrolyzerCell(FuelCell):
     """
     Class representing an AEM water electrolyzer cell.
     """
-    electrolyte_saturation_exponent: float = 2 
+    electrolyte_saturation_exponent: float = 0. 
     
     def reversible_cell_voltage(self):
         """
@@ -149,8 +149,8 @@ class ElectrolyzerCell(FuelCell):
         self.crossover_current = self.h2_permeation_flux * (2 * ct.faraday)
 
         unity_activity = 1.0
-        tafel_overpotential_ca = self.ca.cl.activation_overpotential(self.current_density / self.ca.cl.electrolyte_saturation ** self.electrolyte_saturation_exponent, self.ca.cl.electrolyte.molarity)
-        tafel_overpotential_an = self.an.cl.activation_overpotential(self.current_density / self.an.cl.electrolyte_saturation ** self.electrolyte_saturation_exponent, self.ca.cl.electrolyte.molarity)
+        tafel_overpotential_ca = self.ca.cl.activation_overpotential(self.current_density, self.ca.cl.electrolyte.molarity)
+        tafel_overpotential_an = self.an.cl.activation_overpotential(self.current_density, self.ca.cl.electrolyte.molarity)
 
         return tafel_overpotential_ca + tafel_overpotential_an
     
@@ -204,44 +204,41 @@ class ElectrolyzerCell(FuelCell):
             side.h2ov_transport_resistance = 1e-12
             side.calculate_equivalent_flow_resistance()
 
-        for i in range(len(self.current_density)): 
-            def f(cathode_membrane_water_flux, i): 
-                for side in (self.ca, self.an): 
-                    water_flux = (
-                        cathode_membrane_water_flux * (1 if side == self.ca else -1) 
-                        + side.h2o_production[i]
-                    )
+        self.membrane.water_balance_model.cache_water_balance(cell=self)
 
-                    max_vapor_flux = (side.gas_production ) / (side.cl.gas.concentration() / side.cl.saturation_concentration()-1)
-                    side.liquid_flux = np.maximum(water_flux - max_vapor_flux, 0)
-                    side.vapor_flux = water_flux - side.liquid_flux
-                  
-                    if not side.is_wet: 
-                        rh = side.vapor_flux / (side.gas_production + side.vapor_flux) * side.cl.gas.concentration() / side.cl.saturation_concentration()
-                        side.calculate_water_saturation()
-                        side.cl.gas.set_composition(0,1, rh[i] * np.ones_like(self.current_density))
-                     
-                    else: 
-                        # Gas leaving the cell is at 100% RH
-                        side.gas_flux = side.gas_production / (1 - side.cl.saturation_concentration()/side.cl.gas.concentration()) 
-                        side.calculate_water_saturation()
-                        
-                self.membrane.water_balance_model.solve_water_balance(cell=self)
-                print('xxxx', self.an.water_flux[i])
-                return self.ca.membrane_water_flux[i] - cathode_membrane_water_flux
-          
-            sol = root_scalar(f, x0=-self.ca.h2o_production[i], args=(i,), xtol=1e-12)
-            cathode_water_flux.append(sol.root)
-            # print(sol)
-            
-        #     print(sol)
-        f(np.array(cathode_water_flux), np.arange(len(cathode_water_flux)))
+        def f(cathode_membrane_water_flux): 
+            for side in (self.ca, self.an): 
+                is_ca = side == self.ca
+                water_flux = (
+                    cathode_membrane_water_flux * (1 if is_ca else -1) 
+                    + side.h2o_production
+                )
+                max_vapor_flux = (side.gas_production ) / (side.cl.gas.concentration() / side.cl.saturation_concentration()-1)
+                side.liquid_flux = np.maximum(water_flux - max_vapor_flux, 0)
+                side.vapor_flux = water_flux - side.liquid_flux
+                
+                if not side.is_wet: 
+                    rh = np.clip(side.vapor_flux / (side.gas_production + side.vapor_flux) * side.cl.gas.concentration() / side.cl.saturation_concentration(), 0, 1)
+                    side.calculate_water_saturation()
+                    side.cl.gas.set_composition(0 if is_ca else 1,1 if is_ca else 0, rh)
+                else: 
+                    # Gas leaving the cell is at 100% RH
+                    side.gas_flux = side.gas_production / (1 - side.cl.saturation_concentration()/side.cl.gas.concentration()) 
+                    side.calculate_water_saturation()
+                    
+            self.membrane.water_balance_model.solve_water_balance(cell=self)
 
-        self.an.gas_flux = self.an.gas_production
-        self.an.calculate_water_saturation()
+            return self.ca.membrane_water_flux - cathode_membrane_water_flux
         
+        sol = fsolve(f, x0=-self.ca.h2o_production, xtol=1e-6, maxfev=50)
+  
+ 
+        cathode_water_flux = sol
+
+        f(cathode_water_flux)
+
         for side in (self.an,self.ca): 
-            side.cl.set_water_film_thickness(self.ca.cl.non_wetting_saturation)
+            side.cl.set_water_film_thickness(side.cl.non_wetting_saturation)
                
         for cl in (self.ca.cl, self.an.cl): 
             if self.use_eq_water_content_for_ionomer: 

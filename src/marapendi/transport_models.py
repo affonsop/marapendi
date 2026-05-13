@@ -287,7 +287,7 @@ class DarcyTransportModel:
     J_function_exponent : float
         Exponent in the non-wetting phase capillary pressure-saturation relation.
     """
-    J_function_exponent: float = 2 
+    J_function_exponent: float = 0.4
 
     def saturation_from_capillary_pressure(self, layer, capillary_pressure):
         """
@@ -323,7 +323,7 @@ class DarcyTransportModel:
         float
             Capillary pressure (Pa).
         """
-        return (non_wetting_saturation ** self.J_function_exponent) * layer.capillary_pressure_J_ratio
+        return (np.maximum(0,non_wetting_saturation) ** self.J_function_exponent) * layer.capillary_pressure_J_ratio
 
     def calculate_non_wetting_saturation(self, layer, non_wetting_flux, upstream_capillary_pressure=0, mask=None): 
         """

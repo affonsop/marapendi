@@ -262,7 +262,7 @@ class Membrane:
                     )
                 )
     
-    def calculate_water_diffusivity(self, temperature):
+    def calculate_water_diffusivity(self, temperature, water_content=None):
         """
         Calculate the water diffusivity based on temperature.
 
@@ -284,6 +284,14 @@ class Membrane:
                 arrhenius_term(self.water_diffusivity_activation_energy,
                                         temperature,
                                         self.reference_temperature))
+    
+    def calculate_membrane_water_resistance(self, temperature, water_content):
+            return (
+                self.dry_thickness
+                / (self.calculate_water_diffusivity(temperature, water_content) * self.dry_concentration)
+            )
+    def calculate_liquid_darcy_flow_resistance(self, temperature, saturation=1):
+        return 1e18 * np.ones_like(temperature)
     
     def calculate_electroosmotic_drag_coefficient(self, temperature, water_content):
         """

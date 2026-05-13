@@ -192,8 +192,11 @@ def test_water_balance(electrolyzer_cell, wet_anode, dry_cathode):
     i = np.array([0.1, 0.5, 1, 1.5, 2.]) * 1e4
     electrolyzer_cell.set_conditions(353.15, i, wet_anode, dry_cathode)
     electrolyzer_cell.calculate_water_transport()
+    import time 
+    t1 = time.time()
     electrolyzer_cell.explicit_steady_state_model()
-
+    t2 = time.time()
+    print((t2-t1)/len(i)*1e6)
     plt.figure(figsize=(4,3))
     plt.plot([1,2,3,4,5], electrolyzer_cell.ca.membrane_water_flux * 1e5, '-oC1')
     plt.bar([1,2,3,4,5],height=-electrolyzer_cell.ca.h2o_production * 1e5, bottom=0, width=.4, color='C0',alpha=0.4)
@@ -210,7 +213,6 @@ def test_water_balance(electrolyzer_cell, wet_anode, dry_cathode):
     plt.show()
 
     for side in (electrolyzer_cell.ca, electrolyzer_cell.an):
-        
         np.testing.assert_allclose(
             side.h2o_production
             + side.membrane_water_flux,
@@ -218,3 +220,36 @@ def test_water_balance(electrolyzer_cell, wet_anode, dry_cathode):
             rtol=1e-6,
             atol=0.0
         )
+
+def test_polarization_curve_ss(electrolyzer_cell, wet_anode, dry_cathode):
+    i = np.linspace(0.01e4,2e4,20)
+    electrolyzer_cell.set_conditions(353.15, i, wet_anode, dry_cathode)
+    electrolyzer_cell.calculate_water_transport()
+    electrolyzer_cell.explicit_steady_state_model()
+    plt.plot(i, electrolyzer_cell.cell_voltage, 's')
+    plt.show()
+
+# def test_polarization_curve_dynamic(electrolyzer_cell, wet_anode, dry_cathode):
+#     i = lambda t: t * 2e4 / 3000
+#     ec = electrolyzer_cell
+#     ec.membrane.water_balance_model = mrpd.TransientMembraneWaterBalanceModel()
+
+#     def f(t,x,u,p=None): 
+#         ec.set_conditions(353.15, u['i'](t), wet_anode, dry_cathode)
+#         ec.ca.cl.ionomer_water_content = x[0]
+#         ec.membrane.water_content = x[1]
+#         ec.an.cl.ionomer_water_content = x[2]
+#         ec.ca.cl.liquid_saturation = x[3]
+#         ec.an.cl.liquid_saturation = x[4]
+#         ec.membrane.water_balance_model.solve_water_balance(electrolyzer_cell)
+#         for side in (ec.ca, ec.an): 
+#             water_flux = (
+#                 side.membrane_water_flux + side.h2o_production
+#             )
+
+#         return dxdt
+#     h = lambda t,x,u,p: x
+#     mrpd.DynamicModel(f=f, h=h, u ={'i': i})
+
+#     plt.plot(i, electrolyzer_cell.cell_voltage, 's')
+#     plt.show()
