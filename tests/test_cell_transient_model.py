@@ -1,6 +1,9 @@
 import pytest
 import numpy as np
 import cantera as ct
+import pandas as pd
+from scipy.interpolate import interp1d
+
 from scipy.integrate import solve_ivp
 import marapendi as mrpd
 import matplotlib.pyplot as plt
@@ -93,10 +96,12 @@ def cell(cl, toray_gdl_060):
                                             gas=mrpd.GasComposition(temperature=343.15, pressure=3.0e5), 
                                             effective_gas_diffusion_ratio=0.25), has_mpl=False),
                                    membrane=mrpd.PFSA())
-def test(cell):
+df = pd.read_csv('data/test_ui_curve.csv')
 
+def test(cell):
+    i = interp1d(df['t_step'].values, 1e4*np.maximum(0, df['I_step']).values,fill_value=0,bounds_error=False)
     x0 = np.array(
-        [[[10] * cell.n_layers,
+        [[[14] * cell.n_layers,
         [353.15] * cell.n_layers ,
         [1e5/ct.gas_constant/353.15 * .4] * cell.n_layers , 
          [1e5/ct.gas_constant/353.15 * .2] * cell.n_layers, 
@@ -104,31 +109,33 @@ def test(cell):
          [1e5/ct.gas_constant/353.15 * 0.4] * cell.n_layers , 
         [0.1] * cell.n_layers],
          [[10] * cell.n_layers,
-        [353.15] * cell.n_layers ,
-        [1e5/ct.gas_constant/353.15 * .4] * cell.n_layers , 
+        [343.15] * cell.n_layers ,
+        [1e5/ct.gas_constant/353.15 * .3] * cell.n_layers , 
          [1e5/ct.gas_constant/353.15 * .2] * cell.n_layers, 
-         [1e5/ct.gas_constant/353.15 * .0] * cell.n_layers, 
-         [1e5/ct.gas_constant/353.15 * 0.4] * cell.n_layers , 
+         [1e5/ct.gas_constant/353.15 * .2] * cell.n_layers, 
+         [1e5/ct.gas_constant/353.15 * 0.3] * cell.n_layers , 
         [0.1] * cell.n_layers]]
     ).transpose()
-
+    
     def f(t,x): 
-
-        dxdt = cell.rates_of_change(x, current_density=np.where(t > 50, 1e4,0))
+        
+        dxdt = cell.rates_of_change(x, current_density=i(t))
 
         return dxdt 
     import time
     t1 = time.time()
-    tf=200
+    tf=df['t_step'].values[-1]
 
-    sol = solve_ivp(f,t_span=(0,tf), y0=x0[...,1].reshape(cell.n_layers* cell.n_variables), method='BDF', vectorized=True)
-    lmbd, T, cg, s = cell.get_states_from_x(sol.y.reshape(cell.n_layers, cell.n_variables, sol.y.shape[-1]))
+    sol = solve_ivp(f,t_span=(0,tf), t_eval = df['t_step'].values,y0=(x0[...,1] / cell.norm_factor).reshape(cell.n_layers* cell.n_variables), method='BDF', vectorized=True, max_step=10)
+    lmbd, T, cg, s = cell.get_states_from_x(sol.y.reshape(cell.n_layers, cell.n_variables, sol.y.shape[-1]) * cell.norm_factor[...,np.newaxis])
     t2 = time.time()
     print(sol, tf/(t2-t1))
     plt.figure()
     plt.plot(sol.t, lmbd[2,...])
     plt.plot(sol.t, lmbd[3,...])
     plt.plot(sol.t, lmbd[4,...])
+    ax2 = plt.gca().twinx()
+    ax2.plot(df['t_step'], i(df['t_step']))
     plt.figure()
     plt.plot(sol.t, s[cell.ca.cl.ix,...])
     plt.plot(sol.t, s[cell.ca.gdl.ix,...])

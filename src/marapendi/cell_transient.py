@@ -3,7 +3,8 @@ import cantera as ct
 
 from .fuelcell import FuelCell 
 from .gas_composition import species_names, calculate_species_diffusion_coefficient
-from .water import water_saturation_concentration, water_density
+from .water import water_saturation_concentration, water_density, water_molar_volume
+from .electrolyte import ElectrolyteSolution
 
 class TransientCellModel(FuelCell): 
     def __post_init__(self):
@@ -39,6 +40,7 @@ class TransientCellModel(FuelCell):
         self.i_cg = [2,3,4,5]
         self.i_s = 6
         self.thickness = np.array([layer.get_thickness() for layer in self.layers])
+        self.norm_factor = np.array([14,353.15,40e-3,40e-3,40e-3,40e-3,1.])[np.newaxis,:]
 
     def get_states_from_x(self,x): 
         lmbd = x[:, self.i_lmbd,...]
@@ -47,11 +49,29 @@ class TransientCellModel(FuelCell):
         s = x[:, self.i_s,...]
         return lmbd, T, cg_k, s
     
-    def rates_of_change(self, x, current_density=0.):
-        # x is a n_layers x n_states x m matrix  
+    def cell_voltage_from_x(self, T, lmbd, p_g, s, current_density): 
+        r_ohm = np.zeros_like(T)
+        eta_act = np.zeros_like(T)
+        self.ca.cl.electrolyte = ElectrolyteSolution() # Temporary workaround
+        r_ohm[self.membrane.ix, ...] = self.membrane.calculate_proton_resistance(T[self.membrane.ix, ...], lmbd[self.membrane.ix, ...]) 
+        r_ohm[self.ca.cl.ix, ...] = self.ca.cl.effective_charge_resistance(current_density, lmbd[self.ca.cl.ix, ...], T[self.ca.cl.ix, ...]) 
+        r_ohm[self.ca.gdl.ix, ...] = self.electrical_resistance / 2
+        r_ohm[self.an.gdl.ix, ...] = self.electrical_resistance / 2
+        eta_ohm = r_ohm * current_density
         
-        x = x.reshape(self.n_layers,self.n_variables, x.shape[-1])
-
+        h2_permeation_flux = self.membrane.hydrogen_permeation_flux(self.an.cl.species_partial_pressure('h2'), 
+                                                                        T[self.membrane.ix, ...], 
+                                                                        p_g[self.an.cl.ix]- p_g[self.ca.cl.ix],
+                                                                        self.membrane.water_vol_fraction(
+                                                                            lmbd[self.membrane.ix, ...], 
+                                                                            water_molar_volume(T[self.membrane.ix, ...])
+                                                                            )
+                                                                        )
+        #eta_act = 
+    def rates_of_change(self, x, current_density=0.):
+        # x is a n_layers x n_states x m matrix     
+        x = x.reshape(self.n_layers,self.n_variables, x.shape[-1]) * self.norm_factor[...,np.newaxis]
+        
         dxdt = np.zeros_like(x) 
         R = np.zeros_like(x)
         J = np.zeros((self.n_layers+1,self.n_variables, x.shape[-1]))
@@ -69,10 +89,14 @@ class TransientCellModel(FuelCell):
         p_g = c_g * ct.gas_constant * T
         
         x_g_k = cg_k / c_g[...,np.newaxis,:] 
+        p_g_k = p_g[...,np.newaxis,:] * x_g_k 
+
         D_g = calculate_species_diffusion_coefficient(T, p_g, x_h2 = self.x_h2_mask)
         rh = c_v / c_sat
         rho_l = water_density(T)
         
+        self.cell_voltage_from_x(T, lmbd, p_g, s, current_density)
+
         # Resistances
         for layer in self.layers:
             if layer in self.ionomer_layers:
@@ -85,10 +109,14 @@ class TransientCellModel(FuelCell):
                         T[np.newaxis,layer.ix,...],
                         liquid_saturation=s[np.newaxis,layer.ix,...], 
                     )
+                R[layer.ix, self.i_T,...] = layer.get_thickness() / layer.thermal_conductivity 
+            
             elif layer in (self.ca.ch, self.an.ch): 
                 R[layer.ix,self.i_s,...] = 0   
                 R[layer.ix, self.i_cg, ...] = layer.transport_resistance_model.molecular_diffusion_resistance(layer, D_g[:,layer.ix,...])
-        
+
+            R[self.membrane.ix, self.i_T,...] = self.membrane.get_thickness() / self.membrane.thermal_conductivity 
+
         eff_R = (R[:-1,...] + R[1:,...]) / 2 + 1e-16
    
         # For water saturation, it is p_l which is conserved 
@@ -153,8 +181,5 @@ class TransientCellModel(FuelCell):
         dxdt[self.an.ch.ix, self.i_cg,:]=0
         dxdt[self.ca.ch.ix, self.i_s,:]=0
         dxdt[self.an.ch.ix, self.i_s,:]=0
-        #print(dxdt)
-        return dxdt.reshape(self.n_layers*self.n_variables, x.shape[-1])
-    
-    def gas_concentration_rate_of_change(self,x, current_density=0.): 
-        pass
+        dxdt / self.norm_factor[...,np.newaxis]
+        return dxdt.reshape(self.n_layers*self.n_variables, x.shape[-1]) 

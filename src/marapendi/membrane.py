@@ -63,6 +63,7 @@ class Membrane:
     
     dry_density: float = 1980.
     dry_thickness: float = 25e-6
+    thermal_conductivity: float = 0.9
     h2_permeation_model: HydrogenPermeationModel = field(default_factory=HydrogenPermeationModel)
     water_balance_model: MembraneWaterBalanceModel = field(default_factory=MembraneWaterBalanceModel)
     water_content: float = 14
@@ -559,7 +560,32 @@ class PFSA(Membrane):
             
         fv = self.water_vol_fraction(water_content_profile, water_molar_volume(temperature))
         return 1/np.mean(1/(self.conductivity_correction * 50 * (np.maximum(fv, 0.11) - 0.1) ** self.conductivity_exp * arrhenius_term(self.conductivity_activation_energy, temperature, 298.15)), axis=0)
-    
+
+    def calculate_proton_resistance(self, temperature, water_content):
+        """
+        Calculate the proton resistance through the membrane. 
+        Considers an average conductivity from liquid and vapor equilibrated conditions if liquid saturation is greater 
+        than zero.
+
+        Parameters
+        ----------
+        water_content : float
+            The water content of the membrane.
+        temperature : float
+            Temperature in Kelvin (K).
+        use_water_profile : bool, optional
+            Whether to use the water profile in calculations (default is True).
+        water_saturation : float, optional
+            The water saturation level (default is 0).
+
+        Returns
+        -------
+        float
+            The proton resistance of the membrane in ohm square meters (Ω·m²).
+        """      
+        return self.get_thickness() / self.proton_conductivity(water_content, temperature)
+
+
     def proton_resistance(self, temperature, water_saturation=0):
         """
         Calculate the proton resistance through the membrane. 
