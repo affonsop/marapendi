@@ -59,6 +59,8 @@ class PorousLayer():
     two_phase_transport_model: DarcyTransportModel = field(default_factory=DarcyTransportModel)
     non_wetting_saturation: float = 0
     thermal_conductivity: float = 1e12 
+    specific_heat_capacity: float = 1000. 
+    density: float = 1000.
     absolute_permeability: float = 1e6
     relative_permeability_exponent: float = 3
     contact_angle: float = 120. 
@@ -78,6 +80,9 @@ class PorousLayer():
     def get_thickness(self): 
         return self.thickness
     
+    def get_density(self): 
+        return self.density 
+
     def o2_mole_fraction(self):
         """
         Returns the mole fraction of oxygen (O₂) in the gas phase.

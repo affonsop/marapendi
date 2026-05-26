@@ -35,6 +35,11 @@ std_formation_entropy_h2ol = (h2ol.s(STD_TEMPERATURE) -
 std_formation_gibbs_h2ol = (std_formation_enthalpy_h2ol -
                             STD_TEMPERATURE * std_formation_entropy_h2ol)
 
+std_enthalpy_condensation = std_formation_enthalpy_h2ol - std_formation_enthalpy_h2ov
+
+def enthalpy_condensation(temperature): 
+    return h2ol.h(temperature) - h2ov.h(temperature)
+enthalpy_condensation = np.vectorize(enthalpy_condensation)
 
 def h2_hhv(temperature):
     """

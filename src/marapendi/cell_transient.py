@@ -5,6 +5,7 @@ from .fuelcell import FuelCell
 from .gas_composition import species_names, calculate_species_diffusion_coefficient
 from .water import water_saturation_concentration, water_density, water_molar_volume
 from .electrolyte import ElectrolyteSolution
+from .electrochemistry import calculate_reversible_cell_voltage, STD_PRESSURE, enthalpy_condensation
 
 class TransientCellModel(FuelCell): 
     def __post_init__(self):
@@ -49,9 +50,50 @@ class TransientCellModel(FuelCell):
         s = x[:, self.i_s,...]
         return lmbd, T, cg_k, s
     
-    def cell_voltage_from_x(self, T, lmbd, p_g, s, current_density): 
+    def calculate_permeation_flux(self, T, lmbd, p_g, p_g_k): 
+        return self.membrane.hydrogen_permeation_flux(
+            p_g_k[self.an.cl.ix, 2,...], 
+            T[self.membrane.ix, ...], 
+            p_g[self.an.cl.ix]- p_g[self.ca.cl.ix],
+            self.membrane.water_vol_fraction(
+                lmbd[self.membrane.ix, ...], 
+                water_molar_volume(T[self.membrane.ix, ...])
+                )
+            )
+    
+    def calculate_reversible_cell_voltage(self, T, p_g_k, p_o2_local): 
+        activity_o2 = p_o2_local / STD_PRESSURE
+        activity_h2 = p_g_k[self.an.cl.ix,2,...] / STD_PRESSURE
+        E_rev_an = - (
+            ct.gas_constant * T[self.an.cl.ix,...] 
+            * np.log(activity_h2) / (2 * ct.faraday)
+        )
+        E_rev_ca = calculate_reversible_cell_voltage(
+            T[self.ca.cl.ix,...],
+            activity_o2 ** 0.5
+        )
+        return E_rev_ca - E_rev_an, E_rev_ca, E_rev_an 
+
+    def calculate_orr_overpotential(self, T, p_g_k, current_density, crossover_current, roughness_factor):
+        return self.ca.cl.reaction.tafel_overpotential(
+            (current_density + crossover_current) / roughness_factor,
+            T[self.ca.cl.ix, ...],
+            p_g_k[self.ca.cl.ix, 0,...]
+        )
+
+    def calculate_activation_overpotential(self,T, p_g_k, current_density, crossover_current, theta_PtO): 
+        
+        orr_overpotential = self.calculate_orr_overpotential(T, p_g_k, current_density, crossover_current, 
+                                                             self.ca.cl.ecsa * self.ca.cl.platinum_loading * (1-theta_PtO))
+        omega_PtO_voltage_drop = self.ca.cl.omega_PtO * theta_PtO / (self.ca.cl.reaction.number_of_electrons *
+                                                                      self.ca.cl.reaction.charge_transfer_coeff * ct.faraday)
+        
+        hor_overpotential = 0
+        eta_act = orr_overpotential + omega_PtO_voltage_drop + hor_overpotential
+        return eta_act 
+    
+    def calculate_ohmic_overpotential(self, T, lmbd, current_density):
         r_ohm = np.zeros_like(T)
-        eta_act = np.zeros_like(T)
         self.ca.cl.electrolyte = ElectrolyteSolution() # Temporary workaround
         r_ohm[self.membrane.ix, ...] = self.membrane.calculate_proton_resistance(T[self.membrane.ix, ...], lmbd[self.membrane.ix, ...]) 
         r_ohm[self.ca.cl.ix, ...] = self.ca.cl.effective_charge_resistance(current_density, lmbd[self.ca.cl.ix, ...], T[self.ca.cl.ix, ...]) 
@@ -59,15 +101,21 @@ class TransientCellModel(FuelCell):
         r_ohm[self.an.gdl.ix, ...] = self.electrical_resistance / 2
         eta_ohm = r_ohm * current_density
         
-        h2_permeation_flux = self.membrane.hydrogen_permeation_flux(self.an.cl.species_partial_pressure('h2'), 
-                                                                        T[self.membrane.ix, ...], 
-                                                                        p_g[self.an.cl.ix]- p_g[self.ca.cl.ix],
-                                                                        self.membrane.water_vol_fraction(
-                                                                            lmbd[self.membrane.ix, ...], 
-                                                                            water_molar_volume(T[self.membrane.ix, ...])
-                                                                            )
-                                                                        )
-        #eta_act = 
+    
+        return eta_ohm
+    
+    def calculate_cell_voltage(self, T, lmbd, p_g, p_g_k, p_o2_local, s, current_density, theta_PtO=0): 
+        reversible_cell_voltage, orr_reversible_potential, hor_reversible_potential = self.calculate_reversible_cell_voltage(T, p_g_k, p_o2_local)    
+        eta_ohm= self.calculate_ohmic_overpotential(T, lmbd, current_density)
+        crossover_current = self.calculate_permeation_flux(T, lmbd, p_g, p_g_k) * (2 * ct.faraday)
+        eta_act = self.calculate_activation_overpotential(T, p_g_k, current_density, crossover_current, theta_PtO)
+
+        S_T = eta_ohm * current_density
+        S_T[self.ca.cl.ix,...] = (eta_act + orr_reversible_potential) * current_density 
+        S_T[self.an.cl.ix,...] = (hor_reversible_potential) * current_density 
+        eta_ohm = np.sum(eta_ohm, axis=0)
+        return reversible_cell_voltage - eta_ohm - eta_act, eta_ohm, eta_act, S_T
+
     def rates_of_change(self, x, current_density=0.):
         # x is a n_layers x n_states x m matrix     
         x = x.reshape(self.n_layers,self.n_variables, x.shape[-1]) * self.norm_factor[...,np.newaxis]
@@ -90,13 +138,11 @@ class TransientCellModel(FuelCell):
         
         x_g_k = cg_k / c_g[...,np.newaxis,:] 
         p_g_k = p_g[...,np.newaxis,:] * x_g_k 
-
+    
         D_g = calculate_species_diffusion_coefficient(T, p_g, x_h2 = self.x_h2_mask)
         rh = c_v / c_sat
         rho_l = water_density(T)
         
-        self.cell_voltage_from_x(T, lmbd, p_g, s, current_density)
-
         # Resistances
         for layer in self.layers:
             if layer in self.ionomer_layers:
@@ -114,11 +160,14 @@ class TransientCellModel(FuelCell):
             elif layer in (self.ca.ch, self.an.ch): 
                 R[layer.ix,self.i_s,...] = 0   
                 R[layer.ix, self.i_cg, ...] = layer.transport_resistance_model.molecular_diffusion_resistance(layer, D_g[:,layer.ix,...])
+                R[layer.ix, self.i_T,...] = 2 * layer.height / layer.thermal_conductivity 
 
             R[self.membrane.ix, self.i_T,...] = self.membrane.get_thickness() / self.membrane.thermal_conductivity 
-
+            
         eff_R = (R[:-1,...] + R[1:,...]) / 2 + 1e-16
-   
+        eff_R[-1, self.i_T, ...] += self.thermal_resistance / 2 
+        eff_R[0, self.i_T, ...] += self.thermal_resistance / 2 
+
         # For water saturation, it is p_l which is conserved 
         phi[:,self.i_s,...] = p_g
         for l in self.porous_layers: 
@@ -134,6 +183,13 @@ class TransientCellModel(FuelCell):
         J[self.an.cl.ix,self.i_lmbd, ...] = 0
         J[self.ca.cl.ix+1,self.i_lmbd, ...] = 0
 
+        # Local O2 concentration at the catalyst particle surface
+        R_o2_local = self.ca.cl.o2_ionomer_film_resistance(lmbd[self.ca.cl.ix,...], T[self.ca.cl.ix,...])
+        c_o2_local = cg_k[self.ca.cl.ix, 0, ...] - R_o2_local * iF/4
+        p_o2_local = c_o2_local * ct.gas_constant * T[self.ca.cl.ix, 0, ...]
+        
+        V_cell, eta_ohm, eta_act, S_T_losses = self.calculate_cell_voltage(T, lmbd, p_g, p_g_k, p_o2_local, s, current_density)
+
         # EOD flux 
         J_eod = self.membrane.calculate_electroosmotic_drag_coefficient(T, lmbd)[self.ionomer_domain,...] * iF
         J[[self.an.cl.ix+1, self.membrane.ix+1],self.i_lmbd,...] += J_eod[:1,...]
@@ -142,15 +198,15 @@ class TransientCellModel(FuelCell):
         k_abs = self.membrane.calculate_water_absorption_coefficient(T)
         lmbd_eq = ((1-s) * self.membrane.equilibrium_water_content(rh, T) 
                    + s * self.membrane.liquid_equilibrium_water_content(T))
-        J_abs = (k_abs * (lmbd - lmbd_eq) * self.membrane.dry_concentration)
-       
+        J_des = (k_abs * (lmbd - lmbd_eq) * self.membrane.dry_concentration)
+         
         # Water evaporation 
         factor = np.where(c_sat > c_v, s, 1 - s)
         S_vl = 1000.0 * (c_v - c_sat) * factor
 
         # Source terms
-        S[self.an.cl.ix, self.i_lmbd, ...] +=  (      - J_abs[self.an.cl.ix,...]) / self.an.cl.thickness
-        S[self.ca.cl.ix, self.i_lmbd, ...] +=  (iF/2  - J_abs[self.ca.cl.ix,...]) / self.ca.cl.thickness
+        S[self.an.cl.ix, self.i_lmbd, ...] +=  (      - J_des[self.an.cl.ix,...]) / self.an.cl.thickness
+        S[self.ca.cl.ix, self.i_lmbd, ...] +=  (iF/2  - J_des[self.ca.cl.ix,...]) / self.ca.cl.thickness
         
         S[:, self.i_s, ...] = S_vl
         S[self.membrane.ix, self.i_s, ...] = 0
@@ -161,8 +217,14 @@ class TransientCellModel(FuelCell):
         S[self.an.cl.ix,self.i_cg[2],...] = (-iF/2) / self.an.cl.thickness
         
         for side in (self.an, self.ca):
-            S[side.cl.ix, self.i_cg[-1], ...] += J_abs[side.cl.ix,...] / side.cl.thickness
+            S[side.cl.ix, self.i_cg[-1], ...] += J_des[side.cl.ix,...] / side.cl.thickness
+            
         S[self.membrane.ix, self.i_cg, ...] = 0
+        
+        h_vl = enthalpy_condensation(T)
+        S[:,self.i_T, ...] += S_T_losses / self.thickness[:, np.newaxis] + S_vl * h_vl
+        for side in (self.an, self.ca):
+            S[side.cl.ix,self.i_T, ...] -= J_des[side.cl.ix,...] / side.cl.thickness * self.membrane.heat_of_adsorption(T[side.cl.ix,...]) # To calculate membrane adsorption heat
 
         # Capacities
         for side in (self.ca, self.an): 
@@ -172,11 +234,13 @@ class TransientCellModel(FuelCell):
             if layer != self.membrane: 
                 C[layer.ix, self.i_s, ...] = rho_l[layer.ix, ...] * layer.porosity
                 C[layer.ix, self.i_cg, ...] = layer.porosity
+            C[layer.ix, self.i_T] = layer.get_density() * layer.specific_heat_capacity 
 
         dxdt = ((J[:-1,...]-J[1:,...]) / self.thickness[:, np.newaxis, np.newaxis] + S) / C
         layer = self.ca.cl
         
-        dxdt[:,self.i_T,:] = 0
+        dxdt[self.ca.ch.ix, self.i_T,:]=0
+        dxdt[self.an.ch.ix, self.i_T,:]=0
         dxdt[self.ca.ch.ix, self.i_cg,:]=0
         dxdt[self.an.ch.ix, self.i_cg,:]=0
         dxdt[self.ca.ch.ix, self.i_s,:]=0

@@ -9,7 +9,7 @@ from marapendi.tools import arrhenius_term
 from marapendi.water import water_molar_volume, water_molecular_weight, water_density
 from marapendi.water_balance_models import MembraneWaterBalanceModel
 from marapendi.membrane_permeation_models import HydrogenPermeationModel 
-
+from marapendi.electrochemistry import enthalpy_condensation
 @dataclass
 class Membrane:
     """
@@ -64,6 +64,7 @@ class Membrane:
     dry_density: float = 1980.
     dry_thickness: float = 25e-6
     thermal_conductivity: float = 0.9
+    specific_heat_capacity: float = 2000.
     h2_permeation_model: HydrogenPermeationModel = field(default_factory=HydrogenPermeationModel)
     water_balance_model: MembraneWaterBalanceModel = field(default_factory=MembraneWaterBalanceModel)
     water_content: float = 14
@@ -93,6 +94,9 @@ class Membrane:
     def get_thickness(self): 
         return self.dry_thickness
     
+    def get_density(self): 
+        return self.dry_density 
+    
     def wet_density(self, water_content, temperature):
         """
         Compute the wet density of the ionomer.
@@ -112,6 +116,8 @@ class Membrane:
         water_mass = water_molecular_weight * water_content
         return self.equivalent_weight + water_mass / (self.equivalent_weight / self.dry_density + water_mass / water_density(temperature))
 
+    def heat_of_adsorption(self, temperature):
+        return enthalpy_condensation(temperature)
     
     def wet_expansion_factor(self, water_content, temperature):
         """
