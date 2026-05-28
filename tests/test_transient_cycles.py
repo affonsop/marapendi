@@ -9,7 +9,7 @@ from dataclasses import dataclass
 def fuel_cell(): 
     fc = mrpd.FuelCell(
         electrical_resistance=20e-7,
-        cell_area = 25e-4, 
+        area = 25e-4, 
         cell_number = 1, 
         ca = mrpd.FuelCellSide(
             cl=mrpd.PtCCatalystLayer(
@@ -95,8 +95,8 @@ def fuel_cell():
         ),
         membrane = mrpd.PFSA(
             equivalent_weight=1100.,
-            dry_density=1980., 
-            dry_thickness=12e-6,
+            bulk_density=1980., 
+            thickness=12e-6,
             h2_permeation_model=mrpd.HydrogenPermeationModel(
                 permeability_correction_factor=1
             ), 

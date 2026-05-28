@@ -16,11 +16,11 @@ def toray_gdl_060():
     f = 1 + 0.803 * np.exp(-1.17 * lmbd) + 0.197 * np.exp(-0.164 * lmbd)
     gdl = mrpd.PorousLayer(thickness=160e-6, 
                          porosity=0.72,
+                         tortuosity = 3., 
                          absolute_permeability=1e-12,
-                         thermal_conductivity=1.24,
+                         bulk_thermal_conductivity=1.24,
                          contact_angle=115.,
-                         gas=mrpd.GasComposition(temperature=343.15, pressure=3.0e5), 
-                         effective_gas_diffusion_ratio=0.25) # D_OM / D_OMy = 5 in Chuang et al. (2020)
+                         ) # D_OM / D_OMy = 5 in Chuang et al. (2020)
     return gdl 
 
 @pytest.fixture
@@ -29,9 +29,9 @@ def cl():
                             platinum_loading=0.3e-2, 
                             ionomer_to_carbon_ratio=0.7, 
                             catalyst_platinum_weight_percent=0.4,
-                            thermal_conductivity=0.25,
+                            bulk_thermal_conductivity=0.25,
                             ecsa=45e3,
-                            ionomer=mrpd.PFSAIonomer(),     
+                            ionomer=mrpd.Nafion_N21X,     
                             carbon_agglomerate_radius=25e-9, 
                             absolute_permeability=1e-13,
                             contact_angle=95,
@@ -45,17 +45,17 @@ def cl():
 
 @pytest.fixture
 def cell(cl, toray_gdl_060): 
-    return mrpd.TransientCellModel(cell_area=25e-4,cell_number=1, electrical_resistance=30e-7, thermal_resistance=2e-4,
-                                   ca=mrpd.FuelCellSide(
+    return mrpd.TransientCellModel(area=25e-4, electrical_resistance=30e-7, thermal_resistance=2e-4,
+                                   ca=mrpd.CellSide(
                                         cl=mrpd.PtCCatalystLayer(thickness=10e-6,
-                                            density=2010., 
-                                            specific_heat_capacity=710.,
+                                            bulk_density=2010., 
+                                            bulk_specific_heat_capacity=710.,
                                             platinum_loading=0.3e-2, 
                                             ionomer_to_carbon_ratio=0.7, 
                                             catalyst_platinum_weight_percent=0.4,
-                                            thermal_conductivity=0.25,
+                                            bulk_thermal_conductivity=0.25,
                                             ecsa=45e3,
-                                            ionomer=mrpd.PFSAIonomer(),     
+                                            ionomer=mrpd.Nafion_N21X,     
                                             carbon_agglomerate_radius=25e-9, 
                                             absolute_permeability=1e-13,
                                             contact_angle=95,
@@ -68,26 +68,26 @@ def cell(cl, toray_gdl_060):
                                                                                 charge_transfer_coeff=1)), 
                                         gdl = mrpd.PorousLayer(thickness=160e-6, 
                                             porosity=0.72,
-                                            density=440., 
-                                            specific_heat_capacity=710.,
+                                            bulk_density=440., 
+                                            bulk_specific_heat_capacity=710.,
                                             absolute_permeability=1e-12,
-                                            thermal_conductivity=1.24,
+                                            bulk_thermal_conductivity=1.24,
                                             contact_angle=115.,
-                                            gas=mrpd.GasComposition(temperature=343.15, pressure=3.0e5), 
-                                            effective_gas_diffusion_ratio=0.25), 
-                                        ch = mrpd.FlowChannel(height=1e-3, thermal_conductivity=100.),
+                    
+                                            tortuosity=3), 
+                                        ch = mrpd.FlowChannel(height=1e-3, bulk_thermal_conductivity=100.),
                                         has_mpl=False), 
                                         
-                                    an=mrpd.FuelCellSide(
+                                    an=mrpd.CellSide(
                                         cl=mrpd.PtCCatalystLayer(thickness=10e-6,
-                                            density=2010., 
-                                            specific_heat_capacity=710.,
+                                            bulk_density=2010., 
+                                            bulk_specific_heat_capacity=710.,
                                             platinum_loading=0.3e-2, 
                                             ionomer_to_carbon_ratio=0.7, 
                                             catalyst_platinum_weight_percent=0.4,
-                                            thermal_conductivity=0.25,
+                                            bulk_thermal_conductivity=0.25,
                                             ecsa=45e3,
-                                            ionomer=mrpd.PFSAIonomer(),     
+                                            ionomer=mrpd.Nafion_N21X,     
                                             carbon_agglomerate_radius=25e-9, 
                                             absolute_permeability=1e-13,
                                             contact_angle=95,
@@ -100,13 +100,13 @@ def cell(cl, toray_gdl_060):
                                                                                 charge_transfer_coeff=1)), 
                                         gdl = mrpd.PorousLayer(thickness=160e-6, 
                                             absolute_permeability=1e-12,
-                                            thermal_conductivity=1.24,
+                                            bulk_thermal_conductivity=1.24,
                                             contact_angle=115.,
-                                            gas=mrpd.GasComposition(temperature=343.15, pressure=3.0e5), 
-                                            effective_gas_diffusion_ratio=0.25), 
-                                        ch = mrpd.FlowChannel(height=1e-3, thermal_conductivity=100.),
+                    
+                                            tortuosity=3), 
+                                        ch = mrpd.FlowChannel(height=1e-3, bulk_thermal_conductivity=100.),
                                         has_mpl=False),
-                                   membrane=mrpd.PFSA())
+                                   memb=mrpd.Nafion_N212)
 df = pd.read_csv('data/test_ui_curve.csv')
 
 def test(cell):
@@ -164,7 +164,7 @@ def test(cell):
     plt.figure()
     plt.plot(sol.t, T[cell.ca.ch.ix,...])
     plt.plot(sol.t, T[cell.ca.cl.ix,...])
-    plt.plot(sol.t, T[cell.membrane.ix,...])
+    plt.plot(sol.t, T[cell.memb.ix,...])
     plt.plot(sol.t, T[cell.an.cl.ix,...])
     plt.plot(sol.t, T[cell.an.ch.ix,...])
     plt.figure()

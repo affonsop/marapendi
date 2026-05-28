@@ -56,12 +56,12 @@ def anode():
 
 @pytest.fixture 
 def membrane():
-    return mrpd.PAP85(dry_thickness=80e-6, 
+    return mrpd.PAP85(thickness=80e-6, 
                        water_balance_model=mrpd.MatrixMembraneWaterBalanceModel())
 
 @pytest.fixture
 def electrolyzer_cell(cathode, anode, membrane): 
-    return mrpd.ElectrolyzerCell(ca=cathode,an=anode, membrane=membrane, cell_area=5e-4, cell_number=1, electrical_resistance=60e-7)
+    return mrpd.ElectrolyzerCell(ca=cathode,an=anode, membrane=membrane, area=5e-4, cell_number=1, electrical_resistance=60e-7)
 
 @pytest.fixture
 def cathode_conditions():

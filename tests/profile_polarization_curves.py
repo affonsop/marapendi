@@ -24,7 +24,7 @@ def fuel_cell():
 
     fc = mrpd.FuelCell(
         electrical_resistance=20e-7,
-        cell_area = 25e-4, 
+        area = 25e-4, 
         cell_number = 1, 
         ca = mrpd.FuelCellSide(
             cl=mrpd.PtCCatalystLayer(
@@ -84,7 +84,7 @@ def fuel_cell():
         membrane = mrpd.Membrane(
             equivalent_weight=1100,
             density=1980, 
-            dry_thickness=25e-6,
+            thickness=25e-6,
             h2_permeation_model=mrpd.HydrogenPermeationModel(
                 permeability_correction_factor=1
             ), 

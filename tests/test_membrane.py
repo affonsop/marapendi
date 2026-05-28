@@ -5,21 +5,21 @@ import cantera as ct
 
 @pytest.fixture
 def thick_membrane(): 
-    return mrpd.PFSA(equivalent_weight=1100, dry_density=1980, dry_thickness=125e-6)
+    return mrpd.PFSA(equivalent_weight=1100, bulk_density=1980, thickness=125e-6)
 
 @pytest.fixture
 def thin_membrane(): 
-    return mrpd.PFSA(equivalent_weight=1100, dry_density=1980, dry_thickness=25e-6)
+    return mrpd.PFSA(equivalent_weight=1100, bulk_density=1980, thickness=25e-6)
 
 @pytest.fixture
 def membrane_liso_2016(): 
-    return mrpd.PFSA(equivalent_weight=1100., dry_density=2000., dry_thickness=51e-6, 
+    return mrpd.PFSA(equivalent_weight=1100., bulk_density=2000., thickness=51e-6, 
                      reference_absorption_coefficient=1.e-6, reference_water_diffusivity=5e-10,
                        water_balance_model=mrpd.MembraneWaterBalanceModel())   
  
 @pytest.fixture
 def fuel_cell_liso_2016(membrane_liso_2016): 
-    fc = mrpd.FuelCell(cell_area=96e-4, cell_number=16, membrane=membrane_liso_2016, 
+    fc = mrpd.FuelCell(area=96e-4, cell_number=16, membrane=membrane_liso_2016, 
                        ca=mrpd.FuelCellSide(cl=mrpd.PtCCatalystLayer(ionomer=mrpd.NafionD2020), 
                                             gdl=mrpd.PorousLayer(thickness=200e-6, effective_gas_diffusion_ratio=0.3, absolute_permeability=1e-11, thermal_conductivity=.1)),
                        an=mrpd.FuelCellSide(cl=mrpd.PtCCatalystLayer(ionomer=mrpd.NafionD2020), 
@@ -29,8 +29,8 @@ def fuel_cell_liso_2016(membrane_liso_2016):
     fc.ca.cl.gas.set_temperature_and_pressure(337.8842, 135e3)
     fc.ca.ch.gas.set_temperature_and_pressure(337.8842, 135e3)
     fc.ca.ch.gas.set_composition(0.21, 0, 1.)
-    fc.product_water_mass_source = fc.current_density * fc.cell_area * fc.cell_number / (2 * ct.faraday) * fc.ca.ch.gas.molecular_weights[-1]
-    fc.ca.ch.o2_inlet_molar_flow_rate = fc.current_density * fc.cell_area * fc.cell_number / (4 * ct.faraday)
+    fc.product_water_mass_source = fc.current_density * fc.area * fc.cell_number / (2 * ct.faraday) * fc.ca.ch.gas.molecular_weights[-1]
+    fc.ca.ch.o2_inlet_molar_flow_rate = fc.current_density * fc.area * fc.cell_number / (4 * ct.faraday)
     fc.ca.ch.h2ov_inlet_molar_flow_rate = fc.ca.ch.o2_inlet_molar_flow_rate / fc.ca.ch.gas.X[0] * fc.ca.ch.gas.X[-1]
     fc.ca.ch.h2ov_inlet_mass_flow_rate = fc.ca.ch.h2ov_inlet_molar_flow_rate * fc.ca.ch.gas.molecular_weights[-1]
     return fc
