@@ -59,6 +59,8 @@ def cell(cl, toray_gdl_060):
         area=25e-4,
         electrical_resistance=30e-7,
         thermal_resistance=2e-4,
+        memb_model=mrpd.PFSAModel(),
+        cl_model=mrpd.PtCCatalystLayerModel(),
         ca=mrpd.CellSide(
             cl=mrpd.PtCCatalystLayer(
                 thickness=10e-6,
@@ -204,26 +206,6 @@ def test(cell):
         current_density,
     )
 
-    R_o2_local = c.ca.cl.o2_ionomer_film_resistance(state.lmbd_ca_cl, state.T_ca_cl)
-    c_o2_local = state.cg_k[c.ca.cl.ix, 0, ...] - R_o2_local * state.iF / 4
-    p_o2_local = c_o2_local * ct.gas_constant * state.T_ca_cl
-
-    V_cell, eta_ohm, eta_act, *_ = c.voltage_model.calculate_cell_voltage(
-        T_an_cl=state.T_an_cl,
-        T_ca_cl=state.T_ca_cl,
-        T_memb=state.T_memb,
-        f_v_memb=state.f_v_memb,
-        f_v_ca_cl=state.f_v_ca_cl,
-        p_h2=state.p_h2,
-        p_o2_local=p_o2_local,
-        p_o2_ca_cl=state.p_o2_ca_cl,
-        i=current_density,
-        memb_thickness=c.memb.thickness,
-        electrical_resistance=c.electrical_resistance,
-        memb=c.memb,
-        ca_cl=c.ca.cl,
-        charge=c.charge,
-    )
     t2 = time.time()
     print(sol, tf / (t2 - t1))
 
@@ -253,7 +235,7 @@ def test(cell):
         plt.legend()
 
     plt.figure()
-    plt.plot(current_density, V_cell, '-')
+    plt.plot(current_density, state.V_cell, '-')
 
     plt.show()
     assert False

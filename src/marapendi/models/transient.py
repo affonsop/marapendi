@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from marapendi.components.cell import Cell
 from marapendi.components.cell_state import CellState
 from marapendi.models.gas_composition import calculate_species_diffusion_coefficient
-from marapendi.components.water import (
+from marapendi.models.water import (
     water_saturation_concentration,
     water_density,
     water_molar_volume,
@@ -129,7 +129,7 @@ class TransientCellModel:
         M_k   = x_g_k * np.array([32., 28., 2., 18.])[np.newaxis, :, np.newaxis]
         V_w   = water_molar_volume(T)
 
-        f_v = cell.membrane_water_transport_model.water_vol_fraction(
+        f_v = cell.memb_model.water_vol_fraction(
             lmbd, V_w, cell.V_ion
         )
 
@@ -138,7 +138,7 @@ class TransientCellModel:
         ca_cl_ix = cell.ca.cl.ix
         an_cl_ix = cell.an.cl.ix
 
-        return CellState(
+        state = CellState(
             x=x,
             lmbd=lmbd, T=T, cg_k=cg_k, s=s,
             iF=iF, p_g=p_g, p_g_k=p_g_k, D_g_k=D_g_k,
@@ -154,6 +154,40 @@ class TransientCellModel:
             p_h2=p_g_k[an_cl_ix, 2, ...],
             p_o2_ca_cl=p_g_k[ca_cl_ix, 0, ...],
         )
+
+        # Local O2 partial pressure at cathode CL catalyst surface
+        state.t_water_film = cell.cl_model.water_film_thickness(state.s[cell.ca.cl.ix,...], cell.ca.cl)
+        state.R_o2_local = cell.cl_model.o2_ionomer_film_resistance(
+            state.lmbd_ca_cl, state.T_ca_cl, cell.ca.cl, cell.memb_model, 
+            cell.ca.cl.t_ion_film, state.t_water_film, coverage_ratio=0
+        )
+
+        c_o2_local = state.cg_k[cell.ca.cl.ix, 0, ...] - state.R_o2_local * state.iF / 4
+        state.p_o2_local = c_o2_local * ct.gas_constant * state.T_ca_cl
+
+        (state.V_cell, state.eta_ohm, state.eta_act,
+         state.E_rev_ca, state.E_rev_an,
+         state.eta_memb, _, state.eta_gdl) = cell.voltage_model.calculate_cell_voltage(
+            T_an_cl=state.T_an_cl,
+            T_ca_cl=state.T_ca_cl,
+            T_memb=state.T_memb,
+            f_v_memb=state.f_v_memb,
+            f_v_ca_cl=state.f_v_ca_cl,
+            s_ca_cl=0, 
+            p_h2=state.p_h2,
+            p_o2_local=state.p_o2_local,
+            p_o2_ca_cl=state.p_o2_ca_cl,
+            i=state.iF * ct.faraday,
+            memb=cell.memb,
+            electrical_resistance=cell.electrical_resistance,
+            memb_model=cell.memb_model,
+            ionomer_model=cell.memb_model,
+            ca_cl_model=cell.cl_model,
+            ca_cl=cell.ca.cl,
+            charge=cell.charge,
+        )
+        
+        return state
 
     def _compute_resistances(self, state: CellState):
         """Build layer resistance array R and harmonic-mean inter-layer eff_R."""
@@ -183,14 +217,14 @@ class TransientCellModel:
         # and overwrite for ionomer layers only to avoid divide-by-zero on other layers.
         
         ion = self.ionomer_domain
-        D_lmbd = cell.membrane_water_transport_model.diffusion_coefficient(
+        D_lmbd = cell.memb_model.diffusion_coefficient(
             state.lmbd, state.f_v, state.T,
             cell.darken_num_ion,
             cell.darken_den_ion,
             cell.D_lmbd_ref_ion,
             cell.E_act_ion,
         )
-        R[:, self.i_lmbd, ...] = cell.membrane_water_transport_model.calculate_membrane_water_resistance(
+        R[:, self.i_lmbd, ...] = cell.memb_model.calculate_membrane_water_resistance(
             D_lmbd, cell.thickness, cell.eps_ion,
             cell.c_ion, cell.tau_ion,
         )
@@ -230,46 +264,7 @@ class TransientCellModel:
         J = np.zeros((self.n_layers + 1, self.n_variables, state.x.shape[-1]))
         J[1:-1, ...] = -(phi[1:, ...] - phi[:-1, ...]) / eff_R
 
-        # Local O2 partial pressure at cathode CL catalyst surface
-        R_o2_local = cell.ca.cl.o2_ionomer_film_resistance(
-            state.lmbd_ca_cl, state.T_ca_cl
-        )
-        c_o2_local = state.cg_k[cell.ca.cl.ix, 0, ...] - R_o2_local * state.iF / 4
-        p_o2_local = c_o2_local * ct.gas_constant * state.T_ca_cl
-
-        (V_cell, eta_ohm, eta_act,
-         E_rev_ca, E_rev_an,
-         eta_memb, _, eta_gdl) = cell.voltage_model.calculate_cell_voltage(
-            T_an_cl=state.T_an_cl,
-            T_ca_cl=state.T_ca_cl,
-            T_memb=state.T_memb,
-            f_v_memb=state.f_v_memb,
-            f_v_ca_cl=state.f_v_ca_cl,
-            p_h2=state.p_h2,
-            p_o2_local=p_o2_local,
-            p_o2_ca_cl=state.p_o2_ca_cl,
-            i=state.iF * ct.faraday,
-            memb_thickness=cell.memb.thickness,
-            electrical_resistance=cell.electrical_resistance,
-            memb=cell.memb,
-            ca_cl=cell.ca.cl,
-            charge=cell.charge,
-        )
-
-        # Assemble per-layer thermal loss array
-        memb_ix   = cell.memb.ix
-        ca_cl_ix  = cell.ca.cl.ix
-        an_cl_ix  = cell.an.cl.ix
-        ca_gdl_ix = cell.ca.gdl.ix
-        an_gdl_ix = cell.an.gdl.ix
-        i = state.iF * ct.faraday
-
-        S_T_losses = np.zeros_like(state.T)
-        S_T_losses[memb_ix,   ...] = eta_memb  * i
-        S_T_losses[ca_cl_ix,  ...] = (eta_act + E_rev_ca) * i
-        S_T_losses[an_cl_ix,  ...] = E_rev_an  * i
-        S_T_losses[ca_gdl_ix, ...] = eta_gdl   * i
-        S_T_losses[an_gdl_ix, ...] = eta_gdl   * i
+       
 
         # Electro-osmotic drag
         J_eod = (
@@ -279,22 +274,22 @@ class TransientCellModel:
         )
         J[[cell.an.cl.ix + 1, cell.memb.ix + 1], self.i_lmbd, ...] += J_eod[:1, ...]
 
-        return J, V_cell, eta_ohm, eta_act, S_T_losses, p_o2_local
+        return J
 
     def _compute_water_exchange(self, state: CellState):
         """Return ionomer absorption/desorption flux J_des."""
         cell = self.cell
-        k_abs = cell.membrane_water_transport_model.sorption_coefficient(
+        k_abs = cell.memb_model.sorption_coefficient(
             state.f_v, state.T,
             cell.k_des_ref_ion,
             cell.E_act_ion,
             cell.T_ref_des_ion,
         )
         lmbd_eq = (
-            (1 - state.s) * cell.membrane_water_transport_model.equilibrium_water_content(
+            (1 - state.s) * cell.memb_model.equilibrium_water_content(
                 state.rh, cell.sorption_coeffs_ion,
             )
-            + state.s * cell.membrane_water_transport_model.liquid_equilibrium_water_content(
+            + state.s * cell.memb_model.liquid_equilibrium_water_content(
                 cell.lmbd_liq_ref_ion,
             )
         )
@@ -309,10 +304,25 @@ class TransientCellModel:
         factor = np.where(c_sat > state.c_v, state.s, 1 - state.s)
         return 1000.0 * (state.c_v - c_sat) * factor
 
-    def _compute_sources(self, state: CellState, J_des, S_vl, S_T_losses):
+    def _compute_sources(self, state: CellState, J_des, S_vl):
         """Populate source term array S."""
         cell = self.cell
         S = np.zeros_like(state.x)
+
+        # Assemble per-layer thermal loss array
+        memb_ix   = cell.memb.ix
+        ca_cl_ix  = cell.ca.cl.ix
+        an_cl_ix  = cell.an.cl.ix
+        ca_gdl_ix = cell.ca.gdl.ix
+        an_gdl_ix = cell.an.gdl.ix
+        i = state.iF * ct.faraday
+
+        S_T_losses = np.zeros_like(state.T)
+        S_T_losses[memb_ix,   ...] = state.eta_memb  * i
+        S_T_losses[ca_cl_ix,  ...] = (state.eta_act + state.E_rev_ca) * i
+        S_T_losses[an_cl_ix,  ...] = state.E_rev_an  * i
+        S_T_losses[ca_gdl_ix, ...] = state.eta_gdl   * i
+        S_T_losses[an_gdl_ix, ...] = state.eta_gdl   * i
 
         # Ionomer water: absorption sink ± electrolysis production
         S[cell.an.cl.ix, self.i_lmbd, ...] += (
@@ -344,7 +354,7 @@ class TransientCellModel:
         for side in (cell.an, cell.ca):
             S[side.cl.ix, self.i_T, ...] -= (
                 J_des[side.cl.ix, ...] / side.cl.thickness
-                * cell.memb.heat_of_adsorption(state.T[side.cl.ix, ...])
+                * cell.memb_model.heat_of_adsorption(state.T[side.cl.ix, ...], cell.memb)
             )
 
         return S
@@ -390,7 +400,7 @@ class TransientCellModel:
         R, eff_R = self._compute_resistances(state)
 
         # 3. Inter-layer fluxes (including EOD)
-        J, V_cell, eta_ohm, eta_act, S_T_losses, p_o2_local = (
+        J = (
             self._compute_fluxes(eff_R, state)
         )
 
@@ -399,7 +409,7 @@ class TransientCellModel:
         S_vl  = self._compute_phase_change(state)
 
         # 5. Source terms
-        S = self._compute_sources(state, J_des, S_vl, S_T_losses)
+        S = self._compute_sources(state, J_des, S_vl)
 
         # 6. Capacities
         C = self._compute_capacities(state)

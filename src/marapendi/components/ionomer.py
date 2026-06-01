@@ -1,27 +1,71 @@
 """
-Module providing classes to model ionomers in catalyst layers.
+Ionomer component dataclasses.
 
 Classes
 -------
-CatalystLayerIonomer : Base class for ionomer properties in catalyst layers.
-PFSAIonomer : Represents a perfluorosulfonic acid ionomer (e.g. Nafion).
-PAPIonomer : Represents a poly(aryl piperidinium) (PA) ionomer.
+Ionomer : Base dataclass holding ionomer material parameters.
+PFSAIonomer : Parameter dataclass for perfluorosulfonic acid ionomers (e.g. Nafion).
 
-Each class provides methods to compute water content-dependent properties
-like proton or hydroxide conductivity, oxygen permeability, and equilibrium hydration.
+These classes carry physical and electrochemical parameters only.
+All computation (conductivity, permeability, water uptake, drag
+coefficients, etc.) is implemented in the corresponding model classes
+in :mod:`marapendi.models.membrane`.
 """
 
 from dataclasses import dataclass, field
 import numpy as np
 import cantera as ct
 
-from marapendi.models.electrochemistry import enthalpy_condensation
-from marapendi.tools.tools import arrhenius_term, Updatable
-from .water import water_molecular_weight, water_molar_volume, water_density
+from marapendi.tools.tools import Updatable
 
 
-@dataclass 
-class Ionomer(Updatable): 
+@dataclass
+class Ionomer(Updatable):
+    """
+    Base dataclass storing material parameters for an ionomer phase.
+
+    These parameters are consumed by the model classes in
+    :mod:`marapendi.models.membrane` (e.g. ``IonomerModel``,
+    ``MembraneModel``, ``PFSAModel``) to compute derived quantities such
+    as charge conductivity, water diffusivity, and sorption isotherms.
+
+    Attributes
+    ----------
+    rho_dry_ion : float
+        Dry density of the ionomer [kg/m³].
+    EW_ion : float
+        Equivalent weight [kg/kmol].
+    darken_num_ion, darken_den_ion : np.ndarray
+        Polynomial coefficients (numerator / denominator) for the Darken
+        correction to water diffusivity.
+    sorption_coeffs_ion : np.ndarray
+        Polynomial coefficients for the equilibrium water-content isotherm.
+    lmbd_liq_ref_ion : float
+        Reference liquid-equilibrium water content [mol H₂O / mol SO₃⁻].
+    D_lmbd_ref_ion : float
+        Reference water diffusivity [m²/s].
+    k_des_ref_ion : float
+        Reference desorption rate constant [m/s].
+    sigma_ref_ion : float
+        Reference ionic conductivity [S/m].
+    T_ref_sigma_ion, T_ref_D_ion, T_ref_des_ion : float
+        Reference temperatures for conductivity, diffusivity, and
+        desorption Arrhenius corrections [K].
+    E_act_ion : float
+        Activation energy for ionic conductivity [J/kmol].
+    f_v_perc_ion : float
+        Percolation threshold for conductivity (volume fraction) [-].
+    n_sigma_ion : float
+        Exponent in the percolation conductivity model.
+    c_ion : float
+        Molar concentration of ionomer [kmol/m³] — computed in
+        ``__post_init__`` from ``rho_dry_ion / EW_ion``.
+    V_ion : float
+        Molar volume of dry ionomer [m³/kmol] — computed in
+        ``__post_init__``.
+    charge_ion : str
+        Charge carrier type (``'proton'`` or ``'hydroxide'``).
+    """
     rho_dry_ion: float = field(default=None)
     EW_ion: float = field(default=None)
     darken_num_ion: np.ndarray = field(default=None)
@@ -42,31 +86,24 @@ class Ionomer(Updatable):
     charge_ion: str = field(default='proton')
 
     def __post_init__(self):
-        """
-        Compute derived properties of the membrane after initialization.
-        Skipped when dry_density or equiv_weight have not been supplied yet.
-        """
+        """Compute ``c_ion`` and ``V_ion`` from density and equivalent weight.
+        Skipped when either field has not been supplied yet."""
         if self.rho_dry_ion is not None and self.EW_ion is not None:
             self.c_ion = self.rho_dry_ion / self.EW_ion  # kmol/m³
             self.V_ion = 1. / self.c_ion  # m³/kmol
     
-    def wet_density(self, lmbd, T):
-        water_mass = water_molecular_weight * lmbd
-        return self.EW_ion + water_mass / (self.EW_ion / self.bulk_density + water_mass / water_density(T))
 
-    def heat_of_adsorption(self, T):
-        return enthalpy_condensation(T)
-
-    def wet_expansion_factor(self, lmbd, T):
-        water_mass = water_molecular_weight * lmbd
-        return 1 + self.rho_dry_ion * water_mass / self.EW_ion / water_density(T)
-
-    def charge_conductivity(self, f_v, T, charge):
-        charge_conductivity = self.sigma_ref_ion * np.maximum(0.01, f_v - self.f_v_perc_ion) ** self.n_sigma_ion
-        return (charge_conductivity if charge == self.charge_ion else (1/np.inf)) * arrhenius_term(self.E_act_ion, T, self.T_ref_sigma_ion)
 
 @dataclass
 class PFSAIonomer(Ionomer):
+    """
+    Parameter dataclass for perfluorosulfonic acid ionomers (e.g. Nafion).
+
+    Inherits all fields from :class:`Ionomer`.  The corresponding
+    computation methods (``o2_permeability``, ``h2_permeability``,
+    ``calculate_electroosmotic_drag_coefficient``) live in
+    :class:`marapendi.models.membrane.PFSAModel`.
+    """
 
     def o2_permeability(self, f_v, T=353.15):
         RT = ct.gas_constant * T

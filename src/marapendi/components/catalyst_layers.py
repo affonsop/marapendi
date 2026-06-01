@@ -1,5 +1,12 @@
 """
-Module providing classes to model catalyst layers in electrochemical cells.
+Catalyst-layer component dataclasses.
+
+These dataclasses hold geometric, structural, and material parameters for
+catalyst layers.  Electrokinetic and transport computations (ionomer film
+O₂ resistance, charge resistance, water-film thickness, etc.) are
+implemented as stateless strategy methods in
+:mod:`marapendi.models.catalyst_layer` (``CatalystLayerModel``,
+``PtCCatalystLayerModel``).
 """
 from dataclasses import dataclass, field, fields as dataclass_fields
 import numpy as np 
@@ -8,36 +15,45 @@ import cantera as ct
 from marapendi.models.electrochemistry import ElectrochemicalReaction 
 from .ionomer import Ionomer
 from .porous_layers import PorousLayer
-from .water import o2_water_diffusivity 
+
 
 @dataclass(eq=False)
 class CatalystLayer(PorousLayer, Ionomer):
     """
-    Represents a generic catalyst layer in a fuel cell or electrolyser, which includes
-    an ionomer phase, catalyst particles, and electrochemical reaction sites.
+    Base dataclass for a generic catalyst layer.
+
+    Combines porous-layer geometry (:class:`~marapendi.components.porous_layers.PorousLayer`)
+    with ionomer material parameters (:class:`~marapendi.components.ionomer.Ionomer`).
+
+    Electrokinetic and transport computations (charge resistance, O₂ film
+    resistance, water-film thickness) are implemented in
+    :mod:`marapendi.models.catalyst_layer`.
 
     Attributes
     ----------
-    ionomer : CatalystLayerIonomer
-        Ionomer model associated with the catalyst layer.
+    ionomer : Ionomer, optional
+        Ionomer parameter object whose fields are copied onto ``self``
+        during ``__post_init__`` for direct attribute access.
     reaction : ElectrochemicalReaction
-        Electrochemical reaction model.
+        Electrochemical reaction parameters.
     catalyst_loading : float
-        Catalyst loading in g/cm² (default: 0.2 mg/cm²).
+        Catalyst loading [kg/m²] (default: 0.2 mg/cm²).
     ionomer_to_catalyst_ratio : float
-        Ratio of ionomer mass to catalyst mass.
+        Ionomer-to-catalyst mass ratio.
     catalyst_density : float
-        Density of catalyst particles (kg/m³).
+        Density of catalyst particles [kg/m³].
     ecsa : float
-        Electrochemically active surface area (m²/g).
+        Electrochemically active surface area [m²/kg].
     eps_ion : float
-        Volume fraction of ionomer in the layer.
+        Volume fraction of ionomer in the layer [-].
     t_ion_film : float
-        Thickness of the ionomer film around catalyst particles (m).
+        Ionomer film thickness around catalyst particles [m].
     theta_contact : float
-        Contact angle (degrees).
+        Contact angle [degrees].
     theta_catalyst : float
-        Catalyst surface coverage (dimensionless).
+        Catalyst surface coverage [-].
+    electrolyte_saturation : float
+        Fraction of pore volume filled by liquid electrolyte [-].
     """
     ionomer: Ionomer = field(default=None)
     reaction: ElectrochemicalReaction = field(default_factory=ElectrochemicalReaction)
@@ -69,40 +85,7 @@ class CatalystLayer(PorousLayer, Ionomer):
                 setattr(self, f.name, getattr(self.ionomer, f.name))
         super().__post_init__()
 
-    def ionomer_sheet_charge_resistance(self, f_v, T, charge='proton'):
-        sigma_ion = self.charge_conductivity(f_v, T, charge)
-        return self.thickness * self.tau_ion / (self.eps_ion * sigma_ion)
-
-    def effective_charge_resistance(self, i, f_v, T, charge='proton'):
-        """
-        Effective charge resistance per Goshtasbi et al. (2020) / Neyerlin et al. (2007).
-
-        Returns
-        -------
-        float
-            Effective charge resistance [Ohm.m²].
-        """
-        self.sheet_resistance = 1. / (
-            1. / self.ionomer_sheet_charge_resistance(f_v, T, charge)
-            + 1. / self.electrolyte_sheet_resistance(T)
-        )
-        nu = np.minimum(self.sheet_resistance * i / self.reaction.tafel_slope(T), 10)
-        self.xi_neyerlin = nu * (-8.287e-3 * nu + 0.7184) - 2.072e-3
-        return self.sheet_resistance / (3 + self.xi_neyerlin)
-
-    def electrolyte_sheet_resistance(self, T):
-        sigma_el = self.electrolyte.calculate_ionic_conductivity(T)
-        return self.thickness / ((np.maximum(self.electrolyte_saturation, 1e-12) * self.eps_p) ** 1.5 * sigma_el)
-
-    def activation_overpotential(self, i, activity):
-        return self.reaction.tafel_overpotential(
-            i / (self.ecsa * self.catalyst_loading),
-            self.temperature,
-            activity
-        )
-    
 @dataclass(eq=False)
-
 class PtCCatalystLayer(CatalystLayer):
     """
     Catalyst layer model with explicit platinum/carbon and ionomer structure.
@@ -134,9 +117,7 @@ class PtCCatalystLayer(CatalystLayer):
     t_ion_film: float = 0
     theta_contact: float = 95.
     omega_PtO: float = 3000e3
-    k1_ion: float = 8.5
-    k2_ion: float = 5.4
-    k3_ion: float = 5.4
+
 
     def __post_init__(self):
         """
@@ -164,44 +145,16 @@ class PtCCatalystLayer(CatalystLayer):
         self.a_agg = 4 * np.pi * self.r_C ** 2
         self.v_agg = self.a_agg * self.r_C / 3.
         self.N_agg = self.eps_C / self.v_agg
-        self.set_ionomer_wet_properties(14, 300)
-        self.set_water_film_thickness(0)
+        self.update_ionomer_film_volume(1)
         PorousLayer.__post_init__(self)
-
     
-    def set_ionomer_wet_properties(self, lmbd, T):
-        """Update eps_ion, eps_p, t_ion_film and derived geometry for given water content."""
-        self.ionomer_expansion_factor = self.wet_expansion_factor(np.clip(lmbd, 3, 20), T)
-        self.eps_ion = self.dry_eps_ion * self.ionomer_expansion_factor
+    def update_ionomer_film_volume(self, ionomer_expansion_factor=1):
+        """Update eps_ion, eps_p, t_ion_film and derived geometry for given water content.
+        For now marapendi do not consider variations of the ionomer volume. This function is only called at 
+        __post_init__."""
+        self.ionomer_expansion_factor = ionomer_expansion_factor
+        self.eps_ion = self.dry_eps_ion * ionomer_expansion_factor
         self.eps_p   = 1 - self.eps_cat - self.eps_ion
         self.t_ion_film = self.r_C * ((self.eps_ion / self.eps_C + 1) ** (1/3) - 1)
         self.a_ion  = 4 * np.pi * (self.r_C + self.t_ion_film) ** 2 * self.N_agg
         self.ic_vol_ratio = (1 + self.t_ion_film / self.r_C) ** 3 - 1
-
-    def set_water_film_thickness(self, s):
-        r_ion = self.r_C + self.t_ion_film
-        self.t_water = (s * self.eps_p * self.r_C ** 3 / self.eps_C + r_ion ** 3) ** (1./3) - r_ion
-
-    def ionomer_sheet_charge_resistance(self, f_v, T, charge='proton'):
-        """Ionomer film proton resistance per Hao et al. (2016)."""
-        sigma_ion = self.charge_conductivity(f_v, T, charge)
-        tort_ion  = self.eps_ion ** -0.5
-        return self.thickness / (self.eps_ion / tort_ion * sigma_ion)
-
-    def o2_ionomer_film_bulk_resistance(self, lmbd, T):
-        return self.t_ion_film / (ct.gas_constant * T * self.ionomer.o2_permeability(lmbd, T))
-
-    def o2_ionomer_film_resistance(self, lmbd, T):
-        """Total O2 film resistance per Hao et al. (2015), neglecting water film."""
-        R_bulk     = self.o2_ionomer_film_bulk_resistance(lmbd, T)
-        R_pt_iface = (self.k2_ion + 1) / (1 - self.theta_catalyst) / (self.L_Pt * self.ecsa)
-        R_gas_iface = self.k1_ion / (self.a_ion * self.thickness)
-        R_water    = (self.k3_ion + 1) * self.t_water / o2_water_diffusivity(T) / (self.a_ion * self.thickness)
-        return (R_gas_iface + R_pt_iface) * R_bulk + R_water
-
-    def activation_overpotential(self, i, activity):
-        return self.reaction.tafel_overpotential(
-            i / (self.ecsa * self.L_Pt),
-            self.temperature,
-            activity
-        )

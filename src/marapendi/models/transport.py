@@ -4,8 +4,8 @@ Module providing gas and liquid transport models.
 from dataclasses import dataclass
 import numpy as np
 import cantera as ct
-from marapendi.components.water import water_surface_tension
-from marapendi.tools.tools import arrhenius_term, polyval_vec
+from marapendi.models.water import water_surface_tension
+
 
 
 @dataclass 
@@ -88,31 +88,6 @@ class ChannelGasResistanceModel:
         return (self.molecular_diffusion_resistance(channel, diffusion_coefficient) +
                 self.convection_resistance(channel, volume_flow_rate))
 
-@dataclass
-class MembraneWaterTransportModel:
-    ''''
-    See Wei et al. (2023)
-    '''
-    def water_vol_fraction(self, lmbd, V_w, V_ion):
-        lmbd_V_w = lmbd * V_w
-        return lmbd_V_w / (V_ion + lmbd_V_w)
-    
-    def diffusion_coefficient(self, lmbd, f_v, T, darken_num, darken_den, alpha_lmbd, E_act, T_ref=303.15):
-        return polyval_vec(darken_num[:,::-1], lmbd) / polyval_vec(darken_den[:,::-1], lmbd) * alpha_lmbd * f_v * arrhenius_term(E_act, T, T_ref)
-
-    def sorption_coefficient(self, f_v, T, k_des, E_act, T_ref=303.15):
-        return k_des * f_v * arrhenius_term(E_act, T, T_ref)
-    
-    def calculate_membrane_water_resistance(self, D_lmbd, thickness, eps_ion, c_ion, tort_ion):
-        D_eff = D_lmbd * c_ion * eps_ion / tort_ion
-        return thickness / D_eff
-    
-    def equilibrium_water_content(self, rh, sorption_coeffs):
-        rh = np.clip(rh, 0, 1)
-        return polyval_vec(sorption_coeffs[:,::-1], rh)
-
-    def liquid_equilibrium_water_content(self, reference_liquid_water_content):
-        return reference_liquid_water_content
     
 @dataclass
 class PorousGasResistanceModel:

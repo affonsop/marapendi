@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import numpy as np
-from .water import water_saturation_pressure, water_surface_tension
+from ..models.water import water_saturation_pressure, water_surface_tension
 
 @dataclass
 class ElectrolyteSolution():

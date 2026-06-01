@@ -20,8 +20,8 @@ import cantera as ct
 
 from marapendi.models.gas_composition import species_indexes
 from .porous_layers import PorousLayer
-from marapendi.models.transport_models import ChannelGasResistanceModel
-from .water import water_kinematic_viscosity, water_molar_volume
+from marapendi.models.transport import ChannelGasResistanceModel
+from ..models.water import water_kinematic_viscosity, water_molar_volume
 
 @dataclass(eq=False) 
 class ChannelConditions:  

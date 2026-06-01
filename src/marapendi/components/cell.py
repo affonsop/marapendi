@@ -8,8 +8,10 @@ from .layer import Layer
 from marapendi.tools.tools import Updatable 
 from .porous_layers import PorousLayer
 from .flow_channels import FlowChannel
-from marapendi.models.transport_models import PorousGasResistanceModel, DarcyTransportModel, MembraneWaterTransportModel
-from marapendi.models.voltage_models import VoltageModel
+from marapendi.models.transport import PorousGasResistanceModel, DarcyTransportModel
+from marapendi.models.voltage import VoltageModel
+from marapendi.models.catalyst_layer import *
+from marapendi.models.membrane import * 
 
 @dataclass
 class CellSide(Updatable):
@@ -42,7 +44,8 @@ class Cell(Updatable):
     memb: Membrane = field(default_factory=Membrane)
     gas_diffusion_model: PorousGasResistanceModel = field(default_factory=PorousGasResistanceModel)
     darcy_transport_model: DarcyTransportModel = field(default_factory=DarcyTransportModel)
-    membrane_water_transport_model: MembraneWaterTransportModel = field(default_factory=MembraneWaterTransportModel)
+    memb_model: MembraneModel = field(default_factory=MembraneModel)
+    cl_model: CatalystLayerModel = field(default_factory=CatalystLayerModel)
     voltage_model: VoltageModel = field(default_factory=VoltageModel)
     charge: str = 'proton'
 

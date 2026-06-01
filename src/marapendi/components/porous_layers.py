@@ -7,8 +7,8 @@ import cantera as ct
 
 from .layer import Layer
 from marapendi.models.gas_composition import GasComposition, index_h2, index_o2, index_h2ov, species_indexes, calculate_species_diffusion_coefficient
-from marapendi.models.transport_models import PorousGasResistanceModel, DarcyTransportModel
-from .water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight, water_dynamic_viscosity, water_density
+from marapendi.models.transport import PorousGasResistanceModel, DarcyTransportModel
+from ..models.water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight, water_dynamic_viscosity, water_density
 
 @dataclass(eq=False)
 class PorousLayer(Layer):
@@ -85,7 +85,7 @@ class PorousLayer(Layer):
         """
         return self.thickness / self.bulk_thermal_conductivity 
 
-    def set_ionomer_wet_properties(self, ionomer_water_content, temperature):
+    def update_ionomer_film_volume(self, ionomer_water_content, temperature):
         pass
 
     def set_water_film_thickness(self, water_saturation): 

@@ -1,5 +1,12 @@
 """
-Module providing a membrane class intended to be the base class for different membrane models. 
+Membrane component dataclasses.
+
+These dataclasses store geometric and material parameters for proton- or
+anion-exchange membranes.  Physics computations (water volume fraction,
+diffusion coefficients, sorption isotherms, permeation flux, ionic
+conductivity, etc.) are implemented as stateless strategy methods in
+:mod:`marapendi.models.membrane` (``IonomerModel``, ``MembraneModel``,
+``PFSAModel``).
 """
 
 import numpy as np
@@ -11,50 +18,31 @@ from marapendi.components.porous_layers import PorousLayer
 @dataclass
 class Membrane(PorousLayer, Ionomer):
     """
-    A base dataclass representing the properties of a proton/anion exchange membrane 
-    and methods for calculating water volume fraction, hydrogen permeability, 
-    and hydrogen permeation flux.
+    Base dataclass for proton- or anion-exchange membranes.
 
-    Attributes:
-    -----------
-    
-    equivalent_weight : float
-        Equivalent weight of the membrane in kg/kmol. Default is 1100 kg/kmol.
-    dry_density : float
-        Density of the membrane in kg/m³. Default is 1980 kg/m³.
-    dry_thickness : float
-        Thickness of the membrane in meters (m). Default is 25 µm.
-    h2_permeation_model: HydrogenPermeationModel
-        A dataclass representing the properties of membrane hydrogen permeability model.
-    water_content: float
-        Water content of the membrane. 
-    water_balance_model: MembraneWaterBalanceModel
-        Water balance model allowing to calculate water contents in the membrane and CL. 
-    reference_water_diffusivity : float, optional
-        Reference value for water diffusivity, in m2/s (default is 4.3e-10).
-    reference_absorption_coefficient : float, optional
-        Reference value for the absorption coefficient (default is 1e-5).
-    reference_temperature : float, optional
-        Reference temperature for calculations, in Kelvin (default is 353.15 K).
-    water_diffusivity_activation_energy : float, optional
-        Activation energy for water diffusivity, in J/kmol (default is 20e6).
-    water_absorption_activation_energy : float, optional
-        Activation energy for water absorption, in J/kmol (default is 20e6).
+    Combines porous-layer geometry (:class:`~marapendi.components.porous_layers.PorousLayer`)
+    with ionomer material parameters (:class:`~marapendi.components.ionomer.Ionomer`).
 
-    Computed Attributes:
-    --------------------
-    dry_concentration : float
-        Concentration of the membrane in kmol/m³, computed during initialization.
-    dry_molar_volume : float
-        Molar volume of the membrane in m³/kmol, computed during initialization.
+    All physics (water volume fraction, diffusion coefficients, sorption
+    isotherms, H₂ permeation flux, ionic conductivity, electroosmotic drag)
+    are computed by the corresponding model classes in
+    :mod:`marapendi.models.membrane`.
 
-    Methods:
-    --------
-    water_vol_fraction(water_content, water_molar_volume):
-        Calculate the volume fraction of water in the membrane.
-
-    hydrogen_permeation_flux(partial_pressure_h2, hydrogen_permeability):
-        Calculate the hydrogen permeation flux through the membrane.
+    Attributes
+    ----------
+    thickness : float
+        Membrane thickness [m].
+    eps_ion : float
+        Volume fraction of ionomer [-] (default 1 — pure ionomer).
+    tort_ion : float
+        Ionomer tortuosity factor [-] (default 1).
+    ionomer : Ionomer, optional
+        Ionomer parameter object whose fields are copied onto ``self``
+        during ``__post_init__`` for direct attribute access.
+    thermal_conductivity : float
+        Thermal conductivity [W/(m·K)] (default 0.9).
+    specific_heat_capacity : float
+        Specific heat capacity [J/(kg·K)] (default 2000).
     """
     
     thickness: float
@@ -84,6 +72,12 @@ class Membrane(PorousLayer, Ionomer):
         PorousLayer.__post_init__(self)
         Ionomer.__post_init__(self)
 
+    def update_ionomer_film_volume(self, ionomer_expansion_factor=1):
+        """Update eps_ion, eps_p, t_ion_film and derived geometry for given water content."""
+        self.ionomer_expansion_factor = ionomer_expansion_factor
+        self.set_water_film_thickness
+
+        
 @dataclass
 class PFSAMembrane(Membrane, PFSAIonomer):
     pass

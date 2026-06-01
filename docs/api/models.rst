@@ -1,20 +1,36 @@
 Models
 ======
 
-Mathematical and physical models for transport, electrochemistry, voltage,
-gas composition, water balance, transient dynamics, and degradation.
+Stateless mathematical models for ionomer physics, membrane transport,
+catalyst-layer electrokinetics, gas-phase transport, voltage, water
+thermodynamics, transient dynamics, and degradation.
 
-.. automodule:: marapendi.models.transient
+Each model class is a pure strategy object: it accepts component
+dataclasses as arguments and returns computed quantities without storing
+state.  Component dataclasses (see :doc:`components`) carry the physical
+parameters; model classes carry the equations.
+
+.. automodule:: marapendi.models.membrane
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.models.transport_models
+.. automodule:: marapendi.models.catalyst_layer
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.models.voltage_models
+.. automodule:: marapendi.models.transport
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: marapendi.models.voltage
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: marapendi.models.water
    :members:
    :undoc-members:
    :show-inheritance:
@@ -29,7 +45,7 @@ gas composition, water balance, transient dynamics, and degradation.
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.models.water_balance_models
+.. automodule:: marapendi.models.transient
    :members:
    :undoc-members:
    :show-inheritance:
