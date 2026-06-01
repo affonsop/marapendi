@@ -110,7 +110,7 @@ class TransientCellModel:
     # ------------------------------------------------------------------
 
     def _compute_derived_quantities(self, x, i) -> CellState:
-        """Unpack state vector, compute thermodynamic fields, and return a CellState."""
+        """Unpack state vector and compute thermodynamic fields."""
         cell = self.cell
         lmbd, T, cg_k, s = self.get_states_from_x(x)
 
@@ -119,7 +119,7 @@ class TransientCellModel:
         p_g   = c_g * ct.gas_constant * T
         x_g_k = cg_k / c_g[:, np.newaxis, ...]
         p_g_k = p_g[:, np.newaxis, ...] * x_g_k
-        D_g_k   = cell.gas_diffusion_model.species_diffusion_coefficient(T, p_g, x_h2=self.x_h2_mask)
+        D_g_k = cell.gas_diffusion_model.species_diffusion_coefficient(T, p_g, x_h2=self.x_h2_mask)
         c_sat = water_saturation_concentration(T)
         c_v   = cg_k[:, -1, ...]
         rh    = c_v / c_sat
@@ -128,22 +128,18 @@ class TransientCellModel:
         M_k   = x_g_k * np.array([32., 28., 2., 18.])[np.newaxis, :, np.newaxis]
         V_w   = water_molar_volume(T)
 
-        f_v = cell.memb_model.water_vol_fraction(
-            lmbd, V_w, cell.V_ion
-        )
+        f_v = cell.memb_model.water_vol_fraction(lmbd, V_w, cell.V_ion)
 
-        # Pre-sliced convenience fields
         memb_ix  = cell.memb.ix
         ca_cl_ix = cell.ca.cl.ix
         an_cl_ix = cell.an.cl.ix
 
-        state = CellState(
+        return CellState(
             x=x,
             lmbd=lmbd, T=T, cg_k=cg_k, s=s,
             iF=iF, p_g=p_g, p_g_k=p_g_k, D_g_k=D_g_k,
             c_sat=c_sat, c_v=c_v, rh=rh,
             rho_l=rho_l, nu_l=nu_l, M_k=M_k, f_v=f_v,
-            # slices
             T_memb=T[memb_ix, ...],
             T_ca_cl=T[ca_cl_ix, ...],
             T_an_cl=T[an_cl_ix, ...],
@@ -154,13 +150,17 @@ class TransientCellModel:
             p_o2_ca_cl=p_g_k[ca_cl_ix, 0, ...],
         )
 
-        # Local O2 partial pressure at cathode CL catalyst surface
-        state.t_water_film = cell.cl_model.water_film_thickness(state.s[cell.ca.cl.ix,...], cell.ca.cl)
-        state.R_o2_local = cell.cl_model.o2_ionomer_film_resistance(
-            state.lmbd_ca_cl, state.T_ca_cl, cell.ca.cl, cell.memb_model, 
-            cell.ca.cl.t_ion_film, state.t_water_film, coverage_ratio=0
-        )
+    def _compute_voltage(self, state: CellState):
+        """Compute local O₂ pressure and cell voltage; populate state in-place."""
+        cell = self.cell
 
+        state.t_water_film = cell.cl_model.water_film_thickness(
+            state.s[cell.ca.cl.ix, ...], cell.ca.cl,
+        )
+        state.R_o2_local = cell.cl_model.o2_ionomer_film_resistance(
+            state.lmbd_ca_cl, state.T_ca_cl, cell.ca.cl, cell.memb_model,
+            cell.ca.cl.t_ion_film, state.t_water_film, coverage_ratio=0,
+        )
         c_o2_local = state.cg_k[cell.ca.cl.ix, 0, ...] - state.R_o2_local * state.iF / 4
         state.p_o2_local = c_o2_local * ct.gas_constant * state.T_ca_cl
 
@@ -172,7 +172,7 @@ class TransientCellModel:
             T_memb=state.T_memb,
             f_v_memb=state.f_v_memb,
             f_v_ca_cl=state.f_v_ca_cl,
-            s_ca_cl=0, 
+            s_ca_cl=0,
             p_h2=state.p_h2,
             p_o2_local=state.p_o2_local,
             p_o2_ca_cl=state.p_o2_ca_cl,
@@ -185,8 +185,6 @@ class TransientCellModel:
             ca_cl=cell.ca.cl,
             charge=cell.charge,
         )
-        
-        return state
 
     def _compute_resistances(self, state: CellState):
         """Build layer resistance array R and harmonic-mean inter-layer eff_R."""
@@ -395,25 +393,26 @@ class TransientCellModel:
         # 1. Derived thermodynamic quantities → CellState
         state = self._compute_derived_quantities(x, i)
 
-        # 2. Transport resistances
+        # 2. Local O₂ pressure + cell voltage
+        self._compute_voltage(state)
+
+        # 3. Transport resistances
         R, eff_R = self._compute_resistances(state)
 
-        # 3. Inter-layer fluxes (including EOD)
-        J = (
-            self._compute_fluxes(eff_R, state)
-        )
+        # 4. Inter-layer fluxes (including EOD)
+        J = self._compute_fluxes(eff_R, state)
 
-        # 4. Water exchange between phases
+        # 5. Water exchange between phases
         J_des = self._compute_water_exchange(state)
         S_vl  = self._compute_phase_change(state)
 
-        # 5. Source terms
+        # 6. Source terms
         S = self._compute_sources(state, J_des, S_vl)
 
-        # 6. Capacities
+        # 7. Capacities
         C = self._compute_capacities(state)
 
-        # 7. Assemble dxdt; enforce channel boundary conditions
+        # 8. Assemble dxdt; enforce channel boundary conditions
         dxdt = ((J[:-1, ...] - J[1:, ...]) / cell.thickness[:, np.newaxis] + S) / C
         for ch in (cell.ca.ch, cell.an.ch):
             dxdt[ch.ix, self.i_T,  :] = 0
