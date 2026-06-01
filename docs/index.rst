@@ -23,6 +23,12 @@ to make user-defined models.
 
 .. toctree::
    :maxdepth: 2
+   :caption: User Guide
+
+   user_guide/index
+
+.. toctree::
+   :maxdepth: 2
    :caption: API Reference
 
    api/components

@@ -93,6 +93,95 @@ class TransientCellModel:
             [14, 353.15, 40e-3, 40e-3, 40e-3, 40e-3, 1.]
         )[np.newaxis, :]
 
+    @property
+    def n_states(self) -> int:
+        """Total length of the normalised flat state vector (n_layers × n_variables)."""
+        return self.n_layers * self.n_variables
+
+    # ------------------------------------------------------------------
+    # Initial-state helper
+    # ------------------------------------------------------------------
+
+    def initial_state(
+        self,
+        T: float = 353.15,
+        p: float = 1e5,
+        rh: float = 0.7,
+        lmbd: float = 10.0,
+        s: float = 0.05,
+        ca_dry_o2: float = 0.21,
+        an_dry_h2: float = 1.0,
+    ) -> np.ndarray:
+        """Build a normalised flat initial-state vector from operating conditions.
+
+        Assigns cathode gas composition (O₂ / N₂ / H₂O) to cathode-side layers
+        and anode gas composition (H₂ / H₂O) to anode-side layers using the
+        ideal-gas law.  A small guard concentration (10⁻⁶ × p/RT) is used for
+        absent species to avoid ``log(0)`` in the Nernst equation at t = 0.
+
+        The returned vector is normalised by ``self.norm_factor`` and flattened,
+        making it suitable for direct use as ``y0`` in
+        ``scipy.integrate.solve_ivp``.
+
+        Parameters
+        ----------
+        T : float
+            Operating temperature [K] (default 353.15 K = 80 °C).
+        p : float
+            Total pressure [Pa] (default 1e5 Pa = 1 bara).
+        rh : float
+            Relative humidity at both inlets, 0–1 (default 0.7).
+        lmbd : float
+            Initial ionomer water content [mol H₂O / mol SO₃⁻] (default 10).
+        s : float
+            Initial liquid water saturation, 0–1 (default 0.05).
+        ca_dry_o2 : float
+            O₂ mole fraction in the dry cathode gas (default 0.21 for air).
+        an_dry_h2 : float
+            H₂ mole fraction in the dry anode gas (default 1.0 for pure H₂).
+
+        Returns
+        -------
+        np.ndarray
+            Normalised flat state vector of shape ``(n_layers * n_variables,)``.
+        """
+        from marapendi.models.water import water_saturation_pressure
+
+        cell  = self.cell
+        RT    = ct.gas_constant * T
+        p_H2O = rh * water_saturation_pressure(T)
+        p_dry  = p - p_H2O
+        eps   = 1e-6 * p / RT   # guard: avoids log(0) in Nernst term
+
+        c_H2O = p_H2O / RT
+
+        # Species order in state vector: [O₂, N₂, H₂, H₂O]
+        c_ca = np.array([
+            ca_dry_o2       * p_dry / RT,   # O₂
+            (1 - ca_dry_o2) * p_dry / RT,   # N₂
+            eps,                             # H₂  (trace)
+            c_H2O,
+        ])
+        c_an = np.array([
+            eps,                             # O₂  (trace)
+            (1 - an_dry_h2) * p_dry / RT,   # N₂  (if any)
+            an_dry_h2       * p_dry / RT,   # H₂
+            c_H2O,
+        ])
+
+        x0 = np.zeros((self.n_layers, self.n_variables))
+        x0[:, self.i_lmbd] = lmbd
+        x0[:, self.i_T]    = T
+        x0[:, self.i_s]    = s
+
+        memb_ix = cell.memb.ix
+        for layer in cell.layers:
+            if layer is cell.memb:
+                continue
+            x0[layer.ix, self.i_cg] = c_ca if layer.ix > memb_ix else c_an
+
+        return (x0 / self.norm_factor).flatten()
+
     # ------------------------------------------------------------------
     # State unpacking
     # ------------------------------------------------------------------
@@ -117,7 +206,7 @@ class TransientCellModel:
         iF    = i / ct.faraday
         c_g   = np.sum(cg_k, axis=1)
         p_g   = c_g * ct.gas_constant * T
-        x_g_k = cg_k / c_g[:, np.newaxis, ...]
+        x_g_k = cg_k / np.maximum(c_g, 1e-30)[:, np.newaxis, ...]
         p_g_k = p_g[:, np.newaxis, ...] * x_g_k
         D_g_k = cell.gas_diffusion_model.species_diffusion_coefficient(T, p_g, x_h2=self.x_h2_mask)
         c_sat = water_saturation_concentration(T)

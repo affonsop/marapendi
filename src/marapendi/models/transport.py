@@ -125,7 +125,7 @@ class PorousGasResistanceModel:
 
         # Apply temperature and pressure correction
         # Fick's law adjustment: D ~ T^1.5 / P
-        diffusion_coeff = reference_diffusion_coeff[...,np.newaxis] * (temperature ** 1.5 / pressure * 15.0682)[:,np.newaxis,...]
+        diffusion_coeff = reference_diffusion_coeff[...,np.newaxis] * (temperature ** 1.5 / np.maximum(pressure, 1.) * 15.0682)[:,np.newaxis,...]
         return diffusion_coeff
 
     def water_saturation_correction(self, s, n_s):
@@ -151,7 +151,7 @@ class PorousGasResistanceModel:
         return self.molecular_diffusion_effective_length(thickness, eps_p, tort, s, n_s) / D_g_k
 
     def knudsen_diffusivity(self, T, d_p, M_k):
-        return d_p / 3 * np.sqrt(8 * ct.gas_constant * T / M_k / np.pi)
+        return d_p / 3 * np.sqrt(8 * ct.gas_constant * T / np.maximum(M_k, 1e-30) / np.pi)
 
     def total_diffusion_resistance(self, T, s, D_g_k, M_k, thickness, eps_p, tort, d_p, n_s):
         """

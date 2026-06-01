@@ -18,6 +18,7 @@ from .components.cell_state import *
 # ── Degradation models (depend on components) ─────────────────────────────────
 from .models.water import *
 from .models.degradation import *
+from .models.model import *
 from .models.transient import *
 from .models.electrochemistry import *
 from .models.transport import *

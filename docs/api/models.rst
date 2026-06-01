@@ -10,6 +10,18 @@ dataclasses as arguments and returns computed quantities without storing
 state.  Component dataclasses (see :doc:`components`) carry the physical
 parameters; model classes carry the equations.
 
+See the :doc:`../user_guide/polarization_curve` guide for a worked example.
+
+.. automodule:: marapendi.models.model
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: marapendi.models.transient
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: marapendi.models.membrane
    :members:
    :undoc-members:
@@ -36,11 +48,6 @@ parameters; model classes carry the equations.
    :show-inheritance:
 
 .. automodule:: marapendi.models.electrochemistry
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: marapendi.models.transient
    :members:
    :undoc-members:
    :show-inheritance:
