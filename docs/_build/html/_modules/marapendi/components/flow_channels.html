@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>marapendi.components.flow_channels &#8212; marapendi 0.1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for marapendi.components.flow_channels</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Module providing classes to model flow channels and their operating conditions </span>
+<span class="sd">in a PEM fuel cell. This includes representations for channel dimensions, </span>
+<span class="sd">flow rates, stoichiometries, and methods to compute gas transport resistances.</span>
+
+<span class="sd">Classes</span>
+<span class="sd">-------</span>
+<span class="sd">ChannelConditions</span>
+<span class="sd">    Encapsulates the conditions (temperature, RH, pressure, gas composition) </span>
+<span class="sd">    for a flow channel.</span>
+
+<span class="sd">FlowChannel</span>
+<span class="sd">    Represents a flow channel geometry and state in a PEM fuel cell, </span>
+<span class="sd">    providing methods to calculate flow rates and gas transport resistances.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span> 
+<span class="kn">import</span><span class="w"> </span><span class="nn">cantera</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ct</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">marapendi.models.gas_composition</span><span class="w"> </span><span class="kn">import</span> <span class="n">species_indexes</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.porous_layers</span><span class="w"> </span><span class="kn">import</span> <span class="n">PorousLayer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">marapendi.models.transport_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">ChannelGasResistanceModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.water</span><span class="w"> </span><span class="kn">import</span> <span class="n">water_kinematic_viscosity</span><span class="p">,</span> <span class="n">water_molar_volume</span>
+
+<div class="viewcode-block" id="ChannelConditions">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.flow_channels.ChannelConditions">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">eq</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> 
+<span class="k">class</span><span class="w"> </span><span class="nc">ChannelConditions</span><span class="p">:</span>  
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class to encapsulate the operating conditions of the gas in a flow channels.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    temperature : float</span>
+<span class="sd">        Temperature in Kelvin.</span>
+<span class="sd">    rh : float</span>
+<span class="sd">        Relative humidity (0-1).</span>
+<span class="sd">    pressure : float</span>
+<span class="sd">        Total pressure in Pa.</span>
+<span class="sd">    dry_o2_mole_fraction : float</span>
+<span class="sd">        Mole fraction of O2 in the dry gas mixture.</span>
+<span class="sd">    dry_h2_mole_fraction : float</span>
+<span class="sd">        Mole fraction of H2 in the dry gas mixture.</span>
+<span class="sd">    stoichiometry : float</span>
+<span class="sd">        Stoichiometric ratio (actual flow / required flow).</span>
+
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    set_conditions(...)</span>
+<span class="sd">        Update one or more of the channel operating conditions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">rh</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">pressure</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">dry_o2_mole_fraction</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">dry_h2_mole_fraction</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">stoichiometry</span><span class="p">:</span> <span class="nb">float</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="ChannelConditions.set_conditions">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.flow_channels.ChannelConditions.set_conditions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_conditions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rh</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">pressure</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                       <span class="n">dry_o2_mole_fraction</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dry_h2_mole_fraction</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                       <span class="n">stoichiometry</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update the channel conditions.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        temperature : float, optional</span>
+<span class="sd">            New temperature in K.</span>
+<span class="sd">        rh : float, optional</span>
+<span class="sd">            New relative humidity (0-1).</span>
+<span class="sd">        pressure : float, optional</span>
+<span class="sd">            New total pressure in Pa.</span>
+<span class="sd">        dry_o2_mole_fraction : float, optional</span>
+<span class="sd">            New dry O2 mole fraction.</span>
+<span class="sd">        dry_h2_mole_fraction : float, optional</span>
+<span class="sd">            New dry H2 mole fraction.</span>
+<span class="sd">        stoichiometry : float, optional</span>
+<span class="sd">            New stoichiometry value.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        Only the provided arguments will update; others remain unchanged.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">temperature</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span> <span class="o">=</span> <span class="n">temperature</span>
+        <span class="k">if</span> <span class="n">rh</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rh</span> <span class="o">=</span> <span class="n">rh</span>
+        <span class="k">if</span> <span class="n">pressure</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">pressure</span> <span class="o">=</span> <span class="n">pressure</span>
+        <span class="k">if</span> <span class="n">dry_o2_mole_fraction</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dry_o2_mole_fraction</span> <span class="o">=</span> <span class="n">dry_o2_mole_fraction</span>
+        <span class="k">if</span> <span class="n">dry_h2_mole_fraction</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dry_h2_mole_fraction</span> <span class="o">=</span> <span class="n">dry_h2_mole_fraction</span>
+        <span class="k">if</span> <span class="n">stoichiometry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stoichiometry</span> <span class="o">=</span> <span class="n">stoichiometry</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__post_init__</span><span class="p">()</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="FlowChannel">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.flow_channels.FlowChannel">[docs]</a>
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">eq</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FlowChannel</span><span class="p">(</span><span class="n">PorousLayer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Class to represent a fuel cell flow channels, inheriting from PorousLayer </span>
+<span class="sd">    to allow similar interface for transport calculations. Corresponds to channels of</span>
+<span class="sd">    a single cell. </span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    reactant : str</span>
+<span class="sd">        The primary reactant species (&#39;o2&#39; or &#39;h2&#39;).</span>
+<span class="sd">    inlet_stoichiometry : float</span>
+<span class="sd">        Inlet stoichiometric ratio.</span>
+<span class="sd">    inlet_gas_flow_rate : float</span>
+<span class="sd">        Gas flow rate entering the channel (m3/s).</span>
+<span class="sd">    inlet_liquid_flow_rate : float</span>
+<span class="sd">        Liquid flow rate entering the channel (m3/s).</span>
+<span class="sd">    inlet_liquid_saturation : float</span>
+<span class="sd">        Saturation fraction of the inlet stream.</span>
+<span class="sd">    width : float</span>
+<span class="sd">        Channel width (m).</span>
+<span class="sd">    height : float</span>
+<span class="sd">        Channel height (m).</span>
+<span class="sd">    length : float</span>
+<span class="sd">        Channel length (m).</span>
+<span class="sd">    channel_land_ratio : float</span>
+<span class="sd">        Ratio of channel width to land width.</span>
+<span class="sd">    n_parallel : int</span>
+<span class="sd">        Number of parallel channels.</span>
+<span class="sd">    transport_resistance_model : ChannelGasResistanceModel</span>
+<span class="sd">        Model to calculate total gas transport resistance.</span>
+
+<span class="sd">    Derived Attributes</span>
+<span class="sd">    ------------------</span>
+<span class="sd">    hydraulic_diameter : float</span>
+<span class="sd">        Hydraulic diameter of the channel (m).</span>
+<span class="sd">    channel_flow_section : float</span>
+<span class="sd">        Cross-sectional area of a single channel (m2).</span>
+<span class="sd">    total_flow_section : float</span>
+<span class="sd">        Total flow area accounting for all channels (m2).</span>
+<span class="sd">    RT : float</span>
+<span class="sd">        Product of universal gas constant and temperature (J/kmolK).</span>
+
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    set_inlet_stoichiometry(stoichiometry)</span>
+<span class="sd">        Set the inlet stoichiometry.</span>
+<span class="sd">    reactant_mole_fraction()</span>
+<span class="sd">        Return the mole fraction of the primary reactant.</span>
+<span class="sd">    set_fixed_inlet_gas_flow_rate(inlet_gas_flow_rate)</span>
+<span class="sd">        Fix the inlet gas flow rate and update liquid saturation.</span>
+<span class="sd">    set_fixed_inlet_liquid_flow_rate(inlet_liquid_flow_rate)</span>
+<span class="sd">        Fix the inlet liquid flow rate and update liquid saturation.</span>
+<span class="sd">    set_inlet_gas_flow_rate_from_stoichiometry(reactant_consumption, stoichiometry, fixed_inlet_gas_flow_rate)</span>
+<span class="sd">        Compute inlet gas flow from stoichiometry and consumption.</span>
+<span class="sd">    calculate_inlet_gas_flow_rate(reactant_consumption)</span>
+<span class="sd">        Calculate gas flow rate based on stoichiometry and reactant consumption.</span>
+<span class="sd">    calculate_inlet_stochiometry(reactant_consumption)</span>
+<span class="sd">        Compute effective stoichiometry from flow rate and consumption.</span>
+<span class="sd">    gas_transport_resistance(species, volume_flow_rate=None)</span>
+<span class="sd">        Compute gas transport resistance in the channel.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">reactant</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;o2&#39;</span>
+    <span class="n">inlet_stoichiometry</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span> 
+    <span class="n">inlet_gas_flow_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-12</span>
+    <span class="n">inlet_liquid_flow_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">inlet_liquid_saturation</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">width</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-3</span>
+    <span class="n">height</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-3</span>
+    <span class="n">length</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">100e-3</span>
+    <span class="n">channel_land_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.</span>
+    <span class="n">n_parallel</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">14</span>
+    <span class="n">eps_p</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">tort</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.</span>
+    <span class="n">sherwood</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">4.</span>
+    <span class="n">transport_resistance_model</span><span class="p">:</span> <span class="n">ChannelGasResistanceModel</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">ChannelGasResistanceModel</span><span class="p">)</span>
+
+<div class="viewcode-block" id="FlowChannel.__post_init__">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.flow_channels.FlowChannel.__post_init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> 
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize geometric and thermodynamic properties after instantiation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hydraulic_diameter</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel_flow_section</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">half_width</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">width</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">total_flow_section</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_parallel</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">channel_flow_section</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">height</span> 
+
+        <span class="n">PorousLayer</span><span class="o">.</span><span class="n">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FlowChannel.set_inlet_stoichiometry">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.flow_channels.FlowChannel.set_inlet_stoichiometry">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_inlet_stoichiometry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">stoichiometry</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set the inlet stoichiometric ratio.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        stoichiometry : float</span>
+<span class="sd">            New stoichiometric value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inlet_stoichiometry</span> <span class="o">=</span> <span class="n">stoichiometry</span></div>
+
+
+    
+<div class="viewcode-block" id="FlowChannel.set_fixed_inlet_gas_flow_rate">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.flow_channels.FlowChannel.set_fixed_inlet_gas_flow_rate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_fixed_inlet_gas_flow_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inlet_gas_flow_rate</span><span class="p">):</span> 
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fix the inlet gas flow rate and update liquid saturation.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        inlet_gas_flow_rate : float</span>
+<span class="sd">            New gas flow rate (mol/s).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inlet_gas_flow_rate</span> <span class="o">=</span> <span class="n">inlet_gas_flow_rate</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">inlet_liquid_saturation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inlet_liquid_flow_rate</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inlet_liquid_flow_rate</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">inlet_gas_flow_rate</span><span class="p">,</span> <span class="mf">1e-12</span><span class="p">)</span></div>
+
+        
+<div class="viewcode-block" id="FlowChannel.set_fixed_inlet_liquid_flow_rate">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.flow_channels.FlowChannel.set_fixed_inlet_liquid_flow_rate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_fixed_inlet_liquid_flow_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inlet_liquid_flow_rate</span><span class="p">):</span> 
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fix the inlet liquid flow rate and update liquid saturation.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        inlet_liquid_flow_rate : float</span>
+<span class="sd">            New liquid flow rate (mol/s).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inlet_liquid_flow_rate</span> <span class="o">=</span> <span class="n">inlet_liquid_flow_rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inlet_liquid_saturation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inlet_liquid_flow_rate</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inlet_liquid_flow_rate</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">inlet_gas_flow_rate</span><span class="p">,</span> <span class="mf">1e-12</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FlowChannel.set_inlet_gas_flow_rate_from_stoichiometry">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.flow_channels.FlowChannel.set_inlet_gas_flow_rate_from_stoichiometry">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_inlet_gas_flow_rate_from_stoichiometry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reactant_consumption</span><span class="p">,</span> <span class="n">stoichiometry</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">fixed_inlet_gas_flow_rate</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set the inlet gas flow rate from stoichiometry and reactant consumption.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        reactant_consumption : float</span>
+<span class="sd">            Consumption rate of the reactant (kmol/s).</span>
+<span class="sd">        stoichiometry : float, optional</span>
+<span class="sd">            Stoichiometric ratio to override (default 0, uses existing).</span>
+<span class="sd">        fixed_inlet_gas_flow_rate : float, optional</span>
+<span class="sd">            Additional fixed flow rate to add (default 0).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span> 
+            <span class="k">if</span> <span class="n">stoichiometry</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span> 
+                <span class="bp">self</span><span class="o">.</span><span class="n">inlet_stoichiometry</span> <span class="o">=</span> <span class="n">stoichiometry</span> 
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">inlet_stoichiometry</span> <span class="o">=</span> <span class="n">stoichiometry</span> 
+        <span class="n">inlet_gas_flow_rate</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_inlet_gas_flow_rate</span><span class="p">(</span><span class="n">reactant_consumption</span><span class="p">)</span> <span class="o">+</span> <span class="n">fixed_inlet_gas_flow_rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_fixed_inlet_gas_flow_rate</span><span class="p">(</span><span class="n">inlet_gas_flow_rate</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FlowChannel.inlet_gas_flow_rate">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.flow_channels.FlowChannel.inlet_gas_flow_rate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">inlet_gas_flow_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reactant_consumption</span><span class="p">,</span> <span class="n">reactant_mole_fraction</span><span class="p">,</span> <span class="n">gas_concentration</span><span class="p">):</span> 
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate gas flow rate required by stoichiometry.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        reactant_consumption : float</span>
+<span class="sd">            Reactant consumption rate (kmol/s).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            Required inlet gas flow rate (m3/s).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">inlet_stoichiometry</span> <span class="o">*</span> <span class="n">reactant_consumption</span> <span class="o">/</span> \
+            <span class="n">reactant_mole_fraction</span> <span class="o">/</span> <span class="n">gas_concentration</span></div>
+
+    
+<div class="viewcode-block" id="FlowChannel.calculate_inlet_stochiometry">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.flow_channels.FlowChannel.calculate_inlet_stochiometry">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_inlet_stochiometry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reactant_consumption</span><span class="p">,</span> <span class="n">reactant_mole_fraction</span><span class="p">,</span> <span class="n">gas_concentration</span><span class="p">):</span> 
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute stoichiometry from known flow rate and consumption.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        reactant_consumption : float</span>
+<span class="sd">            Reactant consumption rate (kmol/s).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            Effective stoichiometric ratio.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">inlet_gas_flow_rate</span> <span class="o">*</span> <span class="n">reactant_mole_fraction</span> <span class="o">*</span> \
+            <span class="n">gas_concentration</span> <span class="o">/</span> <span class="n">reactant_consumption</span></div>
+
+
+<div class="viewcode-block" id="FlowChannel.gas_transport_resistance">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.flow_channels.FlowChannel.gas_transport_resistance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">gas_transport_resistance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">species</span><span class="p">,</span> <span class="n">volume_flow_rate</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span> 
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate total gas transport resistance for a species.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        species : str</span>
+<span class="sd">            Species name (e.g., &#39;o2&#39;, &#39;h2o&#39;).</span>
+<span class="sd">        volume_flow_rate : float, optional</span>
+<span class="sd">            Specific volume flow rate (m3/s), overrides default inlet gas flow.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            Total transport resistance (s/m).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">diffusion_coeff</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">species_diffusion_coefficient</span><span class="p">(</span><span class="n">species</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">transport_resistance_model</span><span class="o">.</span><span class="n">total_resistance</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">diffusion_coeff</span><span class="p">,</span> <span class="n">volume_flow_rate</span> <span class="k">if</span> <span class="n">volume_flow_rate</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">inlet_gas_flow_rate</span><span class="p">)</span></div>
+
+
+    
+<div class="viewcode-block" id="FlowChannel.gas_superficial_speed">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.flow_channels.FlowChannel.gas_superficial_speed">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">gas_superficial_speed</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">volumetric_flow_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the gas superficial speed in the channel.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        volumetric_flow_rate : float, optional</span>
+<span class="sd">            Volumetric flow rate of the gas (m³/s). If None, uses the inlet gas flow rate.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            Gas superficial speed in the channel (m/s).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">volumetric_flow_rate</span>  <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_flow_section</span></div>
+
+    
+<div class="viewcode-block" id="FlowChannel.liquid_to_gas_velocity_ratio">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.flow_channels.FlowChannel.liquid_to_gas_velocity_ratio">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">liquid_to_gas_velocity_ratio</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">liquid_saturation</span><span class="p">,</span> <span class="n">gas_viscosity</span><span class="p">,</span> <span class="n">liquid_viscosity</span><span class="p">):</span> 
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the liquid-to-gas velocity ratio in the channel. Uses the eq. 10 of Zhang et al. (2026).</span>
+
+<span class="sd">        Note: Supposes kinematic viscosity of water for the inlet liquid.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            Ratio between liquid and gas velocity in the channel (n.d.).</span>
+
+<span class="sd">        Reference</span>
+<span class="sd">        ---------</span>
+<span class="sd">        Zhang et al. Advancing Next-Generation Proton Exchange Membrane Fuel Cell Design through Multi-Physics and AI Modeling. </span>
+<span class="sd">        Energy Environ. Sci. 2026. https://doi.org/10.1039/d5ee04599a.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">liquid_saturation</span> <span class="o">/</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">liquid_saturation</span><span class="p">))</span> <span class="o">**</span> <span class="mi">3</span> <span class="o">*</span> <span class="p">(</span><span class="n">gas_viscosity</span> <span class="o">/</span> <span class="n">liquid_viscosity</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="FlowChannel.outlet_liquid_speed">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.flow_channels.FlowChannel.outlet_liquid_speed">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">outlet_liquid_speed</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> 
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">liquid_to_gas_velocity_ratio</span><span class="p">()</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">gas_superficial_speed</span><span class="p">()</span></div>
+
+    
+<div class="viewcode-block" id="FlowChannel.outlet_liquid_flow_rate">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.flow_channels.FlowChannel.outlet_liquid_flow_rate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">outlet_liquid_flow_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> 
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">outlet_liquid_speed</span><span class="p">()</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">total_flow_section</span></div>
+
+    
+<div class="viewcode-block" id="FlowChannel.outlet_liquid_molar_flow_rate">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.flow_channels.FlowChannel.outlet_liquid_molar_flow_rate">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">outlet_liquid_molar_flow_rate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> 
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">outlet_liquid_flow_rate</span><span class="p">()</span> <span class="o">/</span>  <span class="n">water_molar_volume</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gas</span><span class="o">.</span><span class="n">temperature</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">marapendi</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/components.html">Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/simulation.html">Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/estimation.html">Estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/tools.html">Tools</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Pedro Affonso Nobrega.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

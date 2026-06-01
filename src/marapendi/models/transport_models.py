@@ -5,90 +5,11 @@ from dataclasses import dataclass
 import numpy as np
 import cantera as ct
 from marapendi.components.water import water_surface_tension
-from marapendi.tools.tools import arrhenius_term 
+from marapendi.tools.tools import arrhenius_term, polyval_vec
 
-from dataclasses import dataclass
-import numpy as np
-import cantera as ct
 
 @dataclass 
-class BakerChannelGasResistanceModel:
-    """
-    Empirical model for gas transport resistance in flow channels. 
-    Based on the work of Baker et al. (2009). 
 
-    Attributes
-    ----------
-    A_ch : float
-        Coefficient for diffusion resistance.
-    B_ch : float
-        Coefficient for convection resistance.
-
-    References
-    ----------
-    Baker et al. J. Electrochem. Soc. 156, B991 (2009).
-    """
-    A_ch: float = 1.0
-    B_ch: float = 1.0
-
-    def molecular_diffusion_resistance(self, channel, diffusion_coefficient):
-        """
-        Compute diffusion resistance in the channel.
-
-        Parameters
-        ----------
-        channel : FlowChannel
-            Flow channel object with geometry.
-        diffusion_coefficient : float
-            Molecular diffusion coefficient [m2/s].
-
-        Returns
-        -------
-        float
-            Channel diffusion resistance [s/m].
-        """
-        return self.A_ch * channel.half_width / diffusion_coefficient
-    
-    def convection_resistance(self, channel, volume_flow_rate):
-        """
-        Compute convection resistance in the channel.
-
-        Parameters
-        ----------
-        channel : FlowChannel
-            Flow channel object with geometry.
-        volume_flow_rate : float
-            Volumetric flow rate [m3/s].
-
-        Returns
-        -------
-        float
-            Channel convection resistance [s/m].
-        """
-        return self.B_ch * channel.length / channel.half_width * channel.total_flow_section / (volume_flow_rate + 1e-12)
-
-    def total_resistance(self, channel, diffusion_coefficient, volume_flow_rate):
-        """
-        Compute total gas transport resistance (diffusion + convection).
-
-        Parameters
-        ----------
-        channel : FlowChannel
-            Flow channel object.
-        diffusion_coefficient : float
-            Molecular diffusion coefficient [m2/s].
-        volume_flow_rate : float
-            Volumetric flow rate [m3/s].
-
-        Returns
-        -------
-        float
-            Total channel resistance [s/m].
-        """
-        return (self.molecular_diffusion_resistance(channel, diffusion_coefficient) +
-                self.convection_resistance(channel, volume_flow_rate))
-
-@dataclass
 class ChannelGasResistanceModel:
     """
     Channel gas transport resistance model using Sherwood number approach.
@@ -172,26 +93,27 @@ class MembraneWaterTransportModel:
     ''''
     See Wei et al. (2023)
     '''
-    def water_vol_fraction(self, water_content, water_molar_volume, ionomer_molar_volume): 
-        adsorbed_water_molar_volume = water_content * water_molar_volume 
-        return adsorbed_water_molar_volume / (ionomer_molar_volume + adsorbed_water_molar_volume)
+    def water_vol_fraction(self, lmbd, V_w, V_ion):
+        lmbd_V_w = lmbd * V_w
+        return lmbd_V_w / (V_ion + lmbd_V_w)
     
-    def diffusion_coefficient(self, water_content, water_vol_fraction, temperature, darken_num, darken_den, diffusivity, activation_energy, reference_temperature=303.15): 
-        return np.polyval(darken_num[::-1], water_content) / np.polyval(darken_den[::-1], water_content)  * diffusivity * water_vol_fraction * arrhenius_term(activation_energy, temperature, reference_temperature) 
+    def diffusion_coefficient(self, lmbd, f_v, T, darken_num, darken_den, alpha_lmbd, E_act, T_ref=303.15):
+        return polyval_vec(darken_num[:,::-1], lmbd) / polyval_vec(darken_den[:,::-1], lmbd) * alpha_lmbd * f_v * arrhenius_term(E_act, T, T_ref)
 
-    def sorption_coefficient(self, water_vol_fraction, temperature, desorption_coefficent, activation_energy, reference_temperature=303.15): 
-        return desorption_coefficent * water_vol_fraction * arrhenius_term(activation_energy, temperature, reference_temperature)
+    def sorption_coefficient(self, f_v, T, k_des, E_act, T_ref=303.15):
+        return k_des * f_v * arrhenius_term(E_act, T, T_ref)
     
-    def calculate_membrane_water_resistance(self, diffusion_coefficient, thickness, ionomer_vol_fraction, ionomer_concentration, ionomer_tortuosity):
-        return (
-            thickness
-            / (
-               diffusion_coefficient
-                * ionomer_concentration 
-                * ionomer_vol_fraction 
-                / ionomer_tortuosity)
-        )
+    def calculate_membrane_water_resistance(self, D_lmbd, thickness, eps_ion, c_ion, tort_ion):
+        D_eff = D_lmbd * c_ion * eps_ion / tort_ion
+        return thickness / D_eff
+    
+    def equilibrium_water_content(self, rh, sorption_coeffs):
+        rh = np.clip(rh, 0, 1)
+        return polyval_vec(sorption_coeffs[:,::-1], rh)
 
+    def liquid_equilibrium_water_content(self, reference_liquid_water_content):
+        return reference_liquid_water_content
+    
 @dataclass
 class PorousGasResistanceModel:
     """
@@ -199,12 +121,12 @@ class PorousGasResistanceModel:
 
     Attributes
     ----------
-    water_saturation_exponent : float
+    n_s : float
         Exponent for empirical water saturation correction.
     """
-    water_saturation_exponent: float = 3.0
+    n_s: float = 3.0
 
-    def water_saturation_correction(self, water_saturation, water_saturation_exponent):
+    def water_saturation_correction(self, s, n_s):
         """
         Compute correction factor for effective diffusivity.
 
@@ -218,82 +140,28 @@ class PorousGasResistanceModel:
         float
             Correction factor [-].
         """
-        return np.clip(1 - water_saturation, 1e-6, 1) ** water_saturation_exponent
-    
-    def molecular_diffusion_effective_length(self, thickness, porosity, tortuosity, water_saturation, water_saturation_exponent):
-        """
-        Compute effective diffusion length with saturation correction.
+        return np.clip(1 - s, 1e-6, 1) ** n_s
 
-        Parameters
-        ----------
-        layer : PorousLayer
-            Layer with thickness and effective diffusion ratio.
-        water_saturation : float, optional
-            Water saturation [-].
+    def molecular_diffusion_effective_length(self, thickness, eps_p, tort, s, n_s):
+        return thickness * tort / eps_p / self.water_saturation_correction(s, n_s)
 
-        Returns
-        -------
-        float
-            Effective diffusion length [m].
-        """
-        return thickness * tortuosity / porosity / self.water_saturation_correction(water_saturation, water_saturation_exponent)
-    
-    def molecular_diffusion_resistance(self, diffusion_coefficient, thickness, porosity, tortuosity, water_saturation, water_saturation_exponent):
-        """
-        Compute molecular diffusion resistance.
+    def molecular_diffusion_resistance(self, D_g_k, thickness, eps_p, tort, s, n_s):
+        return self.molecular_diffusion_effective_length(thickness, eps_p, tort, s, n_s) / D_g_k
 
-        Returns
-        -------
-        float
-            Diffusion resistance [s/m].
-        """
-        return self.molecular_diffusion_effective_length(thickness, porosity, tortuosity, water_saturation, water_saturation_exponent) / diffusion_coefficient
-    
-    def knudsen_diffusivity(self, temperature, pore_diameter, molecular_weight):
-        """
-        Compute Knudsen diffusivity in the porous layer.
+    def knudsen_diffusivity(self, T, d_p, M_k):
+        return d_p / 3 * np.sqrt(8 * ct.gas_constant * T / M_k / np.pi)
 
-        Parameters
-        ----------
-        layer : PorousLayer
-            Contains pore diameter.
-        temperature : float
-            Temperature [K].
-        molecular_weight : float
-            Molecular weight [kg/mol].
-
-        Returns
-        -------
-        float
-            Knudsen diffusivity [m2/s].
-        """
-  
-        return pore_diameter / 3 * np.sqrt(8 * ct.gas_constant * temperature / molecular_weight / np.pi)
-    
-    def total_diffusion_resistance(self, temperature, water_saturation, diffusion_coefficient, molecular_weight, thickness, porosity, tortuosity, pore_diameter, water_saturation_exponent):
+    def total_diffusion_resistance(self, T, s, D_g_k, M_k, thickness, eps_p, tort, d_p, n_s):
         """
         Compute total diffusion resistance (molecular + Knudsen).
-
-        Parameters
-        ----------
-        layer : PorousLayer
-            Layer properties.
-        temperature : float
-            Temperature [K].
-        diffusion_coefficient : float
-            Molecular diffusion coefficient [m2/s].
-        molecular_weight : float
-            Molecular weight [kg/mol].
-        water_saturation : float
-            Water saturation [-].
 
         Returns
         -------
         float
             Total resistance [s/m].
         """
-        return self.molecular_diffusion_effective_length(thickness, porosity, tortuosity, water_saturation, water_saturation_exponent) * (
-            1/diffusion_coefficient + 1/self.knudsen_diffusivity(temperature, pore_diameter, molecular_weight))
+        return self.molecular_diffusion_effective_length(thickness, eps_p, tort, s, n_s) * (
+            1/D_g_k + 1/self.knudsen_diffusivity(T, d_p, M_k))
 
 @dataclass    
 class DarcyTransportModel: 
@@ -307,77 +175,20 @@ class DarcyTransportModel:
     """
  
 
-    def calculate_liquid_darcy_flow_resistance(self, temperature, saturation, thickness, water_kinematic_viscosity, absolute_permeability, relative_permeability_exponent):
-        # on a mass basis 
-        return ((thickness * water_kinematic_viscosity) / 
-                (absolute_permeability * np.maximum(1e-3,saturation) ** relative_permeability_exponent))
+    def calculate_liquid_darcy_flow_resistance(self, s, nu_l, thickness, K_abs, n_rel):
+        # on a mass basis
+        return ((thickness * nu_l) /
+                (K_abs * np.maximum(1e-3, s) ** n_rel))
 
-    def saturation_from_capillary_pressure(self, layer, capillary_pressure, breakthrough_pressure, m, n):
+    def saturation_from_capillary_pressure(self, layer, p_c, p_b, m, n):
         """
         Van Genuchten model
         """
-        return 1 - (1 + (capillary_pressure/breakthrough_pressure)**n)**(-m)
+        return 1 - (1 + (p_c/p_b)**n)**(-m)
 
-    def capillary_pressure_from_saturation(self, saturation, breakthrough_pressure, m, n):
+    def capillary_pressure_from_saturation(self, s, p_b, m, n):
         """
         Van Genuchten model
         """
-        saturation = np.clip(saturation, 1e-3, 1)
-        return  breakthrough_pressure * ((1 - saturation)**(-1/m) - 1)**(1/n)
-
-    def calculate_non_wetting_saturation(self, layer, non_wetting_flux, upstream_capillary_pressure=0, mask=None): 
-        """
-        Calculate the non-wetting saturation distribution across the porous layer due to non-wetting phase flux.
-
-        Parameters
-        ----------
-        layer : PorousLayer
-            Porous layer being analyzed.
-        non_wetting_flux : float
-            Non-wetting phase molar flux (kmol/m²/s).
-        upstream_capillary_pressure : float, optional
-            Capillary pressure at the upstream boundary (default is 0).
-
-        Updates
-        -------
-        layer.upstream_saturation : float
-            Saturation at upstream side of the layer.
-        layer.downstream_saturation : float
-            Saturation at downstream side of the layer.
-        layer.non_wetting_saturation : float
-            Average or effective saturation in the layer.
-        layer.downstream_capillary_pressure : float
-            Capillary pressure at the downstream side of the layer.
-        """
-        
-        if mask is None:
-            mask = np.ones_like(non_wetting_flux, dtype=bool)
-
-        q = layer.relative_permeability_exponent
-        n = self.J_function_exponent
-        exponent = 1.0 / (q + n)
-
-        # ---- masked views (single extraction) ----
-        us = self.saturation_from_capillary_pressure(
-            layer, upstream_capillary_pressure[mask]
-        )
-
-        flux = np.maximum(0.0, non_wetting_flux[mask])
-
-        # ---- downstream saturation ----
-        ds = (layer.saturation_flow_resistance * flux * (q+n)/n) ** exponent
-
-        s_down = np.clip(us + ds, 0.0, 0.9)
-
-        # ---- average saturation ----
-        s_avg = (s_down - us) * ((q + n) / (q + n + 1)) + us
-        s_avg = np.clip(s_avg, 0.0, 0.9)
-
-        # ---- capillary pressure ----
-        cp_down = self.capillary_pressure_from_saturation(layer, s_down)
-
-        # ---- write back once ----
-        layer.upstream_saturation[mask] = us
-        layer.downstream_saturation[mask] = s_down
-        layer.non_wetting_saturation[mask] = s_avg
-        layer.downstream_capillary_pressure[mask] = cp_down
+        s = np.clip(s, 1e-3, 1)
+        return  p_b * ((1 - s)**(-1/m) - 1)**(1/n)

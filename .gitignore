@@ -128,3 +128,4 @@ src/marapendi/__pycache__/tools.cpython-314.pyc
 src/marapendi/__pycache__/transport_models.cpython-314.pyc
 src/marapendi/__pycache__/water_balance_models.cpython-314.pyc
 src/marapendi/__pycache__/water.cpython-314.pyc
+.claude/settings.local.json

@@ -10,7 +10,7 @@ from marapendi.models.gas_composition import GasComposition, index_h2, index_o2,
 from marapendi.models.transport_models import PorousGasResistanceModel, DarcyTransportModel
 from .water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight, water_dynamic_viscosity, water_density
 
-@dataclass
+@dataclass(eq=False)
 class PorousLayer(Layer):
     """
     Represents a porous layer in a fuel cell or electrolyzer, defining its
@@ -22,11 +22,11 @@ class PorousLayer(Layer):
         Thickness of the porous layer in meters (default is 1e-3 m).
     gas : GasComposition
         Gas composition object representing the gas properties in the layer.
-    porosity : float
-        Porosity of the layer (0 < porosity < 1).
+    eps_p : float
+        Porosity of the layer (0 < eps_p < 1).
     effective_gas_diffusion_ratio : float
         Ratio accounting for effective gas diffusion through the porous medium (default is 1).
-    pore_diameter : float
+    d_p : float
         Average pore diameter in meters (default is large, so Knudsen diffusion negligible).
     transport_resistance_model : PorousGasResistanceModel
         Model used to calculate gas transport resistance.
@@ -36,11 +36,11 @@ class PorousLayer(Layer):
         Fraction of the pore volume occupied by non-wetting phase (0 to 1).
     thermal_conductivity : float
         Thermal conductivity in W/(m·K).
-    absolute_permeability : float
+    K_abs : float
         Absolute permeability in m².
-    relative_permeability_exponent : float
+    n_rel : float
         Exponent for relative permeability model (default is 3, often used for cubic relationship).
-    contact_angle : float
+    theta_contact : float
         Contact angle for liquid water in degrees (default is 120°).
     non_wetting_phase : str
         Non-wetting phase (liquid or gas).
@@ -51,31 +51,29 @@ class PorousLayer(Layer):
     and liquid flow resistance based on current temperature, saturation, and geometry.
     """
     name: str = "porous layer"
-    porosity: float = 0.6
-    tortuosity: float = 1.
-    pore_diameter: float = 20e-6
-    absolute_permeability: float = 1e-11 
-    relative_permeability_exponent: float = 3
-    water_saturation_exponent: float = 3
-    contact_angle: float = 120. 
-    ionomer_vol_fraction: float = 0.
-    ionomer_tortuosity: float = 1.
-    breakthrough_pressure: float = 15020
+    eps_p: float = 0.6
+    tort: float = 1.
+    d_p: float = 20e-6
+    K_abs: float = 1e-11 
+    n_rel: float = 3
+    n_s: float = 3
+    theta_contact: float = 120. 
+    eps_ion: float = 0.
+    tau_ion: float = 1.
+    p_b: float = 15020
     van_genuchten_m: float = 0.7262
     van_genuchten_n: float = 3.652 
-    immobile_non_wetting_saturation: float = 0
+    s_im: float = 0
 
-    def __post_init__(self): 
-        self.sqrt_abs_permeability_porosity = np.sqrt(self.absolute_permeability * self.porosity)
-        self.cosinus_contact_angle = np.abs(np.cos(np.pi / 180 * self.contact_angle))
 
-        if self.contact_angle < 90: 
+    def __post_init__(self):
+        self.sqrt_abs_permeability_eps_p = np.sqrt(self.K_abs * self.eps_p)
+        self.cosinus_theta_contact = np.abs(np.cos(np.pi / 180 * self.theta_contact))
+
+        if self.theta_contact < 90: 
             self.non_wetting_phase = 'gas'
             self.wetting_phase = 'water'
        
-    
-
-    
     def calculate_bulk_thermal_resistance(self):
         """
         Computes the thermal resistance of the layer.
@@ -86,8 +84,6 @@ class PorousLayer(Layer):
             Thermal resistance in m²·K/W.
         """
         return self.thickness / self.bulk_thermal_conductivity 
-
-    
 
     def set_ionomer_wet_properties(self, ionomer_water_content, temperature):
         pass

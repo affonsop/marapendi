@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>marapendi.components.membrane &#8212; marapendi 0.1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for marapendi.components.membrane</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Module providing a membrane class intended to be the base class for different membrane models. </span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">cantera</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ct</span> 
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="n">fields</span> <span class="k">as</span> <span class="n">dataclass_fields</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">marapendi.components.ionomer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Ionomer</span><span class="p">,</span> <span class="n">PFSAIonomer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">marapendi.components.porous_layers</span><span class="w"> </span><span class="kn">import</span> <span class="n">PorousLayer</span>
+
+<div class="viewcode-block" id="Membrane">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.membrane.Membrane">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Membrane</span><span class="p">(</span><span class="n">PorousLayer</span><span class="p">,</span> <span class="n">Ionomer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A base dataclass representing the properties of a proton/anion exchange membrane </span>
+<span class="sd">    and methods for calculating water volume fraction, hydrogen permeability, </span>
+<span class="sd">    and hydrogen permeation flux.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    </span>
+<span class="sd">    equivalent_weight : float</span>
+<span class="sd">        Equivalent weight of the membrane in kg/kmol. Default is 1100 kg/kmol.</span>
+<span class="sd">    dry_density : float</span>
+<span class="sd">        Density of the membrane in kg/m³. Default is 1980 kg/m³.</span>
+<span class="sd">    dry_thickness : float</span>
+<span class="sd">        Thickness of the membrane in meters (m). Default is 25 µm.</span>
+<span class="sd">    h2_permeation_model: HydrogenPermeationModel</span>
+<span class="sd">        A dataclass representing the properties of membrane hydrogen permeability model.</span>
+<span class="sd">    water_content: float</span>
+<span class="sd">        Water content of the membrane. </span>
+<span class="sd">    water_balance_model: MembraneWaterBalanceModel</span>
+<span class="sd">        Water balance model allowing to calculate water contents in the membrane and CL. </span>
+<span class="sd">    reference_water_diffusivity : float, optional</span>
+<span class="sd">        Reference value for water diffusivity, in m2/s (default is 4.3e-10).</span>
+<span class="sd">    reference_absorption_coefficient : float, optional</span>
+<span class="sd">        Reference value for the absorption coefficient (default is 1e-5).</span>
+<span class="sd">    reference_temperature : float, optional</span>
+<span class="sd">        Reference temperature for calculations, in Kelvin (default is 353.15 K).</span>
+<span class="sd">    water_diffusivity_activation_energy : float, optional</span>
+<span class="sd">        Activation energy for water diffusivity, in J/kmol (default is 20e6).</span>
+<span class="sd">    water_absorption_activation_energy : float, optional</span>
+<span class="sd">        Activation energy for water absorption, in J/kmol (default is 20e6).</span>
+
+<span class="sd">    Computed Attributes:</span>
+<span class="sd">    --------------------</span>
+<span class="sd">    dry_concentration : float</span>
+<span class="sd">        Concentration of the membrane in kmol/m³, computed during initialization.</span>
+<span class="sd">    dry_molar_volume : float</span>
+<span class="sd">        Molar volume of the membrane in m³/kmol, computed during initialization.</span>
+
+<span class="sd">    Methods:</span>
+<span class="sd">    --------</span>
+<span class="sd">    water_vol_fraction(water_content, water_molar_volume):</span>
+<span class="sd">        Calculate the volume fraction of water in the membrane.</span>
+
+<span class="sd">    hydrogen_permeation_flux(partial_pressure_h2, hydrogen_permeability):</span>
+<span class="sd">        Calculate the hydrogen permeation flux through the membrane.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="n">thickness</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">eps_ion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.</span>
+    <span class="n">tort_ion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.</span>
+    <span class="n">ionomer</span><span class="p">:</span> <span class="n">Ionomer</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">thermal_conductivity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.9</span>
+    <span class="n">specific_heat_capacity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2000.</span>
+    
+<div class="viewcode-block" id="Membrane.__eq__">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.membrane.Membrane.__eq__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Use identity comparison — layers are unique instances in the cell model.</span>
+<span class="sd">        This avoids ambiguous truth-value errors from numpy array fields during</span>
+<span class="sd">        membership tests like `layer in self.ionomer_layers`.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span> <span class="ow">is</span> <span class="n">other</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Membrane.__post_init__">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.membrane.Membrane.__post_init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy all ionomer fields onto self so ionomer properties are</span>
+<span class="sd">        directly accessible (e.g. self.dry_density, self.equivalent_weight).</span>
+<span class="sd">        Skipped if no ionomer was supplied.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">dataclass_fields</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ionomer</span><span class="p">):</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ionomer</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="n">PorousLayer</span><span class="o">.</span><span class="n">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">Ionomer</span><span class="o">.</span><span class="n">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+</div>
+
+
+<div class="viewcode-block" id="PFSAMembrane">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.membrane.PFSAMembrane">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PFSAMembrane</span><span class="p">(</span><span class="n">Membrane</span><span class="p">,</span> <span class="n">PFSAIonomer</span><span class="p">):</span>
+    <span class="k">pass</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">marapendi</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/components.html">Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/simulation.html">Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/estimation.html">Estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/tools.html">Tools</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Pedro Affonso Nobrega.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

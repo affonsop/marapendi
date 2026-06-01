@@ -65,10 +65,8 @@ def run_cross_validation(
     for n_parameters in full_parameter_range:
 
         if n_parameters in completed_parameter_counts:
-            print(f"Skipping n_parameters={n_parameters} (already computed)")
             continue
 
-        print(f"\nRunning CV for {n_parameters} parameters")
 
         selected_parameters = [
             base_model.unknown_p_list[idx]
@@ -192,7 +190,6 @@ def load_cross_validation_results(
     """
 
     if not os.path.exists(filepath):
-        print(f"No existing CV results found at: {filepath}")
         return None
 
     df = pd.read_csv(filepath)

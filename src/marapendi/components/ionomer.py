@@ -15,69 +15,66 @@ from dataclasses import dataclass, field
 import numpy as np
 import cantera as ct
 
+from marapendi.models.electrochemistry import enthalpy_condensation
 from marapendi.tools.tools import arrhenius_term, Updatable
 from .water import water_molecular_weight, water_molar_volume, water_density
 
 
 @dataclass 
 class Ionomer(Updatable): 
-    dry_density: float 
-    equivalent_weight: float 
-    darken_num: np.ndarray
-    darken_den: np.ndarray
-    sorption_isotherm_coeffs: np.ndarray
-    reference_liquid_equilibrium_water_content: float 
-    reference_water_diffusivity: float
-    reference_desorption_coefficient: float 
-    ionomer_activation_energy: float
-    reference_charge_conductivity: float = 1e-12
-    percolation_water_volume_fraction: float = 0 
-    conductivity_exponent: float = 0
+    rho_dry_ion: float = field(default=None)
+    EW_ion: float = field(default=None)
+    darken_num_ion: np.ndarray = field(default=None)
+    darken_den_ion: np.ndarray = field(default=None)
+    sorption_coeffs_ion: np.ndarray = field(default=None)
+    lmbd_liq_ref_ion: float = field(default=None)
+    D_lmbd_ref_ion: float = field(default=None)
+    k_des_ref_ion: float = field(default=None)
+    sigma_ref_ion: float = 1e-12
+    T_ref_sigma_ion: float = field(default=None)
+    T_ref_D_ion: float = field(default=None)
+    T_ref_des_ion: float = field(default=None)
+    E_act_ion: float = field(default=None)
+    f_v_perc_ion: float = field(default=None)
+    n_sigma_ion: float = field(default=None)
+    c_ion: float = field(default=None)
+    V_ion: float = field(default=None)
+    charge_ion: str = field(default='proton')
 
     def __post_init__(self):
         """
         Compute derived properties of the membrane after initialization.
+        Skipped when dry_density or equiv_weight have not been supplied yet.
         """
-        self.ionomer_concentration = self.dry_density / self.equivalent_weight  # kmol/m³
-        self.ionomer_molar_volume = 1. / self.ionomer_concentration  # m³/kmol
+        if self.rho_dry_ion is not None and self.EW_ion is not None:
+            self.c_ion = self.rho_dry_ion / self.EW_ion  # kmol/m³
+            self.V_ion = 1. / self.c_ion  # m³/kmol
     
-    def wet_density(self, water_content, temperature):
-            """
-            Compute the wet density of the ionomer.
+    def wet_density(self, lmbd, T):
+        water_mass = water_molecular_weight * lmbd
+        return self.EW_ion + water_mass / (self.EW_ion / self.bulk_density + water_mass / water_density(T))
 
-            Parameters
-            ----------
-            water_content : float
-                Water content in the ionomer [n.d.].
-            temperature : float
-                Temperature [K].
+    def heat_of_adsorption(self, T):
+        return enthalpy_condensation(T)
 
-            Returns
-            -------
-            float
-                Wet density [kg/m3].
-            """
-            water_mass = water_molecular_weight * water_content
-            return self.equivalent_weight + water_mass / (self.equivalent_weight / self.bulk_density + water_mass / water_density(temperature))
+    def wet_expansion_factor(self, lmbd, T):
+        water_mass = water_molecular_weight * lmbd
+        return 1 + self.rho_dry_ion * water_mass / self.EW_ion / water_density(T)
 
-    def heat_of_adsorption(self, temperature):
-        return enthalpy_condensation(temperature)
-    
-    def wet_expansion_factor(self, water_content, temperature):
-        """
-        Compute volumetric expansion factor due to water uptake.
+    def charge_conductivity(self, f_v, T, charge):
+        charge_conductivity = self.sigma_ref_ion * np.maximum(0.01, f_v - self.f_v_perc_ion) ** self.n_sigma_ion
+        return (charge_conductivity if charge == self.charge_ion else (1/np.inf)) * arrhenius_term(self.E_act_ion, T, self.T_ref_sigma_ion)
 
-        Parameters
-        ----------
-        water_content : float
-            Water content [n.d.].
-        temperature : float
-            Temperature [K].
+@dataclass
+class PFSAIonomer(Ionomer):
 
-        Returns
-        -------
-        float
-            Expansion factor relative to dry volume.
-        """
-        water_mass = water_molecular_weight * water_content
-        return 1 + self.dry_density * water_mass / self.equivalent_weight / water_density(temperature)
+    def o2_permeability(self, f_v, T=353.15):
+        RT = ct.gas_constant * T
+        return (6.74e-15 * np.exp(-21280e3/RT) + f_v * 50.5e-15 * np.exp(-20470e3/RT))
+
+    def h2_permeability(self, T: float, f_v: float) -> float:
+        RT = ct.gas_constant * T
+        return (15.7e-15 * np.exp(-20280e3/RT) + f_v * 45e-15 * np.exp(-18930e3/RT))
+
+    def calculate_electroosmotic_drag_coefficient(self, T, lmbd):
+        return (0.02 * T - 3.86) / 22.5 * lmbd

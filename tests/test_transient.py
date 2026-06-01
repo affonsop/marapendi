@@ -13,13 +13,13 @@ def fuel_cell():
         ca = mrpd.FuelCellSide(
             cl=mrpd.PtCCatalystLayer(
                 ecsa=50e3, 
-                platinum_loading=0.4e-2, 
-                catalyst_platinum_weight_percent=0.4,
-                carbon_agglomerate_radius=20e-9,
+                L_Pt=0.4e-2, 
+                wt_Pt=0.4,
+                r_C=20e-9,
                 thickness=10e-6,
                 thermal_conductivity=0.25,
                 ionomer = mrpd.PFSAIonomer(),
-                ionomer_to_carbon_ratio=0.6,
+                ic_ratio=0.6,
                 reaction=mrpd.ElectrochemicalReaction(
                     reference_exchange_current_density=2.45e-4,
                     reaction_order=0.54, 
@@ -29,19 +29,19 @@ def fuel_cell():
                     number_of_electrons=2,
                     charge_transfer_coeff=0.5
                 ), 
-                absolute_permeability=1e-13, 
-                contact_angle=95.,
-                transport_resistance_model=mrpd.PorousGasResistanceModel(water_saturation_exponent=1.5),
+                K_abs=1e-13, 
+                theta_contact=95.,
+                transport_resistance_model=mrpd.PorousGasResistanceModel(n_s=1.5),
                 two_phase_transport_model=mrpd.DarcyTransportModel(J_function_exponent=2),  
             ),
             gdl=mrpd.PorousLayer(
                 thickness=150e-6,
                 effective_gas_diffusion_ratio=0.20,
                 thermal_conductivity=0.2,
-                porosity=0.6,
-                absolute_permeability=1e-12, 
-                contact_angle=120.,
-                transport_resistance_model=mrpd.PorousGasResistanceModel(water_saturation_exponent=1.5),
+                eps_p=0.6,
+                K_abs=1e-12, 
+                theta_contact=120.,
+                transport_resistance_model=mrpd.PorousGasResistanceModel(n_s=1.5),
                 two_phase_transport_model=mrpd.DarcyTransportModel(J_function_exponent=2),  
             ),
             has_mpl=False, 
@@ -60,24 +60,24 @@ def fuel_cell():
         an = mrpd.FuelCellSide(
             cl=mrpd.PtCCatalystLayer(
                 thickness=6e-6,
-                catalyst_platinum_weight_percent=0.4,
-                carbon_agglomerate_radius=20e-9,
-                ionomer_to_carbon_ratio=0.7,
-                platinum_loading=0.1e-2, 
+                wt_Pt=0.4,
+                r_C=20e-9,
+                ic_ratio=0.7,
+                L_Pt=0.1e-2, 
                 thermal_conductivity=0.25,
-                absolute_permeability=1e-13, 
-                contact_angle=95.,
-                transport_resistance_model=mrpd.PorousGasResistanceModel(water_saturation_exponent=1.5),
+                K_abs=1e-13, 
+                theta_contact=95.,
+                transport_resistance_model=mrpd.PorousGasResistanceModel(n_s=1.5),
                 two_phase_transport_model=mrpd.DarcyTransportModel(J_function_exponent=2),  
             ),
             gdl=mrpd.PorousLayer(
                 thickness=200e-6,
                 effective_gas_diffusion_ratio=0.20, 
-                porosity=0.6,
+                eps_p=0.6,
                 thermal_conductivity=0.2,
-                absolute_permeability=1e-12, 
-                contact_angle=120.,
-                transport_resistance_model=mrpd.PorousGasResistanceModel(water_saturation_exponent=1.5),
+                K_abs=1e-12, 
+                theta_contact=120.,
+                transport_resistance_model=mrpd.PorousGasResistanceModel(n_s=1.5),
                 two_phase_transport_model=mrpd.DarcyTransportModel(J_function_exponent=2),  
             ),
             ch=mrpd.FlowChannel(
@@ -179,7 +179,7 @@ def model(fuel_cell, u):
         # Water saturation balance
         for side in (fuel_cell.ca,fuel_cell.an): 
             for layer in side.porous_layers: 
-                layer.flow_resistance_with_rel_permeability = layer.saturation_flow_resistance * layer.capillary_pressure_J_ratio / np.maximum(layer.non_wetting_saturation,1e-1) ** (layer.relative_permeability_exponent + 2)
+                layer.flow_resistance_with_rel_permeability = layer.saturation_flow_resistance * layer.capillary_pressure_J_ratio / np.maximum(layer.non_wetting_saturation,1e-1) ** (layer.n_rel + 2)
                 layer.capillary_pressure = layer.capillary_pressure_from_saturation(layer.non_wetting_saturation)
             
             side.cl_to_gdl_liquid_flux = (2/(side.cl.flow_resistance_with_rel_permeability + side.gdl.flow_resistance_with_rel_permeability) *
@@ -191,7 +191,7 @@ def model(fuel_cell, u):
         
             for layer in side.porous_layers: 
                 
-                dxdt.append(layer.liquid_balance / (layer.porosity * layer.thickness) * mrpd.water_molar_volume(layer.temperature))
+                dxdt.append(layer.liquid_balance / (layer.eps_p * layer.thickness) * mrpd.water_molar_volume(layer.temperature))
         # Membrane relaxation
 
         for side in (fuel_cell.ca, fuel_cell.an):

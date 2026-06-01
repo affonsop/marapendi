@@ -1,0 +1,215 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Estimation &mdash; marapendi 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Tools" href="tools.html" />
+    <link rel="prev" title="Simulation" href="simulation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            marapendi
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="components.html">Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="simulation.html">Simulation</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Estimation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#marapendi.estimation.cross_validation.get_complexity_levels"><code class="docutils literal notranslate"><span class="pre">get_complexity_levels()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#marapendi.estimation.cross_validation.get_folds_for_complexity"><code class="docutils literal notranslate"><span class="pre">get_folds_for_complexity()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#marapendi.estimation.cross_validation.load_cross_validation_results"><code class="docutils literal notranslate"><span class="pre">load_cross_validation_results()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#marapendi.estimation.cross_validation.plot_cross_validation_curves"><code class="docutils literal notranslate"><span class="pre">plot_cross_validation_curves()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#marapendi.estimation.cross_validation.plot_parameter_vs_complexity"><code class="docutils literal notranslate"><span class="pre">plot_parameter_vs_complexity()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#marapendi.estimation.cross_validation.plot_rmse_vs_complexity"><code class="docutils literal notranslate"><span class="pre">plot_rmse_vs_complexity()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#marapendi.estimation.cross_validation.plot_rmse_vs_complexity_extrapolation"><code class="docutils literal notranslate"><span class="pre">plot_rmse_vs_complexity_extrapolation()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#marapendi.estimation.cross_validation.rmse_complexity_table"><code class="docutils literal notranslate"><span class="pre">rmse_complexity_table()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#marapendi.estimation.cross_validation.run_cross_validation"><code class="docutils literal notranslate"><span class="pre">run_cross_validation()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#marapendi.estimation.cross_validation.save_cross_validation_results"><code class="docutils literal notranslate"><span class="pre">save_cross_validation_results()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">marapendi</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Estimation</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/api/estimation.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="estimation">
+<h1>Estimation<a class="headerlink" href="#estimation" title="Link to this heading"></a></h1>
+<p>Statistical estimation utilities, including cross-validation.</p>
+<dl class="py function" id="module-marapendi.estimation.cross_validation">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.get_complexity_levels">
+<span class="sig-prename descclassname"><span class="pre">marapendi.estimation.cross_validation.</span></span><span class="sig-name descname"><span class="pre">get_complexity_levels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cv_results</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#get_complexity_levels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.get_complexity_levels" title="Link to this definition"></a></dt>
+<dd><p>Return sorted list of available model complexities
+(number of estimated parameters).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.get_folds_for_complexity">
+<span class="sig-prename descclassname"><span class="pre">marapendi.estimation.cross_validation.</span></span><span class="sig-name descname"><span class="pre">get_folds_for_complexity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cv_results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_parameters</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#get_folds_for_complexity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.get_folds_for_complexity" title="Link to this definition"></a></dt>
+<dd><p>Return fold list for a given number of parameters.
+Raises ValueError if not available.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.load_cross_validation_results">
+<span class="sig-prename descclassname"><span class="pre">marapendi.estimation.cross_validation.</span></span><span class="sig-name descname"><span class="pre">load_cross_validation_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filepath</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base_model</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#load_cross_validation_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.load_cross_validation_results" title="Link to this definition"></a></dt>
+<dd><p>Load cross-validation results from CSV and rebuild fold structure.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cross_validation_results</strong> – Returns None if file does not exist.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list or None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.plot_cross_validation_curves">
+<span class="sig-prename descclassname"><span class="pre">marapendi.estimation.cross_validation.</span></span><span class="sig-name descname"><span class="pre">plot_cross_validation_curves</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cv_results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">case_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">case_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">condition_color</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simulate_callback</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Cell</span> <span class="pre">voltage'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity_symbol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'$V_{cell}$'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity_unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'V'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">case_titles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'$i$</span> <span class="pre">(A/cm$^2$)'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dpi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uncertainty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#plot_cross_validation_curves"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.plot_cross_validation_curves" title="Link to this definition"></a></dt>
+<dd><p>Cross-validation curve plotting compatible with new cv_results format.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.plot_parameter_vs_complexity">
+<span class="sig-prename descclassname"><span class="pre">marapendi.estimation.cross_validation.</span></span><span class="sig-name descname"><span class="pre">plot_parameter_vs_complexity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cv_results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameter_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameter_units</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">condition_color</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_ci</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_cols</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">6</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(14,</span> <span class="pre">12)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dpi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#plot_parameter_vs_complexity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.plot_parameter_vs_complexity" title="Link to this definition"></a></dt>
+<dd><p>Plot evolution of parameters across complexity levels.</p>
+<p>Parameters not yet estimated remain empty (NaN).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.plot_rmse_vs_complexity">
+<span class="sig-prename descclassname"><span class="pre">marapendi.estimation.cross_validation.</span></span><span class="sig-name descname"><span class="pre">plot_rmse_vs_complexity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cv_results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">case_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameter_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simulate_callback</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ylabel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'RMSE'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity_multiplier</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_median</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">plot_one_sigma_interval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(10,</span> <span class="pre">4)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xrotation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">45</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dpi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#plot_rmse_vs_complexity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.plot_rmse_vs_complexity" title="Link to this definition"></a></dt>
+<dd><p>Plot train and test RMSE vs model complexity.
+Compatible with cv_results format.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.plot_rmse_vs_complexity_extrapolation">
+<span class="sig-prename descclassname"><span class="pre">marapendi.estimation.cross_validation.</span></span><span class="sig-name descname"><span class="pre">plot_rmse_vs_complexity_extrapolation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cv_results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">training_test_case</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extrapolation_cases</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameter_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simulate_callback</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ylabel</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'RMSE'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity_multiplier</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">condition_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_median</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">figsize</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(10,</span> <span class="pre">4)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xrotation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">45</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dpi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#plot_rmse_vs_complexity_extrapolation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.plot_rmse_vs_complexity_extrapolation" title="Link to this definition"></a></dt>
+<dd><p>Plot RMSE vs model complexity for conditions that are neither in the
+training nor the testing dataset, for a given fixed test case.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cv_results</strong> (<em>dict</em>) – Cross-validation results.</p></li>
+<li><p><strong>training_test_case</strong> (<em>int</em><em> or </em><em>str</em>) – The test case (left-out condition) used to select the fold.</p></li>
+<li><p><strong>extrapolation_cases</strong> (<em>list</em>) – Conditions not included in training or testing, to evaluate on.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.rmse_complexity_table">
+<span class="sig-prename descclassname"><span class="pre">marapendi.estimation.cross_validation.</span></span><span class="sig-name descname"><span class="pre">rmse_complexity_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rmse_vs_complexity_df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#rmse_complexity_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.rmse_complexity_table" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.run_cross_validation">
+<span class="sig-prename descclassname"><span class="pre">marapendi.estimation.cross_validation.</span></span><span class="sig-name descname"><span class="pre">run_cross_validation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameter_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">case_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">build_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_exp_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cross_validation_results</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimate_kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmse_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">checkpoint_callback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#run_cross_validation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.run_cross_validation" title="Link to this definition"></a></dt>
+<dd><p>Leave-one-out cross-validation with resume capability
+and automatic checkpoint saving.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>checkpoint_callback</strong> (<em>callable</em><em> or </em><em>None</em>) – Function called after each complexity level.
+Signature: checkpoint_callback(cross_validation_results)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.save_cross_validation_results">
+<span class="sig-prename descclassname"><span class="pre">marapendi.estimation.cross_validation.</span></span><span class="sig-name descname"><span class="pre">save_cross_validation_results</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cross_validation_results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'.'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#save_cross_validation_results"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.save_cross_validation_results" title="Link to this definition"></a></dt>
+<dd><p>Save cross-validation results to CSV.</p>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="simulation.html" class="btn btn-neutral float-left" title="Simulation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="tools.html" class="btn btn-neutral float-right" title="Tools" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Pedro Affonso Nobrega.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

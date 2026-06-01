@@ -103,7 +103,6 @@ class DynamicModel:
             self.p_i_guess = [p[4] for p in p_list]
             
             self.p.update(dict(zip(self.p_i_name, self.p_i_guess)))
-            print(self.p)
 
     def solve(self, time, u=None, x0=[], parameters_dict=None, rtol=1e-4, atol=1e-5, vectorized=False, sparsity=None):
         """
@@ -216,12 +215,7 @@ class DynamicModel:
 
         # Define callback function to print results if needed
         def print_res(intermediate_result):
-            print('------'*5)
             p_est = self.theta_to_p(intermediate_result.x)
-            print('RMSE : {:.1f} mV'.format(1e3 * np.sqrt(intermediate_result.fun)))
-            for k, param in enumerate(self.unknown_p_list):
-                print(param[0], param[1], '{:.2e}'.format(p_est[k]))
-            print('------'*5)
             return intermediate_result.fun < ftol
         if method == 'differential_evolution':
             sol = differential_evolution(f,
@@ -486,8 +480,6 @@ class DynamicModel:
                 isValid = True
                 
             if isValid: 
-                if print_px:
-                    print(px)
                 # Compute local sensitivities for this global sample
                 s_n = self.calculate_local_sensitivity_neighborhood(t, u, x0, px, eps_p=1e-6, measures=measures)
                 S_n.append(s_n)

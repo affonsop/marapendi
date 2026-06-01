@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>marapendi.components.ionomer &#8212; marapendi 0.1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for marapendi.components.ionomer</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Module providing classes to model ionomers in catalyst layers.</span>
+
+<span class="sd">Classes</span>
+<span class="sd">-------</span>
+<span class="sd">CatalystLayerIonomer : Base class for ionomer properties in catalyst layers.</span>
+<span class="sd">PFSAIonomer : Represents a perfluorosulfonic acid ionomer (e.g. Nafion).</span>
+<span class="sd">PAPIonomer : Represents a poly(aryl piperidinium) (PA) ionomer.</span>
+
+<span class="sd">Each class provides methods to compute water content-dependent properties</span>
+<span class="sd">like proton or hydroxide conductivity, oxygen permeability, and equilibrium hydration.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">cantera</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ct</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">marapendi.models.electrochemistry</span><span class="w"> </span><span class="kn">import</span> <span class="n">enthalpy_condensation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">marapendi.tools.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">arrhenius_term</span><span class="p">,</span> <span class="n">Updatable</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.water</span><span class="w"> </span><span class="kn">import</span> <span class="n">water_molecular_weight</span><span class="p">,</span> <span class="n">water_molar_volume</span><span class="p">,</span> <span class="n">water_density</span>
+
+
+<div class="viewcode-block" id="Ionomer">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.ionomer.Ionomer">[docs]</a>
+<span class="nd">@dataclass</span> 
+<span class="k">class</span><span class="w"> </span><span class="nc">Ionomer</span><span class="p">(</span><span class="n">Updatable</span><span class="p">):</span> 
+    <span class="n">rho_dry_ion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">EW_ion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">darken_num_ion</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">darken_den_ion</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">sorption_coeffs_ion</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">lmbd_liq_ref_ion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">D_lmbd_ref_ion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">k_des_ref_ion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">sigma_ref_ion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-12</span>
+    <span class="n">T_ref_sigma_ion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">T_ref_D_ion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">T_ref_des_ion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">E_act_ion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">f_v_perc_ion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">n_sigma_ion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">c_ion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">V_ion</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+    <span class="n">charge_ion</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="s1">&#39;proton&#39;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Ionomer.__post_init__">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.ionomer.Ionomer.__post_init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute derived properties of the membrane after initialization.</span>
+<span class="sd">        Skipped when dry_density or equiv_weight have not been supplied yet.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho_dry_ion</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">EW_ion</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">c_ion</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho_dry_ion</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">EW_ion</span>  <span class="c1"># kmol/m³</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">V_ion</span> <span class="o">=</span> <span class="mf">1.</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">c_ion</span>  <span class="c1"># m³/kmol</span></div>
+
+    
+<div class="viewcode-block" id="Ionomer.wet_density">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.ionomer.Ionomer.wet_density">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">wet_density</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lmbd</span><span class="p">,</span> <span class="n">T</span><span class="p">):</span>
+        <span class="n">water_mass</span> <span class="o">=</span> <span class="n">water_molecular_weight</span> <span class="o">*</span> <span class="n">lmbd</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">EW_ion</span> <span class="o">+</span> <span class="n">water_mass</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">EW_ion</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">bulk_density</span> <span class="o">+</span> <span class="n">water_mass</span> <span class="o">/</span> <span class="n">water_density</span><span class="p">(</span><span class="n">T</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="Ionomer.heat_of_adsorption">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.ionomer.Ionomer.heat_of_adsorption">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">heat_of_adsorption</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">T</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">enthalpy_condensation</span><span class="p">(</span><span class="n">T</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Ionomer.wet_expansion_factor">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.ionomer.Ionomer.wet_expansion_factor">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">wet_expansion_factor</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lmbd</span><span class="p">,</span> <span class="n">T</span><span class="p">):</span>
+        <span class="n">water_mass</span> <span class="o">=</span> <span class="n">water_molecular_weight</span> <span class="o">*</span> <span class="n">lmbd</span>
+        <span class="k">return</span> <span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">rho_dry_ion</span> <span class="o">*</span> <span class="n">water_mass</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">EW_ion</span> <span class="o">/</span> <span class="n">water_density</span><span class="p">(</span><span class="n">T</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Ionomer.charge_conductivity">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.ionomer.Ionomer.charge_conductivity">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">charge_conductivity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f_v</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">charge</span><span class="p">):</span>
+        <span class="n">charge_conductivity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sigma_ref_ion</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">f_v</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">f_v_perc_ion</span><span class="p">)</span> <span class="o">**</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_sigma_ion</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">charge_conductivity</span> <span class="k">if</span> <span class="n">charge</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">charge_ion</span> <span class="k">else</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">))</span> <span class="o">*</span> <span class="n">arrhenius_term</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">E_act_ion</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">T_ref_sigma_ion</span><span class="p">)</span></div>
+</div>
+
+
+<div class="viewcode-block" id="PFSAIonomer">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.ionomer.PFSAIonomer">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PFSAIonomer</span><span class="p">(</span><span class="n">Ionomer</span><span class="p">):</span>
+
+<div class="viewcode-block" id="PFSAIonomer.o2_permeability">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.ionomer.PFSAIonomer.o2_permeability">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">o2_permeability</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f_v</span><span class="p">,</span> <span class="n">T</span><span class="o">=</span><span class="mf">353.15</span><span class="p">):</span>
+        <span class="n">RT</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">gas_constant</span> <span class="o">*</span> <span class="n">T</span>
+        <span class="k">return</span> <span class="p">(</span><span class="mf">6.74e-15</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">21280e3</span><span class="o">/</span><span class="n">RT</span><span class="p">)</span> <span class="o">+</span> <span class="n">f_v</span> <span class="o">*</span> <span class="mf">50.5e-15</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">20470e3</span><span class="o">/</span><span class="n">RT</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="PFSAIonomer.h2_permeability">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.ionomer.PFSAIonomer.h2_permeability">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">h2_permeability</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">T</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">f_v</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+        <span class="n">RT</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">gas_constant</span> <span class="o">*</span> <span class="n">T</span>
+        <span class="k">return</span> <span class="p">(</span><span class="mf">15.7e-15</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">20280e3</span><span class="o">/</span><span class="n">RT</span><span class="p">)</span> <span class="o">+</span> <span class="n">f_v</span> <span class="o">*</span> <span class="mf">45e-15</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">18930e3</span><span class="o">/</span><span class="n">RT</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="PFSAIonomer.calculate_electroosmotic_drag_coefficient">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.ionomer.PFSAIonomer.calculate_electroosmotic_drag_coefficient">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_electroosmotic_drag_coefficient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">lmbd</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span><span class="mf">0.02</span> <span class="o">*</span> <span class="n">T</span> <span class="o">-</span> <span class="mf">3.86</span><span class="p">)</span> <span class="o">/</span> <span class="mf">22.5</span> <span class="o">*</span> <span class="n">lmbd</span></div>
+</div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">marapendi</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/components.html">Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/simulation.html">Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/estimation.html">Estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/tools.html">Tools</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Pedro Affonso Nobrega.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

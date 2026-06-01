@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>marapendi.components.cell &#8212; marapendi 0.1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for marapendi.components.cell</h1><div class="highlight"><pre>
+<span></span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span> 
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span><span class="p">,</span> <span class="n">fields</span><span class="p">,</span> <span class="n">is_dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">List</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.membrane</span><span class="w"> </span><span class="kn">import</span> <span class="n">Membrane</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.layer</span><span class="w"> </span><span class="kn">import</span> <span class="n">Layer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">marapendi.tools.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">Updatable</span> 
+<span class="kn">from</span><span class="w"> </span><span class="nn">.porous_layers</span><span class="w"> </span><span class="kn">import</span> <span class="n">PorousLayer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.flow_channels</span><span class="w"> </span><span class="kn">import</span> <span class="n">FlowChannel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">marapendi.models.transport_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">PorousGasResistanceModel</span><span class="p">,</span> <span class="n">DarcyTransportModel</span><span class="p">,</span> <span class="n">MembraneWaterTransportModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">marapendi.models.voltage_models</span><span class="w"> </span><span class="kn">import</span> <span class="n">VoltageModel</span>
+
+<div class="viewcode-block" id="CellSide">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.cell.CellSide">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CellSide</span><span class="p">(</span><span class="n">Updatable</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A class representing one side (anode or cathode) of an AEM/PEM cell.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;side&quot;</span>
+    <span class="n">cl</span><span class="p">:</span> <span class="n">PorousLayer</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">PorousLayer</span><span class="p">)</span> 
+    <span class="n">gdl</span><span class="p">:</span> <span class="n">PorousLayer</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">PorousLayer</span><span class="p">)</span>
+    <span class="n">mpl</span><span class="p">:</span> <span class="n">PorousLayer</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">PorousLayer</span><span class="p">)</span>
+    <span class="n">ch</span><span class="p">:</span> <span class="n">FlowChannel</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">FlowChannel</span><span class="p">)</span>
+    <span class="n">has_mpl</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">has_gdl</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+  
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span> 
+        <span class="bp">self</span><span class="o">.</span><span class="n">porous_layers</span> <span class="o">=</span> <span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">cl</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">mpl</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_mpl</span> <span class="k">else</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">cl</span><span class="p">])</span> <span class="o">+</span> <span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">gdl</span><span class="p">]</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">has_gdl</span> <span class="k">else</span> <span class="p">[])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">porous_layers</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ch</span><span class="p">]</span></div>
+
+    
+<div class="viewcode-block" id="Cell">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.cell.Cell">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">Cell</span><span class="p">(</span><span class="n">Updatable</span><span class="p">):</span> 
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A class representing an AEM/PEM cell.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;cell&quot;</span>
+    <span class="n">area</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.</span>
+    <span class="n">electrical_resistance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.</span> 
+    <span class="n">thermal_resistance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.</span> 
+    <span class="n">ca</span><span class="p">:</span> <span class="n">CellSide</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">CellSide</span><span class="p">)</span>
+    <span class="n">an</span><span class="p">:</span> <span class="n">CellSide</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">CellSide</span><span class="p">)</span>
+    <span class="n">memb</span><span class="p">:</span> <span class="n">Membrane</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">Membrane</span><span class="p">)</span>
+    <span class="n">gas_diffusion_model</span><span class="p">:</span> <span class="n">PorousGasResistanceModel</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">PorousGasResistanceModel</span><span class="p">)</span>
+    <span class="n">darcy_transport_model</span><span class="p">:</span> <span class="n">DarcyTransportModel</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">DarcyTransportModel</span><span class="p">)</span>
+    <span class="n">membrane_water_transport_model</span><span class="p">:</span> <span class="n">MembraneWaterTransportModel</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">MembraneWaterTransportModel</span><span class="p">)</span>
+    <span class="n">voltage_model</span><span class="p">:</span> <span class="n">VoltageModel</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">VoltageModel</span><span class="p">)</span>
+    <span class="n">charge</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;proton&#39;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">porous_layers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">porous_layers</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">porous_layers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">layers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">layers</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">memb</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">layers</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">build_property_arrays</span><span class="p">()</span>
+
+<div class="viewcode-block" id="Cell.get_property_array">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.cell.Cell.get_property_array">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_property_array</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">property_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get array of properties across all layers.</span>
+
+<span class="sd">        - Scalar property  → shape (n_layers, 1)</span>
+<span class="sd">        - Length-N array property → shape (N, n_layers)</span>
+
+<span class="sd">        Layers missing the attribute contribute np.nan (scalar case) or a</span>
+<span class="sd">        nan-filled column of the same length as the first array found.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="nb">getattr</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="n">property_name</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">values</span><span class="p">):</span>
+            <span class="c1"># Determine expected length from the first array value found</span>
+            <span class="n">n</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">v</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">values</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">))</span>
+            <span class="n">cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">v</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">values</span><span class="p">]</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">cols</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>          <span class="c1"># (n_layers, N)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>   <span class="c1"># (n_layers, 1)</span></div>
+
+
+<div class="viewcode-block" id="Cell.build_property_arrays">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.cell.Cell.build_property_arrays">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">build_property_arrays</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">_numeric</span> <span class="o">=</span> <span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="nb">float</span><span class="p">,</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">floating</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">integer</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">(</span><span class="n">PorousLayer</span><span class="p">):</span>
+            <span class="n">sample</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+                <span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span>
+                 <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">_numeric</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_property_array</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fields</span><span class="p">(</span><span class="n">Membrane</span><span class="p">):</span>
+            <span class="n">sample</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+                <span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">layers</span>
+                 <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">l</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">sample</span><span class="p">,</span> <span class="n">_numeric</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="fm">__setattr__</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_property_array</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">name</span><span class="p">))</span></div>
+</div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">marapendi</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/components.html">Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/simulation.html">Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/estimation.html">Estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/tools.html">Tools</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Pedro Affonso Nobrega.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

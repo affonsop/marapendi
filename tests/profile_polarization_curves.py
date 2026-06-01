@@ -29,8 +29,8 @@ def fuel_cell():
         ca = mrpd.FuelCellSide(
             cl=mrpd.PtCCatalystLayer(
                 ecsa=50e3, 
-                platinum_loading=0.4e-2, 
-                carbon_agglomerate_radius=60e-9,
+                L_Pt=0.4e-2, 
+                r_C=60e-9,
                 thickness=10e-6,
                 thermal_conductivity=0.25,
                 reaction=mrpd.ElectrochemicalReaction(
@@ -82,7 +82,7 @@ def fuel_cell():
             thermal_contact_resistance=2e-4
         ),
         membrane = mrpd.Membrane(
-            equivalent_weight=1100,
+            ionomer_equiv_weight=1100,
             density=1980, 
             thickness=25e-6,
             h2_permeation_model=mrpd.HydrogenPermeationModel(

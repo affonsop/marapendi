@@ -10,9 +10,9 @@ def toray_gdl_060():
     lmbd = 0.86 # Data for figure 9 in Baker et al. (2009)
     f = 1 + 0.803 * np.exp(-1.17 * lmbd) + 0.197 * np.exp(-0.164 * lmbd)
     gdl = mrpd.PorousLayer(thickness=160e-6, 
-                         absolute_permeability=1e-13,
+                         K_abs=1e-13,
                          thermal_conductivity=1.24,
-                         contact_angle=115.,
+                         theta_contact=115.,
                          gas=mrpd.GasComposition(temperature=343.15, pressure=3.0e5), 
                          effective_gas_diffusion_ratio=0.15/f) # D_OM / D_OMy = 5 in Chuang et al. (2020)
     return gdl 
@@ -20,15 +20,15 @@ def toray_gdl_060():
 @pytest.fixture
 def cl(): 
     return mrpd.PtCCatalystLayer(thickness=10e-6,
-                            platinum_loading=0.3e-2, 
-                            ionomer_to_carbon_ratio=0.7, 
-                            catalyst_platinum_weight_percent=0.4,
+                            L_Pt=0.3e-2, 
+                            ic_ratio=0.7, 
+                            wt_Pt=0.4,
                             thermal_conductivity=0.25,
                             ecsa=45e3,
                             ionomer=mrpd.PFSAIonomer(),     
-                            carbon_agglomerate_radius=25e-9, 
-                            absolute_permeability=1e-13,
-                            contact_angle=95,
+                            r_C=25e-9, 
+                            K_abs=1e-13,
+                            theta_contact=95,
                             reaction = mrpd.ElectrochemicalReaction(reference_exchange_current_density=2.47e-8 * 3e11 * 10e-6,
                                                                 activation_energy=67e6,
                                                                 reaction_order=0.54,
@@ -112,7 +112,7 @@ def test_gas_porous_transport_resistance(toray_gdl_060, fc, cl):
     fc.ca.cl.set_water_film_thickness(fc.ca.cl.non_wetting_saturation)
     print(fc.ca.cl.non_wetting_saturation, fc.ca.cl.water_film_thickness,mrpd.o2_water_diffusivity(fc.ca.cl.temperature))
     r2 = fc.ca.cl.o2_ionomer_film_resistance(14, fc.ca.cl.gas_temperature())
-    print(r2-r1, (fc.ca.cl.ionomer_k3 + 1) * fc.ca.cl.water_film_thickness/mrpd.o2_water_diffusivity(fc.ca.cl.temperature))
+    print(r2-r1, (fc.ca.cl.k3_ion + 1) * fc.ca.cl.water_film_thickness/mrpd.o2_water_diffusivity(fc.ca.cl.temperature))
     wet_resistance = (fc.ca.gdl.gas_transport_resistance(species='o2') +
                     fc.ca.cl.gas_transport_resistance(species='o2') +
                     fc.ca.cl.o2_ionomer_film_resistance(14, fc.ca.cl.gas_temperature()))

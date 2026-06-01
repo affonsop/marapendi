@@ -43,3 +43,27 @@ def potential_activation(
 
 def sigmoid(x, x_inflection, slope_parameter):
     return 1/(1 + np.exp(-slope_parameter * (x - x_inflection)))
+
+def polyval_vec(coeffs, xs):
+    """
+    Vectorised polyval: evaluate one polynomial per row.
+
+    Parameters
+    ----------
+    coeffs : (N, D) array  — N polynomials, each of degree D-1,
+                             coefficients in descending order (like np.polyval)
+    xs     : (N,)   array  — one evaluation point per polynomial
+
+    Returns
+    -------
+    (N,) array of evaluated values
+    """
+   
+    # ── Horner's method (faster, more numerically stable) ──────────────────
+    coeffs = np.asarray(coeffs, dtype=float)
+    xs     = np.asarray(xs,     dtype=float)
+    result = np.zeros((len(xs), 1))
+    
+    for col in coeffs.T: # iterate over coefficient columns
+        result = result * xs + col[:,np.newaxis]
+    return result

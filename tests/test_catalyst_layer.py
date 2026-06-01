@@ -8,10 +8,10 @@ import matplotlib.pyplot as plt
 @pytest.fixture
 def cl(): 
     return mrpd.PtCCatalystLayer(thickness=2.7*1.2*4/3*1e-6,
-                            platinum_loading=0.12e-2, 
-                            ionomer_to_carbon_ratio=0.75, 
-                            catalyst_platinum_weight_percent=0.3,
-                            carbon_agglomerate_radius=25e-9, 
+                            L_Pt=0.12e-2, 
+                            ic_ratio=0.75, 
+                            wt_Pt=0.3,
+                            r_C=25e-9, 
                             ionomer=mrpd.PFSAIonomer(dry_density=2004, equivalent_weight=952, 
                                                                  conductivity_correction=1.3, conductivity_exp=1.5),
                             reaction = mrpd.ElectrochemicalReaction(reference_exchange_current_density=2.47e-8 * 3e11 * 10e-6,
@@ -47,7 +47,7 @@ def test_ionomer_o2_transport(cl):
     
     for k in range(3):
         
-        assert np.isclose(cl.ionomer_film_thickness, 6.5e-9, atol=5e-11)
+        assert np.isclose(cl.t_ion_film, 6.5e-9, atol=5e-11)
         assert np.isclose(cl.ionomer.o2_permeability(ionomer_water_content[k], temperature=353.),  1e-3*o2_perm[k], atol=5e-15)
         assert np.isclose(cl.ionomer.o2_film_diffusion_coefficient(ionomer_water_content[k], temperature=353.), o2_diff_coeff[k], atol=1e-10)
         #assert np.isclose(cl.o2_ionomer_film_resistance(ionomer_water_content[k], temperature=353.), ionomer_film_resistance[k], 10e-2)

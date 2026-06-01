@@ -9,7 +9,7 @@ from .models.electrochemistry import *
 from .models.gas_composition import *
 from .models.transport_models import *
 from .models.water_balance_models import *
-from .models.membrane_permeation_models import *
+from .models.voltage_models import *
 
 # ── Physical components ───────────────────────────────────────────────────────
 from .components.layer import *
@@ -19,10 +19,9 @@ from .components.flow_channels import *
 from .components.ionomer import *
 from .components.electrolyte import *
 from .components.catalyst_layers import *
-from .components.fuelcell import *
-from .components.aem_electrolyzer import *
 from .components.cell import *
-from .components.cell_transient import *
+from .components.cell_state import *
+from .models.transient import *
 
 # ── Degradation models (depend on components) ─────────────────────────────────
 from .models.degradation import *

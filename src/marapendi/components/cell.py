@@ -9,6 +9,7 @@ from marapendi.tools.tools import Updatable
 from .porous_layers import PorousLayer
 from .flow_channels import FlowChannel
 from marapendi.models.transport_models import PorousGasResistanceModel, DarcyTransportModel, MembraneWaterTransportModel
+from marapendi.models.voltage_models import VoltageModel
 
 @dataclass
 class CellSide(Updatable):
@@ -42,9 +43,11 @@ class Cell(Updatable):
     gas_diffusion_model: PorousGasResistanceModel = field(default_factory=PorousGasResistanceModel)
     darcy_transport_model: DarcyTransportModel = field(default_factory=DarcyTransportModel)
     membrane_water_transport_model: MembraneWaterTransportModel = field(default_factory=MembraneWaterTransportModel)
+    voltage_model: VoltageModel = field(default_factory=VoltageModel)
+    charge: str = 'proton'
 
-    def __post_init__(self): 
-        self.porous_layers = self.an.porous_layers[::-1] + self.ca.porous_layers 
+    def __post_init__(self):
+        self.porous_layers = self.an.porous_layers[::-1] + self.ca.porous_layers
         self.layers = self.an.layers[::-1] + [self.memb] + self.ca.layers
         self.build_property_arrays()
 
@@ -64,7 +67,7 @@ class Cell(Updatable):
             n = next(v.shape[0] for v in values if isinstance(v, np.ndarray))
             cols = [v if isinstance(v, np.ndarray) else np.full(n, np.nan)
                     for v in values]
-            return np.stack(cols, axis=1)          # (N, n_layers)
+            return np.stack(cols, axis=0)          # (n_layers, N)
         else:
             return np.array(values, dtype=float)[:, np.newaxis]   # (n_layers, 1)
 

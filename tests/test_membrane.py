@@ -21,9 +21,9 @@ def membrane_liso_2016():
 def fuel_cell_liso_2016(membrane_liso_2016): 
     fc = mrpd.FuelCell(area=96e-4, cell_number=16, membrane=membrane_liso_2016, 
                        ca=mrpd.FuelCellSide(cl=mrpd.PtCCatalystLayer(ionomer=mrpd.NafionD2020), 
-                                            gdl=mrpd.PorousLayer(thickness=200e-6, effective_gas_diffusion_ratio=0.3, absolute_permeability=1e-11, thermal_conductivity=.1)),
+                                            gdl=mrpd.PorousLayer(thickness=200e-6, effective_gas_diffusion_ratio=0.3, K_abs=1e-11, thermal_conductivity=.1)),
                        an=mrpd.FuelCellSide(cl=mrpd.PtCCatalystLayer(ionomer=mrpd.NafionD2020), 
-                                            gdl=mrpd.PorousLayer(thickness=200e-6, effective_gas_diffusion_ratio=0.3, absolute_permeability=1e-11,  thermal_conductivity=.1)),)
+                                            gdl=mrpd.PorousLayer(thickness=200e-6, effective_gas_diffusion_ratio=0.3, K_abs=1e-11,  thermal_conductivity=.1)),)
     fc.membrane.temperature = 337.8842
     fc.current_density = np.linspace(0.25e4,1e4,4)
     fc.ca.cl.gas.set_temperature_and_pressure(337.8842, 135e3)

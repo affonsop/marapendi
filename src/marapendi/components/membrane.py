@@ -4,14 +4,9 @@ Module providing a membrane class intended to be the base class for different me
 
 import numpy as np
 import cantera as ct 
-from dataclasses import dataclass, field
-from marapendi.tools.tools import arrhenius_term
+from dataclasses import dataclass, field, fields as dataclass_fields
+from marapendi.components.ionomer import Ionomer, PFSAIonomer
 from marapendi.components.porous_layers import PorousLayer
-from marapendi.components.water import water_molar_volume, water_molecular_weight, water_density
-from marapendi.models.water_balance_models import MembraneWaterBalanceModel
-from marapendi.models.membrane_permeation_models import HydrogenPermeationModel 
-from marapendi.models.electrochemistry import enthalpy_condensation
-from marapendi.components.ionomer import Ionomer 
 
 @dataclass
 class Membrane(PorousLayer, Ionomer):
@@ -63,13 +58,32 @@ class Membrane(PorousLayer, Ionomer):
     """
     
     thickness: float
-    ionomer_vol_fraction: float = 1.
-    ionomer_tortuosity: float = 1.
+    eps_ion: float = 1.
+    tort_ion: float = 1.
+    ionomer: Ionomer = field(default=None)
     thermal_conductivity: float = 0.9
     specific_heat_capacity: float = 2000.
-    h2_permeation_model: HydrogenPermeationModel = field(default_factory=HydrogenPermeationModel)
-   
+    
+    def __eq__(self, other):
+        """Use identity comparison — layers are unique instances in the cell model.
+        This avoids ambiguous truth-value errors from numpy array fields during
+        membership tests like `layer in self.ionomer_layers`."""
+        return self is other
+
+    def __hash__(self):
+        return id(self)
+
 
     def __post_init__(self):
+        """Copy all ionomer fields onto self so ionomer properties are
+        directly accessible (e.g. self.dry_density, self.equivalent_weight).
+        Skipped if no ionomer was supplied."""
+        if self.ionomer is not None:
+            for f in dataclass_fields(self.ionomer):
+                setattr(self, f.name, getattr(self.ionomer, f.name))
+        PorousLayer.__post_init__(self)
         Ionomer.__post_init__(self)
 
+@dataclass
+class PFSAMembrane(Membrane, PFSAIonomer):
+    pass

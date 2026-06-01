@@ -22,15 +22,15 @@ def make_layer(**overrides):
         name="test_layer",
         thickness=1e-4,
         bulk_density=2000.0,
-        porosity=0.4,
-        tortuosity=1.5,
-        pore_diameter=5e-6,
-        absolute_permeability=1e-12,
-        contact_angle=110.0,
+        eps_p=0.4,
+        tort=1.5,
+        d_p=5e-6,
+        K_abs=1e-12,
+        theta_contact=110.0,
         bulk_electrical_conductivity=1e4,
         bulk_specific_heat_capacity=800.0,
         bulk_thermal_conductivity=0.5,
-        ionomer_vol_fraction=0.3,
+        eps_ion=0.3,
     )
     defaults.update(overrides)
     return PorousLayer(**defaults)
@@ -63,15 +63,15 @@ class TestLayer:
         assert layer.name == "test_layer"
         assert layer.thickness == pytest.approx(1e-4)
         assert layer.bulk_density == pytest.approx(2000.0)
-        assert layer.porosity == pytest.approx(0.4)
-        assert layer.tortuosity == pytest.approx(1.5)
-        assert layer.pore_diameter == pytest.approx(5e-6)
-        assert layer.absolute_permeability == pytest.approx(1e-12)
-        assert layer.contact_angle == pytest.approx(110.0)
+        assert layer.eps_p == pytest.approx(0.4)
+        assert layer.tort == pytest.approx(1.5)
+        assert layer.d_p == pytest.approx(5e-6)
+        assert layer.K_abs == pytest.approx(1e-12)
+        assert layer.theta_contact == pytest.approx(110.0)
         assert layer.bulk_electrical_conductivity == pytest.approx(1e4)
         assert layer.bulk_specific_heat_capacity == pytest.approx(800.0)
         assert layer.bulk_thermal_conductivity == pytest.approx(0.5)
-        assert layer.ionomer_vol_fraction == pytest.approx(0.3)
+        assert layer.eps_ion == pytest.approx(0.3)
 
     def test_is_updatable(self):
         """Layer inherits from Updatable."""
@@ -153,22 +153,32 @@ class TestCell:
 
     def test_get_property_array_bulk_thermal_conductivity(self, default_cell):
         arr = default_cell.get_property_array("bulk_thermal_conductivity")
-        assert arr.shape == (len(default_cell.layers),)
+        # scalar field → shape (n_layers, 1)
+        assert arr.shape == (len(default_cell.layers), 1)
 
-    def test_build_property_arrays_keys(self, default_cell):
-        """arrays dict should have keys matching fields of Layer."""
+    def test_build_property_arrays_sets_layer_fields(self, default_cell):
+        """build_property_arrays sets numeric Layer fields as ndarray attributes on cell."""
         from dataclasses import fields
-        expected_keys = {f.name for f in fields(Layer)}
-        assert expected_keys.issubset(set(default_cell.arrays.keys()))
+        for f in fields(Layer):
+            val = getattr(default_cell, f.name, None)
+            if isinstance(val, np.ndarray):  # only numeric fields are converted
+                assert val.ndim >= 1, f"Cell.{f.name} should be at least 1-D"
 
-    def test_build_property_arrays_values_are_arrays(self, default_cell):
-        for key, val in default_cell.arrays.items():
-            assert isinstance(val, np.ndarray), f"arrays['{key}'] is not an ndarray"
+    def test_build_property_arrays_scalar_shape(self, default_cell):
+        """Scalar layer fields produce (n_layers, 1) arrays."""
+        n = len(default_cell.layers)
+        assert default_cell.thickness.shape == (n, 1)
+        assert default_cell.bulk_thermal_conductivity.shape == (n, 1)
 
     def test_build_property_arrays_length(self, default_cell):
+        """Every numeric per-layer array has n_layers in one of its dimensions."""
+        from dataclasses import fields
         n_layers = len(default_cell.layers)
-        for key, val in default_cell.arrays.items():
-            assert len(val) == n_layers, f"arrays['{key}'] has wrong length"
+        for f in fields(Layer):
+            val = getattr(default_cell, f.name, None)
+            if isinstance(val, np.ndarray):
+                assert n_layers in val.shape, \
+                    f"Cell.{f.name} shape {val.shape} doesn't contain n_layers={n_layers}"
 
     def test_custom_name(self, custom_cell):
         assert custom_cell.name == "custom"

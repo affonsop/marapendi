@@ -42,8 +42,8 @@ def create_fuel_cell(params):
         ca = mrpd.FuelCellSide(
             cl=mrpd.PtCCatalystLayer(
                 ecsa=params['ecsa'], 
-                platinum_loading=0.4e-2, 
-                carbon_agglomerate_radius=60e-9,
+                L_Pt=0.4e-2, 
+                r_C=60e-9,
                 thickness=10e-6,
                 thermal_conductivity=0.25,
                 ionomer=mrpd.PFSAIonomer(),

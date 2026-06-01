@@ -23,7 +23,7 @@ from .porous_layers import PorousLayer
 from marapendi.models.transport_models import ChannelGasResistanceModel
 from .water import water_kinematic_viscosity, water_molar_volume
 
-@dataclass 
+@dataclass(eq=False) 
 class ChannelConditions:  
     """
     Class to encapsulate the operating conditions of the gas in a flow channels.
@@ -98,7 +98,7 @@ class ChannelConditions:
         self.__post_init__()
 
 
-@dataclass
+@dataclass(eq=False)
 class FlowChannel(PorousLayer):
     """
     Class to represent a fuel cell flow channels, inheriting from PorousLayer 
@@ -170,8 +170,8 @@ class FlowChannel(PorousLayer):
     length: float = 100e-3
     channel_land_ratio: float = 1.
     n_parallel: int = 14
-    porosity: float = 1
-    tortuosity: float = 1.
+    eps_p: float = 1
+    tort: float = 1.
     sherwood: float = 4.
     transport_resistance_model: ChannelGasResistanceModel = field(default_factory=ChannelGasResistanceModel)
 
