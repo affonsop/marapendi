@@ -14,7 +14,6 @@ from dataclasses import dataclass, field
 
 from marapendi.components.cell import Cell
 from marapendi.components.cell_state import CellState
-from marapendi.models.gas_composition import calculate_species_diffusion_coefficient
 from marapendi.models.water import (
     water_saturation_concentration,
     water_density,
@@ -120,7 +119,7 @@ class TransientCellModel:
         p_g   = c_g * ct.gas_constant * T
         x_g_k = cg_k / c_g[:, np.newaxis, ...]
         p_g_k = p_g[:, np.newaxis, ...] * x_g_k
-        D_g_k   = calculate_species_diffusion_coefficient(T, p_g, x_h2=self.x_h2_mask)
+        D_g_k   = cell.gas_diffusion_model.species_diffusion_coefficient(T, p_g, x_h2=self.x_h2_mask)
         c_sat = water_saturation_concentration(T)
         c_v   = cg_k[:, -1, ...]
         rh    = c_v / c_sat

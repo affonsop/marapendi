@@ -40,11 +40,6 @@ parameters; model classes carry the equations.
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.models.gas_composition
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 .. automodule:: marapendi.models.transient
    :members:
    :undoc-members:

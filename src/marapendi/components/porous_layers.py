@@ -6,9 +6,6 @@ import numpy as np
 import cantera as ct
 
 from .layer import Layer
-from marapendi.models.gas_composition import GasComposition, index_h2, index_o2, index_h2ov, species_indexes, calculate_species_diffusion_coefficient
-from marapendi.models.transport import PorousGasResistanceModel, DarcyTransportModel
-from ..models.water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight, water_dynamic_viscosity, water_density
 
 @dataclass(eq=False)
 class PorousLayer(Layer):

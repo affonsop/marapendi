@@ -20,7 +20,6 @@ from .models.water import *
 from .models.degradation import *
 from .models.transient import *
 from .models.electrochemistry import *
-from .models.gas_composition import *
 from .models.transport import *
 from .models.membrane import * 
 from .models.voltage import *

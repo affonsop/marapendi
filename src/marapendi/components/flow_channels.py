@@ -18,7 +18,6 @@ from dataclasses import dataclass, field
 import numpy as np 
 import cantera as ct
 
-from marapendi.models.gas_composition import species_indexes
 from .porous_layers import PorousLayer
 from marapendi.models.transport import ChannelGasResistanceModel
 from ..models.water import water_kinematic_viscosity, water_molar_volume
