@@ -192,5 +192,5 @@ class DarcyTransportModel:
         """
         Van Genuchten model
         """
-        s = np.clip(s, 1e-3, 1)
+        s = np.clip(s, 1e-3, 1 - 1e-6)
         return  p_b * ((1 - s)**(-1/m) - 1)**(1/n)

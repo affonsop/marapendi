@@ -32,8 +32,8 @@ class VoltageModel:
         -------
         E_rev, E_rev_ca, E_rev_an : ndarray
         """
-        activity_o2 = p_o2_local / STD_PRESSURE
-        activity_h2 = p_h2 / STD_PRESSURE
+        activity_o2 = np.maximum(p_o2_local / STD_PRESSURE, 1e-30)
+        activity_h2 = np.maximum(p_h2 / STD_PRESSURE, 1e-30)
         E_rev_an = -(
             ct.gas_constant * T_an_cl * np.log(activity_h2) / (2 * ct.faraday)
         )

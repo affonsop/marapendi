@@ -1,8 +1,12 @@
 Components
 ==========
 
-Physical building blocks of an electrochemical cell (electrodes, membrane,
-flow channels, etc.).
+Physical building blocks of an electrochemical cell — electrodes,
+membrane, flow channels, and supporting structures.
+
+Component classes are dataclasses that hold geometric and material
+parameters.  Computation is delegated to the strategy objects in
+:doc:`models`; components do not implement physics equations directly.
 
 .. automodule:: marapendi.components.cell
    :members:
@@ -40,11 +44,6 @@ flow channels, etc.).
    :show-inheritance:
 
 .. automodule:: marapendi.components.flow_channels
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: marapendi.components.water
    :members:
    :undoc-members:
    :show-inheritance:

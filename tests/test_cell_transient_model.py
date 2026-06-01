@@ -205,6 +205,7 @@ def test(cell):
         * cell.norm_factor[..., np.newaxis],
         current_density,
     )
+    cell._compute_voltage(state)
 
     t2 = time.time()
     print(sol, tf / (t2 - t1))

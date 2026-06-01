@@ -39,7 +39,11 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="user_guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="api/components.html">Components</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api/models.html">Models</a></li>
@@ -111,13 +115,9 @@
         <li><a href="api/components.html#marapendi.components.membrane.Membrane.__eq__">(marapendi.components.membrane.Membrane method)</a>
 </li>
       </ul></li>
-      <li><a href="api/components.html#marapendi.components.water.WaterProperties.__init__">__init__() (marapendi.components.water.WaterProperties method)</a>
+      <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel.__init__">__init__() (marapendi.simulation.estimation.DynamicModel method)</a>
 
       <ul>
-        <li><a href="api/models.html#marapendi.models.gas_composition.GasComposition.__init__">(marapendi.models.gas_composition.GasComposition method)</a>
-</li>
-        <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel.__init__">(marapendi.simulation.estimation.DynamicModel method)</a>
-</li>
         <li><a href="api/simulation.html#marapendi.simulation.estimation.SteadyStateModel.__init__">(marapendi.simulation.estimation.SteadyStateModel method)</a>
 </li>
       </ul></li>
@@ -149,18 +149,12 @@
 </li>
       <li><a href="api/models.html#marapendi.models.electrochemistry.ElectrochemicalReaction.activation_energy">activation_energy (marapendi.models.electrochemistry.ElectrochemicalReaction attribute)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.activation_overpotential">activation_overpotential() (marapendi.components.catalyst_layers.CatalystLayer method)</a>
-
-      <ul>
-        <li><a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.activation_overpotential">(marapendi.components.catalyst_layers.PtCCatalystLayer method)</a>
-</li>
-      </ul></li>
       <li><a href="api/components.html#marapendi.components.cell.Cell.an">an (marapendi.components.cell.Cell attribute)</a>
+</li>
+      <li><a href="api/components.html#marapendi.components.cell.Cell.area">area (marapendi.components.cell.Cell attribute)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/components.html#marapendi.components.cell.Cell.area">area (marapendi.components.cell.Cell attribute)</a>
-</li>
       <li><a href="api/tools.html#marapendi.tools.tools.arrhenius_term">arrhenius_term() (in module marapendi.tools.tools)</a>
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.PtSizeDistribution.average_particle_mass">average_particle_mass() (marapendi.models.degradation.PtSizeDistribution method)</a>
@@ -175,9 +169,11 @@
 <h2 id="B">B</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/models.html#id0">B_ch (marapendi.models.transport_models.ChannelGasResistanceModel attribute)</a>, <a href="api/models.html#marapendi.models.transport_models.ChannelGasResistanceModel.B_ch">[1]</a>
+      <li><a href="api/models.html#id7">B_ch (marapendi.models.transport.ChannelGasResistanceModel attribute)</a>, <a href="api/models.html#marapendi.models.transport.ChannelGasResistanceModel.B_ch">[1]</a>
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.OxidePlaceExchange.backward_rate_constant">backward_rate_constant (marapendi.models.degradation.OxidePlaceExchange attribute)</a>
+</li>
+      <li><a href="api/models.html#marapendi.models.model.BaseModel">BaseModel (class in marapendi.models.model)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.cell.Cell.build_property_arrays">build_property_arrays() (marapendi.components.cell.Cell method)</a>
 </li>
@@ -197,7 +193,7 @@
 <h2 id="C">C</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.c_ion">c_ion (marapendi.components.ionomer.Ionomer attribute)</a>
+      <li><a href="api/components.html#id29">c_ion (marapendi.components.ionomer.Ionomer attribute)</a>, <a href="api/components.html#marapendi.components.ionomer.Ionomer.c_ion">[1]</a>
 </li>
       <li><a href="api/components.html#marapendi.components.cell_state.CellState.c_sat">c_sat (marapendi.components.cell_state.CellState attribute)</a>
 </li>
@@ -205,17 +201,11 @@
 </li>
       <li><a href="api/components.html#marapendi.components.cell.Cell.ca">ca (marapendi.components.cell.Cell attribute)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.voltage_models.VoltageModel.calculate_activation_overpotential">calculate_activation_overpotential() (marapendi.models.voltage_models.VoltageModel method)</a>
-</li>
-      <li><a href="api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.calculate_anode_membrane_flux">calculate_anode_membrane_flux() (marapendi.models.water_balance_models.MembraneWaterBalanceModel method)</a>
-</li>
-      <li><a href="api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.calculate_biot_number">calculate_biot_number() (marapendi.models.water_balance_models.MembraneWaterBalanceModel method)</a>
+      <li><a href="api/models.html#marapendi.models.voltage.VoltageModel.calculate_activation_overpotential">calculate_activation_overpotential() (marapendi.models.voltage.VoltageModel method)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.calculate_bulk_thermal_resistance">calculate_bulk_thermal_resistance() (marapendi.components.porous_layers.PorousLayer method)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.calculate_cathode_membrane_flux">calculate_cathode_membrane_flux() (marapendi.models.water_balance_models.MembraneWaterBalanceModel method)</a>
-</li>
-      <li><a href="api/models.html#marapendi.models.voltage_models.VoltageModel.calculate_cell_voltage">calculate_cell_voltage() (marapendi.models.voltage_models.VoltageModel method)</a>
+      <li><a href="api/models.html#marapendi.models.voltage.VoltageModel.calculate_cell_voltage">calculate_cell_voltage() (marapendi.models.voltage.VoltageModel method)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution.calculate_density">calculate_density() (marapendi.components.electrolyte.ElectrolyteSolution method)</a>
 
@@ -224,14 +214,18 @@
 </li>
       </ul></li>
       <li><a href="api/components.html#marapendi.components.ionomer.PFSAIonomer.calculate_electroosmotic_drag_coefficient">calculate_electroosmotic_drag_coefficient() (marapendi.components.ionomer.PFSAIonomer method)</a>
+
+      <ul>
+        <li><a href="api/models.html#marapendi.models.membrane.PFSAModel.calculate_electroosmotic_drag_coefficient">(marapendi.models.membrane.PFSAModel method)</a>
 </li>
+      </ul></li>
       <li><a href="api/models.html#marapendi.models.electrochemistry.calculate_exchange_current_density">calculate_exchange_current_density() (in module marapendi.models.electrochemistry)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.voltage_models.VoltageModel.calculate_h2_permeation_flux">calculate_h2_permeation_flux() (marapendi.models.voltage_models.VoltageModel method)</a>
+      <li><a href="api/models.html#marapendi.models.membrane.MembraneModel.calculate_h2_permeation_flux">calculate_h2_permeation_flux() (marapendi.models.membrane.MembraneModel method)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.flow_channels.FlowChannel.calculate_inlet_gas_flow_rate">calculate_inlet_gas_flow_rate() (marapendi.components.flow_channels.FlowChannel method)</a>
 </li>
-      <li><a href="api/components.html#id27">calculate_inlet_stochiometry() (marapendi.components.flow_channels.FlowChannel method)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.calculate_inlet_stochiometry">[1]</a>
+      <li><a href="api/components.html#id46">calculate_inlet_stochiometry() (marapendi.components.flow_channels.FlowChannel method)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.calculate_inlet_stochiometry">[1]</a>
 </li>
       <li><a href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution.calculate_ionic_conductivity">calculate_ionic_conductivity() (marapendi.components.electrolyte.ElectrolyteSolution method)</a>
 
@@ -241,32 +235,26 @@
       </ul></li>
       <li><a href="api/models.html#marapendi.models.electrochemistry.calculate_linear_overpotential">calculate_linear_overpotential() (in module marapendi.models.electrochemistry)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.transport_models.DarcyTransportModel.calculate_liquid_darcy_flow_resistance">calculate_liquid_darcy_flow_resistance() (marapendi.models.transport_models.DarcyTransportModel method)</a>
+      <li><a href="api/models.html#marapendi.models.transport.DarcyTransportModel.calculate_liquid_darcy_flow_resistance">calculate_liquid_darcy_flow_resistance() (marapendi.models.transport.DarcyTransportModel method)</a>
 </li>
       <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel.calculate_local_sensitivity">calculate_local_sensitivity() (marapendi.simulation.estimation.DynamicModel method)</a>
 </li>
       <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel.calculate_local_sensitivity_neighborhood">calculate_local_sensitivity_neighborhood() (marapendi.simulation.estimation.DynamicModel method)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.transport_models.MembraneWaterTransportModel.calculate_membrane_water_resistance">calculate_membrane_water_resistance() (marapendi.models.transport_models.MembraneWaterTransportModel method)</a>
-</li>
-      <li><a href="api/models.html#marapendi.models.gas_composition.GasComposition.calculate_mixture_kinematic_viscosity">calculate_mixture_kinematic_viscosity() (marapendi.models.gas_composition.GasComposition method)</a>
+      <li><a href="api/models.html#marapendi.models.membrane.MembraneModel.calculate_membrane_water_resistance">calculate_membrane_water_resistance() (marapendi.models.membrane.MembraneModel method)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution.calculate_molality">calculate_molality() (marapendi.components.electrolyte.ElectrolyteSolution method)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution.calculate_molarity">calculate_molarity() (marapendi.components.electrolyte.ElectrolyteSolution method)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.voltage_models.VoltageModel.calculate_ohmic_overpotential">calculate_ohmic_overpotential() (marapendi.models.voltage_models.VoltageModel method)</a>
+      <li><a href="api/models.html#marapendi.models.voltage.VoltageModel.calculate_ohmic_overpotential">calculate_ohmic_overpotential() (marapendi.models.voltage.VoltageModel method)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.voltage_models.VoltageModel.calculate_orr_overpotential">calculate_orr_overpotential() (marapendi.models.voltage_models.VoltageModel method)</a>
-</li>
-      <li><a href="api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.calculate_peclet_number">calculate_peclet_number() (marapendi.models.water_balance_models.MembraneWaterBalanceModel method)</a>
-</li>
-      <li><a href="api/models.html#marapendi.models.gas_composition.GasComposition.calculate_relative_humidity">calculate_relative_humidity() (marapendi.models.gas_composition.GasComposition method)</a>
+      <li><a href="api/models.html#marapendi.models.voltage.VoltageModel.calculate_orr_overpotential">calculate_orr_overpotential() (marapendi.models.voltage.VoltageModel method)</a>
 </li>
       <li><a href="api/models.html#marapendi.models.electrochemistry.calculate_reversible_cell_voltage">calculate_reversible_cell_voltage() (in module marapendi.models.electrochemistry)</a>
 
       <ul>
-        <li><a href="api/models.html#marapendi.models.voltage_models.VoltageModel.calculate_reversible_cell_voltage">(marapendi.models.voltage_models.VoltageModel method)</a>
+        <li><a href="api/models.html#marapendi.models.voltage.VoltageModel.calculate_reversible_cell_voltage">(marapendi.models.voltage.VoltageModel method)</a>
 </li>
       </ul></li>
       <li><a href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution.calculate_saturation_pressure">calculate_saturation_pressure() (marapendi.components.electrolyte.ElectrolyteSolution method)</a>
@@ -275,29 +263,21 @@
         <li><a href="api/components.html#marapendi.components.electrolyte.KOH_solution.calculate_saturation_pressure">(marapendi.components.electrolyte.KOH_solution method)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/models.html#marapendi.models.gas_composition.calculate_species_diffusion_coefficient">calculate_species_diffusion_coefficient() (in module marapendi.models.gas_composition)</a>
-
-      <ul>
-        <li><a href="api/models.html#marapendi.models.gas_composition.GasComposition.calculate_species_diffusion_coefficient">(marapendi.models.gas_composition.GasComposition method)</a>
-</li>
-      </ul></li>
-      <li><a href="api/models.html#marapendi.models.gas_composition.GasComposition.calculate_species_kinematic_viscosity">calculate_species_kinematic_viscosity() (marapendi.models.gas_composition.GasComposition method)</a>
-</li>
       <li><a href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution.calculate_surface_tension">calculate_surface_tension() (marapendi.components.electrolyte.ElectrolyteSolution method)</a>
 
       <ul>
         <li><a href="api/components.html#marapendi.components.electrolyte.KOH_solution.calculate_surface_tension">(marapendi.components.electrolyte.KOH_solution method)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/models.html#marapendi.models.electrochemistry.calculate_tafel_overpotential">calculate_tafel_overpotential() (in module marapendi.models.electrochemistry)</a>
 </li>
       <li><a href="api/models.html#marapendi.models.electrochemistry.calculate_tafel_slope">calculate_tafel_slope() (in module marapendi.models.electrochemistry)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution.calculate_weight_percent">calculate_weight_percent() (marapendi.components.electrolyte.ElectrolyteSolution method)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.transport_models.DarcyTransportModel.capillary_pressure_from_saturation">capillary_pressure_from_saturation() (marapendi.models.transport_models.DarcyTransportModel method)</a>
+      <li><a href="api/models.html#marapendi.models.transport.DarcyTransportModel.capillary_pressure_from_saturation">capillary_pressure_from_saturation() (marapendi.models.transport.DarcyTransportModel method)</a>
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.PtDissolution.carbon_corrosion">carbon_corrosion (marapendi.models.degradation.PtDissolution attribute)</a>
 </li>
@@ -310,6 +290,8 @@
       <li><a href="api/components.html#id1">catalyst_loading (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.catalyst_loading">[1]</a>
 </li>
       <li><a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer">CatalystLayer (class in marapendi.components.catalyst_layers)</a>
+</li>
+      <li><a href="api/models.html#marapendi.models.catalyst_layer.CatalystLayerModel">CatalystLayerModel (class in marapendi.models.catalyst_layer)</a>
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.CathodicDissolution">CathodicDissolution (class in marapendi.models.degradation)</a>
 </li>
@@ -327,27 +309,27 @@
 </li>
       <li><a href="api/components.html#marapendi.components.flow_channels.FlowChannel.channel_flow_section">channel_flow_section (marapendi.components.flow_channels.FlowChannel attribute)</a>
 </li>
-      <li><a href="api/components.html#id28">channel_land_ratio (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.channel_land_ratio">[1]</a>
+      <li><a href="api/components.html#id47">channel_land_ratio (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.channel_land_ratio">[1]</a>
 </li>
       <li><a href="api/components.html#marapendi.components.flow_channels.ChannelConditions">ChannelConditions (class in marapendi.components.flow_channels)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.transport_models.ChannelGasResistanceModel">ChannelGasResistanceModel (class in marapendi.models.transport_models)</a>
+      <li><a href="api/models.html#marapendi.models.transport.ChannelGasResistanceModel">ChannelGasResistanceModel (class in marapendi.models.transport)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.cell.Cell.charge">charge (marapendi.components.cell.Cell attribute)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.charge_conductivity">charge_conductivity() (marapendi.components.ionomer.Ionomer method)</a>
+      <li><a href="api/models.html#marapendi.models.membrane.IonomerModel.charge_conductivity">charge_conductivity() (marapendi.models.membrane.IonomerModel method)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.charge_ion">charge_ion (marapendi.components.ionomer.Ionomer attribute)</a>
+      <li><a href="api/components.html#id30">charge_ion (marapendi.components.ionomer.Ionomer attribute)</a>, <a href="api/components.html#marapendi.components.ionomer.Ionomer.charge_ion">[1]</a>
 </li>
       <li><a href="api/models.html#marapendi.models.electrochemistry.ElectrochemicalReaction.charge_transfer_coeff">charge_transfer_coeff (marapendi.models.electrochemistry.ElectrochemicalReaction attribute)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.cell.CellSide.cl">cl (marapendi.components.cell.CellSide attribute)</a>
 </li>
+      <li><a href="api/components.html#marapendi.components.cell.Cell.cl_model">cl_model (marapendi.components.cell.Cell attribute)</a>
+</li>
       <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel.compute_global_sensitivity">compute_global_sensitivity() (marapendi.simulation.estimation.DynamicModel method)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.gas_composition.GasComposition.concentration">concentration() (marapendi.models.gas_composition.GasComposition method)</a>
-</li>
-      <li><a href="api/models.html#marapendi.models.transport_models.ChannelGasResistanceModel.convection_resistance">convection_resistance() (marapendi.models.transport_models.ChannelGasResistanceModel method)</a>
+      <li><a href="api/models.html#marapendi.models.transport.ChannelGasResistanceModel.convection_resistance">convection_resistance() (marapendi.models.transport.ChannelGasResistanceModel method)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -357,25 +339,23 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/components.html#marapendi.components.cell_state.CellState.D_g_k">D_g_k (marapendi.components.cell_state.CellState attribute)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.D_lmbd_ref_ion">D_lmbd_ref_ion (marapendi.components.ionomer.Ionomer attribute)</a>
+      <li><a href="api/components.html#id25">D_lmbd_ref_ion (marapendi.components.ionomer.Ionomer attribute)</a>, <a href="api/components.html#marapendi.components.ionomer.Ionomer.D_lmbd_ref_ion">[1]</a>
 </li>
-      <li><a href="api/components.html#id15">d_p (marapendi.components.porous_layers.PorousLayer attribute)</a>, <a href="api/components.html#marapendi.components.porous_layers.PorousLayer.d_p">[1]</a>
+      <li><a href="api/components.html#id16">d_p (marapendi.components.porous_layers.PorousLayer attribute)</a>, <a href="api/components.html#marapendi.components.porous_layers.PorousLayer.d_p">[1]</a>
 </li>
       <li><a href="api/components.html#marapendi.components.cell.Cell.darcy_transport_model">darcy_transport_model (marapendi.components.cell.Cell attribute)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.transport_models.DarcyTransportModel">DarcyTransportModel (class in marapendi.models.transport_models)</a>
+      <li><a href="api/models.html#marapendi.models.transport.DarcyTransportModel">DarcyTransportModel (class in marapendi.models.transport)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.darken_den_ion">darken_den_ion (marapendi.components.ionomer.Ionomer attribute)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.darken_num_ion">darken_num_ion (marapendi.components.ionomer.Ionomer attribute)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.degradation.PlatinumSpecies.density">density (marapendi.models.degradation.PlatinumSpecies attribute)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/models.html#marapendi.models.gas_composition.GasComposition.density">density() (marapendi.models.gas_composition.GasComposition method)</a>
+      <li><a href="api/models.html#marapendi.models.degradation.PlatinumSpecies.density">density (marapendi.models.degradation.PlatinumSpecies attribute)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.transport_models.MembraneWaterTransportModel.diffusion_coefficient">diffusion_coefficient() (marapendi.models.transport_models.MembraneWaterTransportModel method)</a>
+      <li><a href="api/models.html#marapendi.models.membrane.MembraneModel.diffusion_coefficient">diffusion_coefficient() (marapendi.models.membrane.MembraneModel method)</a>
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.PlatinumDissolution.dissolved_platinum_reference_concentration">dissolved_platinum_reference_concentration (marapendi.models.degradation.PlatinumDissolution attribute)</a>
 </li>
@@ -383,9 +363,9 @@
 </li>
       <li><a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.dry_eps_ion">dry_eps_ion (marapendi.components.catalyst_layers.PtCCatalystLayer attribute)</a>
 </li>
-      <li><a href="api/components.html#id20">dry_h2_mole_fraction (marapendi.components.flow_channels.ChannelConditions attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.ChannelConditions.dry_h2_mole_fraction">[1]</a>
+      <li><a href="api/components.html#id39">dry_h2_mole_fraction (marapendi.components.flow_channels.ChannelConditions attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.ChannelConditions.dry_h2_mole_fraction">[1]</a>
 </li>
-      <li><a href="api/components.html#id21">dry_o2_mole_fraction (marapendi.components.flow_channels.ChannelConditions attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.ChannelConditions.dry_o2_mole_fraction">[1]</a>
+      <li><a href="api/components.html#id40">dry_o2_mole_fraction (marapendi.components.flow_channels.ChannelConditions attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.ChannelConditions.dry_o2_mole_fraction">[1]</a>
 </li>
       <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel">DynamicModel (class in marapendi.simulation.estimation)</a>
 </li>
@@ -395,13 +375,13 @@
 <h2 id="E">E</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.E_act_ion">E_act_ion (marapendi.components.ionomer.Ionomer attribute)</a>
+      <li><a href="api/components.html#id27">E_act_ion (marapendi.components.ionomer.Ionomer attribute)</a>, <a href="api/components.html#marapendi.components.ionomer.Ionomer.E_act_ion">[1]</a>
 </li>
       <li><a href="api/components.html#id2">ecsa (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.ecsa">[1]</a>
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.PtSizeDistribution.ecsa">ecsa() (marapendi.models.degradation.PtSizeDistribution method)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.effective_charge_resistance">effective_charge_resistance() (marapendi.components.catalyst_layers.CatalystLayer method)</a>
+      <li><a href="api/models.html#marapendi.models.catalyst_layer.CatalystLayerModel.effective_charge_resistance">effective_charge_resistance() (marapendi.models.catalyst_layer.CatalystLayerModel method)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.effective_gas_diffusion_ratio">effective_gas_diffusion_ratio (marapendi.components.porous_layers.PorousLayer attribute)</a>
 </li>
@@ -409,22 +389,20 @@
 </li>
       <li><a href="api/models.html#marapendi.models.electrochemistry.ElectrochemicalReaction">ElectrochemicalReaction (class in marapendi.models.electrochemistry)</a>
 </li>
-      <li><a href="api/components.html#id62">electrolyte_molecular_weight (marapendi.components.electrolyte.ElectrolyteSolution attribute)</a>, <a href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution.electrolyte_molecular_weight">[1]</a>
+      <li><a href="api/components.html#id63">electrolyte_molecular_weight (marapendi.components.electrolyte.ElectrolyteSolution attribute)</a>, <a href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution.electrolyte_molecular_weight">[1]</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.electrolyte_saturation">electrolyte_saturation (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>
+      <li><a href="api/components.html#id3">electrolyte_saturation (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.electrolyte_saturation">[1]</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.electrolyte_sheet_resistance">electrolyte_sheet_resistance() (marapendi.components.catalyst_layers.CatalystLayer method)</a>
+      <li><a href="api/models.html#marapendi.models.catalyst_layer.CatalystLayerModel.electrolyte_sheet_resistance">electrolyte_sheet_resistance() (marapendi.models.catalyst_layer.CatalystLayerModel method)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution">ElectrolyteSolution (class in marapendi.components.electrolyte)</a>
 </li>
-      <li><a href="api/models.html#id39">eod_parallel_to_sorption (marapendi.models.water_balance_models.MembraneWaterBalanceModel attribute)</a>, <a href="api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.eod_parallel_to_sorption">[1]</a>
-</li>
-      <li><a href="api/components.html#id3">eps_ion (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.eps_ion">[1]</a>
+      <li><a href="api/components.html#id4">eps_ion (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.eps_ion">[1]</a>
 
       <ul>
         <li><a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.eps_ion">(marapendi.components.catalyst_layers.PtCCatalystLayer attribute)</a>
 </li>
-        <li><a href="api/components.html#marapendi.components.membrane.Membrane.eps_ion">(marapendi.components.membrane.Membrane attribute)</a>
+        <li><a href="api/components.html#id20">(marapendi.components.membrane.Membrane attribute)</a>, <a href="api/components.html#marapendi.components.membrane.Membrane.eps_ion">[1]</a>
 </li>
         <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.eps_ion">(marapendi.components.porous_layers.PorousLayer attribute)</a>
 </li>
@@ -436,7 +414,7 @@
       <ul>
         <li><a href="api/components.html#marapendi.components.flow_channels.FlowChannel.eps_p">(marapendi.components.flow_channels.FlowChannel attribute)</a>
 </li>
-        <li><a href="api/components.html#id16">(marapendi.components.porous_layers.PorousLayer attribute)</a>, <a href="api/components.html#marapendi.components.porous_layers.PorousLayer.eps_p">[1]</a>
+        <li><a href="api/components.html#id17">(marapendi.components.porous_layers.PorousLayer attribute)</a>, <a href="api/components.html#marapendi.components.porous_layers.PorousLayer.eps_p">[1]</a>
 </li>
       </ul></li>
       <li><a href="api/models.html#marapendi.models.degradation.PlatinumDissolution.equilibrium_potential">equilibrium_potential() (marapendi.models.degradation.PlatinumDissolution method)</a>
@@ -445,13 +423,11 @@
         <li><a href="api/models.html#marapendi.models.degradation.PlatinumOxideFormation.equilibrium_potential">(marapendi.models.degradation.PlatinumOxideFormation method)</a>
 </li>
       </ul></li>
-      <li><a href="api/models.html#marapendi.models.transport_models.MembraneWaterTransportModel.equilibrium_water_content">equilibrium_water_content() (marapendi.models.transport_models.MembraneWaterTransportModel method)</a>
+      <li><a href="api/models.html#marapendi.models.membrane.MembraneModel.equilibrium_water_content">equilibrium_water_content() (marapendi.models.membrane.MembraneModel method)</a>
 </li>
       <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel.estimate">estimate() (marapendi.simulation.estimation.DynamicModel method)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.estimate_equilibrium_water_contents">estimate_equilibrium_water_contents() (marapendi.models.water_balance_models.MembraneWaterBalanceModel method)</a>
-</li>
-      <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.EW_ion">EW_ion (marapendi.components.ionomer.Ionomer attribute)</a>
+      <li><a href="api/components.html#id26">EW_ion (marapendi.components.ionomer.Ionomer attribute)</a>, <a href="api/components.html#marapendi.components.ionomer.Ionomer.EW_ion">[1]</a>
 </li>
       <li><a href="api/models.html#marapendi.models.electrochemistry.ElectrochemicalReaction.exchange_current_density">exchange_current_density() (marapendi.models.electrochemistry.ElectrochemicalReaction method)</a>
 </li>
@@ -471,7 +447,7 @@
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.f_v_perc_ion">f_v_perc_ion (marapendi.components.ionomer.Ionomer attribute)</a>
+      <li><a href="api/components.html#id31">f_v_perc_ion (marapendi.components.ionomer.Ionomer attribute)</a>, <a href="api/components.html#marapendi.components.ionomer.Ionomer.f_v_perc_ion">[1]</a>
 </li>
       <li><a href="api/components.html#marapendi.components.flow_channels.FlowChannel">FlowChannel (class in marapendi.components.flow_channels)</a>
 </li>
@@ -491,9 +467,7 @@
 </li>
       <li><a href="api/components.html#marapendi.components.flow_channels.FlowChannel.gas_superficial_speed">gas_superficial_speed() (marapendi.components.flow_channels.FlowChannel method)</a>
 </li>
-      <li><a href="api/components.html#id29">gas_transport_resistance() (marapendi.components.flow_channels.FlowChannel method)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.gas_transport_resistance">[1]</a>
-</li>
-      <li><a href="api/models.html#marapendi.models.gas_composition.GasComposition">GasComposition (class in marapendi.models.gas_composition)</a>
+      <li><a href="api/components.html#id48">gas_transport_resistance() (marapendi.components.flow_channels.FlowChannel method)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.gas_transport_resistance">[1]</a>
 </li>
       <li><a href="api/components.html#marapendi.components.cell.CellSide.gdl">gdl (marapendi.components.cell.CellSide attribute)</a>
 </li>
@@ -506,8 +480,6 @@
       <li><a href="api/estimation.html#marapendi.estimation.cross_validation.get_folds_for_complexity">get_folds_for_complexity() (in module marapendi.estimation.cross_validation)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.cell.Cell.get_property_array">get_property_array() (marapendi.components.cell.Cell method)</a>
-</li>
-      <li><a href="api/models.html#marapendi.models.gas_composition.GasComposition.get_relative_humidity">get_relative_humidity() (marapendi.models.gas_composition.GasComposition method)</a>
 </li>
       <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel.get_smallest_hessian_eigenvalues">get_smallest_hessian_eigenvalues() (marapendi.simulation.estimation.DynamicModel method)</a>
 </li>
@@ -526,16 +498,20 @@
 </li>
       </ul></li>
       <li><a href="api/components.html#marapendi.components.ionomer.PFSAIonomer.h2_permeability">h2_permeability() (marapendi.components.ionomer.PFSAIonomer method)</a>
+
+      <ul>
+        <li><a href="api/models.html#marapendi.models.membrane.PFSAModel.h2_permeability">(marapendi.models.membrane.PFSAModel method)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.cell.CellSide.has_gdl">has_gdl (marapendi.components.cell.CellSide attribute)</a>
-</li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/components.html#marapendi.components.cell.CellSide.has_gdl">has_gdl (marapendi.components.cell.CellSide attribute)</a>
+</li>
       <li><a href="api/components.html#marapendi.components.cell.CellSide.has_mpl">has_mpl (marapendi.components.cell.CellSide attribute)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.heat_of_adsorption">heat_of_adsorption() (marapendi.components.ionomer.Ionomer method)</a>
+      <li><a href="api/models.html#marapendi.models.membrane.IonomerModel.heat_of_adsorption">heat_of_adsorption() (marapendi.models.membrane.IonomerModel method)</a>
 </li>
-      <li><a href="api/components.html#id30">height (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.height">[1]</a>
+      <li><a href="api/components.html#id49">height (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.height">[1]</a>
 </li>
       <li><a href="api/components.html#marapendi.components.flow_channels.FlowChannel.hydraulic_diameter">hydraulic_diameter (marapendi.components.flow_channels.FlowChannel attribute)</a>
 </li>
@@ -545,7 +521,7 @@
 <h2 id="I">I</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/components.html#id11">ic_ratio (marapendi.components.catalyst_layers.PtCCatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.ic_ratio">[1]</a>
+      <li><a href="api/components.html#id12">ic_ratio (marapendi.components.catalyst_layers.PtCCatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.ic_ratio">[1]</a>
 </li>
       <li><a href="api/components.html#marapendi.components.cell_state.CellState.iF">iF (marapendi.components.cell_state.CellState attribute)</a>
 </li>
@@ -557,33 +533,39 @@
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.PtSizeDistribution.initial_platinum_loading">initial_platinum_loading (marapendi.models.degradation.PtSizeDistribution attribute)</a>
 </li>
+      <li><a href="api/models.html#marapendi.models.model.BaseModel.initial_state">initial_state() (marapendi.models.model.BaseModel method)</a>
+
+      <ul>
+        <li><a href="api/models.html#marapendi.models.transient.TransientCellModel.initial_state">(marapendi.models.transient.TransientCellModel method)</a>
+</li>
+      </ul></li>
       <li><a href="api/components.html#marapendi.components.flow_channels.FlowChannel.inlet_gas_flow_rate">inlet_gas_flow_rate (marapendi.components.flow_channels.FlowChannel attribute)</a>
 </li>
-      <li><a href="api/components.html#id31">inlet_gas_flow_rate() (marapendi.components.flow_channels.FlowChannel method)</a>
+      <li><a href="api/components.html#id50">inlet_gas_flow_rate() (marapendi.components.flow_channels.FlowChannel method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/components.html#id32">inlet_liquid_flow_rate (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.inlet_liquid_flow_rate">[1]</a>
+      <li><a href="api/components.html#id51">inlet_liquid_flow_rate (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.inlet_liquid_flow_rate">[1]</a>
 </li>
-      <li><a href="api/components.html#id33">inlet_liquid_saturation (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.inlet_liquid_saturation">[1]</a>
+      <li><a href="api/components.html#id52">inlet_liquid_saturation (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.inlet_liquid_saturation">[1]</a>
 </li>
-      <li><a href="api/components.html#id34">inlet_stoichiometry (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.inlet_stoichiometry">[1]</a>
+      <li><a href="api/components.html#id53">inlet_stoichiometry (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.inlet_stoichiometry">[1]</a>
+</li>
+      <li><a href="api/models.html#marapendi.models.model.BaseModel.input_fns">input_fns (marapendi.models.model.BaseModel attribute)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.ionomer.Ionomer">Ionomer (class in marapendi.components.ionomer)</a>
 </li>
-      <li><a href="api/components.html#id4">ionomer (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.ionomer">[1]</a>
+      <li><a href="api/components.html#id5">ionomer (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.ionomer">[1]</a>
 
       <ul>
-        <li><a href="api/components.html#marapendi.components.membrane.Membrane.ionomer">(marapendi.components.membrane.Membrane attribute)</a>
+        <li><a href="api/components.html#id21">(marapendi.components.membrane.Membrane attribute)</a>, <a href="api/components.html#marapendi.components.membrane.Membrane.ionomer">[1]</a>
 </li>
       </ul></li>
-      <li><a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.ionomer_sheet_charge_resistance">ionomer_sheet_charge_resistance() (marapendi.components.catalyst_layers.CatalystLayer method)</a>
-
-      <ul>
-        <li><a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.ionomer_sheet_charge_resistance">(marapendi.components.catalyst_layers.PtCCatalystLayer method)</a>
+      <li><a href="api/models.html#marapendi.models.catalyst_layer.CatalystLayerModel.ionomer_sheet_charge_resistance">ionomer_sheet_charge_resistance() (marapendi.models.catalyst_layer.CatalystLayerModel method)</a>
 </li>
-      </ul></li>
-      <li><a href="api/components.html#id5">ionomer_to_catalyst_ratio (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.ionomer_to_catalyst_ratio">[1]</a>
+      <li><a href="api/components.html#id6">ionomer_to_catalyst_ratio (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.ionomer_to_catalyst_ratio">[1]</a>
+</li>
+      <li><a href="api/models.html#marapendi.models.membrane.IonomerModel">IonomerModel (class in marapendi.models.membrane)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -591,7 +573,7 @@
 <h2 id="J">J</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/models.html#marapendi.models.transport_models.DarcyTransportModel.J_function_exponent">J_function_exponent (marapendi.models.transport_models.DarcyTransportModel attribute)</a>
+      <li><a href="api/models.html#marapendi.models.transport.DarcyTransportModel.J_function_exponent">J_function_exponent (marapendi.models.transport.DarcyTransportModel attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -599,19 +581,19 @@
 <h2 id="K">K</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.k1_ion">k1_ion (marapendi.components.catalyst_layers.PtCCatalystLayer attribute)</a>
+      <li><a href="api/models.html#id0">k1_ion (marapendi.models.catalyst_layer.PtCCatalystLayerModel attribute)</a>, <a href="api/models.html#marapendi.models.catalyst_layer.PtCCatalystLayerModel.k1_ion">[1]</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.k2_ion">k2_ion (marapendi.components.catalyst_layers.PtCCatalystLayer attribute)</a>
+      <li><a href="api/models.html#id5">k2_ion (marapendi.models.catalyst_layer.PtCCatalystLayerModel attribute)</a>, <a href="api/models.html#marapendi.models.catalyst_layer.PtCCatalystLayerModel.k2_ion">[1]</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.k3_ion">k3_ion (marapendi.components.catalyst_layers.PtCCatalystLayer attribute)</a>
+      <li><a href="api/models.html#id6">k3_ion (marapendi.models.catalyst_layer.PtCCatalystLayerModel attribute)</a>, <a href="api/models.html#marapendi.models.catalyst_layer.PtCCatalystLayerModel.k3_ion">[1]</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/components.html#id14">K_abs (marapendi.components.porous_layers.PorousLayer attribute)</a>, <a href="api/components.html#marapendi.components.porous_layers.PorousLayer.K_abs">[1]</a>
+      <li><a href="api/components.html#id15">K_abs (marapendi.components.porous_layers.PorousLayer attribute)</a>, <a href="api/components.html#marapendi.components.porous_layers.PorousLayer.K_abs">[1]</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.k_des_ref_ion">k_des_ref_ion (marapendi.components.ionomer.Ionomer attribute)</a>
+      <li><a href="api/components.html#id32">k_des_ref_ion (marapendi.components.ionomer.Ionomer attribute)</a>, <a href="api/components.html#marapendi.components.ionomer.Ionomer.k_des_ref_ion">[1]</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.transport_models.PorousGasResistanceModel.knudsen_diffusivity">knudsen_diffusivity() (marapendi.models.transport_models.PorousGasResistanceModel method)</a>
+      <li><a href="api/models.html#marapendi.models.transport.PorousGasResistanceModel.knudsen_diffusivity">knudsen_diffusivity() (marapendi.models.transport.PorousGasResistanceModel method)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.electrolyte.KOH_solution">KOH_solution (class in marapendi.components.electrolyte)</a>
 </li>
@@ -621,17 +603,17 @@
 <h2 id="L">L</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/components.html#id10">L_Pt (marapendi.components.catalyst_layers.PtCCatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.L_Pt">[1]</a>
+      <li><a href="api/components.html#id11">L_Pt (marapendi.components.catalyst_layers.PtCCatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.L_Pt">[1]</a>
 </li>
       <li><a href="api/components.html#marapendi.components.layer.Layer">Layer (class in marapendi.components.layer)</a>
 </li>
-      <li><a href="api/components.html#id35">length (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.length">[1]</a>
+      <li><a href="api/components.html#id54">length (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.length">[1]</a>
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.OxidePlaceExchange.limiting_coverage">limiting_coverage() (marapendi.models.degradation.OxidePlaceExchange method)</a>
 </li>
       <li><a href="api/models.html#marapendi.models.electrochemistry.ElectrochemicalReaction.linear_overpotential">linear_overpotential() (marapendi.models.electrochemistry.ElectrochemicalReaction method)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.transport_models.MembraneWaterTransportModel.liquid_equilibrium_water_content">liquid_equilibrium_water_content() (marapendi.models.transport_models.MembraneWaterTransportModel method)</a>
+      <li><a href="api/models.html#marapendi.models.membrane.MembraneModel.liquid_equilibrium_water_content">liquid_equilibrium_water_content() (marapendi.models.membrane.MembraneModel method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -641,7 +623,7 @@
 </li>
       <li><a href="api/components.html#marapendi.components.cell_state.CellState.lmbd_ca_cl">lmbd_ca_cl (marapendi.components.cell_state.CellState attribute)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.lmbd_liq_ref_ion">lmbd_liq_ref_ion (marapendi.components.ionomer.Ionomer attribute)</a>
+      <li><a href="api/components.html#id33">lmbd_liq_ref_ion (marapendi.components.ionomer.Ionomer attribute)</a>, <a href="api/components.html#marapendi.components.ionomer.Ionomer.lmbd_liq_ref_ion">[1]</a>
 </li>
       <li><a href="api/estimation.html#marapendi.estimation.cross_validation.load_cross_validation_results">load_cross_validation_results() (in module marapendi.estimation.cross_validation)</a>
 </li>
@@ -719,13 +701,6 @@
 </li>
       </ul></li>
       <li>
-    marapendi.components.water
-
-      <ul>
-        <li><a href="api/components.html#module-marapendi.components.water">module</a>
-</li>
-      </ul></li>
-      <li>
     marapendi.estimation.cross_validation
 
       <ul>
@@ -754,6 +729,13 @@
 </li>
       </ul></li>
       <li>
+    marapendi.models.catalyst_layer
+
+      <ul>
+        <li><a href="api/models.html#module-marapendi.models.catalyst_layer">module</a>
+</li>
+      </ul></li>
+      <li>
     marapendi.models.degradation
 
       <ul>
@@ -768,10 +750,17 @@
 </li>
       </ul></li>
       <li>
-    marapendi.models.gas_composition
+    marapendi.models.membrane
 
       <ul>
-        <li><a href="api/models.html#module-marapendi.models.gas_composition">module</a>
+        <li><a href="api/models.html#module-marapendi.models.membrane">module</a>
+</li>
+      </ul></li>
+      <li>
+    marapendi.models.model
+
+      <ul>
+        <li><a href="api/models.html#module-marapendi.models.model">module</a>
 </li>
       </ul></li>
       <li>
@@ -782,28 +771,28 @@
 </li>
       </ul></li>
       <li>
-    marapendi.models.transport_models
+    marapendi.models.transport
 
       <ul>
-        <li><a href="api/models.html#module-marapendi.models.transport_models">module</a>
+        <li><a href="api/models.html#module-marapendi.models.transport">module</a>
 </li>
       </ul></li>
       <li>
-    marapendi.models.voltage_models
+    marapendi.models.voltage
 
       <ul>
-        <li><a href="api/models.html#module-marapendi.models.voltage_models">module</a>
-</li>
-      </ul></li>
-      <li>
-    marapendi.models.water_balance_models
-
-      <ul>
-        <li><a href="api/models.html#module-marapendi.models.water_balance_models">module</a>
+        <li><a href="api/models.html#module-marapendi.models.voltage">module</a>
 </li>
       </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li>
+    marapendi.models.water
+
+      <ul>
+        <li><a href="api/models.html#module-marapendi.models.water">module</a>
+</li>
+      </ul></li>
       <li>
     marapendi.simulation.estimation
 
@@ -827,13 +816,11 @@
       </ul></li>
       <li><a href="api/components.html#marapendi.components.cell.Cell.memb">memb (marapendi.components.cell.Cell attribute)</a>
 </li>
+      <li><a href="api/components.html#marapendi.components.cell.Cell.memb_model">memb_model (marapendi.components.cell.Cell attribute)</a>
+</li>
       <li><a href="api/components.html#marapendi.components.membrane.Membrane">Membrane (class in marapendi.components.membrane)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.cell.Cell.membrane_water_transport_model">membrane_water_transport_model (marapendi.components.cell.Cell attribute)</a>
-</li>
-      <li><a href="api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel">MembraneWaterBalanceModel (class in marapendi.models.water_balance_models)</a>
-</li>
-      <li><a href="api/models.html#marapendi.models.transport_models.MembraneWaterTransportModel">MembraneWaterTransportModel (class in marapendi.models.transport_models)</a>
+      <li><a href="api/models.html#marapendi.models.membrane.MembraneModel">MembraneModel (class in marapendi.models.membrane)</a>
 </li>
       <li>
     module
@@ -857,8 +844,6 @@
 </li>
         <li><a href="api/components.html#module-marapendi.components.porous_layers">marapendi.components.porous_layers</a>
 </li>
-        <li><a href="api/components.html#module-marapendi.components.water">marapendi.components.water</a>
-</li>
         <li><a href="api/estimation.html#module-marapendi.estimation.cross_validation">marapendi.estimation.cross_validation</a>
 </li>
         <li><a href="api/materials.html#module-marapendi.materials.gdl">marapendi.materials.gdl</a>
@@ -867,19 +852,23 @@
 </li>
         <li><a href="api/materials.html#module-marapendi.materials.membranes">marapendi.materials.membranes</a>
 </li>
+        <li><a href="api/models.html#module-marapendi.models.catalyst_layer">marapendi.models.catalyst_layer</a>
+</li>
         <li><a href="api/models.html#module-marapendi.models.degradation">marapendi.models.degradation</a>
 </li>
         <li><a href="api/models.html#module-marapendi.models.electrochemistry">marapendi.models.electrochemistry</a>
 </li>
-        <li><a href="api/models.html#module-marapendi.models.gas_composition">marapendi.models.gas_composition</a>
+        <li><a href="api/models.html#module-marapendi.models.membrane">marapendi.models.membrane</a>
+</li>
+        <li><a href="api/models.html#module-marapendi.models.model">marapendi.models.model</a>
 </li>
         <li><a href="api/models.html#module-marapendi.models.transient">marapendi.models.transient</a>
 </li>
-        <li><a href="api/models.html#module-marapendi.models.transport_models">marapendi.models.transport_models</a>
+        <li><a href="api/models.html#module-marapendi.models.transport">marapendi.models.transport</a>
 </li>
-        <li><a href="api/models.html#module-marapendi.models.voltage_models">marapendi.models.voltage_models</a>
+        <li><a href="api/models.html#module-marapendi.models.voltage">marapendi.models.voltage</a>
 </li>
-        <li><a href="api/models.html#module-marapendi.models.water_balance_models">marapendi.models.water_balance_models</a>
+        <li><a href="api/models.html#module-marapendi.models.water">marapendi.models.water</a>
 </li>
         <li><a href="api/simulation.html#module-marapendi.simulation.estimation">marapendi.simulation.estimation</a>
 </li>
@@ -888,14 +877,14 @@
         <li><a href="api/tools.html#module-marapendi.tools.tools">marapendi.tools.tools</a>
 </li>
       </ul></li>
-      <li><a href="api/components.html#id63">molality (marapendi.components.electrolyte.ElectrolyteSolution attribute)</a>, <a href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution.molality">[1]</a>
+      <li><a href="api/components.html#id64">molality (marapendi.components.electrolyte.ElectrolyteSolution attribute)</a>, <a href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution.molality">[1]</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.transport_models.PorousGasResistanceModel.molecular_diffusion_effective_length">molecular_diffusion_effective_length() (marapendi.models.transport_models.PorousGasResistanceModel method)</a>
+      <li><a href="api/models.html#marapendi.models.transport.PorousGasResistanceModel.molecular_diffusion_effective_length">molecular_diffusion_effective_length() (marapendi.models.transport.PorousGasResistanceModel method)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.transport_models.ChannelGasResistanceModel.molecular_diffusion_resistance">molecular_diffusion_resistance() (marapendi.models.transport_models.ChannelGasResistanceModel method)</a>
+      <li><a href="api/models.html#marapendi.models.transport.ChannelGasResistanceModel.molecular_diffusion_resistance">molecular_diffusion_resistance() (marapendi.models.transport.ChannelGasResistanceModel method)</a>
 
       <ul>
-        <li><a href="api/models.html#marapendi.models.transport_models.PorousGasResistanceModel.molecular_diffusion_resistance">(marapendi.models.transport_models.PorousGasResistanceModel method)</a>
+        <li><a href="api/models.html#marapendi.models.transport.PorousGasResistanceModel.molecular_diffusion_resistance">(marapendi.models.transport.PorousGasResistanceModel method)</a>
 </li>
       </ul></li>
       <li><a href="api/models.html#marapendi.models.degradation.PlatinumSpecies.molecular_weight">molecular_weight (marapendi.models.degradation.PlatinumSpecies attribute)</a>
@@ -908,20 +897,26 @@
 <h2 id="N">N</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/components.html#id36">n_parallel (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.n_parallel">[1]</a>
+      <li><a href="api/components.html#id55">n_parallel (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.n_parallel">[1]</a>
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.PtSizeDistribution.n_points">n_points (marapendi.models.degradation.PtSizeDistribution attribute)</a>
 </li>
-      <li><a href="api/components.html#id17">n_rel (marapendi.components.porous_layers.PorousLayer attribute)</a>, <a href="api/components.html#marapendi.components.porous_layers.PorousLayer.n_rel">[1]</a>
+      <li><a href="api/components.html#id18">n_rel (marapendi.components.porous_layers.PorousLayer attribute)</a>, <a href="api/components.html#marapendi.components.porous_layers.PorousLayer.n_rel">[1]</a>
 </li>
       <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.n_s">n_s (marapendi.components.porous_layers.PorousLayer attribute)</a>
 
       <ul>
-        <li><a href="api/models.html#id2">(marapendi.models.transport_models.PorousGasResistanceModel attribute)</a>, <a href="api/models.html#marapendi.models.transport_models.PorousGasResistanceModel.n_s">[1]</a>
+        <li><a href="api/models.html#id9">(marapendi.models.transport.PorousGasResistanceModel attribute)</a>, <a href="api/models.html#marapendi.models.transport.PorousGasResistanceModel.n_s">[1]</a>
 </li>
       </ul></li>
-      <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.n_sigma_ion">n_sigma_ion (marapendi.components.ionomer.Ionomer attribute)</a>
+      <li><a href="api/components.html#id34">n_sigma_ion (marapendi.components.ionomer.Ionomer attribute)</a>, <a href="api/components.html#marapendi.components.ionomer.Ionomer.n_sigma_ion">[1]</a>
 </li>
+      <li><a href="api/models.html#marapendi.models.model.BaseModel.n_states">n_states (marapendi.models.model.BaseModel attribute)</a>
+
+      <ul>
+        <li><a href="api/models.html#marapendi.models.transient.TransientCellModel.n_states">(marapendi.models.transient.TransientCellModel property)</a>
+</li>
+      </ul></li>
       <li><a href="api/components.html#marapendi.components.cell.Cell.name">name (marapendi.components.cell.Cell attribute)</a>
 
       <ul>
@@ -952,13 +947,17 @@
 <h2 id="O">O</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.o2_ionomer_film_bulk_resistance">o2_ionomer_film_bulk_resistance() (marapendi.components.catalyst_layers.PtCCatalystLayer method)</a>
+      <li><a href="api/models.html#marapendi.models.catalyst_layer.PtCCatalystLayerModel.o2_ionomer_film_bulk_resistance">o2_ionomer_film_bulk_resistance() (marapendi.models.catalyst_layer.PtCCatalystLayerModel method)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.o2_ionomer_film_resistance">o2_ionomer_film_resistance() (marapendi.components.catalyst_layers.PtCCatalystLayer method)</a>
+      <li><a href="api/models.html#marapendi.models.catalyst_layer.PtCCatalystLayerModel.o2_ionomer_film_resistance">o2_ionomer_film_resistance() (marapendi.models.catalyst_layer.PtCCatalystLayerModel method)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.ionomer.PFSAIonomer.o2_permeability">o2_permeability() (marapendi.components.ionomer.PFSAIonomer method)</a>
+
+      <ul>
+        <li><a href="api/models.html#marapendi.models.membrane.PFSAModel.o2_permeability">(marapendi.models.membrane.PFSAModel method)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.water.o2_water_diffusivity">o2_water_diffusivity() (in module marapendi.components.water)</a>
+      </ul></li>
+      <li><a href="api/models.html#marapendi.models.water.o2_water_diffusivity">o2_water_diffusivity() (in module marapendi.models.water)</a>
 </li>
       <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel.ode_solution_method">ode_solution_method (marapendi.simulation.estimation.DynamicModel attribute)</a>
 </li>
@@ -1008,6 +1007,8 @@
 </li>
       <li><a href="api/components.html#marapendi.components.membrane.PFSAMembrane">PFSAMembrane (class in marapendi.components.membrane)</a>
 </li>
+      <li><a href="api/models.html#marapendi.models.membrane.PFSAModel">PFSAModel (class in marapendi.models.membrane)</a>
+</li>
       <li><a href="api/models.html#marapendi.models.degradation.PtDissolution.platinum_cathodic_dissolution">platinum_cathodic_dissolution (marapendi.models.degradation.PtDissolution attribute)</a>
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.PtDissolution.platinum_dissolution">platinum_dissolution (marapendi.models.degradation.PtDissolution attribute)</a>
@@ -1026,10 +1027,10 @@
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.PlatinumOxideFormation">PlatinumOxideFormation (class in marapendi.models.degradation)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.degradation.PlatinumSpecies">PlatinumSpecies (class in marapendi.models.degradation)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/models.html#marapendi.models.degradation.PlatinumSpecies">PlatinumSpecies (class in marapendi.models.degradation)</a>
+</li>
       <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel.plot">plot() (marapendi.simulation.estimation.DynamicModel method)</a>
 </li>
       <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel.plot_colinearity_map">plot_colinearity_map() (marapendi.simulation.estimation.DynamicModel method)</a>
@@ -1050,7 +1051,7 @@
 </li>
       <li><a href="api/tools.html#marapendi.tools.tools.polyval_vec">polyval_vec() (in module marapendi.tools.tools)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.transport_models.PorousGasResistanceModel">PorousGasResistanceModel (class in marapendi.models.transport_models)</a>
+      <li><a href="api/models.html#marapendi.models.transport.PorousGasResistanceModel">PorousGasResistanceModel (class in marapendi.models.transport)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer">PorousLayer (class in marapendi.components.porous_layers)</a>
 </li>
@@ -1058,13 +1059,13 @@
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.CarbonCorrosion.potential_dependency">potential_dependency (marapendi.models.degradation.CarbonCorrosion attribute)</a>
 </li>
-      <li><a href="api/components.html#id22">pressure (marapendi.components.flow_channels.ChannelConditions attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.ChannelConditions.pressure">[1]</a>
-</li>
-      <li><a href="api/models.html#marapendi.models.gas_composition.GasComposition.pressure">pressure() (marapendi.models.gas_composition.GasComposition method)</a>
+      <li><a href="api/components.html#id41">pressure (marapendi.components.flow_channels.ChannelConditions attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.ChannelConditions.pressure">[1]</a>
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.PlatinumOxideFormation.proton_reference_concentration">proton_reference_concentration (marapendi.models.degradation.PlatinumOxideFormation attribute)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer">PtCCatalystLayer (class in marapendi.components.catalyst_layers)</a>
+</li>
+      <li><a href="api/models.html#marapendi.models.catalyst_layer.PtCCatalystLayerModel">PtCCatalystLayerModel (class in marapendi.models.catalyst_layer)</a>
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.PtDissolution">PtDissolution (class in marapendi.models.degradation)</a>
 </li>
@@ -1078,7 +1079,7 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/models.html#marapendi.models.degradation.PtSizeDistribution.r_array">r_array (marapendi.models.degradation.PtSizeDistribution attribute)</a>
 </li>
-      <li><a href="api/components.html#id12">r_C (marapendi.components.catalyst_layers.PtCCatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.r_C">[1]</a>
+      <li><a href="api/components.html#id13">r_C (marapendi.components.catalyst_layers.PtCCatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.r_C">[1]</a>
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.PtSizeDistribution.r_mean">r_mean (marapendi.models.degradation.PtSizeDistribution attribute)</a>
 </li>
@@ -1108,13 +1109,17 @@
         <li><a href="api/models.html#marapendi.models.degradation.PlatinumOxideFormation.rate_of_reaction">(marapendi.models.degradation.PlatinumOxideFormation method)</a>
 </li>
       </ul></li>
-      <li><a href="api/models.html#marapendi.models.transient.TransientCellModel.rates_of_change">rates_of_change() (marapendi.models.transient.TransientCellModel method)</a>
+      <li><a href="api/models.html#marapendi.models.model.BaseModel.rates_of_change">rates_of_change() (marapendi.models.model.BaseModel method)</a>
+
+      <ul>
+        <li><a href="api/models.html#marapendi.models.transient.TransientCellModel.rates_of_change">(marapendi.models.transient.TransientCellModel method)</a>
 </li>
-      <li><a href="api/components.html#id37">reactant (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.reactant">[1]</a>
+      </ul></li>
+      <li><a href="api/components.html#id56">reactant (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.reactant">[1]</a>
 </li>
       <li><a href="api/components.html#marapendi.components.flow_channels.FlowChannel.reactant_mole_fraction">reactant_mole_fraction() (marapendi.components.flow_channels.FlowChannel method)</a>
 </li>
-      <li><a href="api/components.html#id6">reaction (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.reaction">[1]</a>
+      <li><a href="api/components.html#id7">reaction (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.reaction">[1]</a>
 </li>
       <li><a href="api/models.html#marapendi.models.electrochemistry.ElectrochemicalReaction.reaction_order">reaction_order (marapendi.models.electrochemistry.ElectrochemicalReaction attribute)</a>
 </li>
@@ -1147,12 +1152,12 @@
       <li><a href="api/components.html#marapendi.components.cell_state.CellState.rh">rh (marapendi.components.cell_state.CellState attribute)</a>
 
       <ul>
-        <li><a href="api/components.html#id23">(marapendi.components.flow_channels.ChannelConditions attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.ChannelConditions.rh">[1]</a>
+        <li><a href="api/components.html#id42">(marapendi.components.flow_channels.ChannelConditions attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.ChannelConditions.rh">[1]</a>
 </li>
       </ul></li>
       <li><a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.rho_C">rho_C (marapendi.components.catalyst_layers.PtCCatalystLayer attribute)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.rho_dry_ion">rho_dry_ion (marapendi.components.ionomer.Ionomer attribute)</a>
+      <li><a href="api/components.html#id35">rho_dry_ion (marapendi.components.ionomer.Ionomer attribute)</a>, <a href="api/components.html#marapendi.components.ionomer.Ionomer.rho_dry_ion">[1]</a>
 </li>
       <li><a href="api/components.html#marapendi.components.cell_state.CellState.rho_l">rho_l (marapendi.components.cell_state.CellState attribute)</a>
 </li>
@@ -1174,65 +1179,43 @@
 </li>
       <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.s_im">s_im (marapendi.components.porous_layers.PorousLayer attribute)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.transport_models.DarcyTransportModel.saturation_from_capillary_pressure">saturation_from_capillary_pressure() (marapendi.models.transport_models.DarcyTransportModel method)</a>
+      <li><a href="api/models.html#marapendi.models.transport.DarcyTransportModel.saturation_from_capillary_pressure">saturation_from_capillary_pressure() (marapendi.models.transport.DarcyTransportModel method)</a>
 </li>
       <li><a href="api/estimation.html#marapendi.estimation.cross_validation.save_cross_validation_results">save_cross_validation_results() (in module marapendi.estimation.cross_validation)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.gas_composition.GasComposition.set_composition">set_composition() (marapendi.models.gas_composition.GasComposition method)</a>
-</li>
-      <li><a href="api/components.html#id24">set_conditions() (marapendi.components.flow_channels.ChannelConditions method)</a>, <a href="api/components.html#marapendi.components.flow_channels.ChannelConditions.set_conditions">[1]</a>
+      <li><a href="api/components.html#id43">set_conditions() (marapendi.components.flow_channels.ChannelConditions method)</a>, <a href="api/components.html#marapendi.components.flow_channels.ChannelConditions.set_conditions">[1]</a>
 
       <ul>
         <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel.set_conditions">(marapendi.simulation.estimation.DynamicModel method)</a>
 </li>
       </ul></li>
-      <li><a href="api/components.html#id38">set_fixed_inlet_gas_flow_rate() (marapendi.components.flow_channels.FlowChannel method)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.set_fixed_inlet_gas_flow_rate">[1]</a>
+      <li><a href="api/components.html#id57">set_fixed_inlet_gas_flow_rate() (marapendi.components.flow_channels.FlowChannel method)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.set_fixed_inlet_gas_flow_rate">[1]</a>
 </li>
-      <li><a href="api/components.html#id39">set_fixed_inlet_liquid_flow_rate() (marapendi.components.flow_channels.FlowChannel method)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.set_fixed_inlet_liquid_flow_rate">[1]</a>
+      <li><a href="api/components.html#id58">set_fixed_inlet_liquid_flow_rate() (marapendi.components.flow_channels.FlowChannel method)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.set_fixed_inlet_liquid_flow_rate">[1]</a>
 </li>
       <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel.set_initial_conditions">set_initial_conditions() (marapendi.simulation.estimation.DynamicModel method)</a>
 </li>
-      <li><a href="api/components.html#id40">set_inlet_gas_flow_rate_from_stoichiometry() (marapendi.components.flow_channels.FlowChannel method)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.set_inlet_gas_flow_rate_from_stoichiometry">[1]</a>
+      <li><a href="api/components.html#id59">set_inlet_gas_flow_rate_from_stoichiometry() (marapendi.components.flow_channels.FlowChannel method)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.set_inlet_gas_flow_rate_from_stoichiometry">[1]</a>
 </li>
-      <li><a href="api/components.html#id41">set_inlet_stoichiometry() (marapendi.components.flow_channels.FlowChannel method)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.set_inlet_stoichiometry">[1]</a>
+      <li><a href="api/components.html#id60">set_inlet_stoichiometry() (marapendi.components.flow_channels.FlowChannel method)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.set_inlet_stoichiometry">[1]</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.set_ionomer_wet_properties">set_ionomer_wet_properties() (marapendi.components.catalyst_layers.PtCCatalystLayer method)</a>
-
-      <ul>
-        <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.set_ionomer_wet_properties">(marapendi.components.porous_layers.PorousLayer method)</a>
-</li>
-      </ul></li>
       <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel.set_params">set_params() (marapendi.simulation.estimation.DynamicModel method)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.gas_composition.GasComposition.set_pressure">set_pressure() (marapendi.models.gas_composition.GasComposition method)</a>
-</li>
       <li><a href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution.set_temperature">set_temperature() (marapendi.components.electrolyte.ElectrolyteSolution method)</a>
-
-      <ul>
-        <li><a href="api/components.html#marapendi.components.water.WaterProperties.set_temperature">(marapendi.components.water.WaterProperties method)</a>
-</li>
-        <li><a href="api/models.html#marapendi.models.gas_composition.GasComposition.set_temperature">(marapendi.models.gas_composition.GasComposition method)</a>
-</li>
-      </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/models.html#marapendi.models.gas_composition.GasComposition.set_temperature_and_pressure">set_temperature_and_pressure() (marapendi.models.gas_composition.GasComposition method)</a>
 </li>
       <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel.set_unknown_params">set_unknown_params() (marapendi.simulation.estimation.DynamicModel method)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.set_water_film_thickness">set_water_film_thickness() (marapendi.components.catalyst_layers.PtCCatalystLayer method)</a>
-
-      <ul>
-        <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.set_water_film_thickness">(marapendi.components.porous_layers.PorousLayer method)</a>
+      <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.set_water_film_thickness">set_water_film_thickness() (marapendi.components.porous_layers.PorousLayer method)</a>
 </li>
-      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/components.html#marapendi.components.flow_channels.FlowChannel.sherwood">sherwood (marapendi.components.flow_channels.FlowChannel attribute)</a>
 
       <ul>
-        <li><a href="api/models.html#id1">(marapendi.models.transport_models.ChannelGasResistanceModel attribute)</a>, <a href="api/models.html#marapendi.models.transport_models.ChannelGasResistanceModel.sherwood">[1]</a>
+        <li><a href="api/models.html#id8">(marapendi.models.transport.ChannelGasResistanceModel attribute)</a>, <a href="api/models.html#marapendi.models.transport.ChannelGasResistanceModel.sherwood">[1]</a>
 </li>
       </ul></li>
-      <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.sigma_ref_ion">sigma_ref_ion (marapendi.components.ionomer.Ionomer attribute)</a>
+      <li><a href="api/components.html#id36">sigma_ref_ion (marapendi.components.ionomer.Ionomer attribute)</a>, <a href="api/components.html#marapendi.components.ionomer.Ionomer.sigma_ref_ion">[1]</a>
 </li>
       <li><a href="api/tools.html#marapendi.tools.tools.sigmoid">sigmoid() (in module marapendi.tools.tools)</a>
 </li>
@@ -1242,19 +1225,21 @@
         <li><a href="api/simulation.html#marapendi.simulation.estimation.SteadyStateModel.solve">(marapendi.simulation.estimation.SteadyStateModel method)</a>
 </li>
       </ul></li>
-      <li><a href="api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.solve_water_balance">solve_water_balance() (marapendi.models.water_balance_models.MembraneWaterBalanceModel method)</a>
+      <li><a href="api/models.html#marapendi.models.membrane.MembraneModel.sorption_coefficient">sorption_coefficient() (marapendi.models.membrane.MembraneModel method)</a>
 </li>
-      <li><a href="api/models.html#id40">sorption_activity_driving_force (marapendi.models.water_balance_models.MembraneWaterBalanceModel attribute)</a>, <a href="api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.sorption_activity_driving_force">[1]</a>
+      <li><a href="api/components.html#id37">sorption_coeffs_ion (marapendi.components.ionomer.Ionomer attribute)</a>, <a href="api/components.html#marapendi.components.ionomer.Ionomer.sorption_coeffs_ion">[1]</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.transport_models.MembraneWaterTransportModel.sorption_coefficient">sorption_coefficient() (marapendi.models.transport_models.MembraneWaterTransportModel method)</a>
+      <li><a href="api/models.html#marapendi.models.transport.PorousGasResistanceModel.species_diffusion_coefficient">species_diffusion_coefficient() (marapendi.models.transport.PorousGasResistanceModel method)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.sorption_coeffs_ion">sorption_coeffs_ion (marapendi.components.ionomer.Ionomer attribute)</a>
+      <li><a href="api/components.html#id22">specific_heat_capacity (marapendi.components.membrane.Membrane attribute)</a>, <a href="api/components.html#marapendi.components.membrane.Membrane.specific_heat_capacity">[1]</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.membrane.Membrane.specific_heat_capacity">specific_heat_capacity (marapendi.components.membrane.Membrane attribute)</a>
+      <li><a href="api/models.html#marapendi.models.model.BaseModel.split_state">split_state() (marapendi.models.model.BaseModel method)</a>
 </li>
       <li><a href="api/simulation.html#marapendi.simulation.estimation.SteadyStateModel">SteadyStateModel (class in marapendi.simulation.estimation)</a>
 </li>
-      <li><a href="api/components.html#id25">stoichiometry (marapendi.components.flow_channels.ChannelConditions attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.ChannelConditions.stoichiometry">[1]</a>
+      <li><a href="api/components.html#id44">stoichiometry (marapendi.components.flow_channels.ChannelConditions attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.ChannelConditions.stoichiometry">[1]</a>
+</li>
+      <li><a href="api/models.html#marapendi.models.model.BaseModel.submodels">submodels (marapendi.models.model.BaseModel attribute)</a>
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.PlatinumSpecies.surface_tension">surface_tension (marapendi.models.degradation.PlatinumSpecies attribute)</a>
 </li>
@@ -1272,7 +1257,7 @@
 </li>
       <li><a href="api/components.html#marapendi.components.cell_state.CellState.T_ca_cl">T_ca_cl (marapendi.components.cell_state.CellState attribute)</a>
 </li>
-      <li><a href="api/components.html#id7">t_ion_film (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.t_ion_film">[1]</a>
+      <li><a href="api/components.html#id8">t_ion_film (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.t_ion_film">[1]</a>
 
       <ul>
         <li><a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.t_ion_film">(marapendi.components.catalyst_layers.PtCCatalystLayer attribute)</a>
@@ -1292,15 +1277,13 @@
 </li>
       <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.tau_ion">tau_ion (marapendi.components.porous_layers.PorousLayer attribute)</a>
 </li>
-      <li><a href="api/components.html#id64">temperature (marapendi.components.electrolyte.ElectrolyteSolution attribute)</a>, <a href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution.temperature">[1]</a>
+      <li><a href="api/components.html#id65">temperature (marapendi.components.electrolyte.ElectrolyteSolution attribute)</a>, <a href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution.temperature">[1]</a>
 
       <ul>
-        <li><a href="api/components.html#id26">(marapendi.components.flow_channels.ChannelConditions attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.ChannelConditions.temperature">[1]</a>
+        <li><a href="api/components.html#id45">(marapendi.components.flow_channels.ChannelConditions attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.ChannelConditions.temperature">[1]</a>
 </li>
       </ul></li>
-      <li><a href="api/models.html#marapendi.models.gas_composition.GasComposition.temperature">temperature() (marapendi.models.gas_composition.GasComposition method)</a>
-</li>
-      <li><a href="api/components.html#marapendi.components.membrane.Membrane.thermal_conductivity">thermal_conductivity (marapendi.components.membrane.Membrane attribute)</a>
+      <li><a href="api/components.html#id23">thermal_conductivity (marapendi.components.membrane.Membrane attribute)</a>, <a href="api/components.html#marapendi.components.membrane.Membrane.thermal_conductivity">[1]</a>
 
       <ul>
         <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.thermal_conductivity">(marapendi.components.porous_layers.PorousLayer attribute)</a>
@@ -1308,14 +1291,14 @@
       </ul></li>
       <li><a href="api/components.html#marapendi.components.cell.Cell.thermal_resistance">thermal_resistance (marapendi.components.cell.Cell attribute)</a>
 </li>
-      <li><a href="api/components.html#id8">theta_catalyst (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.theta_catalyst">[1]</a>
+      <li><a href="api/components.html#id9">theta_catalyst (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.theta_catalyst">[1]</a>
 </li>
-      <li><a href="api/components.html#id9">theta_contact (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.theta_contact">[1]</a>
+      <li><a href="api/components.html#id10">theta_contact (marapendi.components.catalyst_layers.CatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer.theta_contact">[1]</a>
 
       <ul>
         <li><a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.theta_contact">(marapendi.components.catalyst_layers.PtCCatalystLayer attribute)</a>
 </li>
-        <li><a href="api/components.html#id18">(marapendi.components.porous_layers.PorousLayer attribute)</a>, <a href="api/components.html#marapendi.components.porous_layers.PorousLayer.theta_contact">[1]</a>
+        <li><a href="api/components.html#id19">(marapendi.components.porous_layers.PorousLayer attribute)</a>, <a href="api/components.html#marapendi.components.porous_layers.PorousLayer.theta_contact">[1]</a>
 </li>
       </ul></li>
   </ul></td>
@@ -1326,6 +1309,8 @@
 
       <ul>
         <li><a href="api/components.html#marapendi.components.layer.Layer.thickness">(marapendi.components.layer.Layer attribute)</a>
+</li>
+        <li><a href="api/components.html#marapendi.components.membrane.Membrane.thickness">(marapendi.components.membrane.Membrane attribute)</a>
 </li>
         <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.thickness">(marapendi.components.porous_layers.PorousLayer attribute)</a>
 </li>
@@ -1338,13 +1323,13 @@
         <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.tort">(marapendi.components.porous_layers.PorousLayer attribute)</a>
 </li>
       </ul></li>
-      <li><a href="api/components.html#marapendi.components.membrane.Membrane.tort_ion">tort_ion (marapendi.components.membrane.Membrane attribute)</a>
+      <li><a href="api/components.html#id24">tort_ion (marapendi.components.membrane.Membrane attribute)</a>, <a href="api/components.html#marapendi.components.membrane.Membrane.tort_ion">[1]</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.transport_models.PorousGasResistanceModel.total_diffusion_resistance">total_diffusion_resistance() (marapendi.models.transport_models.PorousGasResistanceModel method)</a>
+      <li><a href="api/models.html#marapendi.models.transport.PorousGasResistanceModel.total_diffusion_resistance">total_diffusion_resistance() (marapendi.models.transport.PorousGasResistanceModel method)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.flow_channels.FlowChannel.total_flow_section">total_flow_section (marapendi.components.flow_channels.FlowChannel attribute)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.transport_models.ChannelGasResistanceModel.total_resistance">total_resistance() (marapendi.models.transport_models.ChannelGasResistanceModel method)</a>
+      <li><a href="api/models.html#marapendi.models.transport.ChannelGasResistanceModel.total_resistance">total_resistance() (marapendi.models.transport.ChannelGasResistanceModel method)</a>
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.OxidePlaceExchange.transfer_coeff">transfer_coeff (marapendi.models.degradation.OxidePlaceExchange attribute)</a>
 </li>
@@ -1362,7 +1347,7 @@
       </ul></li>
       <li><a href="api/models.html#marapendi.models.transient.TransientCellModel">TransientCellModel (class in marapendi.models.transient)</a>
 </li>
-      <li><a href="api/components.html#id42">transport_resistance_model (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.transport_resistance_model">[1]</a>
+      <li><a href="api/components.html#id61">transport_resistance_model (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.transport_resistance_model">[1]</a>
 
       <ul>
         <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.transport_resistance_model">(marapendi.components.porous_layers.PorousLayer attribute)</a>
@@ -1380,39 +1365,35 @@
 </li>
       <li><a href="api/tools.html#marapendi.tools.tools.Updatable">Updatable (class in marapendi.tools.tools)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.update_cell_side_water_fluxes">update_cell_side_water_fluxes() (marapendi.models.water_balance_models.MembraneWaterBalanceModel method)</a>
-</li>
       <li><a href="api/tools.html#marapendi.tools.tools.Updatable.update_from_dict">update_from_dict() (marapendi.tools.tools.Updatable method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.update_non_dimensional_parameters">update_non_dimensional_parameters() (marapendi.models.water_balance_models.MembraneWaterBalanceModel method)</a>
+      <li><a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.update_ionomer_film_volume">update_ionomer_film_volume() (marapendi.components.catalyst_layers.PtCCatalystLayer method)</a>
+
+      <ul>
+        <li><a href="api/components.html#marapendi.components.membrane.Membrane.update_ionomer_film_volume">(marapendi.components.membrane.Membrane method)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.update_water_contents">update_water_contents() (marapendi.models.water_balance_models.MembraneWaterBalanceModel method)</a>
+        <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.update_ionomer_film_volume">(marapendi.components.porous_layers.PorousLayer method)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.update_water_fluxes">update_water_fluxes() (marapendi.models.water_balance_models.MembraneWaterBalanceModel method)</a>
-</li>
-      <li><a href="api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.update_water_profile">update_water_profile() (marapendi.models.water_balance_models.MembraneWaterBalanceModel method)</a>
-</li>
+      </ul></li>
   </ul></td>
 </tr></table>
 
 <h2 id="V">V</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.V_ion">V_ion (marapendi.components.ionomer.Ionomer attribute)</a>
+      <li><a href="api/components.html#id28">V_ion (marapendi.components.ionomer.Ionomer attribute)</a>, <a href="api/components.html#marapendi.components.ionomer.Ionomer.V_ion">[1]</a>
 </li>
       <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.van_genuchten_m">van_genuchten_m (marapendi.components.porous_layers.PorousLayer attribute)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.van_genuchten_n">van_genuchten_n (marapendi.components.porous_layers.PorousLayer attribute)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/models.html#marapendi.models.gas_composition.GasComposition.vapor_pressure">vapor_pressure() (marapendi.models.gas_composition.GasComposition method)</a>
+      <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.van_genuchten_n">van_genuchten_n (marapendi.components.porous_layers.PorousLayer attribute)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.cell.Cell.voltage_model">voltage_model (marapendi.components.cell.Cell attribute)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.voltage_models.VoltageModel">VoltageModel (class in marapendi.models.voltage_models)</a>
+      <li><a href="api/models.html#marapendi.models.voltage.VoltageModel">VoltageModel (class in marapendi.models.voltage)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -1420,39 +1401,39 @@
 <h2 id="W">W</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/components.html#marapendi.components.water.water_density">water_density() (in module marapendi.components.water)</a>
+      <li><a href="api/models.html#marapendi.models.water.water_density">water_density() (in module marapendi.models.water)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.water.water_dew_point">water_dew_point() (in module marapendi.components.water)</a>
+      <li><a href="api/models.html#marapendi.models.water.water_dew_point">water_dew_point() (in module marapendi.models.water)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.water.water_dynamic_viscosity">water_dynamic_viscosity() (in module marapendi.components.water)</a>
+      <li><a href="api/models.html#marapendi.models.water.water_dynamic_viscosity">water_dynamic_viscosity() (in module marapendi.models.water)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.water.water_kinematic_viscosity">water_kinematic_viscosity() (in module marapendi.components.water)</a>
+      <li><a href="api/models.html#marapendi.models.catalyst_layer.PtCCatalystLayerModel.water_film_thickness">water_film_thickness() (marapendi.models.catalyst_layer.PtCCatalystLayerModel method)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.water.water_molar_volume">water_molar_volume() (in module marapendi.components.water)</a>
+      <li><a href="api/models.html#marapendi.models.water.water_kinematic_viscosity">water_kinematic_viscosity() (in module marapendi.models.water)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.water.water_saturation_concentration">water_saturation_concentration() (in module marapendi.components.water)</a>
+      <li><a href="api/models.html#marapendi.models.water.water_molar_volume">water_molar_volume() (in module marapendi.models.water)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.transport_models.PorousGasResistanceModel.water_saturation_correction">water_saturation_correction() (marapendi.models.transport_models.PorousGasResistanceModel method)</a>
+      <li><a href="api/models.html#marapendi.models.water.water_saturation_concentration">water_saturation_concentration() (in module marapendi.models.water)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.water.water_saturation_pressure">water_saturation_pressure() (in module marapendi.components.water)</a>
+      <li><a href="api/models.html#marapendi.models.transport.PorousGasResistanceModel.water_saturation_correction">water_saturation_correction() (marapendi.models.transport.PorousGasResistanceModel method)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/components.html#marapendi.components.water.water_surface_tension">water_surface_tension() (in module marapendi.components.water)</a>
+      <li><a href="api/models.html#marapendi.models.water.water_saturation_pressure">water_saturation_pressure() (in module marapendi.models.water)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.transport_models.MembraneWaterTransportModel.water_vol_fraction">water_vol_fraction() (marapendi.models.transport_models.MembraneWaterTransportModel method)</a>
+      <li><a href="api/models.html#marapendi.models.water.water_surface_tension">water_surface_tension() (in module marapendi.models.water)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.water.WaterProperties">WaterProperties (class in marapendi.components.water)</a>
+      <li><a href="api/models.html#marapendi.models.membrane.IonomerModel.water_vol_fraction">water_vol_fraction() (marapendi.models.membrane.IonomerModel method)</a>
 </li>
-      <li><a href="api/components.html#id65">weight_percent (marapendi.components.electrolyte.ElectrolyteSolution attribute)</a>, <a href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution.weight_percent">[1]</a>
+      <li><a href="api/components.html#id66">weight_percent (marapendi.components.electrolyte.ElectrolyteSolution attribute)</a>, <a href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution.weight_percent">[1]</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.wet_density">wet_density() (marapendi.components.ionomer.Ionomer method)</a>
+      <li><a href="api/models.html#marapendi.models.membrane.IonomerModel.wet_density">wet_density() (marapendi.models.membrane.IonomerModel method)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.ionomer.Ionomer.wet_expansion_factor">wet_expansion_factor() (marapendi.components.ionomer.Ionomer method)</a>
+      <li><a href="api/models.html#marapendi.models.membrane.IonomerModel.wet_expansion_factor">wet_expansion_factor() (marapendi.models.membrane.IonomerModel method)</a>
 </li>
-      <li><a href="api/components.html#id43">width (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.width">[1]</a>
+      <li><a href="api/components.html#id62">width (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.width">[1]</a>
 </li>
-      <li><a href="api/components.html#id13">wt_Pt (marapendi.components.catalyst_layers.PtCCatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.wt_Pt">[1]</a>
+      <li><a href="api/components.html#id14">wt_Pt (marapendi.components.catalyst_layers.PtCCatalystLayer attribute)</a>, <a href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer.wt_Pt">[1]</a>
 </li>
   </ul></td>
 </tr></table>
