@@ -125,7 +125,7 @@ class PtCCatalystLayerModel(CatalystLayerModel):
         r_ion = cl.r_C + cl.t_ion_film
         return (s * cl.eps_p * cl.r_C ** 3 / cl.eps_C + r_ion ** 3) ** (1./3) - r_ion
 
-    def o2_ionomer_film_bulk_resistance(self, lmbd, T, ionomer_model, ionomer_film_thickess):
+    def o2_ionomer_film_bulk_resistance(self, f_v, T, ionomer_model, ionomer_film_thickess):
         """Bulk O₂ diffusion resistance through the ionomer film [s·m/mol].
 
         Parameters
@@ -139,11 +139,11 @@ class PtCCatalystLayerModel(CatalystLayerModel):
         ionomer_film_thickess : float
             Effective ionomer film thickness [m].
         """
-        return ionomer_film_thickess / (ct.gas_constant * T * ionomer_model.o2_permeability(lmbd, T))
+        return ionomer_film_thickess / (ct.gas_constant * T * ionomer_model.o2_permeability(f_v, T))
 
-    def o2_ionomer_film_resistance(self, lmbd, T, cl, ionomer_model, ionomer_film_thickess, water_film_thickness, coverage_ratio=0):
+    def o2_ionomer_film_resistance(self, f_v, T, cl, ionomer_model, ionomer_film_thickess, water_film_thickness, coverage_ratio=0):
         """Total O2 film resistance per Hao et al. (2015), neglecting water film."""
-        R_bulk     = self.o2_ionomer_film_bulk_resistance(lmbd, T, ionomer_model, ionomer_film_thickess)
+        R_bulk     = self.o2_ionomer_film_bulk_resistance(f_v, T, ionomer_model, ionomer_film_thickess)
         R_pt_iface = (self.k2_ion + 1) / (1 - coverage_ratio) / (cl.L_Pt * cl.ecsa)
         R_gas_iface = self.k1_ion / (cl.a_ion * cl.thickness)
         R_water    = (self.k3_ion + 1) * water_film_thickness / o2_water_diffusivity(T) / (cl.a_ion * cl.thickness)
