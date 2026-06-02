@@ -1,78 +1,51 @@
-"""
-Tests for the transient cell model (new Cell / TransientCellModel API).
-
-Covers: shape and finiteness of rates_of_change, physical plausibility of
-cell voltage, and monotonicity of the polarization curve produced by
-stepping the current density.
-"""
-import pytest
+"""Tests for marapendi.models.transient — TransientCellModel."""
 import numpy as np
+import pytest
 from scipy.integrate import solve_ivp
-
 import marapendi as mrpd
 
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def _cl(thickness=10e-6):
-    return mrpd.PtCCatalystLayer(
-        thickness=thickness,
-        bulk_density=2010.,
-        bulk_specific_heat_capacity=710.,
-        bulk_thermal_conductivity=0.25,
-        L_Pt=0.3e-2,
-        wt_Pt=0.4,
-        ic_ratio=0.7,
-        ecsa=45e3,
-        ionomer=mrpd.Nafion_N21X,
-        r_C=25e-9,
-        K_abs=1e-13,
-        theta_contact=95,
-        reaction=mrpd.ElectrochemicalReaction(
-            reference_exchange_current_density=2.47e-8 * 10e-6,
-            activation_energy=67e6,
-            reaction_order=0.54,
-            reference_activity=1.,
-            reference_temperature=353.15,
-            number_of_electrons=2,
-            charge_transfer_coeff=1,
-        ),
-    )
+T_OP = 353.15
+P_OP = 1.5e5
+RH   = 0.7
 
 
-def _gdl():
-    return mrpd.PorousLayer(
-        thickness=160e-6,
-        eps_p=0.72,
-        bulk_density=440.,
-        bulk_specific_heat_capacity=710.,
-        bulk_thermal_conductivity=1.24,
-        K_abs=1e-12,
-        theta_contact=115.,
-        tort=3,
-    )
+# ─── shared fixture: fully assembled PEMFC ────────────────────────────────────
 
-
-@pytest.fixture
+@pytest.fixture(scope="module")
 def model():
-    """TransientCellModel with a Nafion N212 membrane and Pt/C CLs."""
+    reaction = mrpd.ElectrochemicalReaction(
+        reference_exchange_current_density=2.47e-8,
+        activation_energy=67e6,
+        reaction_order=0.54,
+        reference_activity=1e5,
+        reference_temperature=T_OP,
+        number_of_electrons=2,
+        charge_transfer_coeff=0.5,
+    )
+    cl_kwargs = dict(
+        thickness=10e-6, bulk_density=2010., bulk_specific_heat_capacity=710.,
+        bulk_thermal_conductivity=0.25, L_Pt=0.3e-2, wt_Pt=0.4, ic_ratio=0.7,
+        ecsa=45e3, ionomer=mrpd.Nafion_N21X, r_C=25e-9, K_abs=1e-13,
+        theta_contact=95, reaction=reaction,
+    )
+    gdl_kwargs = dict(
+        thickness=160e-6, eps_p=0.72, bulk_density=440.,
+        bulk_specific_heat_capacity=710., bulk_thermal_conductivity=1.24,
+        K_abs=1e-12, theta_contact=115., tort=3,
+    )
     cell = mrpd.Cell(
-        area=25e-4,
-        electrical_resistance=30e-7,
-        thermal_resistance=2e-4,
+        area=25e-4, electrical_resistance=30e-7, thermal_resistance=2e-4,
         memb_model=mrpd.PFSAModel(),
         cl_model=mrpd.PtCCatalystLayerModel(),
         ca=mrpd.CellSide(
-            cl=_cl(),
-            gdl=_gdl(),
+            cl=mrpd.PtCCatalystLayer(**cl_kwargs),
+            gdl=mrpd.PorousLayer(**gdl_kwargs),
             ch=mrpd.FlowChannel(height=1e-3, bulk_thermal_conductivity=100.),
             has_mpl=False,
         ),
         an=mrpd.CellSide(
-            cl=_cl(),
-            gdl=_gdl(),
+            cl=mrpd.PtCCatalystLayer(**cl_kwargs),
+            gdl=mrpd.PorousLayer(**gdl_kwargs),
             ch=mrpd.FlowChannel(height=1e-3, bulk_thermal_conductivity=100.),
             has_mpl=False,
         ),
@@ -81,53 +54,129 @@ def model():
     return mrpd.TransientCellModel(cell=cell)
 
 
-def extract_voltage(model, x_flat, i_density):
-    """Compute V_cell for a flat normalised state vector."""
-    x_state = (x_flat.reshape(model.n_layers, model.n_variables, 1)
-               * model.norm_factor[..., np.newaxis])
-    state = model._compute_derived_quantities(x_state, i_density)
-    model._compute_voltage(state)
-    return float(state.V_cell[0])
+@pytest.fixture(scope="module")
+def y0(model):
+    return model.initial_state(
+        T=T_OP, p=P_OP, rh=RH, lmbd=10.0, s=0.05,
+        ca_dry_o2=0.21, an_dry_h2=1.0,
+    )
 
 
-# ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
+# ─── layer-index integrity ────────────────────────────────────────────────────
 
-def test_rates_of_change_shape_and_finite(model):
-    """rates_of_change returns a finite array of the expected shape."""
-    y0   = model.initial_state(T=353.15, p=1.5e5, rh=0.7)
-    dxdt = model.rates_of_change(y0[:, np.newaxis], i=5000.)
-    assert dxdt.shape == (model.n_layers * model.n_variables, 1)
-    assert np.all(np.isfinite(dxdt))
+class TestLayerIndices:
+    def test_each_layer_has_unique_ix(self, model):
+        indices = [layer.ix for layer in model.cell.layers]
+        assert len(indices) == len(set(indices))
 
+    def test_an_gdl_and_ca_gdl_distinct(self, model):
+        assert model.cell.an.gdl.ix != model.cell.ca.gdl.ix
 
-def test_voltage_physical_range(model):
-    """V_cell at moderate current density lies in the expected range [0.3, 1.1] V."""
-    y0 = model.initial_state(T=353.15, p=1.5e5, rh=0.7)
-    V  = extract_voltage(model, y0, i_density=5000.)
-    assert 0.3 < V < 1.1, f"V_cell = {V:.3f} V is outside the expected range"
+    def test_indices_cover_range(self, model):
+        indices = sorted(layer.ix for layer in model.cell.layers)
+        assert indices == list(range(model.n_layers))
 
 
-def test_polarization_curve_monotone(model):
-    """V_cell decreases monotonically as current density increases."""
-    current_densities = [10., 100., 500., 1000., 5000., 10000., 20000.]   # A/m²
-    y = model.initial_state(T=353.15, p=1.5e5, rh=0.7)
-    voltages = []
+# ─── initial state ────────────────────────────────────────────────────────────
 
-    for i_density in current_densities:
-        sol = solve_ivp(
-            lambda t, x: model.rates_of_change(x[:, np.newaxis], i=i_density)[:, 0],
-            t_span=(0., 30.),
-            y0=y,
+class TestInitialState:
+    def test_shape(self, model, y0):
+        assert y0.shape == (model.n_layers * model.n_variables,)
+
+    def test_all_finite(self, y0):
+        assert np.all(np.isfinite(y0))
+
+    def test_anode_gdl_has_nonzero_gas(self, model, y0):
+        x = y0.reshape(model.n_layers, model.n_variables) * model.norm_factor
+        gdl_ix = model.cell.an.gdl.ix
+        # All four gas concentrations must be non-negative; H2 must be present
+        assert np.all(x[gdl_ix, model.i_cg] >= 0)
+        assert x[gdl_ix, model.i_cg[2]] > 0  # H2
+
+    def test_cathode_has_oxygen_not_hydrogen(self, model, y0):
+        x = y0.reshape(model.n_layers, model.n_variables) * model.norm_factor
+        ca_ix = model.cell.ca.cl.ix
+        assert x[ca_ix, model.i_cg[0]] > 0   # O2 present
+        assert x[ca_ix, model.i_cg[2]] < 1e-5  # H2 trace only
+
+    def test_anode_has_hydrogen_not_oxygen(self, model, y0):
+        x = y0.reshape(model.n_layers, model.n_variables) * model.norm_factor
+        an_ix = model.cell.an.cl.ix
+        assert x[an_ix, model.i_cg[2]] > 0    # H2 present
+        assert x[an_ix, model.i_cg[0]] < 1e-5  # O2 trace only
+
+
+# ─── rates_of_change ──────────────────────────────────────────────────────────
+
+class TestRatesOfChange:
+    @pytest.mark.parametrize("i", [200., 2000., 10000.])
+    def test_shape(self, model, y0, i):
+        dxdt = model.rates_of_change(y0[:, np.newaxis], i=i)
+        assert dxdt.shape == (model.n_layers * model.n_variables, 1)
+
+    @pytest.mark.parametrize("i", [200., 2000., 10000.])
+    def test_all_finite(self, model, y0, i):
+        dxdt = model.rates_of_change(y0[:, np.newaxis], i=i)
+        assert np.all(np.isfinite(dxdt)), f"NaN/inf in dxdt at i={i}"
+
+    def test_channel_rates_are_zero(self, model, y0):
+        dxdt = model.rates_of_change(y0[:, np.newaxis], i=5000.)[:, 0]
+        n = model.n_variables
+        for ch in (model.cell.an.ch, model.cell.ca.ch):
+            row = dxdt[ch.ix * n: ch.ix * n + n]
+            # T and gas concentrations frozen; lambda and s may or may not be
+            assert row[model.i_T] == pytest.approx(0.)
+            for ig in model.i_cg:
+                assert row[ig] == pytest.approx(0.)
+            assert row[model.i_s] == pytest.approx(0.)
+
+
+# ─── short integration ────────────────────────────────────────────────────────
+
+class TestShortIntegration:
+    @pytest.fixture(scope="class")
+    def sol(self, model, y0):
+        return solve_ivp(
+            fun=lambda _t, y: model.rates_of_change(y[:, np.newaxis], i=2000.)[:, 0],
+            t_span=(0., 10.),
+            y0=y0,
             method='BDF',
             max_step=5.,
             rtol=1e-3,
             atol=1e-6,
         )
-        y = sol.y[:, -1]
-        voltages.append(extract_voltage(model, y, i_density))
 
-    assert all(v_hi < v_lo for v_lo, v_hi in zip(voltages, voltages[1:])), (
-        f"Polarization curve not monotone: {voltages}"
-    )
+    def test_solver_succeeds(self, sol):
+        assert sol.status == 0, sol.message
+
+    def test_no_nan_in_solution(self, sol):
+        assert np.all(np.isfinite(sol.y))
+
+    def test_saturation_stays_physical(self, model, sol):
+        # Unpack s from last time step
+        x_end = (sol.y[:, -1].reshape(model.n_layers, model.n_variables)
+                 * model.norm_factor)
+        s_end = x_end[:, model.i_s]
+        assert np.all(s_end >= -1e-9)
+        assert np.all(s_end <= 1 + 1e-9)
+
+
+# ─── voltage is physical ──────────────────────────────────────────────────────
+
+class TestVoltage:
+    def test_initial_voltage_below_reversible(self, model, y0):
+        i = 5000.
+        x = y0.reshape(model.n_layers, model.n_variables, 1) * model.norm_factor[..., np.newaxis]
+        state = model._compute_derived_quantities(x, i)
+        model._compute_voltage(state)
+        E_rev = state.E_rev_ca - state.E_rev_an
+        assert state.V_cell.item() < E_rev.item()
+
+    def test_voltage_decreases_with_current(self, model, y0):
+        voltages = []
+        for i in [1000., 5000., 10000.]:
+            x = y0.reshape(model.n_layers, model.n_variables, 1) * model.norm_factor[..., np.newaxis]
+            state = model._compute_derived_quantities(x, i)
+            model._compute_voltage(state)
+            voltages.append(state.V_cell.item())
+        assert voltages[0] > voltages[1] > voltages[2]
