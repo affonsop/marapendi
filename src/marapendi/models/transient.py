@@ -281,7 +281,7 @@ class TransientCellModel:
             state.s[cell.ca.cl.ix, ...], cell.ca.cl,
         )
         state.R_o2_local = m.cl_model.o2_ionomer_film_resistance(
-            state.lmbd_ca_cl, state.T_ca_cl, cell.ca.cl, m.memb_model,
+            state.f_v_ca_cl, state.T_ca_cl, cell.ca.cl, m.memb_model,
             cell.ca.cl.t_ion_film, state.t_water_film, coverage_ratio=0,
         )
         c_o2_local = np.maximum(
@@ -301,7 +301,6 @@ class TransientCellModel:
             s_ca_cl=0,
             p_h2=state.p_h2,
             p_o2_local=state.p_o2_local,
-            p_o2_ca_cl=state.p_o2_ca_cl,
             i=state.iF * ct.faraday,
             memb=cell.memb,
             electrical_resistance=cell.electrical_resistance,
@@ -453,7 +452,7 @@ class TransientCellModel:
         ) / cell.ca.cl.thickness
 
         # Liquid water: phase change (blocked in membrane)
-        S[:, self.i_s, ...]            = S_vl
+        S[:, self.i_s, ...]            = S_vl * state.M_k[:,-1,...]
         S[cell.memb.ix, self.i_s, ...] = 0
 
         # Water vapour: condensation sink
@@ -487,7 +486,7 @@ class TransientCellModel:
 
         # Membrane lambda is quasi-steady → inf capacity; only CLs have finite dynamics
         C[:, self.i_lmbd, ...] = (
-            cell.eps_ion * cell.c_ion * cell.thickness
+            cell.eps_ion * cell.c_ion
         )
         C[:, self.i_s,  ...]   = state.rho_l * cell.eps_p
         C[:, self.i_cg, ...]   = cell.eps_p[:, np.newaxis, ...]

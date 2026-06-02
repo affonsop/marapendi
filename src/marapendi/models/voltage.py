@@ -53,13 +53,13 @@ class VoltageModel:
             p_o2_ca_cl,
         )
 
-    def calculate_activation_overpotential(self, T_ca_cl, p_o2_ca_cl,
+    def calculate_activation_overpotential(self, T_ca_cl, p_o2_local,
                                            i, i_x,
                                            theta_PtO, ca_cl):
         """Net activation overpotential including Pt-oxide voltage drop."""
         rf = ca_cl.ecsa * ca_cl.L_Pt * (1 - theta_PtO)
         orr_overpotential = self.calculate_orr_overpotential(
-            T_ca_cl, p_o2_ca_cl, i, i_x,
+            T_ca_cl, p_o2_local, i, i_x,
             rf, ca_cl.reaction,
         )
         omega_PtO_voltage_drop = (
@@ -98,7 +98,7 @@ class VoltageModel:
 
     def calculate_cell_voltage(self, T_an_cl, T_ca_cl, T_memb,
                                f_v_memb, f_v_ca_cl, s_ca_cl,
-                               p_h2, p_o2_local, p_o2_ca_cl,
+                               p_h2, p_o2_local,
                                i, memb,
                                electrical_resistance, memb_model, ionomer_model, ca_cl_model,
                                ca_cl, charge,
@@ -121,7 +121,7 @@ class VoltageModel:
             * (2 * ct.faraday)
         )
         eta_act = self.calculate_activation_overpotential(
-            T_ca_cl, p_o2_ca_cl, i, i_x, theta_PtO, ca_cl,
+            T_ca_cl, p_o2_local, i, i_x, theta_PtO, ca_cl,
         )
         eta_memb, eta_ca_cl, eta_gdl = self.calculate_ohmic_overpotential(
             T_memb, f_v_memb, T_ca_cl, f_v_ca_cl, 
