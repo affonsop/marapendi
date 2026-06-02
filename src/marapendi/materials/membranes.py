@@ -14,7 +14,7 @@ Nafion_N115 = PFSAMembrane(
     sorption_coeffs_ion=np.array([0.043, 17.81, -39.85, 36.0]),
     lmbd_liq_ref_ion=22,                  # kmol_H2O/kmol_ion
     D_lmbd_ref_ion=3.74 * 2.72e-5 * 1e-4,             # m²/s
-    k_des_ref_ion=0.0184 * 4.59e-2 * 1e-2,      # m/s
+    k_des_ref_ion=0.0184 * 4.59e-5,      # m/s
     E_act_ion=2.29 * 20e6,                                  # J/kmol
     sigma_ref_ion = 50., 
     f_v_perc_ion= 0.1,
@@ -33,7 +33,7 @@ Nafion_N117 = PFSAMembrane(
     sorption_coeffs_ion=np.array([0.043, 17.81, -39.85, 36.0]),
     lmbd_liq_ref_ion=22,                  # kmol_H2O/kmol_ion
     D_lmbd_ref_ion=2.74 * 2.72e-5 * 1e-4,             # m²/s
-    k_des_ref_ion=0.0224 * 4.59e-2 * 1e-2,      # m/s
+    k_des_ref_ion=0.0224 * 4.59e-5,      # m/s
     E_act_ion=2.18 * 20e6,        
     sigma_ref_ion = 50., 
     f_v_perc_ion= 0.1,
@@ -52,7 +52,7 @@ Nafion_N211 = PFSAMembrane(
     sorption_coeffs_ion=np.array([0.043, 17.81, -39.85, 36.0]),
     lmbd_liq_ref_ion=22,                  # kmol_H2O/kmol_ion
     D_lmbd_ref_ion=0.260 * 2.72e-5 * 1e-4,            # m²/s
-    k_des_ref_ion=0.0160 * 4.59e-2 * 1e-2,      # m/s
+    k_des_ref_ion=0.0160 * 4.59e-5,      # m/s
     E_act_ion=2.79 * 20e6,                                  # J/kmol
     sigma_ref_ion = 50., 
     f_v_perc_ion= 0.1,
@@ -71,7 +71,7 @@ Nafion_N212 = PFSAMembrane(
     sorption_coeffs_ion=np.array([0.043, 17.81, -39.85, 36.0]),
     lmbd_liq_ref_ion=22,                  # kmol_H2O/kmol_ion
     D_lmbd_ref_ion=0.314 * 2.72e-5 * 1e-4,            # m²/s
-    k_des_ref_ion=0.0211 * 4.59e-2 * 1e-2,      # m/s
+    k_des_ref_ion=0.0211 * 4.59e-5,      # m/s
     E_act_ion=2.54 * 20e6,                                  # J/kmol
     sigma_ref_ion = 50., 
     f_v_perc_ion= 0.1,
@@ -90,7 +90,7 @@ Aemion_AH1_HNN8_50_X = Membrane(
     sorption_coeffs_ion=np.array([0.0, 18.31, -32.57, 28.06]),
     lmbd_liq_ref_ion=25,                  # kmol_H2O/kmol_ion
     D_lmbd_ref_ion=0.111 * 2.72e-5 * 1e-4,            # m²/s
-    k_des_ref_ion=0.0109 * 4.59e-2 * 1e-2,      # m/s
+    k_des_ref_ion=0.0109 * 4.59e-5,      # m/s
     E_act_ion=2.51 * 20e6,                                  # J/kmol
 )
 
@@ -103,7 +103,7 @@ Fumapem_FAA3_30 = Membrane(
     sorption_coeffs_ion=np.array([0.0, 12.11, -15.76, 13.56]),
     lmbd_liq_ref_ion=12.5,                # kmol_H2O/kmol_ion
     D_lmbd_ref_ion=0.366 * 2.72e-5 * 1e-4,            # m²/s
-    k_des_ref_ion=0.0358 * 4.59e-2 * 1e-2,      # m/s
+    k_des_ref_ion=0.0358 * 4.59e-5,      # m/s
     E_act_ion=2.29 * 20e6,                                  # J/kmol
 )
 
@@ -116,7 +116,7 @@ Fumapem_FAA3_50 = Membrane(
     sorption_coeffs_ion=np.array([0.0, 12.11, -15.76, 13.56]),
     lmbd_liq_ref_ion=12.5,                # kmol_H2O/kmol_ion
     D_lmbd_ref_ion=0.577 * 2.72e-5 * 1e-4,            # m²/s
-    k_des_ref_ion=0.0448 * 4.59e-2 * 1e-2,      # m/s
+    k_des_ref_ion=0.0448 * 4.59e-5,      # m/s
     E_act_ion=2.07 * 20e6,                                  # J/kmol
 )
 
@@ -129,6 +129,6 @@ PiperION_A40 = Membrane(
     sorption_coeffs_ion=np.array([0.0, 13.13, -14.81, 14.41]),
     lmbd_liq_ref_ion=13.8,                # kmol_H2O/kmol_ion
     D_lmbd_ref_ion=0.270 * 2.72e-5 * 1e-4,            # m²/s
-    k_des_ref_ion=0.0307 * 4.59e-2 * 1e-2,      # m/s
+    k_des_ref_ion=0.0307 * 4.59e-5,      # m/s
     E_act_ion=2.31 * 20e6,                                  # J/kmol
 )
