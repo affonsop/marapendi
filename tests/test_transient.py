@@ -12,7 +12,8 @@ inlet_rh         = 0.7
 # ─── shared fixture: fully assembled PEMFC ────────────────────────────────────
 
 @pytest.fixture(scope="module")
-def model():
+def base():
+    """Fully configured CellBaseModel."""
     reaction = mrpd.ElectrochemicalReaction(
         reference_exchange_current_density=2.47e-8,
         activation_energy=67e6,
@@ -35,8 +36,6 @@ def model():
     )
     cell = mrpd.Cell(
         area=25e-4, electrical_resistance=30e-7, thermal_resistance=2e-4,
-        memb_model=mrpd.PFSAModel(),
-        cl_model=mrpd.PtCCatalystLayerModel(),
         ca=mrpd.CellSide(
             cl=mrpd.PtCCatalystLayer(**cl_kwargs),
             gdl=mrpd.PorousLayer(**gdl_kwargs),
@@ -51,12 +50,24 @@ def model():
         ),
         memb=mrpd.Nafion_N212,
     )
-    return mrpd.TransientCellModel(cell=cell)
+    return mrpd.CellBaseModel(
+        transient_transport_model=mrpd.TransientCellModel(cell=cell, current_density=0.),
+        memb_model=mrpd.PFSAModel(),
+        cl_model=mrpd.PtCCatalystLayerModel(),
+        gas_diffusion_model=mrpd.PorousGasResistanceModel(),
+        darcy_transport_model=mrpd.DarcyTransportModel(),
+        voltage_model=mrpd.VoltageModel(),
+    )
 
 
 @pytest.fixture(scope="module")
-def y0(model):
-    return model.initial_state(
+def model(base):
+    return base.transient_transport_model
+
+
+@pytest.fixture(scope="module")
+def y0(base):
+    return base.initial_state(
         cell_temperature=cell_temperature,
         cell_pressure=cell_pressure,
         ca_rh=inlet_rh,
@@ -118,15 +129,18 @@ class TestInitialState:
 class TestRatesOfChange:
     @pytest.mark.parametrize("i", [200., 2000., 10000.])
     def test_shape(self, model, y0, i):
+        model.current_density = i
         dxdt = model.rates_of_change(y0[:, np.newaxis], i=i)
         assert dxdt.shape == (model.n_layers * model.n_variables, 1)
 
     @pytest.mark.parametrize("i", [200., 2000., 10000.])
     def test_all_finite(self, model, y0, i):
+        model.current_density = i
         dxdt = model.rates_of_change(y0[:, np.newaxis], i=i)
         assert np.all(np.isfinite(dxdt)), f"NaN/inf in dxdt at i={i}"
 
     def test_channel_rates_are_zero(self, model, y0):
+        model.current_density = 5000.
         dxdt = model.rates_of_change(y0[:, np.newaxis], i=5000.)[:, 0]
         n = model.n_variables
         for ch in (model.cell.an.ch, model.cell.ca.ch):

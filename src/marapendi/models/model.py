@@ -4,9 +4,11 @@ Base model for composing multiple submodels into a single ODE system.
 Classes
 -------
 BaseModel
-    Composes any number of submodels—each exposing ``rates_of_change`` and
-    ``n_states``—into one combined ODE whose state vector is the
-    concatenation of every submodel's state vector.
+    Generic ODE compositor.  Composes any number of submodels—each
+    exposing ``rates_of_change`` and ``n_states``—into one combined ODE.
+    If a submodel defines a ``get_inputs(t)`` method, ``BaseModel``
+    registers it automatically in ``input_fns`` during ``__post_init__``;
+    no manual ``input_fns`` dict is needed for the common case.
 
 Protocol
 --------
@@ -17,8 +19,15 @@ A submodel is compatible with ``BaseModel`` when it implements:
 * ``n_states: int``
   total length of the normalised flat state vector.
 
-``TransientCellModel`` satisfies both requirements.  ``BaseModel`` itself
-also satisfies them, so models can be nested arbitrarily.
+Optionally, a submodel may implement:
+
+* ``get_inputs(t: float) -> dict``
+  returns keyword arguments forwarded to ``rates_of_change`` at time *t*.
+  When present, this is registered in ``input_fns`` automatically (explicit
+  entries in ``input_fns`` take precedence).
+* ``base_model``
+  any attribute by this name will be overwritten with a reference to the
+  owning ``BaseModel`` so submodels can resolve shared model objects.
 """
 from __future__ import annotations
 
@@ -31,51 +40,16 @@ import numpy as np
 @dataclass
 class BaseModel:
     """
-    Compose multiple submodels into a single ODE system.
-
-    The combined state vector is the concatenation of each submodel's
-    normalised flat state vector.  ``rates_of_change`` dispatches each
-    submodel's slice to the corresponding ``rates_of_change`` method, using
-    time-dependent input functions to supply keyword arguments.
-
-    Typical usage with ``scipy.integrate.solve_ivp``::
-
-        base = BaseModel(
-            submodels={
-                'cell_a': model_a,
-                'cell_b': model_b,
-            },
-            input_fns={
-                'cell_a': lambda t: {'i': i_a(t)},
-                'cell_b': lambda t: {'i': i_b(t)},
-            },
-        )
-
-        y0 = base.initial_state(
-            cell_a={'T': 353.15, 'p': 1.5e5},
-            cell_b={'T': 343.15, 'p': 1.0e5},
-        )
-
-        sol = solve_ivp(
-            base.rates_of_change,   # signature: (t, x) — matches solve_ivp
-            t_span=(0, t_end),
-            y0=y0,
-            method='BDF',
-            vectorized=False,
-        )
-
-        states = base.split_state(sol.y)   # {'cell_a': ..., 'cell_b': ...}
+    Generic compositor: combine any number of ODE submodels.
 
     Parameters
     ----------
     submodels : dict[str, object]
         Ordered mapping of ``name → submodel``.  Each submodel must expose
-        ``rates_of_change(x, **inputs)`` and an integer attribute
-        ``n_states``.
+        ``rates_of_change(x, **inputs)`` and ``n_states``.
     input_fns : dict[str, callable], optional
-        Mapping of ``name → f(t)`` where ``f`` returns a ``dict`` of keyword
-        arguments forwarded to that submodel's ``rates_of_change``.  Any
-        submodel not listed receives ``{}`` (no extra inputs).
+        Explicit ``name → f(t)`` overrides.  Submodels not listed here
+        fall back to their own ``get_inputs`` method, if any.
 
     Attributes
     ----------
@@ -83,7 +57,7 @@ class BaseModel:
         Total length of the combined normalised state vector.
     """
 
-    submodels: dict[str, Any]
+    submodels: dict[str, Any] = field(default_factory=dict)
     input_fns: dict[str, Callable] = field(default_factory=dict)
 
     def __post_init__(self):
@@ -99,6 +73,16 @@ class BaseModel:
             offset += size
         self.n_states: int = offset
 
+        # Auto-register get_inputs from submodels (explicit input_fns take priority)
+        for name, model in self.submodels.items():
+            if hasattr(model, 'get_inputs') and name not in self.input_fns:
+                self.input_fns[name] = model.get_inputs
+
+        # Inject self into any submodel that declares a base_model slot
+        for model in self.submodels.values():
+            if hasattr(model, 'base_model'):
+                model.base_model = self
+
     # ------------------------------------------------------------------
     # ODE interface
     # ------------------------------------------------------------------
@@ -107,25 +91,19 @@ class BaseModel:
         """
         Assemble dxdt by dispatching each slice to its submodel.
 
-        The argument order ``(t, x)`` matches the convention expected by
-        ``scipy.integrate.solve_ivp``, so ``base.rates_of_change`` can be
-        passed directly as the ``fun`` argument.
-
-        For non-vectorised integration ``x`` has shape ``(n_states,)``;
-        for vectorised integration it has shape ``(n_states, m)``.  Both
-        forms are handled transparently.
+        ``(t, x)`` matches the ``solve_ivp`` convention, so
+        ``base.rates_of_change`` can be passed directly as ``fun``.
 
         Parameters
         ----------
         t : float
-            Current time, passed to each ``input_fn`` to evaluate inputs.
+            Current time, passed to each ``input_fn``/``get_inputs``.
         x : np.ndarray, shape (n_states,) or (n_states, m)
-            Combined normalised state vector.
 
         Returns
         -------
         np.ndarray
-            Combined derivative array, same shape as ``x``.
+            Same shape as ``x``.
         """
         scalar = x.ndim == 1
         if scalar:
@@ -151,17 +129,11 @@ class BaseModel:
         ----------
         **per_model_kwargs
             Keyword arguments keyed by submodel name, forwarded to each
-            submodel's ``initial_state`` method::
-
-                base.initial_state(
-                    cell_a={'T': 353.15, 'p': 1.5e5, 'rh': 0.7},
-                    cell_b={'T': 343.15, 'p': 1.0e5, 'rh': 0.6},
-                )
+            submodel's ``initial_state`` method.
 
         Returns
         -------
         np.ndarray, shape (n_states,)
-            Flat normalised initial-state vector ready for ``solve_ivp``.
         """
         parts = []
         for name, model in self.submodels.items():
@@ -173,21 +145,9 @@ class BaseModel:
         return np.concatenate(parts)
 
     # ------------------------------------------------------------------
-    # Post-processing helpers
+    # Post-processing
     # ------------------------------------------------------------------
 
     def split_state(self, x: np.ndarray) -> dict[str, np.ndarray]:
-        """
-        Split a combined state array into per-submodel slices.
-
-        Parameters
-        ----------
-        x : np.ndarray, shape (n_states,) or (n_states, m)
-            Combined state (e.g. ``sol.y`` from ``solve_ivp``).
-
-        Returns
-        -------
-        dict[str, np.ndarray]
-            ``{name: x[slice]}`` for each submodel.
-        """
+        """Split a combined state array into per-submodel slices."""
         return {name: x[sl] for name, sl in self._slices.items()}

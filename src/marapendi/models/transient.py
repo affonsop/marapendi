@@ -3,17 +3,30 @@ Transient cell model for PEM/AEM electrochemical cells.
 
 Classes
 -------
-TransientCellModel : ODE engine that wraps a Cell and a VoltageModel to
-    assemble and integrate the full spatially-resolved transient equations
-    (water content, temperature, gas concentrations, liquid saturation).
+TransientCellModel : ODE engine that integrates the full spatially-resolved
+    transient equations (water content, temperature, gas concentrations,
+    liquid saturation).  Physics models are resolved from the parent
+    ``CellBaseModel`` that injects itself via ``base_model``.
+    The applied current density is held in the ``current_density`` field and
+    exposed to ``BaseModel`` through ``get_inputs``.
+
+CellBaseModel : ``BaseModel`` subclass for a single PEM/AEM cell.
+    Owns all physics strategy objects as named fields and wires the
+    ``TransientCellModel`` into ``submodels`` automatically.
 """
 
 import numpy as np
 import cantera as ct
 from dataclasses import dataclass, field
+from typing import Union, Callable
 
 from marapendi.components.cell import Cell
 from marapendi.components.cell_state import CellState
+from marapendi.models.model import BaseModel
+from marapendi.models.transport import PorousGasResistanceModel, DarcyTransportModel
+from marapendi.models.membrane import MembraneModel
+from marapendi.models.catalyst_layer import CatalystLayerModel
+from marapendi.models.voltage import VoltageModel
 from marapendi.models.water import (
     water_saturation_concentration,
     water_density,
@@ -36,15 +49,30 @@ class TransientCellModel:
     * ``i_cg   = [2,3,4,5]`` : gas concentrations [O₂, N₂, H₂, H₂O] [kmol m⁻³]
     * ``i_s    = 6`` : liquid water saturation s [–]
 
+    Physics models are resolved from the parent ``CellBaseModel`` via
+    ``base_model``, injected automatically during ``CellBaseModel.__post_init__``.
+    Do not set ``base_model`` manually.
+
     Parameters
     ----------
     cell : Cell
-        Fully-configured cell geometry and property arrays.
-    charge : str
-        Charge carrier (``'proton'`` for PEM, ``'hydroxide'`` for AEM).
+        Cell geometry and material property arrays (no model objects).
+    current_density : float or callable
+        Applied current density [A m⁻²].  May be a scalar (constant) or a
+        callable ``f(t) -> float`` for time-varying protocols.  Exposed to
+        ``CellBaseModel`` via ``get_inputs`` so no manual ``input_fns`` dict
+        is needed.  Default: 0.
     """
 
     cell: Cell = field(default_factory=Cell)
+    current_density: Union[float, Callable[[float], float]] = 0.
+    # Injected by CellBaseModel.__post_init__; never set by the caller.
+    base_model: object = field(default=None, repr=False, compare=False)
+
+    def get_inputs(self, t: float) -> dict:
+        """Return ``{'i': current_density}`` evaluated at time *t*."""
+        i = self.current_density(t) if callable(self.current_density) else float(self.current_density)
+        return {'i': i}
 
     def __post_init__(self):
         cell = self.cell
@@ -172,7 +200,7 @@ class TransientCellModel:
 
         x0 = np.zeros((self.n_layers, self.n_variables))
         rh_mean = np.full(self.n_layers, (ca_rh + an_rh) / 2)
-        lmbd_eq = cell.memb_model.equilibrium_water_content(
+        lmbd_eq = self.base_model.memb_model.equilibrium_water_content(
             rh_mean, cell.sorption_coeffs_ion,
         )[:, 0]
         # Non-ionomer layers (GDL, channel) return NaN — zero is fine since
@@ -214,6 +242,7 @@ class TransientCellModel:
     def _compute_derived_quantities(self, x, i) -> CellState:
         """Unpack state vector and compute thermodynamic fields."""
         cell = self.cell
+        m    = self.base_model
         lmbd, T, cg_k, s = self.get_states_from_x(x)
 
         iF    = i / ct.faraday
@@ -221,7 +250,7 @@ class TransientCellModel:
         p_g   = c_g * ct.gas_constant * T
         x_g_k = cg_k / np.maximum(c_g, 1e-30)[:, np.newaxis, ...]
         p_g_k = p_g[:, np.newaxis, ...] * x_g_k
-        D_g_k = cell.gas_diffusion_model.species_diffusion_coefficient(T, p_g, x_h2=self.x_h2_mask)
+        D_g_k = m.gas_diffusion_model.species_diffusion_coefficient(T, p_g, x_h2=self.x_h2_mask)
         c_sat = water_saturation_concentration(T)
         c_v   = cg_k[:, -1, ...]
         rh    = c_v / c_sat
@@ -230,7 +259,7 @@ class TransientCellModel:
         M_k   = x_g_k * np.array([32., 28., 2., 18.])[np.newaxis, :, np.newaxis]
         V_w   = water_molar_volume(T)
 
-        f_v = cell.memb_model.water_vol_fraction(lmbd, V_w, cell.V_ion)
+        f_v = m.memb_model.water_vol_fraction(lmbd, V_w, cell.V_ion)
 
         memb_ix  = cell.memb.ix
         ca_cl_ix = cell.ca.cl.ix
@@ -255,12 +284,13 @@ class TransientCellModel:
     def _compute_voltage(self, state: CellState):
         """Compute local O₂ pressure and cell voltage; populate state in-place."""
         cell = self.cell
+        m    = self.base_model
 
-        state.t_water_film = cell.cl_model.water_film_thickness(
+        state.t_water_film = m.cl_model.water_film_thickness(
             state.s[cell.ca.cl.ix, ...], cell.ca.cl,
         )
-        state.R_o2_local = cell.cl_model.o2_ionomer_film_resistance(
-            state.lmbd_ca_cl, state.T_ca_cl, cell.ca.cl, cell.memb_model,
+        state.R_o2_local = m.cl_model.o2_ionomer_film_resistance(
+            state.lmbd_ca_cl, state.T_ca_cl, cell.ca.cl, m.memb_model,
             cell.ca.cl.t_ion_film, state.t_water_film, coverage_ratio=0,
         )
         c_o2_local = np.maximum(
@@ -271,7 +301,7 @@ class TransientCellModel:
 
         (state.V_cell, state.eta_ohm, state.eta_act,
          state.E_rev_ca, state.E_rev_an,
-         state.eta_memb, _, state.eta_gdl) = cell.voltage_model.calculate_cell_voltage(
+         state.eta_memb, _, state.eta_gdl) = m.voltage_model.calculate_cell_voltage(
             T_an_cl=state.T_an_cl,
             T_ca_cl=state.T_ca_cl,
             T_memb=state.T_memb,
@@ -284,9 +314,9 @@ class TransientCellModel:
             i=state.iF * ct.faraday,
             memb=cell.memb,
             electrical_resistance=cell.electrical_resistance,
-            memb_model=cell.memb_model,
-            ionomer_model=cell.memb_model,
-            ca_cl_model=cell.cl_model,
+            memb_model=m.memb_model,
+            ionomer_model=m.memb_model,
+            ca_cl_model=m.cl_model,
             ca_cl=cell.ca.cl,
             charge=cell.charge,
         )
@@ -294,15 +324,14 @@ class TransientCellModel:
     def _compute_resistances(self, state: CellState):
         """Build layer resistance array R and harmonic-mean inter-layer eff_R."""
         cell = self.cell
+        m    = self.base_model
         R = np.zeros_like(state.x)
 
-        # λ is only defined in the ionomer domain; block transport everywhere else so
-        # the BDF Jacobian never sees a trivially-zero diagonal for those variables.
-        R[:, self.i_s, ...] = cell.darcy_transport_model.calculate_liquid_darcy_flow_resistance(
+        R[:, self.i_s, ...] = m.darcy_transport_model.calculate_liquid_darcy_flow_resistance(
             state.s, state.nu_l, cell.thickness,
             cell.K_abs, cell.n_rel,
         )
-        R[:, self.i_cg, ...] = cell.gas_diffusion_model.total_diffusion_resistance(
+        R[:, self.i_cg, ...] = m.gas_diffusion_model.total_diffusion_resistance(
             state.T[:, np.newaxis, ...],
             state.s[:, np.newaxis, ...],
             state.D_g_k,
@@ -317,14 +346,14 @@ class TransientCellModel:
 
         # λ transport is only defined in the ionomer domain; default to inf everywhere
         # and overwrite for ionomer layers only to avoid divide-by-zero on other layers.
-        D_lmbd = cell.memb_model.diffusion_coefficient(
+        D_lmbd = m.memb_model.diffusion_coefficient(
             state.lmbd, state.f_v, state.T,
             cell.darken_num_ion,
             cell.darken_den_ion,
             cell.D_lmbd_ref_ion,
             cell.E_act_ion,
         )
-        R[:, self.i_lmbd, ...] = cell.memb_model.calculate_membrane_water_resistance(
+        R[:, self.i_lmbd, ...] = m.memb_model.calculate_membrane_water_resistance(
             D_lmbd, cell.thickness, cell.eps_ion,
             cell.c_ion, cell.tau_ion,
         )
@@ -348,12 +377,13 @@ class TransientCellModel:
         """Compute inter-layer flux array J (diffusion + advection + EOD)
         and return V_cell, eta_ohm, eta_act, S_T_losses, p_o2_local."""
         cell = self.cell
+        m    = self.base_model
         phi = state.x.copy()
 
         # Liquid-water driving potential: gas pressure + capillary pressure
         phi[:, self.i_s, ...] = state.p_g
         phi[self.porous_domain, self.i_s, ...] += (
-            cell.darcy_transport_model.capillary_pressure_from_saturation(
+            m.darcy_transport_model.capillary_pressure_from_saturation(
                 state.s,
                 cell.p_b,
                 cell.van_genuchten_m,
@@ -377,17 +407,18 @@ class TransientCellModel:
     def _compute_water_exchange(self, state: CellState):
         """Return ionomer absorption/desorption flux J_des."""
         cell = self.cell
-        k_abs = cell.memb_model.sorption_coefficient(
+        m    = self.base_model
+        k_abs = m.memb_model.sorption_coefficient(
             state.f_v, state.T,
             cell.k_des_ref_ion,
             cell.E_act_ion,
             cell.T_ref_des_ion,
         )
         lmbd_eq = (
-            (1 - state.s) * cell.memb_model.equilibrium_water_content(
+            (1 - state.s) * m.memb_model.equilibrium_water_content(
                 state.rh, cell.sorption_coeffs_ion,
             )
-            + state.s * cell.memb_model.liquid_equilibrium_water_content(
+            + state.s * m.memb_model.liquid_equilibrium_water_content(
                 cell.lmbd_liq_ref_ion,
             )
         )
@@ -452,7 +483,8 @@ class TransientCellModel:
         for side in (cell.an, cell.ca):
             S[side.cl.ix, self.i_T, ...] -= (
                 J_des[side.cl.ix, ...] / side.cl.thickness
-                * cell.memb_model.heat_of_adsorption(state.T[side.cl.ix, ...], cell.memb)
+                * self.base_model.memb_model.heat_of_adsorption(
+                    state.T[side.cl.ix, ...], cell.memb)
             )
 
         return S
@@ -524,3 +556,71 @@ class TransientCellModel:
             dxdt[ch.ix, self.i_s,  :] = 0
 
         return dxdt.reshape(self.n_layers * self.n_variables, state.x.shape[-1])
+
+
+@dataclass
+class CellBaseModel(BaseModel):
+    """
+    ``BaseModel`` pre-configured for a single PEM/AEM cell simulation.
+
+    Owns all physics strategy objects as named fields and wires the
+    ``TransientCellModel`` into ``submodels`` automatically — no manual
+    ``submodels`` or ``input_fns`` dicts required.
+
+    ``BaseModel.__post_init__`` then:
+
+    * registers ``transient_transport_model.get_inputs`` in ``input_fns``
+      so the current density flows from the model into the ODE dispatcher;
+    * injects ``self`` into ``transient_transport_model.base_model`` so
+      the model can resolve physics objects.
+
+    Parameters
+    ----------
+    transient_transport_model : TransientCellModel
+        The ODE submodel.  Set ``current_density`` on it to control the
+        applied current (scalar or ``f(t)`` callable).
+    gas_diffusion_model : PorousGasResistanceModel
+    darcy_transport_model : DarcyTransportModel
+    memb_model : MembraneModel
+    cl_model : CatalystLayerModel
+    voltage_model : VoltageModel
+
+    Example
+    -------
+    ::
+
+        model = TransientCellModel(cell=cell, current_density=5000.)
+        base = CellBaseModel(
+            transient_transport_model=model,
+            memb_model=PFSAModel(),
+            cl_model=PtCCatalystLayerModel(),
+        )
+        y0  = base.initial_state(cell_temperature=353.15, ...)
+        sol = solve_ivp(base.rates_of_change, t_span=(0, 100), y0=y0)
+    """
+
+    transient_transport_model: TransientCellModel = field(
+        default_factory=TransientCellModel)
+    gas_diffusion_model: PorousGasResistanceModel = field(
+        default_factory=PorousGasResistanceModel)
+    darcy_transport_model: DarcyTransportModel = field(
+        default_factory=DarcyTransportModel)
+    memb_model: MembraneModel = field(default_factory=MembraneModel)
+    cl_model: CatalystLayerModel = field(default_factory=CatalystLayerModel)
+    voltage_model: VoltageModel = field(default_factory=VoltageModel)
+
+    def __post_init__(self):
+        # Wire named field → submodels dict, then let BaseModel do the rest
+        # (slice computation, get_inputs registration, base_model injection).
+        self.submodels = {'cell': self.transient_transport_model}
+        super().__post_init__()
+
+    def initial_state(self, **kwargs) -> np.ndarray:
+        """Build the initial state from flat keyword arguments.
+
+        All kwargs are forwarded directly to
+        ``TransientCellModel.initial_state`` — no nesting needed::
+
+            base.initial_state(cell_temperature=353.15, ca_rh=0.7, ...)
+        """
+        return super().initial_state(cell=kwargs)

@@ -1,77 +1,83 @@
-"""Tests for marapendi.models.model — BaseModel."""
+"""Tests for marapendi.models.model — BaseModel and CellBaseModel."""
 import numpy as np
 import pytest
 import marapendi as mrpd
 
-cell_temperature = 353.15
-cell_pressure = 1.5e5
-inlet_rh   = 0.7
+T_OP = 353.15
+P_OP = 1.5e5
+RH   = 0.7
+
+IC = dict(cell_temperature=T_OP, cell_pressure=P_OP,
+          ca_rh=RH, an_rh=RH, ca_dry_o2=0.21, an_dry_h2=1.0)
+
+_PHYSICS = dict(
+    memb_model=mrpd.PFSAModel(),
+    cl_model=mrpd.PtCCatalystLayerModel(),
+    gas_diffusion_model=mrpd.PorousGasResistanceModel(),
+    darcy_transport_model=mrpd.DarcyTransportModel(),
+    voltage_model=mrpd.VoltageModel(),
+)
 
 
-def _make_model():
+def _make_cell():
     reaction = mrpd.ElectrochemicalReaction(
         reference_exchange_current_density=2.47e-8,
-        activation_energy=67e6,
-        reaction_order=0.54,
-        reference_activity=1e5,
-        reference_temperature=cell_temperature,
-        number_of_electrons=2,
-        charge_transfer_coeff=0.5,
+        activation_energy=67e6, reaction_order=0.54,
+        reference_activity=1e5, reference_temperature=T_OP,
+        number_of_electrons=2, charge_transfer_coeff=0.5,
     )
-    cl_kwargs = dict(
+    cl_kw = dict(
         thickness=10e-6, bulk_density=2010., bulk_specific_heat_capacity=710.,
         bulk_thermal_conductivity=0.25, L_Pt=0.3e-2, wt_Pt=0.4, ic_ratio=0.7,
         ecsa=45e3, ionomer=mrpd.Nafion_N21X, r_C=25e-9, K_abs=1e-13,
         theta_contact=95, reaction=reaction,
     )
-    gdl_kwargs = dict(
+    gdl_kw = dict(
         thickness=160e-6, eps_p=0.72, bulk_density=440.,
         bulk_specific_heat_capacity=710., bulk_thermal_conductivity=1.24,
         K_abs=1e-12, theta_contact=115., tort=3,
     )
-    cell = mrpd.Cell(
+    return mrpd.Cell(
         area=25e-4, electrical_resistance=30e-7, thermal_resistance=2e-4,
-        memb_model=mrpd.PFSAModel(),
-        cl_model=mrpd.PtCCatalystLayerModel(),
         ca=mrpd.CellSide(
-            cl=mrpd.PtCCatalystLayer(**cl_kwargs),
-            gdl=mrpd.PorousLayer(**gdl_kwargs),
+            cl=mrpd.PtCCatalystLayer(**cl_kw),
+            gdl=mrpd.PorousLayer(**gdl_kw),
             ch=mrpd.FlowChannel(height=1e-3, bulk_thermal_conductivity=100.),
             has_mpl=False,
         ),
         an=mrpd.CellSide(
-            cl=mrpd.PtCCatalystLayer(**cl_kwargs),
-            gdl=mrpd.PorousLayer(**gdl_kwargs),
+            cl=mrpd.PtCCatalystLayer(**cl_kw),
+            gdl=mrpd.PorousLayer(**gdl_kw),
             ch=mrpd.FlowChannel(height=1e-3, bulk_thermal_conductivity=100.),
             has_mpl=False,
         ),
         memb=mrpd.Nafion_N212,
     )
-    return mrpd.TransientCellModel(cell=cell)
 
 
-initial_conditions = dict(
-    cell_temperature=cell_temperature, cell_pressure=cell_pressure,
-    ca_rh=inlet_rh, an_rh=inlet_rh, ca_dry_o2=0.21, an_dry_h2=1.0,
-)
-
-
-@pytest.fixture(scope="module")
-def single_model():
-    return _make_model()
-
-
-@pytest.fixture(scope="module")
-def base(single_model):
-    return mrpd.BaseModel(
-        submodels={'cell': single_model},
-        input_fns={'cell': lambda t: {'i': 5000.}},
+def _make_base(current_density=5000.) -> mrpd.CellBaseModel:
+    """Fresh fully-specified CellBaseModel."""
+    return mrpd.CellBaseModel(
+        transient_transport_model=mrpd.TransientCellModel(
+            cell=_make_cell(), current_density=current_density,
+        ),
+        **_PHYSICS,
     )
 
 
+# ─── module-scoped fixtures ───────────────────────────────────────────────────
+
+@pytest.fixture(scope="module")
+def base() -> mrpd.CellBaseModel:
+    return _make_base()
+
+
+# ─── BaseModel — generic composition mechanics ────────────────────────────────
+
 class TestBaseModelInit:
-    def test_n_states_equals_submodel(self, base, single_model):
-        assert base.n_states == single_model.n_states
+    def test_n_states_equals_submodel(self, base):
+        model = base.transient_transport_model
+        assert base.n_states == model.n_states
 
     def test_missing_n_states_raises(self):
         class BadModel:
@@ -79,80 +85,96 @@ class TestBaseModelInit:
         with pytest.raises(AttributeError, match="n_states"):
             mrpd.BaseModel(submodels={'bad': BadModel()})
 
-    def test_two_submodels_n_states_sum(self, single_model):
-        m2 = mrpd.BaseModel(
-            submodels={'a': single_model, 'b': single_model},
-        )
-        assert m2.n_states == 2 * single_model.n_states
+    def test_two_submodels_n_states_sum(self):
+        # Compose two independent CellBaseModels — each exposes n_states.
+        b_a = _make_base()
+        b_b = _make_base()
+        composed = mrpd.BaseModel(submodels={'a': b_a, 'b': b_b})
+        assert composed.n_states == b_a.n_states + b_b.n_states
 
+    def test_get_inputs_auto_registered(self, base):
+        # BaseModel should have registered get_inputs from TransientCellModel
+        assert 'cell' in base.input_fns
+        assert base.input_fns['cell'](0.) == {'i': base.transient_transport_model.current_density}
+
+
+# ─── CellBaseModel — initial state ───────────────────────────────────────────
 
 class TestInitialState:
-    def test_shape(self, base, single_model):
-        y0 = base.initial_state(cell=initial_conditions)
-        assert y0.shape == (single_model.n_states,)
+    def test_shape(self, base):
+        y0 = base.initial_state(**IC)
+        assert y0.shape == (base.transient_transport_model.n_states,)
 
     def test_all_finite(self, base):
-        y0 = base.initial_state(cell=initial_conditions)
+        y0 = base.initial_state(**IC)
         assert np.all(np.isfinite(y0))
 
-    def test_two_model_concatenation(self, single_model):
-        base2 = mrpd.BaseModel(
-            submodels={'a': single_model, 'b': single_model},
-        )
-        y0_a = single_model.initial_state(**initial_conditions)
-        y0_ab = base2.initial_state(a=initial_conditions, b=initial_conditions)
-        assert y0_ab.shape == (2 * single_model.n_states,)
-        np.testing.assert_array_equal(y0_ab[:single_model.n_states], y0_a)
-        np.testing.assert_array_equal(y0_ab[single_model.n_states:], y0_a)
+    def test_two_bases_concatenation(self):
+        b_a = _make_base()
+        b_b = _make_base()
+        composed = mrpd.BaseModel(submodels={'a': b_a, 'b': b_b})
+        y0_a = b_a.initial_state(**IC)
+        y0_ab = composed.initial_state(a=IC, b=IC)
+        n = b_a.n_states
+        assert y0_ab.shape == (2 * n,)
+        np.testing.assert_array_equal(y0_ab[:n], y0_a)
+        np.testing.assert_array_equal(y0_ab[n:], y0_a)
 
+
+# ─── CellBaseModel — rates_of_change ─────────────────────────────────────────
 
 class TestRatesOfChange:
     def test_scalar_input(self, base):
-        y0 = base.initial_state(cell=initial_conditions)
+        y0 = base.initial_state(**IC)
         dxdt = base.rates_of_change(0., y0)
         assert dxdt.shape == y0.shape
         assert np.all(np.isfinite(dxdt))
 
-    def test_time_argument_ignored_for_constant_input(self, base):
-        y0 = base.initial_state(cell=initial_conditions)
+    def test_time_argument_ignored_for_constant_current(self, base):
+        y0 = base.initial_state(**IC)
         d1 = base.rates_of_change(0.,   y0)
         d2 = base.rates_of_change(100., y0)
         np.testing.assert_array_almost_equal(d1, d2)
 
-    def test_time_dependent_input(self, single_model):
-        # Input function switches current at t=50
-        base_td = mrpd.BaseModel(
-            submodels={'cell': single_model},
-            input_fns={'cell': lambda t: {'i': 1000. if t < 50 else 10000.}},
-        )
-        y0 = base_td.initial_state(cell=initial_conditions)
-        d_low  = base_td.rates_of_change(0.,  y0)
-        d_high = base_td.rates_of_change(100., y0)
-        # Rates should differ between the two current levels
+    def test_current_density_field_changes_rates(self):
+        b_low  = _make_base(current_density=1000.)
+        b_high = _make_base(current_density=10000.)
+        y0_low  = b_low.initial_state(**IC)
+        y0_high = b_high.initial_state(**IC)
+        d_low  = b_low.rates_of_change(0., y0_low)
+        d_high = b_high.rates_of_change(0., y0_high)
         assert not np.allclose(d_low, d_high)
 
+    def test_callable_current_density(self):
+        # Time-varying current: 0 A/m² for t < 50, 5000 A/m² after
+        b = _make_base(current_density=lambda t: 0. if t < 50 else 5000.)
+        y0 = b.initial_state(**IC)
+        d_before = b.rates_of_change(0.,  y0)
+        d_after  = b.rates_of_change(100., y0)
+        assert not np.allclose(d_before, d_after)
+
+
+# ─── BaseModel — split_state ──────────────────────────────────────────────────
 
 class TestSplitState:
-    def test_single_submodel(self, base, single_model):
-        y0 = base.initial_state(cell=initial_conditions)
+    def test_single_submodel(self, base):
+        y0 = base.initial_state(**IC)
         parts = base.split_state(y0)
         assert 'cell' in parts
         np.testing.assert_array_equal(parts['cell'], y0)
 
-    def test_two_submodels(self, single_model):
-        base2 = mrpd.BaseModel(
-            submodels={'a': single_model, 'b': single_model},
-        )
-        y0 = base2.initial_state(a=initial_conditions, b=initial_conditions)
-        parts = base2.split_state(y0)
-        assert parts['a'].shape == (single_model.n_states,)
-        assert parts['b'].shape == (single_model.n_states,)
-        np.testing.assert_array_equal(
-            np.concatenate([parts['a'], parts['b']]), y0
-        )
+    def test_two_submodels(self):
+        b_a = _make_base()
+        b_b = _make_base()
+        composed = mrpd.BaseModel(submodels={'a': b_a, 'b': b_b})
+        y0 = composed.initial_state(a=IC, b=IC)
+        parts = composed.split_state(y0)
+        assert parts['a'].shape == (b_a.n_states,)
+        assert parts['b'].shape == (b_b.n_states,)
+        np.testing.assert_array_equal(np.concatenate([parts['a'], parts['b']]), y0)
 
-    def test_split_state_2d(self, base, single_model):
-        y0 = base.initial_state(cell=initial_conditions)
+    def test_split_state_2d(self, base):
+        y0 = base.initial_state(**IC)
         y_mat = np.stack([y0, y0], axis=1)
         parts = base.split_state(y_mat)
-        assert parts['cell'].shape == (single_model.n_states, 2)
+        assert parts['cell'].shape == (base.transient_transport_model.n_states, 2)
