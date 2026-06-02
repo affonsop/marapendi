@@ -5,8 +5,9 @@ Physical building blocks of an electrochemical cell — electrodes,
 membrane, flow channels, and supporting structures.
 
 Component classes are dataclasses that hold geometric and material
-parameters.  Computation is delegated to the strategy objects in
-:doc:`models`; components do not implement physics equations directly.
+parameters only — no physics equations.  Computation is delegated to the
+strategy model objects owned by
+:class:`~marapendi.models.cell_base_model.CellBaseModel` (see :doc:`models`).
 
 .. automodule:: marapendi.components.cell
    :members:

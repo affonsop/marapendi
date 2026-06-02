@@ -169,16 +169,18 @@
 <h2 id="B">B</h2>
 <table style="width: 100%" class="indextable genindextable"><tr>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api/models.html#id7">B_ch (marapendi.models.transport.ChannelGasResistanceModel attribute)</a>, <a href="api/models.html#marapendi.models.transport.ChannelGasResistanceModel.B_ch">[1]</a>
+      <li><a href="api/models.html#id8">B_ch (marapendi.models.transport.ChannelGasResistanceModel attribute)</a>, <a href="api/models.html#marapendi.models.transport.ChannelGasResistanceModel.B_ch">[1]</a>
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.OxidePlaceExchange.backward_rate_constant">backward_rate_constant (marapendi.models.degradation.OxidePlaceExchange attribute)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.model.BaseModel">BaseModel (class in marapendi.models.model)</a>
+      <li><a href="api/models.html#marapendi.models.transient.TransientCellModel.base_model">base_model (marapendi.models.transient.TransientCellModel attribute)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.cell.Cell.build_property_arrays">build_property_arrays() (marapendi.components.cell.Cell method)</a>
+      <li><a href="api/models.html#marapendi.models.model.BaseModel">BaseModel (class in marapendi.models.model)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/components.html#marapendi.components.cell.Cell.build_property_arrays">build_property_arrays() (marapendi.components.cell.Cell method)</a>
+</li>
       <li><a href="api/components.html#marapendi.components.layer.Layer.bulk_density">bulk_density (marapendi.components.layer.Layer attribute)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.layer.Layer.bulk_electrical_conductivity">bulk_electrical_conductivity (marapendi.components.layer.Layer attribute)</a>
@@ -299,6 +301,8 @@
 </li>
       <li><a href="api/models.html#marapendi.models.transient.TransientCellModel.cell">cell (marapendi.models.transient.TransientCellModel attribute)</a>
 </li>
+      <li><a href="api/models.html#marapendi.models.cell_base_model.CellBaseModel">CellBaseModel (class in marapendi.models.cell_base_model)</a>
+</li>
       <li><a href="api/components.html#marapendi.components.cell.CellSide">CellSide (class in marapendi.components.cell)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.cell_state.CellState">CellState (class in marapendi.components.cell_state)</a>
@@ -325,11 +329,13 @@
 </li>
       <li><a href="api/components.html#marapendi.components.cell.CellSide.cl">cl (marapendi.components.cell.CellSide attribute)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.cell.Cell.cl_model">cl_model (marapendi.components.cell.Cell attribute)</a>
+      <li><a href="api/models.html#marapendi.models.cell_base_model.CellBaseModel.cl_model">cl_model (marapendi.models.cell_base_model.CellBaseModel attribute)</a>
 </li>
       <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel.compute_global_sensitivity">compute_global_sensitivity() (marapendi.simulation.estimation.DynamicModel method)</a>
 </li>
       <li><a href="api/models.html#marapendi.models.transport.ChannelGasResistanceModel.convection_resistance">convection_resistance() (marapendi.models.transport.ChannelGasResistanceModel method)</a>
+</li>
+      <li><a href="api/models.html#marapendi.models.transient.TransientCellModel.current_density">current_density (marapendi.models.transient.TransientCellModel attribute)</a>
 </li>
   </ul></td>
 </tr></table>
@@ -343,7 +349,7 @@
 </li>
       <li><a href="api/components.html#id16">d_p (marapendi.components.porous_layers.PorousLayer attribute)</a>, <a href="api/components.html#marapendi.components.porous_layers.PorousLayer.d_p">[1]</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.cell.Cell.darcy_transport_model">darcy_transport_model (marapendi.components.cell.Cell attribute)</a>
+      <li><a href="api/models.html#marapendi.models.cell_base_model.CellBaseModel.darcy_transport_model">darcy_transport_model (marapendi.models.cell_base_model.CellBaseModel attribute)</a>
 </li>
       <li><a href="api/models.html#marapendi.models.transport.DarcyTransportModel">DarcyTransportModel (class in marapendi.models.transport)</a>
 </li>
@@ -463,7 +469,7 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.gas">gas (marapendi.components.porous_layers.PorousLayer attribute)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.cell.Cell.gas_diffusion_model">gas_diffusion_model (marapendi.components.cell.Cell attribute)</a>
+      <li><a href="api/models.html#marapendi.models.cell_base_model.CellBaseModel.gas_diffusion_model">gas_diffusion_model (marapendi.models.cell_base_model.CellBaseModel attribute)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.flow_channels.FlowChannel.gas_superficial_speed">gas_superficial_speed() (marapendi.components.flow_channels.FlowChannel method)</a>
 </li>
@@ -471,13 +477,15 @@
 </li>
       <li><a href="api/components.html#marapendi.components.cell.CellSide.gdl">gdl (marapendi.components.cell.CellSide attribute)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/models.html#marapendi.models.degradation.PtSizeDistribution.geometrical_specific_surface_area">geometrical_specific_surface_area() (marapendi.models.degradation.PtSizeDistribution method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/estimation.html#marapendi.estimation.cross_validation.get_complexity_levels">get_complexity_levels() (in module marapendi.estimation.cross_validation)</a>
 </li>
       <li><a href="api/estimation.html#marapendi.estimation.cross_validation.get_folds_for_complexity">get_folds_for_complexity() (in module marapendi.estimation.cross_validation)</a>
+</li>
+      <li><a href="api/models.html#marapendi.models.transient.TransientCellModel.get_inputs">get_inputs() (marapendi.models.transient.TransientCellModel method)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.cell.Cell.get_property_array">get_property_array() (marapendi.components.cell.Cell method)</a>
 </li>
@@ -533,18 +541,20 @@
 </li>
       <li><a href="api/models.html#marapendi.models.degradation.PtSizeDistribution.initial_platinum_loading">initial_platinum_loading (marapendi.models.degradation.PtSizeDistribution attribute)</a>
 </li>
-      <li><a href="api/models.html#marapendi.models.model.BaseModel.initial_state">initial_state() (marapendi.models.model.BaseModel method)</a>
+      <li><a href="api/models.html#marapendi.models.cell_base_model.CellBaseModel.initial_state">initial_state() (marapendi.models.cell_base_model.CellBaseModel method)</a>
 
       <ul>
+        <li><a href="api/models.html#marapendi.models.model.BaseModel.initial_state">(marapendi.models.model.BaseModel method)</a>
+</li>
         <li><a href="api/models.html#marapendi.models.transient.TransientCellModel.initial_state">(marapendi.models.transient.TransientCellModel method)</a>
 </li>
       </ul></li>
       <li><a href="api/components.html#marapendi.components.flow_channels.FlowChannel.inlet_gas_flow_rate">inlet_gas_flow_rate (marapendi.components.flow_channels.FlowChannel attribute)</a>
 </li>
-      <li><a href="api/components.html#id50">inlet_gas_flow_rate() (marapendi.components.flow_channels.FlowChannel method)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/components.html#id50">inlet_gas_flow_rate() (marapendi.components.flow_channels.FlowChannel method)</a>
+</li>
       <li><a href="api/components.html#id51">inlet_liquid_flow_rate (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.inlet_liquid_flow_rate">[1]</a>
 </li>
       <li><a href="api/components.html#id52">inlet_liquid_saturation (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.inlet_liquid_saturation">[1]</a>
@@ -583,9 +593,9 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/models.html#id0">k1_ion (marapendi.models.catalyst_layer.PtCCatalystLayerModel attribute)</a>, <a href="api/models.html#marapendi.models.catalyst_layer.PtCCatalystLayerModel.k1_ion">[1]</a>
 </li>
-      <li><a href="api/models.html#id5">k2_ion (marapendi.models.catalyst_layer.PtCCatalystLayerModel attribute)</a>, <a href="api/models.html#marapendi.models.catalyst_layer.PtCCatalystLayerModel.k2_ion">[1]</a>
+      <li><a href="api/models.html#id6">k2_ion (marapendi.models.catalyst_layer.PtCCatalystLayerModel attribute)</a>, <a href="api/models.html#marapendi.models.catalyst_layer.PtCCatalystLayerModel.k2_ion">[1]</a>
 </li>
-      <li><a href="api/models.html#id6">k3_ion (marapendi.models.catalyst_layer.PtCCatalystLayerModel attribute)</a>, <a href="api/models.html#marapendi.models.catalyst_layer.PtCCatalystLayerModel.k3_ion">[1]</a>
+      <li><a href="api/models.html#id7">k3_ion (marapendi.models.catalyst_layer.PtCCatalystLayerModel attribute)</a>, <a href="api/models.html#marapendi.models.catalyst_layer.PtCCatalystLayerModel.k3_ion">[1]</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
@@ -736,6 +746,13 @@
 </li>
       </ul></li>
       <li>
+    marapendi.models.cell_base_model
+
+      <ul>
+        <li><a href="api/models.html#module-marapendi.models.cell_base_model">module</a>
+</li>
+      </ul></li>
+      <li>
     marapendi.models.degradation
 
       <ul>
@@ -816,7 +833,7 @@
       </ul></li>
       <li><a href="api/components.html#marapendi.components.cell.Cell.memb">memb (marapendi.components.cell.Cell attribute)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.cell.Cell.memb_model">memb_model (marapendi.components.cell.Cell attribute)</a>
+      <li><a href="api/models.html#marapendi.models.cell_base_model.CellBaseModel.memb_model">memb_model (marapendi.models.cell_base_model.CellBaseModel attribute)</a>
 </li>
       <li><a href="api/components.html#marapendi.components.membrane.Membrane">Membrane (class in marapendi.components.membrane)</a>
 </li>
@@ -853,6 +870,8 @@
         <li><a href="api/materials.html#module-marapendi.materials.membranes">marapendi.materials.membranes</a>
 </li>
         <li><a href="api/models.html#module-marapendi.models.catalyst_layer">marapendi.models.catalyst_layer</a>
+</li>
+        <li><a href="api/models.html#module-marapendi.models.cell_base_model">marapendi.models.cell_base_model</a>
 </li>
         <li><a href="api/models.html#module-marapendi.models.degradation">marapendi.models.degradation</a>
 </li>
@@ -906,7 +925,7 @@
       <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.n_s">n_s (marapendi.components.porous_layers.PorousLayer attribute)</a>
 
       <ul>
-        <li><a href="api/models.html#id9">(marapendi.models.transport.PorousGasResistanceModel attribute)</a>, <a href="api/models.html#marapendi.models.transport.PorousGasResistanceModel.n_s">[1]</a>
+        <li><a href="api/models.html#id10">(marapendi.models.transport.PorousGasResistanceModel attribute)</a>, <a href="api/models.html#marapendi.models.transport.PorousGasResistanceModel.n_s">[1]</a>
 </li>
       </ul></li>
       <li><a href="api/components.html#id34">n_sigma_ion (marapendi.components.ionomer.Ionomer attribute)</a>, <a href="api/components.html#marapendi.components.ionomer.Ionomer.n_sigma_ion">[1]</a>
@@ -1207,21 +1226,23 @@
 </li>
       <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.set_water_film_thickness">set_water_film_thickness() (marapendi.components.porous_layers.PorousLayer method)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/components.html#marapendi.components.flow_channels.FlowChannel.sherwood">sherwood (marapendi.components.flow_channels.FlowChannel attribute)</a>
 
       <ul>
-        <li><a href="api/models.html#id8">(marapendi.models.transport.ChannelGasResistanceModel attribute)</a>, <a href="api/models.html#marapendi.models.transport.ChannelGasResistanceModel.sherwood">[1]</a>
+        <li><a href="api/models.html#id9">(marapendi.models.transport.ChannelGasResistanceModel attribute)</a>, <a href="api/models.html#marapendi.models.transport.ChannelGasResistanceModel.sherwood">[1]</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/components.html#id36">sigma_ref_ion (marapendi.components.ionomer.Ionomer attribute)</a>, <a href="api/components.html#marapendi.components.ionomer.Ionomer.sigma_ref_ion">[1]</a>
 </li>
       <li><a href="api/tools.html#marapendi.tools.tools.sigmoid">sigmoid() (in module marapendi.tools.tools)</a>
 </li>
-      <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel.solve">solve() (marapendi.simulation.estimation.DynamicModel method)</a>
+      <li><a href="api/models.html#marapendi.models.model.BaseModel.solve">solve() (marapendi.models.model.BaseModel method)</a>
 
       <ul>
+        <li><a href="api/simulation.html#marapendi.simulation.estimation.DynamicModel.solve">(marapendi.simulation.estimation.DynamicModel method)</a>
+</li>
         <li><a href="api/simulation.html#marapendi.simulation.estimation.SteadyStateModel.solve">(marapendi.simulation.estimation.SteadyStateModel method)</a>
 </li>
       </ul></li>
@@ -1345,6 +1366,8 @@
         <li><a href="api/models.html#marapendi.models.degradation.PlatinumOxideFormation.transfer_coeff_ca">(marapendi.models.degradation.PlatinumOxideFormation attribute)</a>
 </li>
       </ul></li>
+      <li><a href="api/models.html#marapendi.models.cell_base_model.CellBaseModel.transient_transport_model">transient_transport_model (marapendi.models.cell_base_model.CellBaseModel attribute)</a>
+</li>
       <li><a href="api/models.html#marapendi.models.transient.TransientCellModel">TransientCellModel (class in marapendi.models.transient)</a>
 </li>
       <li><a href="api/components.html#id61">transport_resistance_model (marapendi.components.flow_channels.FlowChannel attribute)</a>, <a href="api/components.html#marapendi.components.flow_channels.FlowChannel.transport_resistance_model">[1]</a>
@@ -1391,7 +1414,7 @@
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api/components.html#marapendi.components.porous_layers.PorousLayer.van_genuchten_n">van_genuchten_n (marapendi.components.porous_layers.PorousLayer attribute)</a>
 </li>
-      <li><a href="api/components.html#marapendi.components.cell.Cell.voltage_model">voltage_model (marapendi.components.cell.Cell attribute)</a>
+      <li><a href="api/models.html#marapendi.models.cell_base_model.CellBaseModel.voltage_model">voltage_model (marapendi.models.cell_base_model.CellBaseModel attribute)</a>
 </li>
       <li><a href="api/models.html#marapendi.models.voltage.VoltageModel">VoltageModel (class in marapendi.models.voltage)</a>
 </li>

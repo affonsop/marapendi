@@ -2,27 +2,48 @@ Simulating a polarization curve
 ================================
 
 This guide walks through a complete transient simulation of a PEMFC
-polarization curve using :class:`~marapendi.models.transient.TransientCellModel`.
-The approach mimics a galvanostatic step protocol: current density is held
-constant at each operating point while the internal state (water content,
-temperature, gas concentrations, liquid saturation) reaches near-steady state,
-then the cell voltage is recorded.
+polarization curve.  The approach mimics a galvanostatic step protocol:
+current density is held constant at each operating point while the internal
+state (water content, temperature, gas concentrations, liquid saturation)
+reaches near-steady state, then the cell voltage is recorded.
 
 The full runnable version lives in ``notebooks/simulate_polarization_curve.ipynb``.
+
+Design overview
+---------------
+
+The simulation stack has three layers:
+
+* **Components** (:class:`~marapendi.components.cell.Cell`,
+  :class:`~marapendi.components.catalyst_layers.PtCCatalystLayer`, …)
+  — pure dataclasses holding geometry and material parameters.  No equations.
+
+* :class:`~marapendi.models.transient.TransientCellModel`
+  — the ODE engine.  Holds a :class:`~marapendi.components.cell.Cell`
+  and a ``current_density`` field (scalar or callable).  Physics models are
+  resolved from its parent ``CellBaseModel`` via the injected ``base_model``
+  reference.
+
+* :class:`~marapendi.models.cell_base_model.CellBaseModel`
+  — owns all five physics strategy objects as named fields and wires the
+  ``TransientCellModel`` into its ``submodels`` dict automatically.
+  Provides :meth:`~marapendi.models.model.BaseModel.solve` for one-line integration.
 
 ----
 
 Cell assembly
 -------------
 
-Components are pure dataclasses that hold geometry and material parameters.
-Computation is delegated to stateless model objects passed to :class:`~marapendi.components.cell.Cell`.
+.. important::
+
+   Each side **must use its own** :class:`~marapendi.components.porous_layers.PorousLayer`
+   instance.  Sharing one object causes its ``.ix`` index to be overwritten
+   by the second assignment, leaving the anode GDL slot unwritten (zero gas
+   pressure) in the initial state.
 
 .. code-block:: python
 
     import numpy as np
-    import cantera as ct
-    from scipy.integrate import solve_ivp
     import marapendi as mrpd
 
     orr_kinetics = mrpd.ElectrochemicalReaction(
@@ -35,77 +56,111 @@ Computation is delegated to stateless model objects passed to :class:`~marapendi
         charge_transfer_coeff=1,
     )
 
-    cl = mrpd.PtCCatalystLayer(
-        thickness=10e-6,
-        bulk_density=2010.,
-        bulk_specific_heat_capacity=710.,
-        bulk_thermal_conductivity=0.25,
-        L_Pt=0.3e-2,
-        wt_Pt=0.4,
-        ic_ratio=0.7,
-        ecsa=45e3,
-        ionomer=mrpd.Nafion_N21X,
-        r_C=25e-9,
-        K_abs=1e-13,
-        theta_contact=95,
-        reaction=orr_kinetics,
+    ca_cl = mrpd.PtCCatalystLayer(
+        thickness=10e-6, bulk_density=2010., bulk_specific_heat_capacity=710.,
+        bulk_thermal_conductivity=0.25, L_Pt=0.3e-2, wt_Pt=0.4, ic_ratio=0.7,
+        ecsa=45e3, ionomer=mrpd.Nafion_N21X, r_C=25e-9, K_abs=1e-13,
+        theta_contact=95, reaction=orr_kinetics,
+    )
+    an_cl = mrpd.PtCCatalystLayer(   # separate instance — same parameters
+        thickness=10e-6, bulk_density=2010., bulk_specific_heat_capacity=710.,
+        bulk_thermal_conductivity=0.25, L_Pt=0.3e-2, wt_Pt=0.4, ic_ratio=0.7,
+        ecsa=45e3, ionomer=mrpd.Nafion_N21X, r_C=25e-9, K_abs=1e-13,
+        theta_contact=95, reaction=orr_kinetics,
     )
 
-    gdl = mrpd.PorousLayer(
-        thickness=160e-6,
-        eps_p=0.72,
-        bulk_density=440.,
-        bulk_specific_heat_capacity=710.,
-        bulk_thermal_conductivity=1.24,
-        K_abs=1e-12,
-        theta_contact=115.,
-        tort=3,
+    gdl_ca = mrpd.PorousLayer(
+        thickness=160e-6, eps_p=0.72, bulk_density=440.,
+        bulk_specific_heat_capacity=710., bulk_thermal_conductivity=1.24,
+        K_abs=1e-12, theta_contact=115., tort=3,
+    )
+    gdl_an = mrpd.PorousLayer(   # separate instance for the same reason
+        thickness=160e-6, eps_p=0.72, bulk_density=440.,
+        bulk_specific_heat_capacity=710., bulk_thermal_conductivity=1.24,
+        K_abs=1e-12, theta_contact=115., tort=3,
     )
 
+    # Cell holds geometry and materials only — no physics model objects.
     cell = mrpd.Cell(
-        area=25e-4,
-        electrical_resistance=30e-7,
-        thermal_resistance=2e-4,
-        memb_model=mrpd.PFSAModel(),
-        cl_model=mrpd.PtCCatalystLayerModel(),
+        area=25e-4, electrical_resistance=30e-7, thermal_resistance=2e-4,
         ca=mrpd.CellSide(
-            cl=cl, gdl=gdl,
+            cl=ca_cl, gdl=gdl_ca,
             ch=mrpd.FlowChannel(height=1e-3, bulk_thermal_conductivity=100.),
             has_mpl=False,
         ),
         an=mrpd.CellSide(
-            cl=cl, gdl=gdl,
+            cl=an_cl, gdl=gdl_an,
             ch=mrpd.FlowChannel(height=1e-3, bulk_thermal_conductivity=100.),
             has_mpl=False,
         ),
         memb=mrpd.Nafion_N212,
     )
 
+The layer stack and their indices::
+
     model = mrpd.TransientCellModel(cell=cell)
-
-The layer stack and their indices can be inspected::
-
     for layer in cell.layers:
         print(f"[{layer.ix}] {layer.name}  {layer.thickness*1e6:.0f} µm")
 
-    # [0] anode channel    1000 µm
-    # [1] anode GDL         160 µm
-    # [2] anode CL           10 µm
-    # [3] membrane           50 µm
-    # [4] cathode CL         10 µm
-    # [5] cathode GDL       160 µm
-    # [6] cathode channel  1000 µm
+    # [0] porous layer  1000 µm   ← anode channel
+    # [1] porous layer   160 µm   ← anode GDL
+    # [2] porous layer    10 µm   ← anode CL
+    # [3] porous layer    50 µm   ← membrane (Nafion N212)
+    # [4] porous layer    10 µm   ← cathode CL
+    # [5] porous layer   160 µm   ← cathode GDL
+    # [6] porous layer  1000 µm   ← cathode channel
+
+----
+
+Building the CellBaseModel
+--------------------------
+
+:class:`~marapendi.models.cell_base_model.CellBaseModel` owns the five
+physics strategy objects as named fields.  On construction it wires the
+``TransientCellModel`` into ``submodels`` automatically, registers
+:meth:`~marapendi.models.transient.TransientCellModel.get_inputs` so the
+``current_density`` field flows into the ODE dispatcher without any manual
+``input_fns`` dict, and injects itself into
+``transient_transport_model.base_model`` so the ODE engine can resolve
+physics objects.
+
+.. code-block:: python
+
+    base = mrpd.CellBaseModel(
+        transient_transport_model=mrpd.TransientCellModel(
+            cell=cell,
+            current_density=0.,   # will be updated each step in the loop
+        ),
+        memb_model=mrpd.PFSAModel(),
+        cl_model=mrpd.PtCCatalystLayerModel(),
+        gas_diffusion_model=mrpd.PorousGasResistanceModel(),
+        darcy_transport_model=mrpd.DarcyTransportModel(),
+        voltage_model=mrpd.VoltageModel(),
+    )
+
+    model = base.transient_transport_model   # shorthand for post-processing
 
 ----
 
 Initial conditions
 ------------------
 
-:meth:`~marapendi.models.transient.TransientCellModel.initial_state` constructs
-the normalised flat state vector expected by ``solve_ivp`` from operating
-conditions.  It assigns the correct gas composition to each layer depending on
-which side of the membrane it sits on, and guards missing species with a small
-epsilon to avoid ``log(0)`` in the Nernst equation at *t* = 0.
+:meth:`~marapendi.models.cell_base_model.CellBaseModel.initial_state`
+accepts flat keyword arguments and forwards them to
+:meth:`~marapendi.models.transient.TransientCellModel.initial_state`.
+Ionomer water content is initialised at the equilibrium value for the
+average inlet relative humidity; liquid saturation starts at zero.
+
+.. code-block:: python
+
+    y0 = base.initial_state(
+        cell_temperature=353.15,   # K  (80 °C)
+        cell_pressure=1.5e5,       # Pa (1.5 bara)
+        ca_rh=0.7,                 # cathode inlet RH
+        an_rh=0.7,                 # anode inlet RH
+        ca_dry_o2=0.21,            # cathode dry-gas O₂ fraction (air)
+        an_dry_h2=1.0,             # anode dry-gas H₂ fraction (pure H₂)
+    )
 
 The state vector has ``n_layers × n_variables = 7 × 7 = 49`` elements:
 
@@ -146,32 +201,22 @@ The state vector has ``n_layers × n_variables = 7 × 7 = 49`` elements:
      - —
      - Liquid water saturation
 
-.. code-block:: python
-
-    y0 = model.initial_state(
-        T=353.15,       # K  (80 °C)
-        p=1.5e5,        # Pa (1.5 bara)
-        rh=0.7,         # relative humidity
-        lmbd=10.0,      # initial water content [mol/mol]
-        s=0.05,         # initial liquid saturation
-        ca_dry_o2=0.21, # cathode: air
-        an_dry_h2=1.0,  # anode: pure H₂
-    )
-
 ----
 
 Step-current polarization curve
 ---------------------------------
 
-Each current step is integrated with BDF.  The final state of one step
-becomes the initial state of the next, so the cell progressively hydrates
-and warms — matching a real galvanostatic sweep.
+Set ``current_density`` directly on the ``TransientCellModel`` before each
+step — no mutable containers or ``input_fns`` dicts needed.
+:meth:`~marapendi.models.model.BaseModel.solve` wraps ``scipy.integrate.solve_ivp``
+with BDF as the default method.
 
 .. code-block:: python
 
-    def postprocess(model, y_flat, i_density):
+    def postprocess(y_flat, i_density):
         """Populate a CellState with voltage and thermodynamic fields."""
-        x = (y_flat.reshape(model.n_layers, model.n_variables, -1)
+        cell_y = base.split_state(y_flat)['cell']
+        x = (cell_y.reshape(model.n_layers, model.n_variables, -1)
              * model.norm_factor[..., np.newaxis])
         state = model._compute_derived_quantities(x, i_density)
         model._compute_voltage(state)
@@ -186,21 +231,46 @@ and warms — matching a real galvanostatic sweep.
     y = y0.copy()
 
     for i_density in CURRENT_DENSITIES:
-        sol = solve_ivp(
-            fun=lambda t, y: model.rates_of_change(y[:, np.newaxis], i=i_density)[:, 0],
-            t_span=(0., T_STEP),
-            y0=y,
-            method='BDF',
-            max_step=10.,
-            rtol=1e-3,
-            atol=1e-6,
-        )
+        model.current_density = float(i_density)
+        sol = base.solve(y, t_span=(0., T_STEP), max_step=10.)
         y = sol.y[:, -1]
-        results.append(postprocess(model, y[:, np.newaxis], i_density))
+        results.append(postprocess(y[:, np.newaxis], i_density))
 
-    V_cell  = np.array([float(s.V_cell)  for s in results])
-    eta_ohm = np.array([float(s.eta_ohm) for s in results])
-    eta_act = np.array([float(s.eta_act) for s in results])
+    V_cell  = np.array([s.V_cell.item()  for s in results])
+    eta_ohm = np.array([s.eta_ohm.item() for s in results])
+    eta_act = np.array([s.eta_act.item() for s in results])
+
+For a time-varying current (e.g. a load transient), assign a callable::
+
+    model.current_density = lambda t: 5000. if t < 50 else 10000.
+
+----
+
+Transient diagnostics
+---------------------
+
+For a single fixed-current run, create a dedicated ``CellBaseModel`` with a
+constant ``current_density`` and pass a ``t_eval`` grid:
+
+.. code-block:: python
+
+    base_diag = mrpd.CellBaseModel(
+        transient_transport_model=mrpd.TransientCellModel(
+            cell=cell, current_density=10000.,   # 1 A/cm²
+        ),
+        memb_model=mrpd.PFSAModel(),
+        cl_model=mrpd.PtCCatalystLayerModel(),
+        gas_diffusion_model=mrpd.PorousGasResistanceModel(),
+        darcy_transport_model=mrpd.DarcyTransportModel(),
+        voltage_model=mrpd.VoltageModel(),
+    )
+
+    t_eval = np.linspace(0, 200, 201)
+    sol = base_diag.solve(y0, t_span=(0., 200.), max_step=2., t_eval=t_eval)
+    state = postprocess(sol.y, 10000.)
+
+    # cell voltage over time
+    plt.plot(sol.t, state.V_cell)
 
 ----
 
@@ -208,46 +278,34 @@ Composing multiple cells
 -------------------------
 
 :class:`~marapendi.models.model.BaseModel` composes any number of submodels
-into a single ODE system whose state vector is the concatenation of each
-submodel's state vector.  Each submodel only needs to expose
-``rates_of_change(x, **inputs)`` and an ``n_states`` integer.
-
-This is useful for simulating a stack of cells at different operating
-points, or for coupling a cell model to an auxiliary system.
+into a single ODE.  Each submodel only needs to expose
+``rates_of_change(x, **inputs)`` and ``n_states``.
+Since :class:`~marapendi.models.cell_base_model.CellBaseModel` satisfies both,
+two cells can be composed directly:
 
 .. code-block:: python
 
-    model_a = mrpd.TransientCellModel(cell=cell_a)
-    model_b = mrpd.TransientCellModel(cell=cell_b)
-
-    i_a = lambda t: 5000.    # A/m² — constant load on cell A
-    i_b = lambda t: 10000.   # A/m² — different load on cell B
-
-    base = mrpd.BaseModel(
-        submodels={'cell_a': model_a, 'cell_b': model_b},
-        input_fns={
-            'cell_a': lambda t: {'i': i_a(t)},
-            'cell_b': lambda t: {'i': i_b(t)},
-        },
+    base_a = mrpd.CellBaseModel(
+        transient_transport_model=mrpd.TransientCellModel(
+            cell=cell_a, current_density=5000.,
+        ),
+        memb_model=mrpd.PFSAModel(), ...
+    )
+    base_b = mrpd.CellBaseModel(
+        transient_transport_model=mrpd.TransientCellModel(
+            cell=cell_b, current_density=10000.,
+        ),
+        memb_model=mrpd.PFSAModel(), ...
     )
 
-    y0 = base.initial_state(
-        cell_a={'T': 353.15, 'p': 1.5e5, 'rh': 0.7},
-        cell_b={'T': 343.15, 'p': 1.0e5, 'rh': 0.6},
-    )
+    composed = mrpd.BaseModel(submodels={'a': base_a, 'b': base_b})
 
-    sol = solve_ivp(
-        base.rates_of_change,   # signature (t, x) — matches solve_ivp directly
-        t_span=(0., 200.),
-        y0=y0,
-        method='BDF',
-        max_step=10.,
-    )
+    y0 = composed.initial_state(a=ic_a, b=ic_b)
+    sol = composed.solve(y0, t_span=(0., 200.))
 
-    # Split the solution back into per-cell arrays
-    states = base.split_state(sol.y)
-    # states['cell_a'] shape: (model_a.n_states, n_timepoints)
-    # states['cell_b'] shape: (model_b.n_states, n_timepoints)
+    states = composed.split_state(sol.y)
+    # states['a'] shape: (base_a.n_states, n_timepoints)
+    # states['b'] shape: (base_b.n_states, n_timepoints)
 
-``BaseModel`` itself satisfies the same protocol (it has ``rates_of_change``
-and ``n_states``), so models can be nested arbitrarily.
+``BaseModel`` itself exposes ``rates_of_change`` and ``n_states``, so
+composed models can be nested arbitrarily.

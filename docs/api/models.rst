@@ -22,6 +22,11 @@ See the :doc:`../user_guide/polarization_curve` guide for a worked example.
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: marapendi.models.cell_base_model
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: marapendi.models.membrane
    :members:
    :undoc-members:

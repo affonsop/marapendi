@@ -35,6 +35,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 import numpy as np
+from scipy.integrate import solve_ivp as _solve_ivp
 
 
 @dataclass
@@ -116,6 +117,59 @@ class BaseModel:
             dxdt[sl] = model.rates_of_change(x[sl], **inputs(t))
 
         return dxdt[:, 0] if scalar else dxdt
+
+    # ------------------------------------------------------------------
+    # Solver
+    # ------------------------------------------------------------------
+
+    def solve(
+        self,
+        y0: np.ndarray,
+        t_span: tuple,
+        *,
+        method: str = 'BDF',
+        rtol: float = 1e-3,
+        atol: float = 1e-6,
+        max_step: float = np.inf,
+        **kwargs,
+    ):
+        """Integrate the ODE system with ``scipy.integrate.solve_ivp``.
+
+        Parameters
+        ----------
+        y0 : np.ndarray
+            Initial state vector, typically from ``initial_state``.
+        t_span : tuple[float, float]
+            ``(t0, tf)`` integration interval.
+        method : str
+            Integration method passed to ``solve_ivp`` (default ``'BDF'``,
+            which handles stiff problems well).
+        rtol : float
+            Relative tolerance (default 1e-3).
+        atol : float
+            Absolute tolerance (default 1e-6).
+        max_step : float
+            Maximum allowed step size (default ``np.inf``).
+        **kwargs
+            Any additional keyword arguments forwarded verbatim to
+            ``scipy.integrate.solve_ivp`` (e.g. ``t_eval``, ``dense_output``).
+
+        Returns
+        -------
+        scipy.integrate.OdeSolution
+            The result object returned by ``solve_ivp``.  Check
+            ``sol.success`` or ``sol.status`` before using ``sol.y``.
+        """
+        return _solve_ivp(
+            self.rates_of_change,
+            t_span=t_span,
+            y0=y0,
+            method=method,
+            rtol=rtol,
+            atol=atol,
+            max_step=max_step,
+            **kwargs,
+        )
 
     # ------------------------------------------------------------------
     # Initial state

@@ -55,16 +55,11 @@
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.components.cell.Cell.build_property_arrays"><code class="docutils literal notranslate"><span class="pre">Cell.build_property_arrays()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.components.cell.Cell.ca"><code class="docutils literal notranslate"><span class="pre">Cell.ca</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.components.cell.Cell.charge"><code class="docutils literal notranslate"><span class="pre">Cell.charge</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#marapendi.components.cell.Cell.cl_model"><code class="docutils literal notranslate"><span class="pre">Cell.cl_model</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#marapendi.components.cell.Cell.darcy_transport_model"><code class="docutils literal notranslate"><span class="pre">Cell.darcy_transport_model</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.components.cell.Cell.electrical_resistance"><code class="docutils literal notranslate"><span class="pre">Cell.electrical_resistance</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#marapendi.components.cell.Cell.gas_diffusion_model"><code class="docutils literal notranslate"><span class="pre">Cell.gas_diffusion_model</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.components.cell.Cell.get_property_array"><code class="docutils literal notranslate"><span class="pre">Cell.get_property_array()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.components.cell.Cell.memb"><code class="docutils literal notranslate"><span class="pre">Cell.memb</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#marapendi.components.cell.Cell.memb_model"><code class="docutils literal notranslate"><span class="pre">Cell.memb_model</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.components.cell.Cell.name"><code class="docutils literal notranslate"><span class="pre">Cell.name</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.components.cell.Cell.thermal_resistance"><code class="docutils literal notranslate"><span class="pre">Cell.thermal_resistance</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#marapendi.components.cell.Cell.voltage_model"><code class="docutils literal notranslate"><span class="pre">Cell.voltage_model</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#marapendi.components.cell.CellSide"><code class="docutils literal notranslate"><span class="pre">CellSide</span></code></a><ul>
@@ -391,13 +386,19 @@
 <p>Physical building blocks of an electrochemical cell — electrodes,
 membrane, flow channels, and supporting structures.</p>
 <p>Component classes are dataclasses that hold geometric and material
-parameters.  Computation is delegated to the strategy objects in
-<a class="reference internal" href="models.html"><span class="doc">Models</span></a>; components do not implement physics equations directly.</p>
+parameters only — no physics equations.  Computation is delegated to the
+strategy model objects owned by
+<a class="reference internal" href="models.html#marapendi.models.cell_base_model.CellBaseModel" title="marapendi.models.cell_base_model.CellBaseModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">CellBaseModel</span></code></a> (see <a class="reference internal" href="models.html"><span class="doc">Models</span></a>).</p>
 <dl class="py class" id="module-marapendi.components.cell">
 <dt class="sig sig-object py" id="marapendi.components.cell.Cell">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">marapendi.components.cell.</span></span><span class="sig-name descname"><span class="pre">Cell</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'cell'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">electrical_resistance:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thermal_resistance:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ca:</span> <span class="pre">~marapendi.components.cell.CellSide</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">an:</span> <span class="pre">~marapendi.components.cell.CellSide</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">memb:</span> <span class="pre">~marapendi.components.membrane.Membrane</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gas_diffusion_model:</span> <span class="pre">~marapendi.models.transport.PorousGasResistanceModel</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">darcy_transport_model:</span> <span class="pre">~marapendi.models.transport.DarcyTransportModel</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">memb_model:</span> <span class="pre">~marapendi.models.membrane.MembraneModel</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cl_model:</span> <span class="pre">~marapendi.models.catalyst_layer.CatalystLayerModel</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">voltage_model:</span> <span class="pre">~marapendi.models.voltage.VoltageModel</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charge:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'proton'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/components/cell.html#Cell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.components.cell.Cell" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">marapendi.components.cell.</span></span><span class="sig-name descname"><span class="pre">Cell</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'cell'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">electrical_resistance:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thermal_resistance:</span> <span class="pre">float</span> <span class="pre">=</span> <span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ca:</span> <span class="pre">~marapendi.components.cell.CellSide</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">an:</span> <span class="pre">~marapendi.components.cell.CellSide</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">memb:</span> <span class="pre">~marapendi.components.membrane.Membrane</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charge:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'proton'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/components/cell.html#Cell"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.components.cell.Cell" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="tools.html#marapendi.tools.tools.Updatable" title="marapendi.tools.tools.Updatable"><code class="xref py py-class docutils literal notranslate"><span class="pre">Updatable</span></code></a></p>
-<p>A class representing an AEM/PEM cell.</p>
+<p>Geometry, material parameters, and layer stack for an AEM/PEM cell.</p>
+<p>Physics models (membrane transport, gas diffusion, liquid transport,
+catalyst-layer kinetics, voltage) are intentionally excluded from this
+class.  They belong on the <a class="reference internal" href="models.html#marapendi.models.model.BaseModel" title="marapendi.models.model.BaseModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></a>
+that wraps the simulation, keeping component data separate from the
+equations that act on it.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="marapendi.components.cell.Cell.an">
 <span class="sig-name descname"><span class="pre">an</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#marapendi.components.cell.CellSide" title="marapendi.components.cell.CellSide"><span class="pre">CellSide</span></a></em><a class="headerlink" href="#marapendi.components.cell.Cell.an" title="Link to this definition"></a></dt>
@@ -424,45 +425,24 @@ parameters.  Computation is delegated to the strategy objects in
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="marapendi.components.cell.Cell.cl_model">
-<span class="sig-name descname"><span class="pre">cl_model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="models.html#marapendi.models.catalyst_layer.CatalystLayerModel" title="marapendi.models.catalyst_layer.CatalystLayerModel"><span class="pre">CatalystLayerModel</span></a></em><a class="headerlink" href="#marapendi.components.cell.Cell.cl_model" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="marapendi.components.cell.Cell.darcy_transport_model">
-<span class="sig-name descname"><span class="pre">darcy_transport_model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="models.html#marapendi.models.transport.DarcyTransportModel" title="marapendi.models.transport.DarcyTransportModel"><span class="pre">DarcyTransportModel</span></a></em><a class="headerlink" href="#marapendi.components.cell.Cell.darcy_transport_model" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
 <dt class="sig sig-object py" id="marapendi.components.cell.Cell.electrical_resistance">
 <span class="sig-name descname"><span class="pre">electrical_resistance</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></em><a class="headerlink" href="#marapendi.components.cell.Cell.electrical_resistance" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="marapendi.components.cell.Cell.gas_diffusion_model">
-<span class="sig-name descname"><span class="pre">gas_diffusion_model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="models.html#marapendi.models.transport.PorousGasResistanceModel" title="marapendi.models.transport.PorousGasResistanceModel"><span class="pre">PorousGasResistanceModel</span></a></em><a class="headerlink" href="#marapendi.components.cell.Cell.gas_diffusion_model" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="marapendi.components.cell.Cell.get_property_array">
 <span class="sig-name descname"><span class="pre">get_property_array</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">property_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/components/cell.html#Cell.get_property_array"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.components.cell.Cell.get_property_array" title="Link to this definition"></a></dt>
-<dd><p>Get array of properties across all layers.</p>
+<dd><p>Get an array of a scalar or vector property across all layers.</p>
 <ul class="simple">
 <li><p>Scalar property  → shape (n_layers, 1)</p></li>
-<li><p>Length-N array property → shape (N, n_layers)</p></li>
+<li><p>Length-N array   → shape (n_layers, N)</p></li>
 </ul>
-<p>Layers missing the attribute contribute np.nan (scalar case) or a
-nan-filled column of the same length as the first array found.</p>
+<p>Layers missing the attribute contribute <code class="docutils literal notranslate"><span class="pre">np.nan</span></code>.</p>
 </dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="marapendi.components.cell.Cell.memb">
 <span class="sig-name descname"><span class="pre">memb</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#marapendi.components.membrane.Membrane" title="marapendi.components.membrane.Membrane"><span class="pre">Membrane</span></a></em><a class="headerlink" href="#marapendi.components.cell.Cell.memb" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="marapendi.components.cell.Cell.memb_model">
-<span class="sig-name descname"><span class="pre">memb_model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="models.html#marapendi.models.membrane.MembraneModel" title="marapendi.models.membrane.MembraneModel"><span class="pre">MembraneModel</span></a></em><a class="headerlink" href="#marapendi.components.cell.Cell.memb_model" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -475,18 +455,13 @@ nan-filled column of the same length as the first array found.</p>
 <span class="sig-name descname"><span class="pre">thermal_resistance</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></em><a class="headerlink" href="#marapendi.components.cell.Cell.thermal_resistance" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
-<dl class="py attribute">
-<dt class="sig sig-object py" id="marapendi.components.cell.Cell.voltage_model">
-<span class="sig-name descname"><span class="pre">voltage_model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="models.html#marapendi.models.voltage.VoltageModel" title="marapendi.models.voltage.VoltageModel"><span class="pre">VoltageModel</span></a></em><a class="headerlink" href="#marapendi.components.cell.Cell.voltage_model" title="Link to this definition"></a></dt>
-<dd></dd></dl>
-
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="marapendi.components.cell.CellSide">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">marapendi.components.cell.</span></span><span class="sig-name descname"><span class="pre">CellSide</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">'side'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cl:</span> <span class="pre">~marapendi.components.porous_layers.PorousLayer</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gdl:</span> <span class="pre">~marapendi.components.porous_layers.PorousLayer</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mpl:</span> <span class="pre">~marapendi.components.porous_layers.PorousLayer</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ch:</span> <span class="pre">~marapendi.components.flow_channels.FlowChannel</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_mpl:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">has_gdl:</span> <span class="pre">bool</span> <span class="pre">=</span> <span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/components/cell.html#CellSide"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.components.cell.CellSide" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="tools.html#marapendi.tools.tools.Updatable" title="marapendi.tools.tools.Updatable"><code class="xref py py-class docutils literal notranslate"><span class="pre">Updatable</span></code></a></p>
-<p>A class representing one side (anode or cathode) of an AEM/PEM cell.</p>
+<p>One side (anode or cathode) of an AEM/PEM cell.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="marapendi.components.cell.CellSide.ch">
 <span class="sig-name descname"><span class="pre">ch</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#marapendi.components.flow_channels.FlowChannel" title="marapendi.components.flow_channels.FlowChannel"><span class="pre">FlowChannel</span></a></em><a class="headerlink" href="#marapendi.components.cell.CellSide.ch" title="Link to this definition"></a></dt>

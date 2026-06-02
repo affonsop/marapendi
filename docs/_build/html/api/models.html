@@ -57,13 +57,17 @@
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.model.BaseModel.initial_state"><code class="docutils literal notranslate"><span class="pre">BaseModel.initial_state()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.model.BaseModel.input_fns"><code class="docutils literal notranslate"><span class="pre">BaseModel.input_fns</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.model.BaseModel.rates_of_change"><code class="docutils literal notranslate"><span class="pre">BaseModel.rates_of_change()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.models.model.BaseModel.solve"><code class="docutils literal notranslate"><span class="pre">BaseModel.solve()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.model.BaseModel.split_state"><code class="docutils literal notranslate"><span class="pre">BaseModel.split_state()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.model.BaseModel.submodels"><code class="docutils literal notranslate"><span class="pre">BaseModel.submodels</span></code></a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#id1">Classes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#marapendi.models.transient.TransientCellModel"><code class="docutils literal notranslate"><span class="pre">TransientCellModel</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transient.TransientCellModel.base_model"><code class="docutils literal notranslate"><span class="pre">TransientCellModel.base_model</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transient.TransientCellModel.cell"><code class="docutils literal notranslate"><span class="pre">TransientCellModel.cell</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transient.TransientCellModel.current_density"><code class="docutils literal notranslate"><span class="pre">TransientCellModel.current_density</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transient.TransientCellModel.get_inputs"><code class="docutils literal notranslate"><span class="pre">TransientCellModel.get_inputs()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transient.TransientCellModel.get_states_from_x"><code class="docutils literal notranslate"><span class="pre">TransientCellModel.get_states_from_x()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transient.TransientCellModel.initial_state"><code class="docutils literal notranslate"><span class="pre">TransientCellModel.initial_state()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transient.TransientCellModel.n_states"><code class="docutils literal notranslate"><span class="pre">TransientCellModel.n_states</span></code></a></li>
@@ -71,6 +75,17 @@
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#id2">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#marapendi.models.cell_base_model.CellBaseModel"><code class="docutils literal notranslate"><span class="pre">CellBaseModel</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.models.cell_base_model.CellBaseModel.cl_model"><code class="docutils literal notranslate"><span class="pre">CellBaseModel.cl_model</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.models.cell_base_model.CellBaseModel.darcy_transport_model"><code class="docutils literal notranslate"><span class="pre">CellBaseModel.darcy_transport_model</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.models.cell_base_model.CellBaseModel.gas_diffusion_model"><code class="docutils literal notranslate"><span class="pre">CellBaseModel.gas_diffusion_model</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.models.cell_base_model.CellBaseModel.initial_state"><code class="docutils literal notranslate"><span class="pre">CellBaseModel.initial_state()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.models.cell_base_model.CellBaseModel.memb_model"><code class="docutils literal notranslate"><span class="pre">CellBaseModel.memb_model</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.models.cell_base_model.CellBaseModel.transient_transport_model"><code class="docutils literal notranslate"><span class="pre">CellBaseModel.transient_transport_model</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.models.cell_base_model.CellBaseModel.voltage_model"><code class="docutils literal notranslate"><span class="pre">CellBaseModel.voltage_model</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#id3">Classes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#design-note">Design note</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#marapendi.models.membrane.IonomerModel"><code class="docutils literal notranslate"><span class="pre">IonomerModel</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.membrane.IonomerModel.charge_conductivity"><code class="docutils literal notranslate"><span class="pre">IonomerModel.charge_conductivity()</span></code></a></li>
@@ -95,8 +110,8 @@
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.membrane.PFSAModel.o2_permeability"><code class="docutils literal notranslate"><span class="pre">PFSAModel.o2_permeability()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#id3">Classes</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#id4">Design note</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id4">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id5">Design note</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#marapendi.models.catalyst_layer.CatalystLayerModel"><code class="docutils literal notranslate"><span class="pre">CatalystLayerModel</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.catalyst_layer.CatalystLayerModel.effective_charge_resistance"><code class="docutils literal notranslate"><span class="pre">CatalystLayerModel.effective_charge_resistance()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.catalyst_layer.CatalystLayerModel.electrolyte_sheet_resistance"><code class="docutils literal notranslate"><span class="pre">CatalystLayerModel.electrolyte_sheet_resistance()</span></code></a></li>
@@ -108,8 +123,8 @@
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.catalyst_layer.PtCCatalystLayerModel.k2_ion"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayerModel.k2_ion</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.catalyst_layer.PtCCatalystLayerModel.k3_ion"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayerModel.k3_ion</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayerModel.k1_ion</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id5"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayerModel.k2_ion</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id6"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayerModel.k3_ion</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayerModel.k2_ion</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id7"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayerModel.k3_ion</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.catalyst_layer.PtCCatalystLayerModel.o2_ionomer_film_bulk_resistance"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayerModel.o2_ionomer_film_bulk_resistance()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.catalyst_layer.PtCCatalystLayerModel.o2_ionomer_film_resistance"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayerModel.o2_ionomer_film_resistance()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.catalyst_layer.PtCCatalystLayerModel.water_film_thickness"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayerModel.water_film_thickness()</span></code></a></li>
@@ -118,10 +133,10 @@
 <li class="toctree-l2"><a class="reference internal" href="#marapendi.models.transport.ChannelGasResistanceModel"><code class="docutils literal notranslate"><span class="pre">ChannelGasResistanceModel</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transport.ChannelGasResistanceModel.sherwood"><code class="docutils literal notranslate"><span class="pre">ChannelGasResistanceModel.sherwood</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transport.ChannelGasResistanceModel.B_ch"><code class="docutils literal notranslate"><span class="pre">ChannelGasResistanceModel.B_ch</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id7"><code class="docutils literal notranslate"><span class="pre">ChannelGasResistanceModel.B_ch</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id8"><code class="docutils literal notranslate"><span class="pre">ChannelGasResistanceModel.B_ch</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transport.ChannelGasResistanceModel.convection_resistance"><code class="docutils literal notranslate"><span class="pre">ChannelGasResistanceModel.convection_resistance()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transport.ChannelGasResistanceModel.molecular_diffusion_resistance"><code class="docutils literal notranslate"><span class="pre">ChannelGasResistanceModel.molecular_diffusion_resistance()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id8"><code class="docutils literal notranslate"><span class="pre">ChannelGasResistanceModel.sherwood</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id9"><code class="docutils literal notranslate"><span class="pre">ChannelGasResistanceModel.sherwood</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transport.ChannelGasResistanceModel.total_resistance"><code class="docutils literal notranslate"><span class="pre">ChannelGasResistanceModel.total_resistance()</span></code></a></li>
 </ul>
 </li>
@@ -137,13 +152,13 @@
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transport.PorousGasResistanceModel.knudsen_diffusivity"><code class="docutils literal notranslate"><span class="pre">PorousGasResistanceModel.knudsen_diffusivity()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transport.PorousGasResistanceModel.molecular_diffusion_effective_length"><code class="docutils literal notranslate"><span class="pre">PorousGasResistanceModel.molecular_diffusion_effective_length()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transport.PorousGasResistanceModel.molecular_diffusion_resistance"><code class="docutils literal notranslate"><span class="pre">PorousGasResistanceModel.molecular_diffusion_resistance()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#id9"><code class="docutils literal notranslate"><span class="pre">PorousGasResistanceModel.n_s</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id10"><code class="docutils literal notranslate"><span class="pre">PorousGasResistanceModel.n_s</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transport.PorousGasResistanceModel.species_diffusion_coefficient"><code class="docutils literal notranslate"><span class="pre">PorousGasResistanceModel.species_diffusion_coefficient()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transport.PorousGasResistanceModel.total_diffusion_resistance"><code class="docutils literal notranslate"><span class="pre">PorousGasResistanceModel.total_diffusion_resistance()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.transport.PorousGasResistanceModel.water_saturation_correction"><code class="docutils literal notranslate"><span class="pre">PorousGasResistanceModel.water_saturation_correction()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#id10">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#id11">Classes</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#marapendi.models.voltage.VoltageModel"><code class="docutils literal notranslate"><span class="pre">VoltageModel</span></code></a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.voltage.VoltageModel.calculate_activation_overpotential"><code class="docutils literal notranslate"><span class="pre">VoltageModel.calculate_activation_overpotential()</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="#marapendi.models.voltage.VoltageModel.calculate_cell_voltage"><code class="docutils literal notranslate"><span class="pre">VoltageModel.calculate_cell_voltage()</span></code></a></li>
@@ -319,9 +334,11 @@ parameters; model classes carry the equations.</p>
 <section id="classes">
 <h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
 <dl class="simple">
-<dt>BaseModel</dt><dd><p>Composes any number of submodels—each exposing <code class="docutils literal notranslate"><span class="pre">rates_of_change</span></code> and
-<code class="docutils literal notranslate"><span class="pre">n_states</span></code>—into one combined ODE whose state vector is the
-concatenation of every submodel’s state vector.</p>
+<dt>BaseModel</dt><dd><p>Generic ODE compositor.  Composes any number of submodels—each
+exposing <code class="docutils literal notranslate"><span class="pre">rates_of_change</span></code> and <code class="docutils literal notranslate"><span class="pre">n_states</span></code>—into one combined ODE.
+If a submodel defines a <code class="docutils literal notranslate"><span class="pre">get_inputs(t)</span></code> method, <code class="docutils literal notranslate"><span class="pre">BaseModel</span></code>
+registers it automatically in <code class="docutils literal notranslate"><span class="pre">input_fns</span></code> during <code class="docutils literal notranslate"><span class="pre">__post_init__</span></code>;
+no manual <code class="docutils literal notranslate"><span class="pre">input_fns</span></code> dict is needed for the common case.</p>
 </dd>
 </dl>
 </section>
@@ -334,55 +351,29 @@ where <code class="docutils literal notranslate"><span class="pre">x</span></cod
 <li><p><code class="docutils literal notranslate"><span class="pre">n_states:</span> <span class="pre">int</span></code>
 total length of the normalised flat state vector.</p></li>
 </ul>
-<p><code class="docutils literal notranslate"><span class="pre">TransientCellModel</span></code> satisfies both requirements.  <code class="docutils literal notranslate"><span class="pre">BaseModel</span></code> itself
-also satisfies them, so models can be nested arbitrarily.</p>
+<p>Optionally, a submodel may implement:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">get_inputs(t:</span> <span class="pre">float)</span> <span class="pre">-&gt;</span> <span class="pre">dict</span></code>
+returns keyword arguments forwarded to <code class="docutils literal notranslate"><span class="pre">rates_of_change</span></code> at time <em>t</em>.
+When present, this is registered in <code class="docutils literal notranslate"><span class="pre">input_fns</span></code> automatically (explicit
+entries in <code class="docutils literal notranslate"><span class="pre">input_fns</span></code> take precedence).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">base_model</span></code>
+any attribute by this name will be overwritten with a reference to the
+owning <code class="docutils literal notranslate"><span class="pre">BaseModel</span></code> so submodels can resolve shared model objects.</p></li>
+</ul>
 </section>
 <dl class="py class">
 <dt class="sig sig-object py" id="marapendi.models.model.BaseModel">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">marapendi.models.model.</span></span><span class="sig-name descname"><span class="pre">BaseModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">submodels:</span> <span class="pre">dict[str,</span> <span class="pre">~typing.Any],</span> <span class="pre">input_fns:</span> <span class="pre">dict[str,</span> <span class="pre">~typing.Callable]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/model.html#BaseModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.model.BaseModel" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">marapendi.models.model.</span></span><span class="sig-name descname"><span class="pre">BaseModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">submodels:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~typing.Any]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_fns:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~typing.Callable]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/model.html#BaseModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.model.BaseModel" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Compose multiple submodels into a single ODE system.</p>
-<p>The combined state vector is the concatenation of each submodel’s
-normalised flat state vector.  <code class="docutils literal notranslate"><span class="pre">rates_of_change</span></code> dispatches each
-submodel’s slice to the corresponding <code class="docutils literal notranslate"><span class="pre">rates_of_change</span></code> method, using
-time-dependent input functions to supply keyword arguments.</p>
-<p>Typical usage with <code class="docutils literal notranslate"><span class="pre">scipy.integrate.solve_ivp</span></code>:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">base</span> <span class="o">=</span> <span class="n">BaseModel</span><span class="p">(</span>
-    <span class="n">submodels</span><span class="o">=</span><span class="p">{</span>
-        <span class="s1">&#39;cell_a&#39;</span><span class="p">:</span> <span class="n">model_a</span><span class="p">,</span>
-        <span class="s1">&#39;cell_b&#39;</span><span class="p">:</span> <span class="n">model_b</span><span class="p">,</span>
-    <span class="p">},</span>
-    <span class="n">input_fns</span><span class="o">=</span><span class="p">{</span>
-        <span class="s1">&#39;cell_a&#39;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;i&#39;</span><span class="p">:</span> <span class="n">i_a</span><span class="p">(</span><span class="n">t</span><span class="p">)},</span>
-        <span class="s1">&#39;cell_b&#39;</span><span class="p">:</span> <span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;i&#39;</span><span class="p">:</span> <span class="n">i_b</span><span class="p">(</span><span class="n">t</span><span class="p">)},</span>
-    <span class="p">},</span>
-<span class="p">)</span>
-
-<span class="n">y0</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">initial_state</span><span class="p">(</span>
-    <span class="n">cell_a</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;T&#39;</span><span class="p">:</span> <span class="mf">353.15</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mf">1.5e5</span><span class="p">},</span>
-    <span class="n">cell_b</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;T&#39;</span><span class="p">:</span> <span class="mf">343.15</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mf">1.0e5</span><span class="p">},</span>
-<span class="p">)</span>
-
-<span class="n">sol</span> <span class="o">=</span> <span class="n">solve_ivp</span><span class="p">(</span>
-    <span class="n">base</span><span class="o">.</span><span class="n">rates_of_change</span><span class="p">,</span>   <span class="c1"># signature: (t, x) — matches solve_ivp</span>
-    <span class="n">t_span</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">t_end</span><span class="p">),</span>
-    <span class="n">y0</span><span class="o">=</span><span class="n">y0</span><span class="p">,</span>
-    <span class="n">method</span><span class="o">=</span><span class="s1">&#39;BDF&#39;</span><span class="p">,</span>
-    <span class="n">vectorized</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-<span class="p">)</span>
-
-<span class="n">states</span> <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">split_state</span><span class="p">(</span><span class="n">sol</span><span class="o">.</span><span class="n">y</span><span class="p">)</span>   <span class="c1"># {&#39;cell_a&#39;: ..., &#39;cell_b&#39;: ...}</span>
-</pre></div>
-</div>
+<p>Generic compositor: combine any number of ODE submodels.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>submodels</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>object</em><em>]</em>) – Ordered mapping of <code class="docutils literal notranslate"><span class="pre">name</span> <span class="pre">→</span> <span class="pre">submodel</span></code>.  Each submodel must expose
-<code class="docutils literal notranslate"><span class="pre">rates_of_change(x,</span> <span class="pre">**inputs)</span></code> and an integer attribute
-<code class="docutils literal notranslate"><span class="pre">n_states</span></code>.</p></li>
-<li><p><strong>input_fns</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>callable</em><em>]</em><em>, </em><em>optional</em>) – Mapping of <code class="docutils literal notranslate"><span class="pre">name</span> <span class="pre">→</span> <span class="pre">f(t)</span></code> where <code class="docutils literal notranslate"><span class="pre">f</span></code> returns a <code class="docutils literal notranslate"><span class="pre">dict</span></code> of keyword
-arguments forwarded to that submodel’s <code class="docutils literal notranslate"><span class="pre">rates_of_change</span></code>.  Any
-submodel not listed receives <code class="docutils literal notranslate"><span class="pre">{}</span></code> (no extra inputs).</p></li>
+<code class="docutils literal notranslate"><span class="pre">rates_of_change(x,</span> <span class="pre">**inputs)</span></code> and <code class="docutils literal notranslate"><span class="pre">n_states</span></code>.</p></li>
+<li><p><strong>input_fns</strong> (<em>dict</em><em>[</em><em>str</em><em>, </em><em>callable</em><em>]</em><em>, </em><em>optional</em>) – Explicit <code class="docutils literal notranslate"><span class="pre">name</span> <span class="pre">→</span> <span class="pre">f(t)</span></code> overrides.  Submodels not listed here
+fall back to their own <code class="docutils literal notranslate"><span class="pre">get_inputs</span></code> method, if any.</p></li>
 </ul>
 </dd>
 </dl>
@@ -403,21 +394,11 @@ submodel not listed receives <code class="docutils literal notranslate"><span cl
 <dd><p>Concatenate initial states from all submodels.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>**per_model_kwargs</strong> – <p>Keyword arguments keyed by submodel name, forwarded to each
-submodel’s <code class="docutils literal notranslate"><span class="pre">initial_state</span></code> method:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">base</span><span class="o">.</span><span class="n">initial_state</span><span class="p">(</span>
-    <span class="n">cell_a</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;T&#39;</span><span class="p">:</span> <span class="mf">353.15</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mf">1.5e5</span><span class="p">,</span> <span class="s1">&#39;rh&#39;</span><span class="p">:</span> <span class="mf">0.7</span><span class="p">},</span>
-    <span class="n">cell_b</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;T&#39;</span><span class="p">:</span> <span class="mf">343.15</span><span class="p">,</span> <span class="s1">&#39;p&#39;</span><span class="p">:</span> <span class="mf">1.0e5</span><span class="p">,</span> <span class="s1">&#39;rh&#39;</span><span class="p">:</span> <span class="mf">0.6</span><span class="p">},</span>
-<span class="p">)</span>
-</pre></div>
-</div>
-</p>
+<dd class="field-odd"><p><strong>**per_model_kwargs</strong> – Keyword arguments keyed by submodel name, forwarded to each
+submodel’s <code class="docutils literal notranslate"><span class="pre">initial_state</span></code> method.</p>
 </dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Flat normalised initial-state vector ready for <code class="docutils literal notranslate"><span class="pre">solve_ivp</span></code>.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>np.ndarray, shape (n_states,)</p>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>np.ndarray, shape (n_states,)</p>
 </dd>
 </dl>
 </dd></dl>
@@ -431,21 +412,17 @@ submodel’s <code class="docutils literal notranslate"><span class="pre">initia
 <dt class="sig sig-object py" id="marapendi.models.model.BaseModel.rates_of_change">
 <span class="sig-name descname"><span class="pre">rates_of_change</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/model.html#BaseModel.rates_of_change"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.model.BaseModel.rates_of_change" title="Link to this definition"></a></dt>
 <dd><p>Assemble dxdt by dispatching each slice to its submodel.</p>
-<p>The argument order <code class="docutils literal notranslate"><span class="pre">(t,</span> <span class="pre">x)</span></code> matches the convention expected by
-<code class="docutils literal notranslate"><span class="pre">scipy.integrate.solve_ivp</span></code>, so <code class="docutils literal notranslate"><span class="pre">base.rates_of_change</span></code> can be
-passed directly as the <code class="docutils literal notranslate"><span class="pre">fun</span></code> argument.</p>
-<p>For non-vectorised integration <code class="docutils literal notranslate"><span class="pre">x</span></code> has shape <code class="docutils literal notranslate"><span class="pre">(n_states,)</span></code>;
-for vectorised integration it has shape <code class="docutils literal notranslate"><span class="pre">(n_states,</span> <span class="pre">m)</span></code>.  Both
-forms are handled transparently.</p>
+<p><code class="docutils literal notranslate"><span class="pre">(t,</span> <span class="pre">x)</span></code> matches the <code class="docutils literal notranslate"><span class="pre">solve_ivp</span></code> convention, so
+<code class="docutils literal notranslate"><span class="pre">base.rates_of_change</span></code> can be passed directly as <code class="docutils literal notranslate"><span class="pre">fun</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>t</strong> (<em>float</em>) – Current time, passed to each <code class="docutils literal notranslate"><span class="pre">input_fn</span></code> to evaluate inputs.</p></li>
-<li><p><strong>x</strong> (<em>np.ndarray</em><em>, </em><em>shape</em><em> (</em><em>n_states</em><em>,</em><em>) or </em><em>(</em><em>n_states</em><em>, </em><em>m</em><em>)</em>) – Combined normalised state vector.</p></li>
+<li><p><strong>t</strong> (<em>float</em>) – Current time, passed to each <code class="docutils literal notranslate"><span class="pre">input_fn</span></code>/<code class="docutils literal notranslate"><span class="pre">get_inputs</span></code>.</p></li>
+<li><p><strong>x</strong> (<em>np.ndarray</em><em>, </em><em>shape</em><em> (</em><em>n_states</em><em>,</em><em>) or </em><em>(</em><em>n_states</em><em>, </em><em>m</em><em>)</em>)</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Combined derivative array, same shape as <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p>
+<dd class="field-even"><p>Same shape as <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>np.ndarray</p>
@@ -454,20 +431,37 @@ forms are handled transparently.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="marapendi.models.model.BaseModel.solve">
+<span class="sig-name descname"><span class="pre">solve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">t_span</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'BDF'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rtol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-06</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_step</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">inf</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/model.html#BaseModel.solve"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.model.BaseModel.solve" title="Link to this definition"></a></dt>
+<dd><p>Integrate the ODE system with <code class="docutils literal notranslate"><span class="pre">scipy.integrate.solve_ivp</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>y0</strong> (<em>np.ndarray</em>) – Initial state vector, typically from <code class="docutils literal notranslate"><span class="pre">initial_state</span></code>.</p></li>
+<li><p><strong>t_span</strong> (<em>tuple</em><em>[</em><em>float</em><em>, </em><em>float</em><em>]</em>) – <code class="docutils literal notranslate"><span class="pre">(t0,</span> <span class="pre">tf)</span></code> integration interval.</p></li>
+<li><p><strong>method</strong> (<em>str</em>) – Integration method passed to <code class="docutils literal notranslate"><span class="pre">solve_ivp</span></code> (default <code class="docutils literal notranslate"><span class="pre">'BDF'</span></code>,
+which handles stiff problems well).</p></li>
+<li><p><strong>rtol</strong> (<em>float</em>) – Relative tolerance (default 1e-3).</p></li>
+<li><p><strong>atol</strong> (<em>float</em>) – Absolute tolerance (default 1e-6).</p></li>
+<li><p><strong>max_step</strong> (<em>float</em>) – Maximum allowed step size (default <code class="docutils literal notranslate"><span class="pre">np.inf</span></code>).</p></li>
+<li><p><strong>**kwargs</strong> – Any additional keyword arguments forwarded verbatim to
+<code class="docutils literal notranslate"><span class="pre">scipy.integrate.solve_ivp</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">t_eval</span></code>, <code class="docutils literal notranslate"><span class="pre">dense_output</span></code>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The result object returned by <code class="docutils literal notranslate"><span class="pre">solve_ivp</span></code>.  Check
+<code class="docutils literal notranslate"><span class="pre">sol.success</span></code> or <code class="docutils literal notranslate"><span class="pre">sol.status</span></code> before using <code class="docutils literal notranslate"><span class="pre">sol.y</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>scipy.integrate.OdeSolution</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="marapendi.models.model.BaseModel.split_state">
 <span class="sig-name descname"><span class="pre">split_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/marapendi/models/model.html#BaseModel.split_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.model.BaseModel.split_state" title="Link to this definition"></a></dt>
 <dd><p>Split a combined state array into per-submodel slices.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>x</strong> (<em>np.ndarray</em><em>, </em><em>shape</em><em> (</em><em>n_states</em><em>,</em><em>) or </em><em>(</em><em>n_states</em><em>, </em><em>m</em><em>)</em>) – Combined state (e.g. <code class="docutils literal notranslate"><span class="pre">sol.y</span></code> from <code class="docutils literal notranslate"><span class="pre">solve_ivp</span></code>).</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">{name:</span> <span class="pre">x[slice]}</span></code> for each submodel.</p>
-</dd>
-<dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>dict[str, np.ndarray]</p>
-</dd>
-</dl>
 </dd></dl>
 
 <dl class="py attribute">
@@ -481,14 +475,17 @@ forms are handled transparently.</p>
 <section id="id1">
 <h2>Classes<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
 <dl class="simple">
-<dt>TransientCellModel<span class="classifier">ODE engine that wraps a Cell and a VoltageModel to</span></dt><dd><p>assemble and integrate the full spatially-resolved transient equations
-(water content, temperature, gas concentrations, liquid saturation).</p>
+<dt>TransientCellModel<span class="classifier">ODE engine that integrates the full spatially-resolved</span></dt><dd><p>transient equations (water content, temperature, gas concentrations,
+liquid saturation).  Physics models are resolved from the parent
+<code class="docutils literal notranslate"><span class="pre">CellBaseModel</span></code> that injects itself via <code class="docutils literal notranslate"><span class="pre">base_model</span></code>.
+The applied current density is held in the <code class="docutils literal notranslate"><span class="pre">current_density</span></code> field and
+exposed to <code class="docutils literal notranslate"><span class="pre">BaseModel</span></code> through <code class="docutils literal notranslate"><span class="pre">get_inputs</span></code>.</p>
 </dd>
 </dl>
 </section>
 <dl class="py class">
 <dt class="sig sig-object py" id="marapendi.models.transient.TransientCellModel">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">marapendi.models.transient.</span></span><span class="sig-name descname"><span class="pre">TransientCellModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cell:</span> <span class="pre">~marapendi.components.cell.Cell</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/transient.html#TransientCellModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.transient.TransientCellModel" title="Link to this definition"></a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">marapendi.models.transient.</span></span><span class="sig-name descname"><span class="pre">TransientCellModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">cell:</span> <span class="pre">~marapendi.components.cell.Cell</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;,</span> <span class="pre">current_density:</span> <span class="pre">float</span> <span class="pre">|</span> <span class="pre">~typing.Callable[[float],</span> <span class="pre">float]</span> <span class="pre">=</span> <span class="pre">0.0,</span> <span class="pre">base_model:</span> <span class="pre">object</span> <span class="pre">=</span> <span class="pre">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/transient.html#TransientCellModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.transient.TransientCellModel" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Spatially-resolved transient ODE model for a PEM/AEM cell.</p>
 <p>The model assembles dxdt for the state vector
@@ -499,45 +496,71 @@ forms are handled transparently.</p>
 <li><p><code class="docutils literal notranslate"><span class="pre">i_cg</span>&#160;&#160; <span class="pre">=</span> <span class="pre">[2,3,4,5]</span></code> : gas concentrations [O₂, N₂, H₂, H₂O] [kmol m⁻³]</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">i_s</span>&#160;&#160;&#160; <span class="pre">=</span> <span class="pre">6</span></code> : liquid water saturation s [–]</p></li>
 </ul>
+<p>Physics models are resolved from the parent <code class="docutils literal notranslate"><span class="pre">CellBaseModel</span></code> via
+<code class="docutils literal notranslate"><span class="pre">base_model</span></code>, injected automatically during <code class="docutils literal notranslate"><span class="pre">CellBaseModel.__post_init__</span></code>.
+Do not set <code class="docutils literal notranslate"><span class="pre">base_model</span></code> manually.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>cell</strong> (<a class="reference internal" href="components.html#marapendi.components.cell.Cell" title="marapendi.components.cell.Cell"><em>Cell</em></a>) – Fully-configured cell geometry and property arrays.</p></li>
-<li><p><strong>charge</strong> (<em>str</em>) – Charge carrier (<code class="docutils literal notranslate"><span class="pre">'proton'</span></code> for PEM, <code class="docutils literal notranslate"><span class="pre">'hydroxide'</span></code> for AEM).</p></li>
+<li><p><strong>cell</strong> (<a class="reference internal" href="components.html#marapendi.components.cell.Cell" title="marapendi.components.cell.Cell"><em>Cell</em></a>) – Cell geometry and material property arrays (no model objects).</p></li>
+<li><p><strong>current_density</strong> (<em>float</em><em> or </em><em>callable</em>) – Applied current density [A m⁻²].  May be a scalar (constant) or a
+callable <code class="docutils literal notranslate"><span class="pre">f(t)</span> <span class="pre">-&gt;</span> <span class="pre">float</span></code> for time-varying protocols.  Exposed to
+<code class="docutils literal notranslate"><span class="pre">CellBaseModel</span></code> via <code class="docutils literal notranslate"><span class="pre">get_inputs</span></code> so no manual <code class="docutils literal notranslate"><span class="pre">input_fns</span></code> dict
+is needed.  Default: 0.</p></li>
 </ul>
 </dd>
 </dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.models.transient.TransientCellModel.base_model">
+<span class="sig-name descname"><span class="pre">base_model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">object</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#marapendi.models.transient.TransientCellModel.base_model" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
 <dl class="py attribute">
 <dt class="sig sig-object py" id="marapendi.models.transient.TransientCellModel.cell">
 <span class="sig-name descname"><span class="pre">cell</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="components.html#marapendi.components.cell.Cell" title="marapendi.components.cell.Cell"><span class="pre">Cell</span></a></em><a class="headerlink" href="#marapendi.models.transient.TransientCellModel.cell" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.models.transient.TransientCellModel.current_density">
+<span class="sig-name descname"><span class="pre">current_density</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">float</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0</span></em><a class="headerlink" href="#marapendi.models.transient.TransientCellModel.current_density" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.models.transient.TransientCellModel.get_inputs">
+<span class="sig-name descname"><span class="pre">get_inputs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span></span></span><a class="reference internal" href="../_modules/marapendi/models/transient.html#TransientCellModel.get_inputs"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.transient.TransientCellModel.get_inputs" title="Link to this definition"></a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">{'i':</span> <span class="pre">current_density}</span></code> evaluated at time <em>t</em>.</p>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="marapendi.models.transient.TransientCellModel.get_states_from_x">
 <span class="sig-name descname"><span class="pre">get_states_from_x</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/transient.html#TransientCellModel.get_states_from_x"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.transient.TransientCellModel.get_states_from_x" title="Link to this definition"></a></dt>
 <dd><p>Unpack normalised state vector into named fields.</p>
+<p>Physical bounds are enforced here so that model functions
+(Cantera calls, log/sqrt) never receive unphysical inputs,
+even when the BDF solver evaluates Jacobian trial steps outside
+the feasible region.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="marapendi.models.transient.TransientCellModel.initial_state">
-<span class="sig-name descname"><span class="pre">initial_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">T</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">353.15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lmbd</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.05</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ca_dry_o2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.21</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">an_dry_h2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../_modules/marapendi/models/transient.html#TransientCellModel.initial_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.transient.TransientCellModel.initial_state" title="Link to this definition"></a></dt>
+<span class="sig-name descname"><span class="pre">initial_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cell_temperature</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">353.15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell_pressure</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ca_rh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">an_rh</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.7</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ca_dry_o2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.21</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ca_dry_h2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">an_dry_o2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">an_dry_h2</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../_modules/marapendi/models/transient.html#TransientCellModel.initial_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.transient.TransientCellModel.initial_state" title="Link to this definition"></a></dt>
 <dd><p>Build a normalised flat initial-state vector from operating conditions.</p>
-<p>Assigns cathode gas composition (O₂ / N₂ / H₂O) to cathode-side layers
-and anode gas composition (H₂ / H₂O) to anode-side layers using the
-ideal-gas law.  A small guard concentration (10⁻⁶ × p/RT) is used for
-absent species to avoid <code class="docutils literal notranslate"><span class="pre">log(0)</span></code> in the Nernst equation at t = 0.</p>
+<p>Ionomer water content is initialised at the equilibrium value for the
+average of the two inlet relative humidities.  Liquid saturation starts
+at zero.  Gas compositions are assigned per-side via the ideal-gas law.</p>
 <p>The returned vector is normalised by <code class="docutils literal notranslate"><span class="pre">self.norm_factor</span></code> and flattened,
 making it suitable for direct use as <code class="docutils literal notranslate"><span class="pre">y0</span></code> in
 <code class="docutils literal notranslate"><span class="pre">scipy.integrate.solve_ivp</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>T</strong> (<em>float</em>) – Operating temperature [K] (default 353.15 K = 80 °C).</p></li>
-<li><p><strong>p</strong> (<em>float</em>) – Total pressure [Pa] (default 1e5 Pa = 1 bara).</p></li>
-<li><p><strong>rh</strong> (<em>float</em>) – Relative humidity at both inlets, 0–1 (default 0.7).</p></li>
-<li><p><strong>lmbd</strong> (<em>float</em>) – Initial ionomer water content [mol H₂O / mol SO₃⁻] (default 10).</p></li>
-<li><p><strong>s</strong> (<em>float</em>) – Initial liquid water saturation, 0–1 (default 0.05).</p></li>
+<li><p><strong>cell_temperature</strong> (<em>float</em>) – Operating temperature [K] (default 353.15 K = 80 °C).</p></li>
+<li><p><strong>cell_pressure</strong> (<em>float</em>) – Total gas pressure [Pa] (default 1e5 Pa = 1 bara).</p></li>
+<li><p><strong>ca_rh</strong> (<em>float</em>) – Cathode inlet relative humidity, 0–1 (default 0.7).</p></li>
+<li><p><strong>an_rh</strong> (<em>float</em>) – Anode inlet relative humidity, 0–1 (default 0.7).</p></li>
 <li><p><strong>ca_dry_o2</strong> (<em>float</em>) – O₂ mole fraction in the dry cathode gas (default 0.21 for air).</p></li>
+<li><p><strong>ca_dry_h2</strong> (<em>float</em>) – H₂ mole fraction in the dry cathode gas (default 0, none in air).</p></li>
+<li><p><strong>an_dry_o2</strong> (<em>float</em>) – O₂ mole fraction in the dry anode gas (default 0).</p></li>
 <li><p><strong>an_dry_h2</strong> (<em>float</em>) – H₂ mole fraction in the dry anode gas (default 1.0 for pure H₂).</p></li>
 </ul>
 </dd>
@@ -572,9 +595,100 @@ making it suitable for direct use as <code class="docutils literal notranslate">
 
 </dd></dl>
 
-<p id="module-marapendi.models.membrane">Ionomer and membrane physics models for PEM/AEM fuel cells and electrolysers.</p>
+<p id="module-marapendi.models.cell_base_model">CellBaseModel — BaseModel subclass for a single PEM/AEM cell simulation.</p>
 <section id="id2">
 <h2>Classes<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>CellBaseModel</dt><dd><p>Owns all physics strategy objects as named fields and wires a
+<code class="docutils literal notranslate"><span class="pre">TransientCellModel</span></code> into <code class="docutils literal notranslate"><span class="pre">submodels</span></code> automatically.</p>
+</dd>
+</dl>
+</section>
+<dl class="py class">
+<dt class="sig sig-object py" id="marapendi.models.cell_base_model.CellBaseModel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">marapendi.models.cell_base_model.</span></span><span class="sig-name descname"><span class="pre">CellBaseModel</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">submodels:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Any]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">input_fns:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Callable]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transient_transport_model:</span> <span class="pre">~marapendi.models.transient.TransientCellModel</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gas_diffusion_model:</span> <span class="pre">~marapendi.models.transport.PorousGasResistanceModel</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">darcy_transport_model:</span> <span class="pre">~marapendi.models.transport.DarcyTransportModel</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">memb_model:</span> <span class="pre">~marapendi.models.membrane.MembraneModel</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cl_model:</span> <span class="pre">~marapendi.models.catalyst_layer.CatalystLayerModel</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">voltage_model:</span> <span class="pre">~marapendi.models.voltage.VoltageModel</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/cell_base_model.html#CellBaseModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.cell_base_model.CellBaseModel" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#marapendi.models.model.BaseModel" title="marapendi.models.model.BaseModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></a></p>
+<p><code class="docutils literal notranslate"><span class="pre">BaseModel</span></code> pre-configured for a single PEM/AEM cell simulation.</p>
+<p>Owns all physics strategy objects as named fields and wires the
+<code class="docutils literal notranslate"><span class="pre">TransientCellModel</span></code> into <code class="docutils literal notranslate"><span class="pre">submodels</span></code> automatically — no manual
+<code class="docutils literal notranslate"><span class="pre">submodels</span></code> or <code class="docutils literal notranslate"><span class="pre">input_fns</span></code> dicts required.</p>
+<p><code class="docutils literal notranslate"><span class="pre">BaseModel.__post_init__</span></code> then:</p>
+<ul class="simple">
+<li><p>registers <code class="docutils literal notranslate"><span class="pre">transient_transport_model.get_inputs</span></code> in <code class="docutils literal notranslate"><span class="pre">input_fns</span></code>
+so the current density flows from the model into the ODE dispatcher;</p></li>
+<li><p>injects <code class="docutils literal notranslate"><span class="pre">self</span></code> into <code class="docutils literal notranslate"><span class="pre">transient_transport_model.base_model</span></code> so
+the model can resolve physics objects.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>transient_transport_model</strong> (<a class="reference internal" href="#marapendi.models.transient.TransientCellModel" title="marapendi.models.transient.TransientCellModel"><em>TransientCellModel</em></a>) – The ODE submodel.  Set <code class="docutils literal notranslate"><span class="pre">current_density</span></code> on it to control the
+applied current (scalar or <code class="docutils literal notranslate"><span class="pre">f(t)</span></code> callable).</p></li>
+<li><p><strong>gas_diffusion_model</strong> (<a class="reference internal" href="#marapendi.models.transport.PorousGasResistanceModel" title="marapendi.models.transport.PorousGasResistanceModel"><em>PorousGasResistanceModel</em></a>)</p></li>
+<li><p><strong>darcy_transport_model</strong> (<a class="reference internal" href="#marapendi.models.transport.DarcyTransportModel" title="marapendi.models.transport.DarcyTransportModel"><em>DarcyTransportModel</em></a>)</p></li>
+<li><p><strong>memb_model</strong> (<a class="reference internal" href="#marapendi.models.membrane.MembraneModel" title="marapendi.models.membrane.MembraneModel"><em>MembraneModel</em></a>)</p></li>
+<li><p><strong>cl_model</strong> (<a class="reference internal" href="#marapendi.models.catalyst_layer.CatalystLayerModel" title="marapendi.models.catalyst_layer.CatalystLayerModel"><em>CatalystLayerModel</em></a>)</p></li>
+<li><p><strong>voltage_model</strong> (<a class="reference internal" href="#marapendi.models.voltage.VoltageModel" title="marapendi.models.voltage.VoltageModel"><em>VoltageModel</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">TransientCellModel</span><span class="p">(</span><span class="n">cell</span><span class="o">=</span><span class="n">cell</span><span class="p">,</span> <span class="n">current_density</span><span class="o">=</span><span class="mf">5000.</span><span class="p">)</span>
+<span class="n">base</span> <span class="o">=</span> <span class="n">CellBaseModel</span><span class="p">(</span>
+    <span class="n">transient_transport_model</span><span class="o">=</span><span class="n">model</span><span class="p">,</span>
+    <span class="n">memb_model</span><span class="o">=</span><span class="n">PFSAModel</span><span class="p">(),</span>
+    <span class="n">cl_model</span><span class="o">=</span><span class="n">PtCCatalystLayerModel</span><span class="p">(),</span>
+<span class="p">)</span>
+<span class="n">y0</span>  <span class="o">=</span> <span class="n">base</span><span class="o">.</span><span class="n">initial_state</span><span class="p">(</span><span class="n">cell_temperature</span><span class="o">=</span><span class="mf">353.15</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+<span class="n">sol</span> <span class="o">=</span> <span class="n">solve_ivp</span><span class="p">(</span><span class="n">base</span><span class="o">.</span><span class="n">rates_of_change</span><span class="p">,</span> <span class="n">t_span</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">100</span><span class="p">),</span> <span class="n">y0</span><span class="o">=</span><span class="n">y0</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.models.cell_base_model.CellBaseModel.cl_model">
+<span class="sig-name descname"><span class="pre">cl_model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#marapendi.models.catalyst_layer.CatalystLayerModel" title="marapendi.models.catalyst_layer.CatalystLayerModel"><span class="pre">CatalystLayerModel</span></a></em><a class="headerlink" href="#marapendi.models.cell_base_model.CellBaseModel.cl_model" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.models.cell_base_model.CellBaseModel.darcy_transport_model">
+<span class="sig-name descname"><span class="pre">darcy_transport_model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#marapendi.models.transport.DarcyTransportModel" title="marapendi.models.transport.DarcyTransportModel"><span class="pre">DarcyTransportModel</span></a></em><a class="headerlink" href="#marapendi.models.cell_base_model.CellBaseModel.darcy_transport_model" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.models.cell_base_model.CellBaseModel.gas_diffusion_model">
+<span class="sig-name descname"><span class="pre">gas_diffusion_model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#marapendi.models.transport.PorousGasResistanceModel" title="marapendi.models.transport.PorousGasResistanceModel"><span class="pre">PorousGasResistanceModel</span></a></em><a class="headerlink" href="#marapendi.models.cell_base_model.CellBaseModel.gas_diffusion_model" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.models.cell_base_model.CellBaseModel.initial_state">
+<span class="sig-name descname"><span class="pre">initial_state</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="reference internal" href="../_modules/marapendi/models/cell_base_model.html#CellBaseModel.initial_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.cell_base_model.CellBaseModel.initial_state" title="Link to this definition"></a></dt>
+<dd><p>Build the initial state from flat keyword arguments.</p>
+<p>All kwargs are forwarded directly to
+<code class="docutils literal notranslate"><span class="pre">TransientCellModel.initial_state</span></code> — no nesting needed:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">base</span><span class="o">.</span><span class="n">initial_state</span><span class="p">(</span><span class="n">cell_temperature</span><span class="o">=</span><span class="mf">353.15</span><span class="p">,</span> <span class="n">ca_rh</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.models.cell_base_model.CellBaseModel.memb_model">
+<span class="sig-name descname"><span class="pre">memb_model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#marapendi.models.membrane.MembraneModel" title="marapendi.models.membrane.MembraneModel"><span class="pre">MembraneModel</span></a></em><a class="headerlink" href="#marapendi.models.cell_base_model.CellBaseModel.memb_model" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.models.cell_base_model.CellBaseModel.transient_transport_model">
+<span class="sig-name descname"><span class="pre">transient_transport_model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#marapendi.models.transient.TransientCellModel" title="marapendi.models.transient.TransientCellModel"><span class="pre">TransientCellModel</span></a></em><a class="headerlink" href="#marapendi.models.cell_base_model.CellBaseModel.transient_transport_model" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.models.cell_base_model.CellBaseModel.voltage_model">
+<span class="sig-name descname"><span class="pre">voltage_model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#marapendi.models.voltage.VoltageModel" title="marapendi.models.voltage.VoltageModel"><span class="pre">VoltageModel</span></a></em><a class="headerlink" href="#marapendi.models.cell_base_model.CellBaseModel.voltage_model" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<p id="module-marapendi.models.membrane">Ionomer and membrane physics models for PEM/AEM fuel cells and electrolysers.</p>
+<section id="id3">
+<h2>Classes<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>IonomerModel</dt><dd><p>Stateless strategy class for ionomer thermophysical calculations
 (water volume fraction, wet density, expansion, ionic conductivity).</p>
@@ -817,8 +931,8 @@ See Goshtasbi et al. (2020).</p>
 </dd></dl>
 
 <p id="module-marapendi.models.catalyst_layer">Catalyst-layer physics models for PEM/AEM fuel cells and electrolysers.</p>
-<section id="id3">
-<h2>Classes<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<section id="id4">
+<h2>Classes<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>CatalystLayerModel</dt><dd><p>Stateless strategy class for generic catalyst-layer charge transport
 (ionomer sheet resistance, effective charge resistance, electrolyte
@@ -829,8 +943,8 @@ correlations (ionomer film resistance, water-film thickness).</p>
 </dd>
 </dl>
 </section>
-<section id="id4">
-<h2>Design note<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<section id="id5">
+<h2>Design note<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
 <p>Model classes are stateless strategy objects.  They accept component
 dataclasses (<a class="reference internal" href="components.html#marapendi.components.catalyst_layers.CatalystLayer" title="marapendi.components.catalyst_layers.CatalystLayer"><code class="xref py py-class docutils literal notranslate"><span class="pre">CatalystLayer</span></code></a>,
 <a class="reference internal" href="components.html#marapendi.components.catalyst_layers.PtCCatalystLayer" title="marapendi.components.catalyst_layers.PtCCatalystLayer"><code class="xref py py-class docutils literal notranslate"><span class="pre">PtCCatalystLayer</span></code></a>) as
@@ -936,13 +1050,13 @@ Hao et al. (2015).</p>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="id5">
-<span class="sig-name descname"><span class="pre">k2_ion</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5.4</span></em><a class="headerlink" href="#id5" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">k2_ion</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5.4</span></em><a class="headerlink" href="#id6" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="id6">
-<span class="sig-name descname"><span class="pre">k3_ion</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5.4</span></em><a class="headerlink" href="#id6" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="id7">
+<span class="sig-name descname"><span class="pre">k3_ion</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5.4</span></em><a class="headerlink" href="#id7" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -1016,8 +1130,8 @@ Similar equations are used by Kim et al. (2022).</p>
 <p class="rubric">References</p>
 <p>Kim, H. et al. Int. J. Heat Mass Transf. 183, 122106 (2022).</p>
 <dl class="py attribute">
-<dt class="sig sig-object py" id="id7">
-<span class="sig-name descname"><span class="pre">B_ch</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1.0</span></em><a class="headerlink" href="#id7" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="id8">
+<span class="sig-name descname"><span class="pre">B_ch</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1.0</span></em><a class="headerlink" href="#id8" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -1063,8 +1177,8 @@ inlet and outlet values.</p>
 </dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="id8">
-<span class="sig-name descname"><span class="pre">sherwood</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4.0</span></em><a class="headerlink" href="#id8" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="id9">
+<span class="sig-name descname"><span class="pre">sherwood</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4.0</span></em><a class="headerlink" href="#id9" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -1157,8 +1271,8 @@ inlet and outlet values.</p>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="id9">
-<span class="sig-name descname"><span class="pre">n_s</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3.0</span></em><a class="headerlink" href="#id9" title="Link to this definition"></a></dt>
+<dt class="sig sig-object py" id="id10">
+<span class="sig-name descname"><span class="pre">n_s</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3.0</span></em><a class="headerlink" href="#id10" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -1214,8 +1328,8 @@ temperature and pressure. Data from Vetter and Schumacher (2019).</p>
 </dd></dl>
 
 <p id="module-marapendi.models.voltage">Electrochemical voltage model for PEM/AEM fuel cells and electrolysers.</p>
-<section id="id10">
-<h2>Classes<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<section id="id11">
+<h2>Classes<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>VoltageModel<span class="classifier">Computes reversible voltage, overpotentials, and cell voltage.</span></dt><dd><p>Stateless strategy object — all inputs are passed explicitly so methods
 can be tested and reused independently of the ODE machinery.</p>
@@ -1315,8 +1429,8 @@ temperature : float, optional, default=300</p>
 </dd>
 </dl>
 </section>
-<section id="id11">
-<h2>Returns:<a class="headerlink" href="#id11" title="Link to this heading"></a></h2>
+<section id="id12">
+<h2>Returns:<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>float</dt><dd><p>Density of water in kg/m³.</p>
 </dd>
@@ -1328,15 +1442,15 @@ temperature : float, optional, default=300</p>
 <dt class="sig sig-object py" id="marapendi.models.water.water_dew_point">
 <span class="sig-prename descclassname"><span class="pre">marapendi.models.water.</span></span><span class="sig-name descname"><span class="pre">water_dew_point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vapor_pressure</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/water.html#water_dew_point"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.water.water_dew_point" title="Link to this definition"></a></dt>
 <dd><p>Calculate the dew point temperature of water given its partial pressure.</p>
-<section id="id12">
-<h2>Parameters:<a class="headerlink" href="#id12" title="Link to this heading"></a></h2>
+<section id="id13">
+<h2>Parameters:<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>vapor_pressure<span class="classifier">float</span></dt><dd><p>Partial pressure of water vapor in Pascals (Pa).</p>
 </dd>
 </dl>
 </section>
-<section id="id13">
-<h2>Returns:<a class="headerlink" href="#id13" title="Link to this heading"></a></h2>
+<section id="id14">
+<h2>Returns:<a class="headerlink" href="#id14" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>float</dt><dd><p>Dew point temperature in Kelvin (K).</p>
 </dd>
@@ -1348,15 +1462,15 @@ temperature : float, optional, default=300</p>
 <dt class="sig sig-object py" id="marapendi.models.water.water_dynamic_viscosity">
 <span class="sig-prename descclassname"><span class="pre">marapendi.models.water.</span></span><span class="sig-name descname"><span class="pre">water_dynamic_viscosity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temperature</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/water.html#water_dynamic_viscosity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.water.water_dynamic_viscosity" title="Link to this definition"></a></dt>
 <dd><p>Calculate the dynamic viscosity of water at a given temperature.</p>
-<section id="id14">
-<h2>Parameters:<a class="headerlink" href="#id14" title="Link to this heading"></a></h2>
+<section id="id15">
+<h2>Parameters:<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>temperature<span class="classifier">float, optional, default=300</span></dt><dd><p>Temperature in Kelvin (K). Default is 300 K.</p>
 </dd>
 </dl>
 </section>
-<section id="id15">
-<h2>Returns:<a class="headerlink" href="#id15" title="Link to this heading"></a></h2>
+<section id="id16">
+<h2>Returns:<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>float</dt><dd><p>Dynamic viscosity of water in Pascal-seconds (Pa·s).</p>
 </dd>
@@ -1368,15 +1482,15 @@ temperature : float, optional, default=300</p>
 <dt class="sig sig-object py" id="marapendi.models.water.water_kinematic_viscosity">
 <span class="sig-prename descclassname"><span class="pre">marapendi.models.water.</span></span><span class="sig-name descname"><span class="pre">water_kinematic_viscosity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temperature</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/water.html#water_kinematic_viscosity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.water.water_kinematic_viscosity" title="Link to this definition"></a></dt>
 <dd><p>Calculate the kinemattic viscosity of water at a given temperature.</p>
-<section id="id16">
-<h2>Parameters:<a class="headerlink" href="#id16" title="Link to this heading"></a></h2>
+<section id="id17">
+<h2>Parameters:<a class="headerlink" href="#id17" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>temperature<span class="classifier">float, optional, default=300</span></dt><dd><p>Temperature in Kelvin (K). Default is 300 K.</p>
 </dd>
 </dl>
 </section>
-<section id="id17">
-<h2>Returns:<a class="headerlink" href="#id17" title="Link to this heading"></a></h2>
+<section id="id18">
+<h2>Returns:<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>float</dt><dd><p>Kinematic viscosity of water in m2/s.</p>
 </dd>
@@ -1388,15 +1502,15 @@ temperature : float, optional, default=300</p>
 <dt class="sig sig-object py" id="marapendi.models.water.water_molar_volume">
 <span class="sig-prename descclassname"><span class="pre">marapendi.models.water.</span></span><span class="sig-name descname"><span class="pre">water_molar_volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temperature</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/water.html#water_molar_volume"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.water.water_molar_volume" title="Link to this definition"></a></dt>
 <dd><p>Calculate the molar volume of water at a given temperature.</p>
-<section id="id18">
-<h2>Parameters:<a class="headerlink" href="#id18" title="Link to this heading"></a></h2>
+<section id="id19">
+<h2>Parameters:<a class="headerlink" href="#id19" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>temperature<span class="classifier">float, optional, default=300</span></dt><dd><p>Temperature in Kelvin (K). Default is 300 K.</p>
 </dd>
 </dl>
 </section>
-<section id="id19">
-<h2>Returns:<a class="headerlink" href="#id19" title="Link to this heading"></a></h2>
+<section id="id20">
+<h2>Returns:<a class="headerlink" href="#id20" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>float</dt><dd><p>Molar volume of water m³/kmol.</p>
 </dd>
@@ -1408,15 +1522,15 @@ temperature : float, optional, default=300</p>
 <dt class="sig sig-object py" id="marapendi.models.water.water_saturation_concentration">
 <span class="sig-prename descclassname"><span class="pre">marapendi.models.water.</span></span><span class="sig-name descname"><span class="pre">water_saturation_concentration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/water.html#water_saturation_concentration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.water.water_saturation_concentration" title="Link to this definition"></a></dt>
 <dd><p>Calculate the saturation concentration of water vapor in the gas phase.</p>
-<section id="id20">
-<h2>Parameters:<a class="headerlink" href="#id20" title="Link to this heading"></a></h2>
+<section id="id21">
+<h2>Parameters:<a class="headerlink" href="#id21" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>temperature<span class="classifier">float</span></dt><dd><p>Temperature in Kelvin (K).</p>
 </dd>
 </dl>
 </section>
-<section id="id21">
-<h2>Returns:<a class="headerlink" href="#id21" title="Link to this heading"></a></h2>
+<section id="id22">
+<h2>Returns:<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>float</dt><dd><p>Saturation concentration of water vapor in kmol/m³.</p>
 </dd>
@@ -1428,15 +1542,15 @@ temperature : float, optional, default=300</p>
 <dt class="sig sig-object py" id="marapendi.models.water.water_saturation_pressure">
 <span class="sig-prename descclassname"><span class="pre">marapendi.models.water.</span></span><span class="sig-name descname"><span class="pre">water_saturation_pressure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/water.html#water_saturation_pressure"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.water.water_saturation_pressure" title="Link to this definition"></a></dt>
 <dd><p>Calculate the saturation pressure of water at a given temperature.</p>
-<section id="id22">
-<h2>Parameters:<a class="headerlink" href="#id22" title="Link to this heading"></a></h2>
+<section id="id23">
+<h2>Parameters:<a class="headerlink" href="#id23" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>temperature<span class="classifier">float</span></dt><dd><p>Temperature in Kelvin (K).</p>
 </dd>
 </dl>
 </section>
-<section id="id23">
-<h2>Returns:<a class="headerlink" href="#id23" title="Link to this heading"></a></h2>
+<section id="id24">
+<h2>Returns:<a class="headerlink" href="#id24" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>float</dt><dd><p>Saturation pressure of water in Pascals (Pa).</p>
 </dd>
@@ -1508,8 +1622,8 @@ normalized activities or standard concentrations.</p>
 <dt class="sig sig-object py" id="marapendi.models.electrochemistry.ElectrochemicalReaction.exchange_current_density">
 <span class="sig-name descname"><span class="pre">exchange_current_density</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reactant_activity</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/electrochemistry.html#ElectrochemicalReaction.exchange_current_density"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.electrochemistry.ElectrochemicalReaction.exchange_current_density" title="Link to this definition"></a></dt>
 <dd><p>Calculate the exchange current density for the electrochemical reaction.</p>
-<section id="id24">
-<h3>Parameters:<a class="headerlink" href="#id24" title="Link to this heading"></a></h3>
+<section id="id25">
+<h3>Parameters:<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>temperature<span class="classifier">float</span></dt><dd><p>Temperature in Kelvin (K).</p>
 </dd>
@@ -1517,8 +1631,8 @@ normalized activities or standard concentrations.</p>
 </dd>
 </dl>
 </section>
-<section id="id25">
-<h3>Returns:<a class="headerlink" href="#id25" title="Link to this heading"></a></h3>
+<section id="id26">
+<h3>Returns:<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>float</dt><dd><p>The exchange current density in Amperes per square meter (A/m²).</p>
 </dd>
@@ -1529,8 +1643,8 @@ normalized activities or standard concentrations.</p>
 <p>This method uses the <cite>calculate_exchange_current_density</cite> function and passes the
 dataclass instance (<cite>self</cite>) to encapsulate the reaction parameters.</p>
 </section>
-<section id="id26">
-<h3>Example:<a class="headerlink" href="#id26" title="Link to this heading"></a></h3>
+<section id="id27">
+<h3>Example:<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">reaction</span> <span class="o">=</span> <span class="n">ElectrochemicalReaction</span><span class="p">(</span>
 <span class="go">    reference_exchange_current_density=1e-4,</span>
 <span class="go">    activation_energy=50e6</span>
@@ -1545,8 +1659,8 @@ dataclass instance (<cite>self</cite>) to encapsulate the reaction parameters.</
 <dt class="sig sig-object py" id="marapendi.models.electrochemistry.ElectrochemicalReaction.linear_overpotential">
 <span class="sig-name descname"><span class="pre">linear_overpotential</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">current_density</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reactant_activity</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/electrochemistry.html#ElectrochemicalReaction.linear_overpotential"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.electrochemistry.ElectrochemicalReaction.linear_overpotential" title="Link to this definition"></a></dt>
 <dd><p>Calculate the linear overpotential for the electrochemical reaction.</p>
-<section id="id27">
-<h3>Parameters:<a class="headerlink" href="#id27" title="Link to this heading"></a></h3>
+<section id="id28">
+<h3>Parameters:<a class="headerlink" href="#id28" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>current_density<span class="classifier">float</span></dt><dd><p>The operating current density in Amperes per square meter (A/m²).</p>
 </dd>
@@ -1556,15 +1670,15 @@ dataclass instance (<cite>self</cite>) to encapsulate the reaction parameters.</
 </dd>
 </dl>
 </section>
-<section id="id28">
-<h3>Returns:<a class="headerlink" href="#id28" title="Link to this heading"></a></h3>
+<section id="id29">
+<h3>Returns:<a class="headerlink" href="#id29" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>float</dt><dd><p>The linear overpotential in Volts (V).</p>
 </dd>
 </dl>
 </section>
-<section id="id29">
-<h3>Example:<a class="headerlink" href="#id29" title="Link to this heading"></a></h3>
+<section id="id30">
+<h3>Example:<a class="headerlink" href="#id30" title="Link to this heading"></a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">reaction</span> <span class="o">=</span> <span class="n">ElectrochemicalReaction</span><span class="p">(</span>
 <span class="gp">... </span>    <span class="n">reference_exchange_current_density</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">,</span>
 <span class="gp">... </span>    <span class="n">activation_energy</span><span class="o">=</span><span class="mf">50e6</span><span class="p">,</span>
@@ -1608,8 +1722,8 @@ dataclass instance (<cite>self</cite>) to encapsulate the reaction parameters.</
 <dt class="sig sig-object py" id="marapendi.models.electrochemistry.ElectrochemicalReaction.tafel_overpotential">
 <span class="sig-name descname"><span class="pre">tafel_overpotential</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">current_density</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reactant_activity</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/electrochemistry.html#ElectrochemicalReaction.tafel_overpotential"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.electrochemistry.ElectrochemicalReaction.tafel_overpotential" title="Link to this definition"></a></dt>
 <dd><p>Calculate the Tafel overpotential for the electrochemical reaction.</p>
-<section id="id30">
-<h3>Parameters:<a class="headerlink" href="#id30" title="Link to this heading"></a></h3>
+<section id="id31">
+<h3>Parameters:<a class="headerlink" href="#id31" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>current_density<span class="classifier">float</span></dt><dd><p>The operating current density in Amperes per square meter (A/m²).</p>
 </dd>
@@ -1619,15 +1733,15 @@ dataclass instance (<cite>self</cite>) to encapsulate the reaction parameters.</
 </dd>
 </dl>
 </section>
-<section id="id31">
-<h3>Returns:<a class="headerlink" href="#id31" title="Link to this heading"></a></h3>
+<section id="id32">
+<h3>Returns:<a class="headerlink" href="#id32" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>float</dt><dd><p>The Tafel overpotential in Volts (V).</p>
 </dd>
 </dl>
 </section>
-<section id="id32">
-<h3>Example:<a class="headerlink" href="#id32" title="Link to this heading"></a></h3>
+<section id="id33">
+<h3>Example:<a class="headerlink" href="#id33" title="Link to this heading"></a></h3>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">reaction</span> <span class="o">=</span> <span class="n">ElectrochemicalReaction</span><span class="p">(</span>
 <span class="gp">... </span>    <span class="n">reference_exchange_current_density</span><span class="o">=</span><span class="mf">1e-4</span><span class="p">,</span>
 <span class="gp">... </span>    <span class="n">activation_energy</span><span class="o">=</span><span class="mf">50e6</span><span class="p">,</span>
@@ -1646,15 +1760,15 @@ dataclass instance (<cite>self</cite>) to encapsulate the reaction parameters.</
 <dt class="sig sig-object py" id="marapendi.models.electrochemistry.ElectrochemicalReaction.tafel_slope">
 <span class="sig-name descname"><span class="pre">tafel_slope</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/electrochemistry.html#ElectrochemicalReaction.tafel_slope"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.electrochemistry.ElectrochemicalReaction.tafel_slope" title="Link to this definition"></a></dt>
 <dd><p>Calculate the Tafel slope for the electrochemical reaction.</p>
-<section id="id33">
-<h3>Parameters:<a class="headerlink" href="#id33" title="Link to this heading"></a></h3>
+<section id="id34">
+<h3>Parameters:<a class="headerlink" href="#id34" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>temperature<span class="classifier">float</span></dt><dd><p>Temperature in Kelvin (K).</p>
 </dd>
 </dl>
 </section>
-<section id="id34">
-<h3>Returns:<a class="headerlink" href="#id34" title="Link to this heading"></a></h3>
+<section id="id35">
+<h3>Returns:<a class="headerlink" href="#id35" title="Link to this heading"></a></h3>
 <dl class="simple">
 <dt>float</dt><dd><p>The Tafel slope in Volts (V/decade).</p>
 </dd>
@@ -1669,8 +1783,8 @@ dataclass instance (<cite>self</cite>) to encapsulate the reaction parameters.</
 <dt class="sig sig-object py" id="marapendi.models.electrochemistry.calculate_exchange_current_density">
 <span class="sig-prename descclassname"><span class="pre">marapendi.models.electrochemistry.</span></span><span class="sig-name descname"><span class="pre">calculate_exchange_current_density</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temperature</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reactant_activity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#marapendi.models.electrochemistry.ElectrochemicalReaction" title="marapendi.models.electrochemistry.ElectrochemicalReaction"><span class="pre">ElectrochemicalReaction</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/electrochemistry.html#calculate_exchange_current_density"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.electrochemistry.calculate_exchange_current_density" title="Link to this definition"></a></dt>
 <dd><p>Calculate the exchange current density for an electrochemical reaction with a single reactant.</p>
-<section id="id35">
-<h2>Parameters:<a class="headerlink" href="#id35" title="Link to this heading"></a></h2>
+<section id="id36">
+<h2>Parameters:<a class="headerlink" href="#id36" title="Link to this heading"></a></h2>
 <dl>
 <dt>temperature<span class="classifier">float</span></dt><dd><p>Temperature in Kelvin (K).</p>
 </dd>
@@ -1706,8 +1820,8 @@ dataclass instance (<cite>self</cite>) to encapsulate the reaction parameters.</
 </dd>
 </dl>
 </section>
-<section id="id36">
-<h2>Returns:<a class="headerlink" href="#id36" title="Link to this heading"></a></h2>
+<section id="id37">
+<h2>Returns:<a class="headerlink" href="#id37" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>float</dt><dd><p>The exchange current density in Amperes per square meter (A/m²).</p>
 </dd>
@@ -1721,8 +1835,8 @@ dataclass instance (<cite>self</cite>) to encapsulate the reaction parameters.</
 <dd><p>Calculate the linear overpotential for an electrochemical reaction.
 This is an approximation of the Butler-Volmer is valid for low
 overpotentials (&lt; 0.1 V).</p>
-<section id="id37">
-<h2>Parameters:<a class="headerlink" href="#id37" title="Link to this heading"></a></h2>
+<section id="id38">
+<h2>Parameters:<a class="headerlink" href="#id38" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>current_density<span class="classifier">float</span></dt><dd><p>The operating current density in Amperes per square meter (A/m²).</p>
 </dd>
@@ -1736,15 +1850,15 @@ overpotentials (&lt; 0.1 V).</p>
 </dd>
 </dl>
 </section>
-<section id="id38">
-<h2>Returns:<a class="headerlink" href="#id38" title="Link to this heading"></a></h2>
+<section id="id39">
+<h2>Returns:<a class="headerlink" href="#id39" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>float</dt><dd><p>The Tafel overpotential in Volts (V).</p>
 </dd>
 </dl>
 </section>
-<section id="id39">
-<h2>Example:<a class="headerlink" href="#id39" title="Link to this heading"></a></h2>
+<section id="id40">
+<h2>Example:<a class="headerlink" href="#id40" title="Link to this heading"></a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">calculate_tafel_overpotential</span><span class="p">(</span>
 <span class="gp">... </span>    <span class="n">current_density</span><span class="o">=</span><span class="mf">1e4</span><span class="p">,</span>
 <span class="gp">... </span>    <span class="n">exchange_current_density</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
@@ -1763,8 +1877,8 @@ overpotentials (&lt; 0.1 V).</p>
 <span class="sig-prename descclassname"><span class="pre">marapendi.models.electrochemistry.</span></span><span class="sig-name descname"><span class="pre">calculate_reversible_cell_voltage</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">activities_ratio</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/electrochemistry.html#calculate_reversible_cell_voltage"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.electrochemistry.calculate_reversible_cell_voltage" title="Link to this definition"></a></dt>
 <dd><p>Calculate the reversible cell voltage of a hydrogen fuel cell or electrolyser,
 using Nernst equation.</p>
-<section id="id40">
-<h2>Parameters:<a class="headerlink" href="#id40" title="Link to this heading"></a></h2>
+<section id="id41">
+<h2>Parameters:<a class="headerlink" href="#id41" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>temperature<span class="classifier">float</span></dt><dd><p>Temperature of the cell in Kelvin (K).</p>
 </dd>
@@ -1774,15 +1888,15 @@ using Nernst equation.</p>
 </dd>
 </dl>
 </section>
-<section id="id41">
-<h2>Returns:<a class="headerlink" href="#id41" title="Link to this heading"></a></h2>
+<section id="id42">
+<h2>Returns:<a class="headerlink" href="#id42" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>float</dt><dd><p>Reversible cell voltage in Volts (V).</p>
 </dd>
 </dl>
 </section>
-<section id="id42">
-<h2>Notes:<a class="headerlink" href="#id42" title="Link to this heading"></a></h2>
+<section id="id43">
+<h2>Notes:<a class="headerlink" href="#id43" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>The function computes the reversible cell voltage using the thermodynamic relationship:</dt><dd><p>E_rev = (-ΔG° + ΔS°(T - T°) + RT ln(Q)) / (2F)</p>
 </dd>
@@ -1796,8 +1910,8 @@ using Nernst equation.</p>
 <li><p>F: Faraday constant, 96485 C/mol.</p></li>
 </ul>
 </section>
-<section id="id43">
-<h2>Example:<a class="headerlink" href="#id43" title="Link to this heading"></a></h2>
+<section id="id44">
+<h2>Example:<a class="headerlink" href="#id44" title="Link to this heading"></a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">reversible_cell_voltage</span><span class="p">(</span><span class="n">T</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">p_o2</span><span class="o">=</span><span class="mf">2e5</span><span class="p">,</span> <span class="n">p_h2</span><span class="o">=</span><span class="mf">1e5</span><span class="p">)</span>
 <span class="go">1.1901</span>
 </pre></div>
@@ -1811,8 +1925,8 @@ using Nernst equation.</p>
 <dd><p>Calculate the Tafel overpotential for an electrochemical reaction.
 This is an approximation of the Butler-Volmer is valid for high
 overpotentials (&gt; 0.1 V).</p>
-<section id="id44">
-<h2>Parameters:<a class="headerlink" href="#id44" title="Link to this heading"></a></h2>
+<section id="id45">
+<h2>Parameters:<a class="headerlink" href="#id45" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>current_density<span class="classifier">float</span></dt><dd><p>The operating current density in Amperes per square meter (A/m²).</p>
 </dd>
@@ -1826,15 +1940,15 @@ overpotentials (&gt; 0.1 V).</p>
 </dd>
 </dl>
 </section>
-<section id="id45">
-<h2>Returns:<a class="headerlink" href="#id45" title="Link to this heading"></a></h2>
+<section id="id46">
+<h2>Returns:<a class="headerlink" href="#id46" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>float</dt><dd><p>The Tafel overpotential in Volts (V).</p>
 </dd>
 </dl>
 </section>
-<section id="id46">
-<h2>Example:<a class="headerlink" href="#id46" title="Link to this heading"></a></h2>
+<section id="id47">
+<h2>Example:<a class="headerlink" href="#id47" title="Link to this heading"></a></h2>
 <div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">calculate_tafel_overpotential</span><span class="p">(</span>
 <span class="gp">... </span>    <span class="n">current_density</span><span class="o">=</span><span class="mf">1e4</span><span class="p">,</span>
 <span class="gp">... </span>    <span class="n">exchange_current_density</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span>
@@ -1852,8 +1966,8 @@ overpotentials (&gt; 0.1 V).</p>
 <dt class="sig sig-object py" id="marapendi.models.electrochemistry.calculate_tafel_slope">
 <span class="sig-prename descclassname"><span class="pre">marapendi.models.electrochemistry.</span></span><span class="sig-name descname"><span class="pre">calculate_tafel_slope</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number_of_electrons</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charge_transfer_coeff</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/models/electrochemistry.html#calculate_tafel_slope"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.models.electrochemistry.calculate_tafel_slope" title="Link to this definition"></a></dt>
 <dd><p>Calculate the Tafel slope for an electrochemical reaction.</p>
-<section id="id47">
-<h2>Parameters:<a class="headerlink" href="#id47" title="Link to this heading"></a></h2>
+<section id="id48">
+<h2>Parameters:<a class="headerlink" href="#id48" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>temperature<span class="classifier">float</span></dt><dd><p>Temperature in Kelvin (K).</p>
 </dd>
@@ -1863,8 +1977,8 @@ overpotentials (&gt; 0.1 V).</p>
 </dd>
 </dl>
 </section>
-<section id="id48">
-<h2>Returns:<a class="headerlink" href="#id48" title="Link to this heading"></a></h2>
+<section id="id49">
+<h2>Returns:<a class="headerlink" href="#id49" title="Link to this heading"></a></h2>
 <dl class="simple">
 <dt>float</dt><dd><p>The Tafel slope in Volts (V/decade).</p>
 </dd>
