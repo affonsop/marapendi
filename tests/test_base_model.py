@@ -94,8 +94,8 @@ class TestBaseModelInit:
 
     def test_get_inputs_auto_registered(self, base):
         # BaseModel should have registered get_inputs from TransientCellModel
-        assert 'cell' in base.input_fns
-        assert base.input_fns['cell'](0.) == {'i': base.transient_transport_model.current_density}
+        assert 'transient_transport' in base.input_fns
+        assert base.input_fns['transient_transport'](0.) == {'i': base.transient_transport_model.current_density}
 
 
 # ─── CellBaseModel — initial state ───────────────────────────────────────────
@@ -160,8 +160,8 @@ class TestSplitState:
     def test_single_submodel(self, base):
         y0 = base.initial_state(**IC)
         parts = base.split_state(y0)
-        assert 'cell' in parts
-        np.testing.assert_array_equal(parts['cell'], y0)
+        assert 'transient_transport' in parts
+        np.testing.assert_array_equal(parts['transient_transport'], y0)
 
     def test_two_submodels(self):
         b_a = _make_base()
@@ -177,4 +177,4 @@ class TestSplitState:
         y0 = base.initial_state(**IC)
         y_mat = np.stack([y0, y0], axis=1)
         parts = base.split_state(y_mat)
-        assert parts['cell'].shape == (base.transient_transport_model.n_states, 2)
+        assert parts['transient_transport'].shape == (base.transient_transport_model.n_states, 2)

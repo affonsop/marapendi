@@ -73,7 +73,7 @@ class CellBaseModel(BaseModel):
     def __post_init__(self):
         # Wire named field → submodels dict, then let BaseModel do the rest
         # (slice computation, get_inputs registration, base_model injection).
-        self.submodels = {'cell': self.transient_transport_model}
+        self.submodels = {'transient_transport': self.transient_transport_model}
         super().__post_init__()
 
     def initial_state(self, **kwargs) -> np.ndarray:
@@ -84,4 +84,38 @@ class CellBaseModel(BaseModel):
 
             base.initial_state(cell_temperature=353.15, ca_rh=0.7, ...)
         """
-        return super().initial_state(cell=kwargs)
+        return super().initial_state(transient_transport=kwargs)
+
+    def postprocess(self, y_flat: np.ndarray, i_density: float = None):
+        """Post-process a state array into a populated ``CellState``.
+
+        Unpacks and un-normalises the state, then calls
+        ``_compute_derived_quantities`` and ``_compute_voltage`` to fill in
+        all thermodynamic and electrochemical fields.
+
+        Parameters
+        ----------
+        y_flat : np.ndarray, shape (n_states,) or (n_states, m)
+            Normalised state vector or time-series matrix (e.g. ``sol.y``).
+        i_density : float, optional
+            Applied current density [A m⁻²] for voltage computation.
+            Defaults to the model's current ``current_density`` value
+            (evaluated at *t* = 0 for callable current profiles).
+
+        Returns
+        -------
+        CellState
+            Snapshot with ``V_cell``, ``eta_act``, ``eta_ohm``, species
+            concentrations, temperatures, and saturation fields populated.
+        """
+        model = self.transient_transport_model
+        if i_density is None:
+            i_density = model.get_inputs(0.)['i']
+        cell_y = self.split_state(y_flat)['transient_transport']
+        x = (
+            cell_y.reshape(model.n_layers, model.n_variables, -1)
+            * model.norm_factor[..., np.newaxis]
+        )
+        state = model._compute_derived_quantities(x, i_density)
+        model._compute_voltage(state)
+        return state

@@ -83,7 +83,7 @@ class TestReversibleVoltage:
 class TestActivationOverpotential:
     def test_positive(self, voltage_model, ca_cl):
         eta = voltage_model.calculate_activation_overpotential(
-            T_ca_cl=T, p_o2_ca_cl=STD_P * 0.21,
+            T_ca_cl=T, p_o2_local=STD_P * 0.21,
             i=5000., i_x=0., theta_PtO=0., ca_cl=ca_cl,
         )
         assert eta > 0
@@ -122,7 +122,7 @@ class TestCellVoltage:
         return dict(
             T_an_cl=T, T_ca_cl=T, T_memb=T,
             f_v_memb=f_v, f_v_ca_cl=f_v, s_ca_cl=0.,
-            p_h2=STD_P, p_o2_local=STD_P * 0.21, p_o2_ca_cl=STD_P * 0.21,
+            p_h2=STD_P, p_o2_local=STD_P * 0.21,
             i=5000., memb=MEMB, electrical_resistance=30e-7,
             memb_model=memb_model, ionomer_model=memb_model,
             ca_cl_model=cl_model, ca_cl=ca_cl, charge='proton',
