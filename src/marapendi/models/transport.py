@@ -119,7 +119,7 @@ class PorousGasResistanceModel:
         Vetter, R. & Schumacher, J. O. Comput. Phys. Commun. 234, 223–234 (2019).
         """
         ("O2", "N2", "H2", "H2O")
-        reference_diffusion_coeff =np.where(x_h2[...,np.newaxis] < 0, np.array([0.28e-4, 0.28e-4, 0.28e-4, 0.36e-4])[np.newaxis, ...] ,
+        reference_diffusion_coeff =np.where(x_h2[...,np.newaxis] <= 0, np.array([0.28e-4, 0.28e-4, 0.28e-4, 0.36e-4])[np.newaxis, ...] ,
                                     np.array([1.24e-4, 1.24e-4, 1.24e-4, 1.24e-4])[np.newaxis, ...])
 
 
