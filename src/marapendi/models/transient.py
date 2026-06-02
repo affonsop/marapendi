@@ -104,20 +104,21 @@ class TransientCellModel:
 
     def initial_state(
         self,
-        T: float = 353.15,
-        p: float = 1e5,
-        rh: float = 0.7,
-        lmbd: float = 10.0,
-        s: float = 0.05,
+        cell_temperature: float = 353.15,
+        cell_pressure: float = 1e5,
+        ca_rh: float = 0.7,
+        an_rh: float = 0.7, 
         ca_dry_o2: float = 0.21,
+        ca_dry_h2: float = 0, 
+        an_dry_o2: float = 0.,
         an_dry_h2: float = 1.0,
     ) -> np.ndarray:
+        
         """Build a normalised flat initial-state vector from operating conditions.
 
-        Assigns cathode gas composition (O₂ / N₂ / H₂O) to cathode-side layers
-        and anode gas composition (H₂ / H₂O) to anode-side layers using the
-        ideal-gas law.  A small guard concentration (10⁻⁶ × p/RT) is used for
-        absent species to avoid ``log(0)`` in the Nernst equation at t = 0.
+        Ionomer water content is initialised at the equilibrium value for the
+        average of the two inlet relative humidities.  Liquid saturation starts
+        at zero.  Gas compositions are assigned per-side via the ideal-gas law.
 
         The returned vector is normalised by ``self.norm_factor`` and flattened,
         making it suitable for direct use as ``y0`` in
@@ -125,18 +126,20 @@ class TransientCellModel:
 
         Parameters
         ----------
-        T : float
+        cell_temperature : float
             Operating temperature [K] (default 353.15 K = 80 °C).
-        p : float
-            Total pressure [Pa] (default 1e5 Pa = 1 bara).
-        rh : float
-            Relative humidity at both inlets, 0–1 (default 0.7).
-        lmbd : float
-            Initial ionomer water content [mol H₂O / mol SO₃⁻] (default 10).
-        s : float
-            Initial liquid water saturation, 0–1 (default 0.05).
+        cell_pressure : float
+            Total gas pressure [Pa] (default 1e5 Pa = 1 bara).
+        ca_rh : float
+            Cathode inlet relative humidity, 0–1 (default 0.7).
+        an_rh : float
+            Anode inlet relative humidity, 0–1 (default 0.7).
         ca_dry_o2 : float
             O₂ mole fraction in the dry cathode gas (default 0.21 for air).
+        ca_dry_h2 : float
+            H₂ mole fraction in the dry cathode gas (default 0, none in air).
+        an_dry_o2 : float
+            O₂ mole fraction in the dry anode gas (default 0).
         an_dry_h2 : float
             H₂ mole fraction in the dry anode gas (default 1.0 for pure H₂).
 
@@ -148,31 +151,35 @@ class TransientCellModel:
         from marapendi.models.water import water_saturation_pressure
 
         cell  = self.cell
-        RT    = ct.gas_constant * T
-        p_H2O = rh * water_saturation_pressure(T)
-        p_dry  = p - p_H2O
-        eps   = 1e-6 * p / RT   # guard: avoids log(0) in Nernst term
-
-        c_H2O = p_H2O / RT
+        RT    = ct.gas_constant * cell_temperature
+        p_v = ca_rh * water_saturation_pressure(cell_temperature)
+        p_dry  = cell_pressure - p_v
+        c_v = p_v / RT
 
         # Species order in state vector: [O₂, N₂, H₂, H₂O]
         c_ca = np.array([
             ca_dry_o2       * p_dry / RT,   # O₂
-            (1 - ca_dry_o2) * p_dry / RT,   # N₂
-            eps,                             # H₂  (trace)
-            c_H2O,
+            (1 - ca_dry_o2 - ca_dry_h2) * p_dry / RT,   # N₂
+            ca_dry_h2,                             # H₂  (trace)
+            c_v,
         ])
         c_an = np.array([
-            eps,                             # O₂  (trace)
-            (1 - an_dry_h2) * p_dry / RT,   # N₂  (if any)
+            an_dry_o2,                             # O₂  (trace)
+            (1 - an_dry_h2-an_dry_o2) * p_dry / RT,   # N₂  (if any)
             an_dry_h2       * p_dry / RT,   # H₂
-            c_H2O,
+            c_v,
         ])
 
         x0 = np.zeros((self.n_layers, self.n_variables))
-        x0[:, self.i_lmbd] = lmbd
-        x0[:, self.i_T]    = T
-        x0[:, self.i_s]    = s
+        rh_mean = np.full(self.n_layers, (ca_rh + an_rh) / 2)
+        lmbd_eq = cell.memb_model.equilibrium_water_content(
+            rh_mean, cell.sorption_coeffs_ion,
+        )[:, 0]
+        # Non-ionomer layers (GDL, channel) return NaN — zero is fine since
+        # those lambda states are frozen (infinite capacity) during integration.
+        x0[:, self.i_lmbd] = np.nan_to_num(lmbd_eq, nan=0.)
+        x0[:, self.i_T]    = cell_temperature
+        x0[:, self.i_s]    = 0
 
         memb_ix = cell.memb.ix
         for layer in cell.layers:

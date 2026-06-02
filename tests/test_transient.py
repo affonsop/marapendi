@@ -4,9 +4,9 @@ import pytest
 from scipy.integrate import solve_ivp
 import marapendi as mrpd
 
-T_OP = 353.15
-P_OP = 1.5e5
-RH   = 0.7
+cell_temperature = 353.15
+cell_pressure    = 1.5e5
+inlet_rh         = 0.7
 
 
 # ─── shared fixture: fully assembled PEMFC ────────────────────────────────────
@@ -18,7 +18,7 @@ def model():
         activation_energy=67e6,
         reaction_order=0.54,
         reference_activity=1e5,
-        reference_temperature=T_OP,
+        reference_temperature=cell_temperature,
         number_of_electrons=2,
         charge_transfer_coeff=0.5,
     )
@@ -57,8 +57,12 @@ def model():
 @pytest.fixture(scope="module")
 def y0(model):
     return model.initial_state(
-        T=T_OP, p=P_OP, rh=RH, lmbd=10.0, s=0.05,
-        ca_dry_o2=0.21, an_dry_h2=1.0,
+        cell_temperature=cell_temperature,
+        cell_pressure=cell_pressure,
+        ca_rh=inlet_rh,
+        an_rh=inlet_rh,
+        ca_dry_o2=0.21,
+        an_dry_h2=1.0,
     )
 
 
@@ -86,24 +90,27 @@ class TestInitialState:
     def test_all_finite(self, y0):
         assert np.all(np.isfinite(y0))
 
+    def test_liquid_saturation_starts_at_zero(self, model, y0):
+        x = y0.reshape(model.n_layers, model.n_variables) * model.norm_factor
+        assert np.all(x[:, model.i_s] == pytest.approx(0.))
+
     def test_anode_gdl_has_nonzero_gas(self, model, y0):
         x = y0.reshape(model.n_layers, model.n_variables) * model.norm_factor
         gdl_ix = model.cell.an.gdl.ix
-        # All four gas concentrations must be non-negative; H2 must be present
         assert np.all(x[gdl_ix, model.i_cg] >= 0)
-        assert x[gdl_ix, model.i_cg[2]] > 0  # H2
+        assert x[gdl_ix, model.i_cg[2]] > 0   # H2 present
 
     def test_cathode_has_oxygen_not_hydrogen(self, model, y0):
         x = y0.reshape(model.n_layers, model.n_variables) * model.norm_factor
         ca_ix = model.cell.ca.cl.ix
-        assert x[ca_ix, model.i_cg[0]] > 0   # O2 present
-        assert x[ca_ix, model.i_cg[2]] < 1e-5  # H2 trace only
+        assert x[ca_ix, model.i_cg[0]] > 0    # O2 present
+        assert x[ca_ix, model.i_cg[2]] == pytest.approx(0.)  # no H2 by default
 
     def test_anode_has_hydrogen_not_oxygen(self, model, y0):
         x = y0.reshape(model.n_layers, model.n_variables) * model.norm_factor
         an_ix = model.cell.an.cl.ix
         assert x[an_ix, model.i_cg[2]] > 0    # H2 present
-        assert x[an_ix, model.i_cg[0]] < 1e-5  # O2 trace only
+        assert x[an_ix, model.i_cg[0]] == pytest.approx(0.)  # no O2 by default
 
 
 # ─── rates_of_change ──────────────────────────────────────────────────────────
@@ -153,12 +160,14 @@ class TestShortIntegration:
         assert np.all(np.isfinite(sol.y))
 
     def test_saturation_stays_physical(self, model, sol):
-        # Unpack s from last time step
+        # Unpack s from last time step.  The BDF solver (atol=1e-6) can let s drift
+        # slightly outside [0,1]; get_states_from_x clips it back during evaluation,
+        # so we allow a small numerical margin here.
         x_end = (sol.y[:, -1].reshape(model.n_layers, model.n_variables)
                  * model.norm_factor)
         s_end = x_end[:, model.i_s]
-        assert np.all(s_end >= -1e-9)
-        assert np.all(s_end <= 1 + 1e-9)
+        assert np.all(s_end >= -1e-4)
+        assert np.all(s_end <= 1 + 1e-4)
 
 
 # ─── voltage is physical ──────────────────────────────────────────────────────

@@ -3,9 +3,9 @@ import numpy as np
 import pytest
 import marapendi as mrpd
 
-T_OP = 353.15
-P_OP = 1.5e5
-RH   = 0.7
+cell_temperature = 353.15
+cell_pressure = 1.5e5
+inlet_rh   = 0.7
 
 
 def _make_model():
@@ -14,7 +14,7 @@ def _make_model():
         activation_energy=67e6,
         reaction_order=0.54,
         reference_activity=1e5,
-        reference_temperature=T_OP,
+        reference_temperature=cell_temperature,
         number_of_electrons=2,
         charge_transfer_coeff=0.5,
     )
@@ -50,7 +50,10 @@ def _make_model():
     return mrpd.TransientCellModel(cell=cell)
 
 
-IC = dict(T=T_OP, p=P_OP, rh=RH, lmbd=10.0, s=0.05, ca_dry_o2=0.21, an_dry_h2=1.0)
+initial_conditions = dict(
+    cell_temperature=cell_temperature, cell_pressure=cell_pressure,
+    ca_rh=inlet_rh, an_rh=inlet_rh, ca_dry_o2=0.21, an_dry_h2=1.0,
+)
 
 
 @pytest.fixture(scope="module")
@@ -85,19 +88,19 @@ class TestBaseModelInit:
 
 class TestInitialState:
     def test_shape(self, base, single_model):
-        y0 = base.initial_state(cell=IC)
+        y0 = base.initial_state(cell=initial_conditions)
         assert y0.shape == (single_model.n_states,)
 
     def test_all_finite(self, base):
-        y0 = base.initial_state(cell=IC)
+        y0 = base.initial_state(cell=initial_conditions)
         assert np.all(np.isfinite(y0))
 
     def test_two_model_concatenation(self, single_model):
         base2 = mrpd.BaseModel(
             submodels={'a': single_model, 'b': single_model},
         )
-        y0_a = single_model.initial_state(**IC)
-        y0_ab = base2.initial_state(a=IC, b=IC)
+        y0_a = single_model.initial_state(**initial_conditions)
+        y0_ab = base2.initial_state(a=initial_conditions, b=initial_conditions)
         assert y0_ab.shape == (2 * single_model.n_states,)
         np.testing.assert_array_equal(y0_ab[:single_model.n_states], y0_a)
         np.testing.assert_array_equal(y0_ab[single_model.n_states:], y0_a)
@@ -105,13 +108,13 @@ class TestInitialState:
 
 class TestRatesOfChange:
     def test_scalar_input(self, base):
-        y0 = base.initial_state(cell=IC)
+        y0 = base.initial_state(cell=initial_conditions)
         dxdt = base.rates_of_change(0., y0)
         assert dxdt.shape == y0.shape
         assert np.all(np.isfinite(dxdt))
 
     def test_time_argument_ignored_for_constant_input(self, base):
-        y0 = base.initial_state(cell=IC)
+        y0 = base.initial_state(cell=initial_conditions)
         d1 = base.rates_of_change(0.,   y0)
         d2 = base.rates_of_change(100., y0)
         np.testing.assert_array_almost_equal(d1, d2)
@@ -122,7 +125,7 @@ class TestRatesOfChange:
             submodels={'cell': single_model},
             input_fns={'cell': lambda t: {'i': 1000. if t < 50 else 10000.}},
         )
-        y0 = base_td.initial_state(cell=IC)
+        y0 = base_td.initial_state(cell=initial_conditions)
         d_low  = base_td.rates_of_change(0.,  y0)
         d_high = base_td.rates_of_change(100., y0)
         # Rates should differ between the two current levels
@@ -131,7 +134,7 @@ class TestRatesOfChange:
 
 class TestSplitState:
     def test_single_submodel(self, base, single_model):
-        y0 = base.initial_state(cell=IC)
+        y0 = base.initial_state(cell=initial_conditions)
         parts = base.split_state(y0)
         assert 'cell' in parts
         np.testing.assert_array_equal(parts['cell'], y0)
@@ -140,7 +143,7 @@ class TestSplitState:
         base2 = mrpd.BaseModel(
             submodels={'a': single_model, 'b': single_model},
         )
-        y0 = base2.initial_state(a=IC, b=IC)
+        y0 = base2.initial_state(a=initial_conditions, b=initial_conditions)
         parts = base2.split_state(y0)
         assert parts['a'].shape == (single_model.n_states,)
         assert parts['b'].shape == (single_model.n_states,)
@@ -149,7 +152,7 @@ class TestSplitState:
         )
 
     def test_split_state_2d(self, base, single_model):
-        y0 = base.initial_state(cell=IC)
+        y0 = base.initial_state(cell=initial_conditions)
         y_mat = np.stack([y0, y0], axis=1)
         parts = base.split_state(y_mat)
         assert parts['cell'].shape == (single_model.n_states, 2)
