@@ -49,8 +49,12 @@ class CellState:
         Liquid water density [kg m⁻³].
     nu_l : ndarray
         Liquid water kinematic viscosity [m² s⁻¹].
-    M_k : ndarray, shape (n_layers, n_species, ...)
-        Species molar-mass fractions [kg kmol⁻¹].
+    nu_g : ndarray
+        Gas phase kinematic viscosity [m² s⁻¹].
+    M_g : ndarray, shape (n_layers, ...)
+        Gas mixture molecular weight [kg kmol⁻¹].
+    rho_g : ndarray, shape (n_layers, ...)
+        Gas mixture density [kg/m3].
     f_v : ndarray
         Ionomer water volume fraction [–].
 
@@ -80,7 +84,9 @@ class CellState:
     rh:    np.ndarray
     rho_l: np.ndarray
     nu_l:  np.ndarray
-    M_k:   np.ndarray
+    nu_g:  np.ndarray
+    M_g:   np.ndarray
+    rho_g: np.ndarray
     f_v:   np.ndarray
 
     # ---- pre-sliced fields ----
@@ -89,6 +95,7 @@ class CellState:
     T_an_cl:   np.ndarray
     f_v_memb:  np.ndarray
     f_v_ca_cl: np.ndarray
+    f_v_an_cl: np.ndarray
     lmbd_ca_cl: np.ndarray
     p_h2:      np.ndarray
     p_o2_ca_cl: np.ndarray

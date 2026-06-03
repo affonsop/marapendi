@@ -42,28 +42,54 @@ class CatalystLayerModel():
     current distribution.
     """
 
-    def ionomer_sheet_charge_resistance(self, f_v, T, charge, ionomer_model, cl):
+    def ionomer_sheet_charge_resistance(self, f_v, T, charge, ionomer_model, cl,
+                                         f_v_boundary=None, T_boundary=None):
         """Ionomer sheet resistance for charge transport [Ω·m²].
+
+        When *f_v_boundary* and *T_boundary* are supplied they are used as a
+        proxy for the CL/membrane interface conditions and the resistance is
+        estimated with the Simpson's rule:
+
+            R_sheet = (L·τ/ε_i) · (5/σ_cl + 1/σ_memb) / 6
+
+        This captures the conductivity gradient driven by the λ difference
+        between the CL centre and the adjacent membrane without requiring
+        additional nodes inside the CL. The water content at the CL/GDL 
+        interface is considered equal to the one at the center of the CL
+        since the flux of absorbed water towards the GDL is zero. 
 
         Parameters
         ----------
-        f_v : float
-            Water volume fraction in the ionomer [-].
-        T : float
-            Temperature [K].
+        f_v, T : ndarray
+            CL-centre water volume fraction [-] and temperature [K].
         charge : str
             Charge carrier (``'proton'`` or ``'hydroxide'``).
         ionomer_model : IonomerModel
             Model providing ``charge_conductivity``.
         cl : CatalystLayer
             Catalyst-layer component dataclass.
+        f_v_boundary, T_boundary : ndarray, optional
+            Water volume fraction and temperature at the CL/membrane boundary
+            (membrane node values used as proxies).  If omitted the single-node
+            approximation is used.
         """
-        sigma_ion = ionomer_model.charge_conductivity(f_v, T, charge, cl.ionomer)
-        return cl.thickness * cl.tau_ion / (cl.eps_ion * sigma_ion)
+        sigma_cl = ionomer_model.charge_conductivity(f_v, T, charge, cl.ionomer)
+        if f_v_boundary is not None and T_boundary is not None:
+            sigma_bd = ionomer_model.charge_conductivity(f_v_boundary, T_boundary, charge, cl.ionomer)
+            inv_sigma_eff = (5 / sigma_cl + 1 / sigma_bd) / 6
+        else:
+            inv_sigma_eff = 1 / sigma_cl
+        return cl.thickness * cl.tort_ion * inv_sigma_eff / cl.eps_ion
 
-    def effective_charge_resistance(self, i, f_v, T, electrolyte_saturation, charge, ionomer_model, cl, reaction, use_neyerlin_correction=False):
-        """
-        Effective charge resistance per Goshtasbi et al. (2020) / Neyerlin et al. (2007).
+    def effective_charge_resistance(self, i, f_v, T, electrolyte_saturation, charge,
+                                     ionomer_model, cl, reaction,
+                                     f_v_boundary=None, T_boundary=None,
+                                     use_neyerlin_correction=False):
+        """Effective charge resistance per Goshtasbi et al. (2020) / Neyerlin et al. (2007).
+
+        *f_v_boundary* / *T_boundary* are forwarded to
+        :meth:`ionomer_sheet_charge_resistance` to enable the trapezoidal
+        conductivity estimate when membrane boundary values are available.
 
         Returns
         -------
@@ -71,7 +97,9 @@ class CatalystLayerModel():
             Effective charge resistance [Ohm.m²].
         """
         self.sheet_resistance = 1. / (
-            1. / self.ionomer_sheet_charge_resistance(f_v, T, charge, ionomer_model, cl)
+            1. / self.ionomer_sheet_charge_resistance(
+                f_v, T, charge, ionomer_model, cl, f_v_boundary, T_boundary
+            )
             + 1. / self.electrolyte_sheet_resistance(T, electrolyte_saturation, cl)
         )
 

@@ -61,9 +61,16 @@ class Cell(Updatable):
         values = [getattr(layer, property_name, np.nan) for layer in self.layers]
 
         if any(isinstance(v, np.ndarray) for v in values):
-            n = next(v.shape[0] for v in values if isinstance(v, np.ndarray))
-            cols = [v if isinstance(v, np.ndarray) else np.full(n, np.nan)
-                    for v in values]
+            # Use the maximum length so layers with shorter arrays (e.g. polynomial
+            # coefficients of lower degree) are zero-padded at the end, which is
+            # mathematically equivalent for polynomials.
+            n = max(v.shape[0] for v in values if isinstance(v, np.ndarray))
+            cols = []
+            for v in values:
+                if isinstance(v, np.ndarray):
+                    cols.append(np.pad(v, (0, n - v.shape[0])) if v.shape[0] < n else v)
+                else:
+                    cols.append(np.full(n, np.nan))
             return np.stack(cols, axis=0)       # (n_layers, N)
         else:
             return np.array(values, dtype=float)[:, np.newaxis]  # (n_layers, 1)

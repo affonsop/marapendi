@@ -79,6 +79,7 @@ class Ionomer(Updatable):
     T_ref_D_ion: float = field(default=None)
     T_ref_des_ion: float = field(default=None)
     E_act_ion: float = field(default=None)
+    E_act_cond_ion: float = field(default=None)
     f_v_perc_ion: float = field(default=None)
     n_sigma_ion: float = field(default=None)
     c_ion: float = field(default=None)
@@ -91,7 +92,8 @@ class Ionomer(Updatable):
         if self.rho_dry_ion is not None and self.EW_ion is not None:
             self.c_ion = self.rho_dry_ion / self.EW_ion  # kmol/m³
             self.V_ion = 1. / self.c_ion  # m³/kmol
-    
+        if not self.E_act_cond_ion: 
+            self.E_act_cond_ion = self.E_act_ion
 
 
 @dataclass

@@ -39,9 +39,9 @@ class Membrane(PorousLayer, Ionomer):
     ionomer : Ionomer, optional
         Ionomer parameter object whose fields are copied onto ``self``
         during ``__post_init__`` for direct attribute access.
-    thermal_conductivity : float
+    bulk_thermal_conductivity : float
         Thermal conductivity [W/(m·K)] (default 0.9).
-    specific_heat_capacity : float
+    bulk_specific_heat_capacity : float
         Specific heat capacity [J/(kg·K)] (default 2000).
     """
     
@@ -49,8 +49,8 @@ class Membrane(PorousLayer, Ionomer):
     eps_ion: float = 1.
     tort_ion: float = 1.
     ionomer: Ionomer = field(default=None)
-    thermal_conductivity: float = 0.9
-    specific_heat_capacity: float = 2000.
+    bulk_thermal_conductivity: float = 0.9
+    bulk_specific_heat_capacity: float = 2000.
     
     def __eq__(self, other):
         """Use identity comparison — layers are unique instances in the cell model.
@@ -63,21 +63,31 @@ class Membrane(PorousLayer, Ionomer):
 
 
     def __post_init__(self):
-        """Copy all ionomer fields onto self so ionomer properties are
-        directly accessible (e.g. self.dry_density, self.equivalent_weight).
-        Skipped if no ionomer was supplied."""
+        """Resolve ionomer fields and wire bulk-property aliases.
+
+        If an *ionomer* instance was supplied, all of its dataclass fields are
+        copied onto ``self`` so that ionomer material parameters are directly
+        accessible as attributes (e.g. ``self.EW_ion``, ``self.sigma_ref_ion``).
+        This copy runs before the parent ``__post_init__`` calls so derived
+        quantities (``c_ion``, ``V_ion``) are computed with the correct values.
+
+        ``bulk_density`` is aliased to ``rho_dry_ion`` so that
+        ``Cell.build_property_arrays`` picks it up correctly.
+        """
         if self.ionomer is not None:
             for f in dataclass_fields(self.ionomer):
                 setattr(self, f.name, getattr(self.ionomer, f.name))
+        self.bulk_density = self.rho_dry_ion
         PorousLayer.__post_init__(self)
         Ionomer.__post_init__(self)
 
-    def update_ionomer_film_volume(self, ionomer_expansion_factor=1):
-        """Update eps_ion, eps_p, t_ion_film and derived geometry for given water content."""
-        self.ionomer_expansion_factor = ionomer_expansion_factor
-        self.set_water_film_thickness
 
-        
 @dataclass
 class PFSAMembrane(Membrane, PFSAIonomer):
-    pass
+    """Perfluorosulfonic acid membrane (e.g. Nafion NR-211/212).
+
+    Inherits all ionomer parameters from :class:`PFSAIonomer` and all
+    geometry/thermal parameters from :class:`Membrane`.  The default
+    parameterisation targets Nafion NR-211 (25 µm) at 80 °C; override
+    ``bulk_thermal_conductivity`` and ``thickness`` for other grades.
+    """

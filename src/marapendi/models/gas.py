@@ -18,7 +18,7 @@ Mixture viscosity uses the mole-fraction / √M weighting rule
 
     μ_mix = Σ_k [ x_k √M_k μ_k ] / Σ_k [ x_k √M_k ]
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import cantera as ct
 import numpy as np
@@ -43,28 +43,41 @@ class GasMixtureModel:
         (suitable for Horner evaluation), one row per species.
     """
 
-    species: list
+    species: list = field(default_factory=lambda: ['o2', 'n2', 'h2', 'h2o'])
 
     def __post_init__(self):
+        
         self.i = {s: i for i, s in enumerate(self.species)}
 
         # Build a fresh GRI 3.0 solution to query transport polynomials.
-        gas_ref = ct.Solution("gri30.yaml")
+        gas = ct.Solution("gri30.yaml")
 
+        selected_species_dict = {sp.name.lower(): sp for sp in gas.species() if sp.name.lower() in self.species}
+        selected_species = [selected_species_dict[sp] for sp in self.species]
+        gas = ct.Solution("gri30.yaml", selected_species=selected_species)
+
+        
         # get_viscosity_polynomial returns [a0, a1, …] in ascending degree
         # order.  Reverse to descending for Horner's method.
         self.viscosity_polynomials = np.array([
-            gas_ref.get_viscosity_polynomial(
-                gas_ref.species_index(sp.upper())
+            gas.get_viscosity_polynomial(
+                gas.species_index(sp.upper())
             )[::-1]
             for sp in self.species
         ])  # (n_species, n_coeffs)
 
+        self.molecular_weights = np.array([
+            gas.molecular_weights[
+                gas.species_index(sp.upper())
+            ]
+            for sp in self.species
+        ])
+        print(self.molecular_weights)
     # ------------------------------------------------------------------
     # Public interface
     # ------------------------------------------------------------------
 
-    def calculate_mixture_kinematic_viscosity(
+    def mixture_dynamic_viscosity(
         self,
         T: np.ndarray,
         x_k: np.ndarray,
@@ -106,10 +119,9 @@ class GasMixtureModel:
         # Mole-fraction / √M weighted average
         sqrt_M = np.sqrt(M_k)[np.newaxis, :, np.newaxis]  # (1, n_species, 1)
         weights = x_k * sqrt_M                             # (n_layers, n_species, n_measurements)
-
         mu_mix = (
             np.sum(weights * mu_k, axis=1)
-            / np.sum(weights, axis=1)
+            / np.maximum(1e-12, np.sum(weights, axis=1))
         )  # (n_layers, n_measurements)
 
         return mu_mix

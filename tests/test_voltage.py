@@ -97,7 +97,7 @@ class TestActivationOverpotential:
 class TestOhmicOverpotential:
     def test_positive(self, voltage_model, memb_model, cl_model, ca_cl, f_v):
         eta_memb, eta_ca_cl, eta_gdl = voltage_model.calculate_ohmic_overpotential(
-            T_memb=T, f_v_memb=f_v, T_ca_cl=T, f_v_ca_cl=f_v, s_ca_cl=0.,
+            T_an_cl=T, f_v_an_cl=f_v, T_memb=T, f_v_memb=f_v, T_ca_cl=T, f_v_ca_cl=f_v, s_ca_cl=0.,
             i=5000., memb=MEMB, electrical_resistance=30e-7,
             membrane_model=memb_model, ionomer_model=memb_model,
             ca_cl_model=cl_model, ca_cl=ca_cl, charge='proton',
@@ -106,7 +106,7 @@ class TestOhmicOverpotential:
         assert eta_gdl > 0
 
     def test_proportional_to_current(self, voltage_model, memb_model, cl_model, ca_cl, f_v):
-        kwargs = dict(T_memb=T, f_v_memb=f_v, T_ca_cl=T, f_v_ca_cl=f_v, s_ca_cl=0.,
+        kwargs = dict(T_an_cl=T, f_v_an_cl=f_v, T_memb=T, f_v_memb=f_v, T_ca_cl=T, f_v_ca_cl=f_v, s_ca_cl=0.,
                       memb=MEMB, electrical_resistance=30e-7,
                       membrane_model=memb_model, ionomer_model=memb_model,
                       ca_cl_model=cl_model, ca_cl=ca_cl, charge='proton')
@@ -115,13 +115,28 @@ class TestOhmicOverpotential:
         assert eta_memb2 == pytest.approx(2 * eta_memb1, rel=1e-6)
         assert eta_gdl2 == pytest.approx(2 * eta_gdl1, rel=1e-6)
 
+    def test_simpson_uses_boundary_conditions(self, voltage_model, memb_model, cl_model, ca_cl, f_v):
+        V_w = mrpd.water_molar_volume(T)
+        f_v_low = memb_model.water_vol_fraction(5., V_w, MEMB.V_ion)
+        base_kwargs = dict(T_memb=T, f_v_memb=f_v, T_ca_cl=T, f_v_ca_cl=f_v, s_ca_cl=0.,
+                           i=5000., memb=MEMB, electrical_resistance=30e-7,
+                           membrane_model=memb_model, ionomer_model=memb_model,
+                           ca_cl_model=cl_model, ca_cl=ca_cl, charge='proton')
+        eta_memb_same, _, _ = voltage_model.calculate_ohmic_overpotential(
+            T_an_cl=T, f_v_an_cl=f_v, **base_kwargs
+        )
+        eta_memb_diff, _, _ = voltage_model.calculate_ohmic_overpotential(
+            T_an_cl=T, f_v_an_cl=f_v_low, **base_kwargs
+        )
+        assert eta_memb_same != pytest.approx(eta_memb_diff)
+
 
 class TestCellVoltage:
     @pytest.fixture
     def cell_voltage_kwargs(self, memb_model, cl_model, ca_cl, f_v):
         return dict(
             T_an_cl=T, T_ca_cl=T, T_memb=T,
-            f_v_memb=f_v, f_v_ca_cl=f_v, s_ca_cl=0.,
+            f_v_an_cl=f_v, f_v_memb=f_v, f_v_ca_cl=f_v, s_ca_cl=0.,
             p_h2=STD_P, p_o2_local=STD_P * 0.21,
             i=5000., memb=MEMB, electrical_resistance=30e-7,
             memb_model=memb_model, ionomer_model=memb_model,

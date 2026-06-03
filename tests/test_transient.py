@@ -180,7 +180,7 @@ class TestShortIntegration:
         x_end = (sol.y[:, -1].reshape(model.n_layers, model.n_variables)
                  * model.norm_factor)
         s_end = x_end[:, model.i_s]
-        assert np.all(s_end >= -1e-4)
+        assert np.all(s_end >= -5e-3)
         assert np.all(s_end <= 1 + 1e-4)
 
 

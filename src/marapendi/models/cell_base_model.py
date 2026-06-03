@@ -15,6 +15,7 @@ from marapendi.models.model import BaseModel
 from marapendi.models.transient import TransientCellModel
 from marapendi.models.transport import PorousGasResistanceModel, DarcyTransportModel
 from marapendi.models.membrane import MembraneModel
+from marapendi.models.gas import GasMixtureModel
 from marapendi.models.catalyst_layer import CatalystLayerModel
 from marapendi.models.voltage import VoltageModel
 
@@ -67,6 +68,7 @@ class CellBaseModel(BaseModel):
     darcy_transport_model: DarcyTransportModel = field(
         default_factory=DarcyTransportModel)
     memb_model: MembraneModel = field(default_factory=MembraneModel)
+    gas_model: GasMixtureModel = field(default_factory=GasMixtureModel)
     cl_model: CatalystLayerModel = field(default_factory=CatalystLayerModel)
     voltage_model: VoltageModel = field(default_factory=VoltageModel)
 
@@ -118,9 +120,10 @@ class CellBaseModel(BaseModel):
         )
         state = model._compute_derived_quantities(x, i_density)
         model._compute_voltage(state)
-        model._compute_water_exchange(state)
-        model._compute_phase_change(state)
+        J_des = model._compute_water_exchange(state)
+        S_vl = model._compute_phase_change(state)
         model._compute_capacities(state)
         model._compute_resistances(state)
         model._compute_fluxes(state.eff_R, state)
+        model._compute_sources(state, J_des, S_vl)
         return state

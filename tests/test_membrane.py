@@ -100,24 +100,24 @@ class TestEquilibriumWaterContent:
 class TestMembraneWaterResistance:
     # darken_num/den from a material are 1-D; the model always calls them via
     # Cell.build_property_arrays which produces 2-D (n_layers, n_coeffs) arrays.
-    def _D_lmbd(self, model, f_v):
+    def _D_lmbd(self, model):
         num_2d = MEMB.darken_num_ion[np.newaxis, :]
         den_2d = MEMB.darken_den_ion[np.newaxis, :]
         return model.diffusion_coefficient(
-            np.array([[10.]]), np.array([[f_v]]), np.array([[T]]),
+            np.array([[10.]]), np.array([[T]]),
             num_2d, den_2d, MEMB.D_lmbd_ref_ion, MEMB.E_act_ion,
         )
 
     def test_positive_finite(self, model, f_v):
-        D = self._D_lmbd(model, f_v)
+        D = self._D_lmbd(model)
         R = model.calculate_membrane_water_resistance(
-            D, MEMB.thickness, MEMB.eps_ion, MEMB.c_ion, MEMB.tau_ion,
+            D, MEMB.thickness, MEMB.eps_ion, MEMB.c_ion, MEMB.tort_ion,
         )
         assert np.all(np.isfinite(R))
         assert np.all(R > 0)
 
     def test_proportional_to_thickness(self, model, f_v):
-        D = self._D_lmbd(model, f_v)
-        R1 = model.calculate_membrane_water_resistance(D, 50e-6,  MEMB.eps_ion, MEMB.c_ion, MEMB.tau_ion)
-        R2 = model.calculate_membrane_water_resistance(D, 100e-6, MEMB.eps_ion, MEMB.c_ion, MEMB.tau_ion)
+        D = self._D_lmbd(model)
+        R1 = model.calculate_membrane_water_resistance(D, 50e-6,  MEMB.eps_ion, MEMB.c_ion, MEMB.tort_ion)
+        R2 = model.calculate_membrane_water_resistance(D, 100e-6, MEMB.eps_ion, MEMB.c_ion, MEMB.tort_ion)
         assert R2 == pytest.approx(2 * R1, rel=1e-6)

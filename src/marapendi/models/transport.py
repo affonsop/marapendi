@@ -177,20 +177,25 @@ class DarcyTransportModel:
     """
  
 
-    def calculate_liquid_darcy_flow_resistance(self, s, nu_l, thickness, K_abs, n_rel):
+    def calculate_darcy_flow_resistance(self, s, nu, thickness, K_abs, n_rel):
         # on a mass basis
-        return ((thickness * nu_l) /
-                (K_abs * np.maximum(1e-3, s) ** n_rel))
+        return ((thickness * nu) /
+                (K_abs * np.maximum(1e-2, s) ** n_rel))
 
-    def saturation_from_capillary_pressure(self, layer, p_c, p_b, m, n):
+    def saturation_from_capillary_pressure(self, layer, p_c, p_b, m, n, phase='non-wetting'):
         """
         Van Genuchten model
         """
-        return 1 - (1 + (p_c/p_b)**n)**(-m)
+        if phase == 'non-wetting': 
+            return 1 - (1 + (p_c/p_b)**n)**(-m)
+        else: 
+            return (1 + (p_c/p_b)**n)**(-m) 
 
-    def capillary_pressure_from_saturation(self, s, p_b, m, n):
+    def capillary_pressure_from_saturation(self, s, p_b, m, n, phase='non-wetting'):
         """
         Van Genuchten model
         """
-        s = np.clip(s, 1e-3, 1 - 1e-6)
-        return  p_b * ((1 - s)**(-1/m) - 1)**(1/n)
+        return  p_b * (
+                np.clip(1 - s if phase == 'non-wetting' else s, 1e-6, 1)
+                **(-1/m) - 1
+            )**(1/n)

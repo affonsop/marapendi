@@ -85,15 +85,15 @@ class TestTotalDiffusionResistance:
 class TestLiquidDarcyFlowResistance:
     def test_positive(self, darcy_model):
         nu_l = mrpd.water_kinematic_viscosity(T)
-        R = darcy_model.calculate_liquid_darcy_flow_resistance(
-            s=0.1, nu_l=nu_l, thickness=160e-6, K_abs=1e-12, n_rel=3,
+        R = darcy_model.calculate_darcy_flow_resistance(
+            s=0.1, nu=nu_l, thickness=160e-6, K_abs=1e-12, n_rel=3,
         )
         assert np.all(R > 0)
 
     def test_increases_as_saturation_drops(self, darcy_model):
         nu_l = mrpd.water_kinematic_viscosity(T)
-        R_high = darcy_model.calculate_liquid_darcy_flow_resistance(0.05, nu_l, 160e-6, 1e-12, 3)
-        R_low  = darcy_model.calculate_liquid_darcy_flow_resistance(0.50, nu_l, 160e-6, 1e-12, 3)
+        R_high = darcy_model.calculate_darcy_flow_resistance(0.05, nu_l, 160e-6, 1e-12, 3)
+        R_low  = darcy_model.calculate_darcy_flow_resistance(0.50, nu_l, 160e-6, 1e-12, 3)
         assert R_high > R_low
 
 

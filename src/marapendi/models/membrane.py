@@ -98,7 +98,7 @@ class IonomerModel:
             Ionomer parameter dataclass.
         """
         charge_conductivity = ionomer.sigma_ref_ion * np.maximum(0.01, f_v - ionomer.f_v_perc_ion) ** ionomer.n_sigma_ion
-        return (charge_conductivity if charge == ionomer.charge_ion else (1/np.inf)) * arrhenius_term(ionomer.E_act_ion, T, ionomer.T_ref_sigma_ion)
+        return (charge_conductivity if charge == ionomer.charge_ion else (1/np.inf)) * arrhenius_term(ionomer.E_act_cond_ion, T, ionomer.T_ref_sigma_ion)
     
 @dataclass
 class MembraneModel(IonomerModel):
@@ -131,14 +131,41 @@ class MembraneModel(IonomerModel):
         h2_permeability = self.h2_permeability(T_memb, f_v_memb)
         return h2_permeability * p_h2 / memb_thickness
 
-    def diffusion_coefficient(self, lmbd, f_v, T, darken_num, darken_den, alpha_lmbd, E_act, T_ref=303.15):
+    def diffusion_coefficient(self, lmbd, T, darken_num, darken_den, D_ref, E_act, T_ref=303.15):
         """Effective water diffusivity in the ionomer [m²/s].
 
-        Applies the Darken correction (polynomial ratio) scaled by the
-        water volume fraction and an Arrhenius temperature factor.
-        See Wei et al. (2023).
+        Evaluates the Darken-corrected diffusivity following Vetter & Schumacher
+        (2019) Eq. 22 (fit to Mittelsteadt & Staser 2011 data for Nafion):
+
+            Dλ = (num_poly(λ) / den_poly(λ)) · D_ref · exp(Ea/R·(1/T_ref − 1/T))
+
+        The Bruggeman volume-fraction correction (ε_i) is applied downstream in
+        ``calculate_membrane_water_resistance`` so it is **not** included here.
+
+        Parameters
+        ----------
+        lmbd : ndarray
+            Ionomer water content [mol/mol].
+        T : ndarray
+            Temperature [K].
+        darken_num, darken_den : ndarray, shape (n_layers, n_coeffs)
+            Polynomial coefficients in **ascending** degree order
+            [c₀, c₁, c₂, …] (reversed internally before ``np.polyval``).
+            For Vetter's Nafion fit: num = [0, 67.74, -32.03, 3.842],
+            den = [103.37, -33.013, -2.115, 1.0].
+        D_ref : ndarray
+            Reference diffusivity [m²/s] (= 10⁻⁶ cm²/s = 10⁻¹⁰ m²/s for Nafion).
+        E_act : ndarray
+            Activation energy [J/kmol].
+        T_ref : float
+            Reference temperature [K] (default 303.15 K = 30 °C).
         """
-        return polyval_vec(darken_num[:,::-1], lmbd) / polyval_vec(darken_den[:,::-1], lmbd) * alpha_lmbd * f_v * arrhenius_term(E_act, T, T_ref)
+        return (
+            polyval_vec(darken_num[:, ::-1], lmbd)
+            / polyval_vec(darken_den[:, ::-1], lmbd)
+            * D_ref
+            * arrhenius_term(E_act, T, T_ref)
+        )
 
     def sorption_coefficient(self, f_v, T, k_des, E_act, T_ref=303.15):
         """Surface desorption rate coefficient for water [m/s].
@@ -255,4 +282,4 @@ class PFSAModel(MembraneModel):
         lmbd : float
             Water content [mol H₂O / mol SO₃⁻].
         """
-        return (0.02 * T - 3.86) / 22.5 * lmbd
+        return 2.5 / 22.5 * lmbd

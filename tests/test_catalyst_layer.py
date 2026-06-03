@@ -110,3 +110,15 @@ class TestEffectiveChargeResistance:
         R_no  = model.effective_charge_resistance(**kwargs, use_neyerlin_correction=False)
         R_yes = model.effective_charge_resistance(**kwargs, use_neyerlin_correction=True)
         assert R_no != pytest.approx(R_yes)
+
+    def test_boundary_values_change_resistance(self, model, cl_with_electrolyte, memb_model):
+        V_w = mrpd.water_molar_volume(T)
+        f_v = memb_model.water_vol_fraction(10., V_w, cl_with_electrolyte.V_ion)
+        kwargs = dict(i=5000., f_v=f_v, T=T, electrolyte_saturation=0.,
+                      charge='proton', ionomer_model=memb_model,
+                      cl=cl_with_electrolyte, reaction=cl_with_electrolyte.reaction)
+        R_no_boundary = model.effective_charge_resistance(**kwargs)
+        R_with_boundary = model.effective_charge_resistance(
+            **kwargs, f_v_boundary=f_v * 1.5, T_boundary=T
+        )
+        assert R_no_boundary != pytest.approx(R_with_boundary)

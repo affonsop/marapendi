@@ -70,11 +70,24 @@ class VoltageModel:
         )
         return orr_overpotential + omega_PtO_voltage_drop
 
-    def calculate_ohmic_overpotential(self, T_memb, f_v_memb, T_ca_cl, f_v_ca_cl, s_ca_cl,
+    def calculate_ohmic_overpotential(self, T_an_cl, f_v_an_cl, T_memb, f_v_memb,
+                                      T_ca_cl, f_v_ca_cl, s_ca_cl,
                                       i, memb,
-                                      electrical_resistance, membrane_model, ionomer_model, ca_cl_model, ca_cl, charge, use_neyerlin_correction=False):
-        """
-        Per-location ohmic overpotential.
+                                      electrical_resistance, membrane_model, ionomer_model,
+                                      ca_cl_model, ca_cl, charge,
+                                      use_neyerlin_correction=False):
+        """Per-location ohmic overpotential.
+
+        The membrane resistance is estimated by Simpson's rule over the three
+        available σ_p sample points (anode-CL node, membrane centre node,
+        cathode-CL node), which are used as proxies for the left boundary,
+        midpoint, and right boundary of the membrane:
+
+            R_memb ≈ (L/6) · (1/σ_left + 4/σ_centre + 1/σ_right)
+
+        This captures the strongly non-linear variation of σ_p through the
+        membrane that arises from the λ gradient driven by electro-osmotic
+        drag, without requiring extra membrane nodes in the ODE.
 
         Returns
         -------
@@ -83,11 +96,19 @@ class VoltageModel:
         # TODO: remove workaround once electrolyte is set properly on CatalystLayer
         ca_cl.electrolyte = ElectrolyteSolution()
 
-        eta_memb  = i * memb.thickness / membrane_model.charge_conductivity(
-            f_v_memb, T_memb, charge, memb
+        def _sigma(f_v, T):
+            return membrane_model.charge_conductivity(f_v, T, charge, memb)
+
+        sigma_left   = _sigma(f_v_an_cl, T_an_cl)   # ACL/PEM boundary proxy
+        sigma_center = _sigma(f_v_memb,  T_memb)     # membrane centre node
+        sigma_right  = _sigma(f_v_ca_cl, T_ca_cl)    # PEM/CCL boundary proxy
+        eta_memb = i * memb.thickness / 6 * (
+            1 / sigma_left + 4 / sigma_center + 1 / sigma_right
         )
         eta_ca_cl = i * ca_cl_model.effective_charge_resistance(
-            i, f_v_ca_cl, T_ca_cl, s_ca_cl, charge, ionomer_model, ca_cl, ca_cl.reaction, use_neyerlin_correction
+            i, f_v_ca_cl, T_ca_cl, s_ca_cl, charge, ionomer_model, ca_cl, ca_cl.reaction,
+            f_v_boundary=f_v_memb, T_boundary=T_memb,
+            use_neyerlin_correction=use_neyerlin_correction,
         )
         eta_gdl = i * electrical_resistance / 2
         return eta_memb, eta_ca_cl, eta_gdl
@@ -97,7 +118,7 @@ class VoltageModel:
     # ------------------------------------------------------------------
 
     def calculate_cell_voltage(self, T_an_cl, T_ca_cl, T_memb,
-                               f_v_memb, f_v_ca_cl, s_ca_cl,
+                               f_v_an_cl, f_v_memb, f_v_ca_cl, s_ca_cl,
                                p_h2, p_o2_local,
                                i, memb,
                                electrical_resistance, memb_model, ionomer_model, ca_cl_model,
@@ -124,9 +145,9 @@ class VoltageModel:
             T_ca_cl, p_o2_local, i, i_x, theta_PtO, ca_cl,
         )
         eta_memb, eta_ca_cl, eta_gdl = self.calculate_ohmic_overpotential(
-            T_memb, f_v_memb, T_ca_cl, f_v_ca_cl, 
-            s_ca_cl, i, memb, electrical_resistance, 
-            memb_model, ionomer_model, ca_cl_model, ca_cl, charge, 
+            T_an_cl, f_v_an_cl, T_memb, f_v_memb, T_ca_cl, f_v_ca_cl,
+            s_ca_cl, i, memb, electrical_resistance,
+            memb_model, ionomer_model, ca_cl_model, ca_cl, charge,
             use_neyerlin_correction
         )
         eta_ohm = eta_memb + eta_ca_cl + 2 * eta_gdl

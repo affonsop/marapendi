@@ -57,10 +57,10 @@ class PorousLayer(Layer):
     n_s: float = 3
     theta_contact: float = 120. 
     eps_ion: float = 0.
-    tau_ion: float = 1.
-    p_b: float = 15020
-    van_genuchten_m: float = 0.7262
-    van_genuchten_n: float = 3.652 
+    tort_ion: float = 1.
+    p_b: float = 14570
+    van_genuchten_m: float = 0.8667
+    van_genuchten_n: float = 7.499 
     s_im: float = 0
 
 

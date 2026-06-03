@@ -18,13 +18,15 @@ from typing import Union, Callable
 
 from marapendi.components.cell import Cell
 from marapendi.components.cell_state import CellState
+
 from marapendi.models.water import (
     water_saturation_concentration,
     water_density,
     water_molar_volume,
     water_kinematic_viscosity,
+    water_molecular_weight,
 )
-from marapendi.models.electrochemistry import enthalpy_condensation
+from marapendi.models.electrochemistry import enthalpy_condensation, std_formation_entropy_h2ol
 
 
 @dataclass
@@ -97,6 +99,8 @@ class TransientCellModel:
         for i, layer in enumerate(cell.layers):
             layer.ix = i
 
+        for side in (cell.ca, cell.an): 
+            side.ix = [layer.ix for layer in side.layers]
         self.n_variables = (
             1   # ionomer water content
             + 1   # temperature
@@ -131,6 +135,8 @@ class TransientCellModel:
         ca_dry_h2: float = 0, 
         an_dry_o2: float = 0.,
         an_dry_h2: float = 1.0,
+        s_ca: float = 0, 
+        s_an: float = 0
     ) -> np.ndarray:
         
         """Build a normalised flat initial-state vector from operating conditions.
@@ -161,7 +167,10 @@ class TransientCellModel:
             O₂ mole fraction in the dry anode gas (default 0).
         an_dry_h2 : float
             H₂ mole fraction in the dry anode gas (default 1.0 for pure H₂).
-
+        s_ca : float
+            Cathode saturation (default 0).
+        s_an : float
+            Anode saturation (default 0).
         Returns
         -------
         np.ndarray
@@ -198,7 +207,8 @@ class TransientCellModel:
         # those lambda states are frozen (infinite capacity) during integration.
         x0[:, self.i_lmbd] = np.nan_to_num(lmbd_eq, nan=0.)
         x0[:, self.i_T]    = cell_temperature
-        x0[:, self.i_s]    = 0
+        x0[cell.ca.ix, self.i_s]    = s_ca
+        x0[cell.an.ix, self.i_s]    = s_an
 
         memb_ix = cell.memb.ix
         for layer in cell.layers:
@@ -236,18 +246,33 @@ class TransientCellModel:
         m    = self.base_model
         lmbd, T, cg_k, s = self.get_states_from_x(x)
 
+        RT = ct.gas_constant * T
         iF    = i / ct.faraday
         c_g   = np.sum(cg_k, axis=1)
-        p_g   = c_g * ct.gas_constant * T
+        p_g   = c_g * RT
+        for side in (cell.ca, cell.an): 
+            p_g[side.ix, ...] = p_g[side.ch.ix, ...]
+        c_g = p_g / RT 
+
         x_g_k = cg_k / np.maximum(c_g, 1e-30)[:, np.newaxis, ...]
+        x_g_k[:, m.gas_model.i['n2'], ...] = (
+            1 
+            - x_g_k[:, m.gas_model.i['h2'], ...] 
+            - x_g_k[:, m.gas_model.i['h2o'], ...]
+            - x_g_k[:, m.gas_model.i['o2'], ...]
+        )
         p_g_k = p_g[:, np.newaxis, ...] * x_g_k
         D_g_k = m.gas_diffusion_model.species_diffusion_coefficient(T, p_g, x_h2=self.x_h2_mask)
+        M_g   = np.sum(x_g_k * m.gas_model.molecular_weights[np.newaxis, :, np.newaxis], axis=1)
+        rho_g = c_g * M_g 
+
         c_sat = water_saturation_concentration(T)
         c_v   = cg_k[:, -1, ...]
         rh    = c_v / c_sat
         rho_l = water_density(T)
         nu_l  = water_kinematic_viscosity(T)
-        M_k   = x_g_k * np.array([32., 28., 2., 18.])[np.newaxis, :, np.newaxis]
+        nu_g  = m.gas_model.mixture_dynamic_viscosity(T, x_g_k, 
+            m.gas_model.molecular_weights) / np.maximum(1e-12, rho_g)
         V_w   = water_molar_volume(T)
 
         f_v = m.memb_model.water_vol_fraction(lmbd, V_w, cell.V_ion)
@@ -261,12 +286,13 @@ class TransientCellModel:
             lmbd=lmbd, T=T, cg_k=cg_k, s=s,
             iF=iF, p_g=p_g, p_g_k=p_g_k, D_g_k=D_g_k,
             c_sat=c_sat, c_v=c_v, rh=rh,
-            rho_l=rho_l, nu_l=nu_l, M_k=M_k, f_v=f_v,
+            rho_l=rho_l, nu_l=nu_l, M_g=M_g, rho_g=rho_g, nu_g=nu_g, f_v=f_v,
             T_memb=T[memb_ix, ...],
             T_ca_cl=T[ca_cl_ix, ...],
             T_an_cl=T[an_cl_ix, ...],
             f_v_memb=f_v[memb_ix, ...],
             f_v_ca_cl=f_v[ca_cl_ix, ...],
+            f_v_an_cl=f_v[an_cl_ix, ...],
             lmbd_ca_cl=lmbd[ca_cl_ix, ...],
             p_h2=p_g_k[an_cl_ix, 2, ...],
             p_o2_ca_cl=p_g_k[ca_cl_ix, 0, ...],
@@ -296,6 +322,7 @@ class TransientCellModel:
             T_an_cl=state.T_an_cl,
             T_ca_cl=state.T_ca_cl,
             T_memb=state.T_memb,
+            f_v_an_cl=state.f_v_an_cl,
             f_v_memb=state.f_v_memb,
             f_v_ca_cl=state.f_v_ca_cl,
             s_ca_cl=0,
@@ -317,15 +344,16 @@ class TransientCellModel:
         m    = self.base_model
         R = np.zeros_like(state.x)
 
-        R[:, self.i_s, ...] = m.darcy_transport_model.calculate_liquid_darcy_flow_resistance(
+        R[:, self.i_s, ...] = m.darcy_transport_model.calculate_darcy_flow_resistance(
             state.s, state.nu_l, cell.thickness,
             cell.K_abs, cell.n_rel,
         )
+        
         R[:, self.i_cg, ...] = m.gas_diffusion_model.total_diffusion_resistance(
             state.T[:, np.newaxis, ...],
             state.s[:, np.newaxis, ...],
             state.D_g_k,
-            state.M_k,
+            m.gas_model.molecular_weights[np.newaxis,:,np.newaxis], 
             cell.thickness[:, np.newaxis, ...],
             cell.eps_p[:, np.newaxis, ...],
             cell.tort[:, np.newaxis, ...],
@@ -337,7 +365,7 @@ class TransientCellModel:
         # λ transport is only defined in the ionomer domain; default to inf everywhere
         # and overwrite for ionomer layers only to avoid divide-by-zero on other layers.
         D_lmbd = m.memb_model.diffusion_coefficient(
-            state.lmbd, state.f_v, state.T,
+            state.lmbd, state.T,
             cell.darken_num_ion,
             cell.darken_den_ion,
             cell.D_lmbd_ref_ion,
@@ -345,7 +373,7 @@ class TransientCellModel:
         )
         R[:, self.i_lmbd, ...] = m.memb_model.calculate_membrane_water_resistance(
             D_lmbd, cell.thickness, cell.eps_ion,
-            cell.c_ion, cell.tau_ion,
+            cell.c_ion, cell.tort_ion,
         )
 
         for layer in (cell.ca.ch, cell.an.ch):
@@ -361,44 +389,66 @@ class TransientCellModel:
         eff_R = (R[:-1, ...] + R[1:, ...]) / 2
         eff_R[-1, self.i_T, ...] += cell.thermal_resistance / 2
         eff_R[ 0, self.i_T, ...] += cell.thermal_resistance / 2
+        state.R = R
+        state.eff_R = eff_R
         return R, eff_R
 
     def _compute_fluxes(self, eff_R, state: CellState):
-        """Compute inter-layer flux array J (diffusion + advection + EOD)
-        and return V_cell, eta_ohm, eta_act, S_T_losses, p_o2_local."""
+        """Compute inter-layer flux array J and store it on *state*.
+
+        Fluxes are computed by Fick/Fourier/Darcy diffusion plus
+        electro-osmotic drag (EOD) across the ionomer interfaces.
+
+        Returns
+        -------
+        J : ndarray, shape (n_layers+1, n_variables, ...)
+        """
         cell = self.cell
         m    = self.base_model
         phi = state.x.copy()
 
         # Liquid-water driving potential: gas pressure + capillary pressure
         phi[:, self.i_s, ...] = state.p_g
-        phi[self.porous_domain, self.i_s, ...] += (
+        phi[cell.ca.ix + cell.an.ix, self.i_s, ...] += (
             m.darcy_transport_model.capillary_pressure_from_saturation(
                 state.s,
                 cell.p_b,
                 cell.van_genuchten_m,
                 cell.van_genuchten_n,
-            )[self.porous_domain, ...]
+            )[cell.ca.ix + cell.an.ix, ...]
         )
 
         J = np.zeros((self.n_layers + 1, self.n_variables, state.x.shape[-1]))
         J[1:-1, ...] = -(phi[1:, ...] - phi[:-1, ...]) / eff_R
 
-        # Electro-osmotic drag
+        # Electro-osmotic drag: add EOD flux at each CL/membrane interface.
+        # J_eod is indexed over [an.cl, memb, ca.cl]; index [0] is used at the
+        # an.cl/memb boundary and index [2] at the memb/ca.cl boundary so that
+        # each interface uses the catalyst-layer-side drag coefficient.
         J_eod = (
             cell.memb.calculate_electroosmotic_drag_coefficient(state.T, state.lmbd)
             [self.ionomer_domain, ...]
             * state.iF
         )
-        J[[cell.an.cl.ix + 1, cell.memb.ix + 1], self.i_lmbd, ...] += J_eod[:1, ...]
+        J[[cell.an.cl.ix + 1, cell.memb.ix + 1], self.i_lmbd, ...] += J_eod[[0, 2], ...]
 
+        state.J = J
         return J
 
     def _compute_water_exchange(self, state: CellState):
-        """Return ionomer absorption/desorption flux J_des."""
+        """Return ionomer–gas water exchange flux J_des [kmol m⁻² s⁻¹].
+
+        Positive values indicate desorption (water leaving the ionomer into
+        the gas phase); negative values indicate absorption.
+
+        The rate coefficient uses the measured desorption value ``k_des_ref_ion``
+        (Ge et al. 2005, a_d = 1.42e-2 cm/s) for desorption (λ > λ_eq) and
+        the absorption value (a_a = 3.53e-3 cm/s = a_d × 3.53/14.2) for
+        absorption (λ < λ_eq), both with an Arrhenius temperature correction.
+        """
         cell = self.cell
         m    = self.base_model
-        k_abs = m.memb_model.sorption_coefficient(
+        k_des = m.memb_model.sorption_coefficient(
             state.f_v, state.T,
             cell.k_des_ref_ion,
             cell.E_act_ion,
@@ -412,17 +462,22 @@ class TransientCellModel:
                 cell.lmbd_liq_ref_ion,
             )
         )
-        return k_abs * (state.lmbd - lmbd_eq) * cell.c_ion
+        state.lmbd_eq = lmbd_eq
+        delta_lmbd = state.lmbd - lmbd_eq
+        # Scale down absorption relative to desorption: ratio a_a/a_d from Ge et al.
+        rate_factor = np.where(delta_lmbd > 0, 1.0, 3.53 / 14.2)
+        return k_des * delta_lmbd * cell.c_ion * rate_factor
 
     def _compute_phase_change(self, state: CellState):
         """Return vapour–liquid phase-change source term S_vl.
 
         Positive when condensation occurs (c_v > c_sat), negative when evaporating.
         """
-        c_sat  = water_saturation_concentration(state.T)
-        factor = np.where(c_sat > state.c_v, state.s, 1 - state.s)
-        return 1000.0 * (state.c_v - c_sat) * factor
-
+        state.c_sat  = water_saturation_concentration(state.T)
+        factor = np.where(state.c_sat > state.c_v, state.s, 1 - state.s)
+        state.S_lv = 1000.0 * (state.c_v - state.c_sat) * factor    
+        return state.S_lv
+    
     def _compute_sources(self, state: CellState, J_des, S_vl):
         """Populate source term array S."""
         cell = self.cell
@@ -438,31 +493,36 @@ class TransientCellModel:
 
         S_T_losses = np.zeros_like(state.T)
         S_T_losses[memb_ix,   ...] = state.eta_memb  * i
-        S_T_losses[ca_cl_ix,  ...] = (state.eta_act + state.E_rev_ca) * i
-        S_T_losses[an_cl_ix,  ...] = state.E_rev_an  * i
+        S_T_losses[ca_cl_ix,  ...] = (state.eta_act - std_formation_entropy_h2ol / (2 * ct.faraday)) * i
+        S_T_losses[an_cl_ix,  ...] = 0
         S_T_losses[ca_gdl_ix, ...] = state.eta_gdl   * i
         S_T_losses[an_gdl_ix, ...] = state.eta_gdl   * i
 
-        # Ionomer water: absorption sink ± electrolysis production
-        S[cell.an.cl.ix, self.i_lmbd, ...] += (
-            -J_des[cell.an.cl.ix, ...]
+        # Ionomer water: absorption sink 
+        S[cell.an.cl.ix, self.i_lmbd, ...] -= (
+            J_des[cell.an.cl.ix, ...]
         ) / cell.an.cl.thickness
-        S[cell.ca.cl.ix, self.i_lmbd, ...] += (
-            state.iF / 2 - J_des[cell.ca.cl.ix, ...]
+        S[cell.ca.cl.ix, self.i_lmbd, ...] -= (
+            J_des[cell.ca.cl.ix, ...]
         ) / cell.ca.cl.thickness
 
         # Liquid water: phase change (blocked in membrane)
-        S[:, self.i_s, ...]            = S_vl * state.M_k[:,-1,...]
+        S[:, self.i_s, ...]            = S_vl * water_molecular_weight
         S[cell.memb.ix, self.i_s, ...] = 0
 
-        # Water vapour: condensation sink
+        # Water vapour: condensation/evaporation sink
         S[:, self.i_cg[-1], ...] = -S_vl
 
-        # Gas species: electrolysis consumption
+        # Ionomer water (λ): electrochemical production at cathode CL.
+        # Water is produced in dissolved form at the Pt–ionomer boundary (Vetter & Schumacher
+        # 2019, Eq. 6), so it enters the ionomer directly rather than the gas phase.
+        S[cell.ca.cl.ix, self.i_lmbd, ...] += state.iF / 2 / cell.ca.cl.thickness
+
+        # Gas species: reactant consumption by electrochemistry
         S[cell.ca.cl.ix, self.i_cg[0], ...] = (-state.iF / 4) / cell.ca.cl.thickness
         S[cell.an.cl.ix, self.i_cg[2], ...] = (-state.iF / 2) / cell.an.cl.thickness
 
-        # Water vapour: re-evaporation from absorbed water
+        # Water vapour: ionomer–gas exchange (desorption adds to vapour, absorption removes)
         for side in (cell.an, cell.ca):
             S[side.cl.ix, self.i_cg[-1], ...] += J_des[side.cl.ix, ...] / side.cl.thickness
         S[cell.memb.ix, self.i_cg, ...] = 0
@@ -476,7 +536,7 @@ class TransientCellModel:
                 * self.base_model.memb_model.heat_of_adsorption(
                     state.T[side.cl.ix, ...], cell.memb)
             )
-
+        state.S = S
         return S
 
     def _compute_capacities(self, state: CellState):

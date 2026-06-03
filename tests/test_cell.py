@@ -8,8 +8,10 @@ import numpy as np
 import marapendi as mrpd
 from marapendi.components.cell import CellSide, Cell
 from marapendi.components.layer import Layer
-from marapendi.components.membrane import Membrane
+from marapendi.components.membrane import Membrane, PFSAMembrane
 from marapendi.components.porous_layers import PorousLayer
+from marapendi.components.ionomer import PFSAIonomer
+from marapendi.models.electrochemistry import ElectrochemicalReaction
 
 
 # ---------------------------------------------------------------------------
@@ -182,6 +184,56 @@ class TestCell:
 
     def test_custom_name(self, custom_cell):
         assert custom_cell.name == "custom"
+
+    def test_get_property_array_ragged_arrays(self):
+        custom_ionomer = PFSAIonomer(
+            rho_dry_ion=2.0e3,
+            EW_ion=1100,
+            darken_num_ion=np.array([0., 67.74, -32.03, 3.842]),
+            darken_den_ion=np.array([103.37, -33.013, -2.115, 1.0]),
+            sorption_coeffs_ion=np.array([0.043, 17.81, -39.85, 36.0]),
+            lmbd_liq_ref_ion=22,
+            D_lmbd_ref_ion=0.314 * 2.72e-5 * 1e-4,
+            k_des_ref_ion=0.0211 * 4.59e-5,
+            E_act_ion=2.54 * 20e6,
+            sigma_ref_ion=50.,
+            f_v_perc_ion=0.1,
+            n_sigma_ion=1.5,
+            T_ref_sigma_ion=298.15,
+            T_ref_D_ion=303.15,
+            T_ref_des_ion=303.15,
+        )
+        cl = mrpd.PtCCatalystLayer(
+            thickness=10e-6,
+            bulk_density=2010.,
+            bulk_specific_heat_capacity=710.,
+            bulk_thermal_conductivity=0.25,
+            L_Pt=0.3e-2,
+            wt_Pt=0.4,
+            ic_ratio=0.7,
+            ecsa=45e3,
+            ionomer=mrpd.Nafion_N21X,
+            r_C=25e-9,
+            K_abs=1e-13,
+            theta_contact=95,
+            reaction=ElectrochemicalReaction(
+                reference_exchange_current_density=2.47e-8,
+                activation_energy=67e6,
+                reaction_order=0.54,
+                reference_activity=1e5,
+                reference_temperature=353.15,
+                number_of_electrons=2,
+                charge_transfer_coeff=0.5,
+            ),
+        )
+        ca = CellSide(name='cathode', cl=cl)
+        an = CellSide(name='anode', cl=cl)
+        memb = PFSAMembrane(thickness=50e-6, ionomer=custom_ionomer)
+        cell = Cell(name='ragged', ca=ca, an=an, memb=memb)
+        arr = cell.get_property_array('darken_num_ion')
+        assert arr.ndim == 2
+        assert arr.shape[1] == max(len(mrpd.Nafion_N21X.darken_num_ion),
+                                   len(custom_ionomer.darken_num_ion))
 
 
 # ---------------------------------------------------------------------------

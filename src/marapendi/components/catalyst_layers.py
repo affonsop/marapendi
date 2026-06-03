@@ -154,6 +154,7 @@ class PtCCatalystLayer(CatalystLayer):
         __post_init__."""
         self.ionomer_expansion_factor = ionomer_expansion_factor
         self.eps_ion = self.dry_eps_ion * ionomer_expansion_factor
+        self.tort_ion = self.eps_ion ** -0.5
         self.eps_p   = 1 - self.eps_cat - self.eps_ion
         self.t_ion_film = self.r_C * ((self.eps_ion / self.eps_C + 1) ** (1/3) - 1)
         self.a_ion  = 4 * np.pi * (self.r_C + self.t_ion_film) ** 2 * self.N_agg
