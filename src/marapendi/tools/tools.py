@@ -46,24 +46,34 @@ def sigmoid(x, x_inflection, slope_parameter):
 
 def polyval_vec(coeffs, xs):
     """
-    Vectorised polyval: evaluate one polynomial per row.
+    Vectorised polyval: evaluate N polynomials, each at one or more points.
 
     Parameters
     ----------
-    coeffs : (N, D) array  — N polynomials, each of degree D-1,
-                             coefficients in descending order (like np.polyval)
-    xs     : (N,)   array  — one evaluation point per polynomial
+    coeffs : (N, D) array
+        N polynomials of degree D-1; coefficients in descending order
+        (highest degree first, like ``np.polyval``).
+    xs : (N,) or (N, m) array
+        Evaluation points.  A 1-D input of shape ``(N,)`` is treated as
+        ``(N, 1)`` — one point per polynomial.  A 2-D input of shape
+        ``(N, m)`` evaluates each polynomial at m points simultaneously.
 
     Returns
     -------
-    (N,) array of evaluated values
+    (N, m) array
+        ``result[i, j] = poly_i(xs[i, j])``.
+
+    Notes
+    -----
+    The Horner step is ``result = result * xs + coeff_column``.  When xs is
+    1-D the step becomes an ``(N, 1) × (N,)`` outer product, giving a wrong
+    ``(N, N)`` result.  Promoting xs to at least 2-D with ``atleast_2d``
+    keeps the multiplication element-wise.
     """
-   
-    # ── Horner's method (faster, more numerically stable) ──────────────────
     coeffs = np.asarray(coeffs, dtype=float)
-    xs     = np.asarray(xs,     dtype=float)
+    xs     = np.atleast_2d(np.asarray(xs, dtype=float))  # (N, m)
     result = np.zeros((len(xs), 1))
-    
-    for col in coeffs.T: # iterate over coefficient columns
-        result = result * xs + col[:,np.newaxis]
+
+    for col in coeffs.T:                   # iterate over coefficient columns
+        result = result * xs + col[:, np.newaxis]
     return result
