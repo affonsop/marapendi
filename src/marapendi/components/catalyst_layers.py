@@ -83,7 +83,7 @@ class CatalystLayer(PorousLayer, Ionomer):
         if self.ionomer is not None:
             for f in dataclass_fields(self.ionomer):
                 setattr(self, f.name, getattr(self.ionomer, f.name))
-        super().__post_init__()
+        
 
 @dataclass(eq=False)
 class PtCCatalystLayer(CatalystLayer):
