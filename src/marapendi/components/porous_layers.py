@@ -6,6 +6,7 @@ import numpy as np
 import cantera as ct
 
 from .layer import Layer
+from ..models.water import water_surface_tension 
 
 @dataclass(eq=False)
 class PorousLayer(Layer):
@@ -66,7 +67,8 @@ class PorousLayer(Layer):
     def __post_init__(self):
         self.sqrt_abs_permeability_eps_p = np.sqrt(self.K_abs * self.eps_p)
         self.cosinus_theta_contact = np.abs(np.cos(np.pi / 180 * self.theta_contact))
-
+        if self.p_b == None: 
+            self.p_b = water_surface_tension() * self.cosinus_theta_contact *  np.sqrt(self.eps_p / self.K_abs)
         if self.theta_contact < 90: 
             self.non_wetting_phase = 'gas'
             self.wetting_phase = 'water'
