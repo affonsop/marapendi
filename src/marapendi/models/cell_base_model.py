@@ -118,4 +118,9 @@ class CellBaseModel(BaseModel):
         )
         state = model._compute_derived_quantities(x, i_density)
         model._compute_voltage(state)
+        model._compute_water_exchange(state)
+        model._compute_phase_change(state)
+        model._compute_capacities(state)
+        model._compute_resistances(state)
+        model._compute_fluxes(state.eff_R, state)
         return state
