@@ -18,12 +18,18 @@ Mixture viscosity uses the mole-fraction / √M weighting rule
 
     μ_mix = Σ_k [ x_k √M_k μ_k ] / Σ_k [ x_k √M_k ]
 """
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from dataclasses import dataclass, field
 
 import cantera as ct
 import numpy as np
 
 from marapendi.tools.tools import polyval_vec
+
+if TYPE_CHECKING:
+    from marapendi.models.transient import TransientCellModel
+    from marapendi.components.cell_state import CellState
 
 
 @dataclass
@@ -125,3 +131,56 @@ class GasMixtureModel:
         )  # (n_layers, n_measurements)
 
         return mu_mix
+
+    def compute_state(
+        self,
+        state: CellState,
+        cell,
+        tm: TransientCellModel,
+        gas_diffusion_model,
+    ) -> None:
+        """Compute all gas-phase derived quantities and store them on *state*.
+
+        Sets ``state.p_g``, ``state.x_g_k``, ``state.p_g_k``,
+        ``state.D_g_k``, ``state.M_g``, ``state.rho_g``, ``state.nu_g``,
+        ``state.p_h2``, and ``state.p_o2_ca_cl`` in-place.
+
+        Parameters
+        ----------
+        state : CellState
+        cell : Cell
+        tm : TransientCellModel
+            Used only for ``tm.x_h2_mask``.
+        gas_diffusion_model :
+            ``PorousGasResistanceModel`` providing
+            ``species_diffusion_coefficient``.
+        """
+        RT = ct.gas_constant * state.T
+        c_g = np.sum(state.cg_k, axis=1)
+        p_g = c_g * RT
+        for side in (cell.ca, cell.an):
+            p_g[side.ix, ...] = p_g[side.ch.ix, ...]
+        c_g = p_g / RT
+
+        x_g_k = state.cg_k / np.maximum(c_g, 1e-30)[:, np.newaxis, ...]
+        x_g_k[:, self.i['n2'], ...] = (
+            1
+            - x_g_k[:, self.i['h2'], ...]
+            - x_g_k[:, self.i['h2o'], ...]
+            - x_g_k[:, self.i['o2'], ...]
+        )
+        p_g_k = p_g[:, np.newaxis, ...] * x_g_k
+        D_g_k = gas_diffusion_model.species_diffusion_coefficient(state.T, p_g, x_h2=tm.x_h2_mask)
+        M_g   = np.sum(x_g_k * self.molecular_weights[np.newaxis, :, np.newaxis], axis=1)
+        rho_g = c_g * M_g
+        nu_g  = self.mixture_dynamic_viscosity(state.T, x_g_k, self.molecular_weights) / np.maximum(1e-12, rho_g)
+
+        state.p_g     = p_g
+        state.x_g_k   = x_g_k
+        state.p_g_k   = p_g_k
+        state.D_g_k   = D_g_k
+        state.M_g     = M_g
+        state.rho_g   = rho_g
+        state.nu_g    = nu_g
+        state.p_h2       = p_g_k[cell.an.cl.ix, 2, ...]
+        state.p_o2_ca_cl = p_g_k[cell.ca.cl.ix, 0, ...]

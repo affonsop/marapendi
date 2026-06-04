@@ -18,6 +18,7 @@ from marapendi.models.membrane import MembraneModel
 from marapendi.models.gas import GasMixtureModel
 from marapendi.models.catalyst_layer import CatalystLayerModel
 from marapendi.models.voltage import VoltageModel
+from marapendi.models.thermal import ThermalModel
 
 
 @dataclass
@@ -71,6 +72,7 @@ class CellBaseModel(BaseModel):
     gas_model: GasMixtureModel = field(default_factory=GasMixtureModel)
     cl_model: CatalystLayerModel = field(default_factory=CatalystLayerModel)
     voltage_model: VoltageModel = field(default_factory=VoltageModel)
+    thermal_model: ThermalModel = field(default_factory=ThermalModel)
 
     def __post_init__(self):
         # Wire named field → submodels dict, then let BaseModel do the rest
@@ -119,11 +121,31 @@ class CellBaseModel(BaseModel):
             * model.norm_factor[..., np.newaxis]
         )
         state = model._compute_derived_quantities(x, i_density)
-        model._compute_voltage(state)
-        J_des = model._compute_water_exchange(state)
-        S_vl = model._compute_phase_change(state)
-        model._compute_capacities(state)
-        model._compute_resistances(state)
-        model._compute_fluxes(state.eff_R, state)
-        model._compute_sources(state, J_des, S_vl)
+        self.gas_model.compute_state(state, model.cell, model, self.gas_diffusion_model)
+        self.cl_model.compute_local_o2_partial_pressure(state, model.cell, self.memb_model)
+        self.voltage_model.compute_cell_voltage(state, model.cell, self.memb_model, self.cl_model)
+
+        cell = model.cell
+        m_dim = x.shape[-1]
+        state.C   = np.ones((model.n_layers, model.n_variables, m_dim))
+        state.R   = np.full((model.n_layers, model.n_variables, m_dim), np.inf)
+        state.S   = np.zeros((model.n_layers, model.n_variables, m_dim))
+        state.phi = x.copy()
+        state.J   = np.zeros((model.n_layers + 1, model.n_variables, m_dim))
+        state.J_des = None
+        state.S_lv  = None
+
+        self.memb_model.update_transport_matrices(state, cell, model)
+        self.darcy_transport_model.update_transport_matrices(state, cell, model)
+        self.gas_diffusion_model.update_transport_matrices(state, cell, model, self.gas_model)
+        self.thermal_model.update_transport_matrices(state, cell, model, self.memb_model)
+
+        eff_R = (state.R[:-1] + state.R[1:]) / 2
+        eff_R[-1, model.i_T] += cell.thermal_resistance / 2
+        eff_R[ 0, model.i_T] += cell.thermal_resistance / 2
+        np.nan_to_num(state.R, copy=False, nan=np.inf, posinf=np.inf)
+        np.nan_to_num(eff_R,   copy=False, nan=np.inf, posinf=np.inf)
+        state.J[1:-1] = -(state.phi[1:] - state.phi[:-1]) / eff_R
+        state.eff_R   = eff_R
+        self.memb_model.add_eod_flux(state, cell, model)
         return state

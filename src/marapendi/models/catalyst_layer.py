@@ -24,11 +24,16 @@ Goshtasbi, A. et al. (2020); Neyerlin, K. C. et al. (2007);
 Hao, L. et al. J. Electrochem. Soc. 162, F854 (2015).
 """
 
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from dataclasses import dataclass
 import numpy as np
 import cantera as ct
 
 from ..models.water import o2_water_diffusivity
+
+if TYPE_CHECKING:
+    from marapendi.components.cell_state import CellState
 
 
 @dataclass()
@@ -176,3 +181,33 @@ class PtCCatalystLayerModel(CatalystLayerModel):
         R_gas_iface = self.k1_ion / (cl.a_ion * cl.thickness)
         R_water    = (self.k3_ion + 1) * water_film_thickness / o2_water_diffusivity(T) / (cl.a_ion * cl.thickness)
         return (R_gas_iface + R_pt_iface) * R_bulk + R_water
+
+    def compute_local_o2_partial_pressure(
+        self,
+        state: CellState,
+        cell,
+        memb_model,
+    ) -> None:
+        """Compute p_o2_local accounting for O₂ ionomer-film transport at the CCL.
+
+        Sets ``state.t_water_film``, ``state.R_o2_local``, and
+        ``state.p_o2_local`` in-place.
+
+        Parameters
+        ----------
+        state : CellState
+        cell : Cell
+        memb_model :
+            Ionomer model providing O₂ permeability.
+        """
+        ca_cl = cell.ca.cl
+        state.t_water_film = self.water_film_thickness(state.s[ca_cl.ix, ...], ca_cl)
+        state.R_o2_local = self.o2_ionomer_film_resistance(
+            state.f_v_ca_cl, state.T_ca_cl, ca_cl, memb_model,
+            ca_cl.t_ion_film, state.t_water_film, coverage_ratio=0,
+        )
+        c_o2_local = np.maximum(
+            state.cg_k[ca_cl.ix, 0, ...] - state.R_o2_local * state.iF / 4,
+            1e-30,
+        )
+        state.p_o2_local = c_o2_local * ct.gas_constant * state.T_ca_cl

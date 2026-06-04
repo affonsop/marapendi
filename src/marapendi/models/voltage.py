@@ -8,12 +8,17 @@ VoltageModel : Computes reversible voltage, overpotentials, and cell voltage.
     can be tested and reused independently of the ODE machinery.
 """
 
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from dataclasses import dataclass
 import numpy as np
 import cantera as ct
 
 from marapendi.models.electrochemistry import calculate_reversible_cell_voltage, STD_PRESSURE
 from marapendi.components.electrolyte import ElectrolyteSolution
+
+if TYPE_CHECKING:
+    from marapendi.components.cell_state import CellState
 
 
 @dataclass
@@ -117,40 +122,47 @@ class VoltageModel:
     # Cell voltage
     # ------------------------------------------------------------------
 
-    def calculate_cell_voltage(self, T_an_cl, T_ca_cl, T_memb,
-                               f_v_an_cl, f_v_memb, f_v_ca_cl, s_ca_cl,
-                               p_h2, p_o2_local,
-                               i, memb,
-                               electrical_resistance, memb_model, ionomer_model, ca_cl_model,
-                               ca_cl, charge,
-                               theta_PtO=0, use_neyerlin_correction=False):
-        """
-        Cell voltage and per-location overpotential components.
+    def compute_cell_voltage(
+        self,
+        state: CellState,
+        cell,
+        memb_model,
+        cl_model,
+    ) -> None:
+        """Compute cell voltage and all overpotentials; populate *state* in-place.
 
-        The caller assembles ``S_T_losses`` from the returned components.
+        Reads ``state.p_o2_local`` which must already be set before this call
+        (e.g. by ``cl_model.compute_local_o2_partial_pressure``).
 
-        Returns
-        -------
-        V_cell, eta_ohm, eta_act, E_rev_ca, E_rev_an, eta_memb, eta_ca_cl, eta_gdl
+        Parameters
+        ----------
+        state : CellState
+        cell : Cell
+        memb_model :
+            Membrane / ionomer model.
+        cl_model :
+            Catalyst-layer model used for the CL proton-resistance estimate.
         """
-        E_rev, E_rev_ca, E_rev_an = self.calculate_reversible_cell_voltage(
-            T_an_cl, T_ca_cl, p_h2, p_o2_local,
+        i = state.iF * ct.faraday
+
+        E_rev, state.E_rev_ca, state.E_rev_an = self.calculate_reversible_cell_voltage(
+            state.T_an_cl, state.T_ca_cl, state.p_h2, state.p_o2_local,
         )
         i_x = (
-            memb_model.calculate_h2_permeation_flux(T_memb, f_v_memb, p_h2,
-                                              memb.thickness)
-            * (2 * ct.faraday)
+            memb_model.calculate_h2_permeation_flux(
+                state.T_memb, state.f_v_memb, state.p_h2, cell.memb.thickness,
+            ) * (2 * ct.faraday)
         )
-        eta_act = self.calculate_activation_overpotential(
-            T_ca_cl, p_o2_local, i, i_x, theta_PtO, ca_cl,
+        state.eta_act = self.calculate_activation_overpotential(
+            state.T_ca_cl, state.p_o2_local, i, i_x, theta_PtO=0, ca_cl=cell.ca.cl,
         )
-        eta_memb, eta_ca_cl, eta_gdl = self.calculate_ohmic_overpotential(
-            T_an_cl, f_v_an_cl, T_memb, f_v_memb, T_ca_cl, f_v_ca_cl,
-            s_ca_cl, i, memb, electrical_resistance,
-            memb_model, ionomer_model, ca_cl_model, ca_cl, charge,
-            use_neyerlin_correction
+        state.eta_memb, eta_ca_cl, state.eta_gdl = self.calculate_ohmic_overpotential(
+            state.T_an_cl, state.f_v_an_cl, state.T_memb, state.f_v_memb,
+            state.T_ca_cl, state.f_v_ca_cl,
+            s_ca_cl=0, i=i, memb=cell.memb,
+            electrical_resistance=cell.electrical_resistance,
+            membrane_model=memb_model, ionomer_model=memb_model,
+            ca_cl_model=cl_model, ca_cl=cell.ca.cl, charge=cell.charge,
         )
-        eta_ohm = eta_memb + eta_ca_cl + 2 * eta_gdl
-        V_cell  = E_rev - eta_ohm - eta_act
-
-        return V_cell, eta_ohm, eta_act, E_rev_ca, E_rev_an, eta_memb, eta_ca_cl, eta_gdl
+        state.eta_ohm = state.eta_memb + eta_ca_cl + 2 * state.eta_gdl
+        state.V_cell  = E_rev - state.eta_ohm - state.eta_act

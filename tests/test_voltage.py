@@ -132,29 +132,62 @@ class TestOhmicOverpotential:
 
 
 class TestCellVoltage:
+    """Tests for VoltageModel.compute_cell_voltage.
+
+    A minimal CellState is constructed with p_o2_local pre-set so that the
+    CL ionomer-film computation (compute_local_o2_partial_pressure) is
+    bypassed — that is tested separately in test_catalyst_layer.py.
+    """
+
     @pytest.fixture
-    def cell_voltage_kwargs(self, memb_model, cl_model, ca_cl, f_v):
-        return dict(
-            T_an_cl=T, T_ca_cl=T, T_memb=T,
-            f_v_an_cl=f_v, f_v_memb=f_v, f_v_ca_cl=f_v, s_ca_cl=0.,
-            p_h2=STD_P, p_o2_local=STD_P * 0.21,
-            i=5000., memb=MEMB, electrical_resistance=30e-7,
-            memb_model=memb_model, ionomer_model=memb_model,
-            ca_cl_model=cl_model, ca_cl=ca_cl, charge='proton',
+    def fake_cell(self, memb_model, cl_model, ca_cl):
+        """Minimal cell-like namespace accepted by compute_cell_voltage."""
+        from types import SimpleNamespace
+        ca_cl.electrolyte = mrpd.ElectrolyteSolution()
+        return SimpleNamespace(
+            memb=MEMB,
+            electrical_resistance=30e-7,
+            ca=SimpleNamespace(cl=ca_cl),
+            charge='proton',
         )
 
-    def test_returns_tuple_of_eight(self, voltage_model, cell_voltage_kwargs):
-        result = voltage_model.calculate_cell_voltage(**cell_voltage_kwargs)
-        assert len(result) == 8
-
-    def test_voltage_below_reversible(self, voltage_model, cell_voltage_kwargs):
-        V_cell, _, _, E_rev_ca, E_rev_an, *_ = voltage_model.calculate_cell_voltage(
-            **cell_voltage_kwargs
+    def _make_state(self, f_v, iF_val, p_o2_local=STD_P * 0.21):
+        from marapendi.components.cell_state import CellState
+        from marapendi.models.water import (
+            water_saturation_concentration, water_density,
+            water_kinematic_viscosity, water_molar_volume,
         )
-        E_rev = E_rev_ca - E_rev_an
-        assert V_cell < E_rev
+        T_arr = np.array([[T]])
+        fv = np.array([[f_v]])
+        return CellState(
+            x=np.zeros((1, 7, 1)), lmbd=np.zeros((1, 1)), T=T_arr,
+            cg_k=np.zeros((1, 4, 1)), s=np.zeros((1, 1)),
+            iF=np.array([[iF_val]]),
+            c_sat=water_saturation_concentration(T_arr), c_v=np.zeros((1, 1)),
+            rh=np.zeros((1, 1)), rho_l=water_density(T_arr),
+            nu_l=water_kinematic_viscosity(T_arr), f_v=fv,
+            T_memb=T_arr, T_ca_cl=T_arr, T_an_cl=T_arr,
+            f_v_memb=fv, f_v_ca_cl=fv, f_v_an_cl=fv,
+            lmbd_ca_cl=np.zeros((1, 1)),
+            p_h2=np.array([[STD_P]]),
+            p_o2_local=np.array([[p_o2_local]]),
+        )
 
-    def test_voltage_decreases_with_current(self, voltage_model, cell_voltage_kwargs):
-        V1, *_ = voltage_model.calculate_cell_voltage(**{**cell_voltage_kwargs, 'i': 1000.})
-        V2, *_ = voltage_model.calculate_cell_voltage(**{**cell_voltage_kwargs, 'i': 10000.})
-        assert V2 < V1
+    def test_voltage_populated_on_state(self, voltage_model, f_v, fake_cell, memb_model, cl_model):
+        state = self._make_state(f_v, 5000. / ct.faraday)
+        voltage_model.compute_cell_voltage(state, fake_cell, memb_model, cl_model)
+        assert state.V_cell is not None
+        assert np.isfinite(state.V_cell).all()
+
+    def test_voltage_below_reversible(self, voltage_model, f_v, fake_cell, memb_model, cl_model):
+        state = self._make_state(f_v, 5000. / ct.faraday)
+        voltage_model.compute_cell_voltage(state, fake_cell, memb_model, cl_model)
+        E_rev = state.E_rev_ca - state.E_rev_an
+        assert state.V_cell < E_rev
+
+    def test_voltage_decreases_with_current(self, voltage_model, f_v, fake_cell, memb_model, cl_model):
+        s1 = self._make_state(f_v, 1000. / ct.faraday)
+        s2 = self._make_state(f_v, 10000. / ct.faraday)
+        voltage_model.compute_cell_voltage(s1, fake_cell, memb_model, cl_model)
+        voltage_model.compute_cell_voltage(s2, fake_cell, memb_model, cl_model)
+        assert s2.V_cell < s1.V_cell

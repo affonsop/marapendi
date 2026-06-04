@@ -187,19 +187,23 @@ class TestShortIntegration:
 # ─── voltage is physical ──────────────────────────────────────────────────────
 
 class TestVoltage:
-    def test_initial_voltage_below_reversible(self, model, y0):
-        i = 5000.
-        x = y0.reshape(model.n_layers, model.n_variables, 1) * model.norm_factor[..., np.newaxis]
+    def _compute_state_with_voltage(self, model, y0, i):
+        bm = model.base_model
+        x  = y0.reshape(model.n_layers, model.n_variables, 1) * model.norm_factor[..., np.newaxis]
         state = model._compute_derived_quantities(x, i)
-        model._compute_voltage(state)
+        bm.gas_model.compute_state(state, model.cell, model, bm.gas_diffusion_model)
+        bm.cl_model.compute_local_o2_partial_pressure(state, model.cell, bm.memb_model)
+        bm.voltage_model.compute_cell_voltage(state, model.cell, bm.memb_model, bm.cl_model)
+        return state
+
+    def test_initial_voltage_below_reversible(self, model, y0):
+        state = self._compute_state_with_voltage(model, y0, 5000.)
         E_rev = state.E_rev_ca - state.E_rev_an
         assert state.V_cell.item() < E_rev.item()
 
     def test_voltage_decreases_with_current(self, model, y0):
-        voltages = []
-        for i in [1000., 5000., 10000.]:
-            x = y0.reshape(model.n_layers, model.n_variables, 1) * model.norm_factor[..., np.newaxis]
-            state = model._compute_derived_quantities(x, i)
-            model._compute_voltage(state)
-            voltages.append(state.V_cell.item())
+        voltages = [
+            self._compute_state_with_voltage(model, y0, i).V_cell.item()
+            for i in [1000., 5000., 10000.]
+        ]
         assert voltages[0] > voltages[1] > voltages[2]

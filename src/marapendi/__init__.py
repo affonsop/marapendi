@@ -23,7 +23,8 @@ from .models.transient import *
 from .models.cell_base_model import *
 from .models.electrochemistry import *
 from .models.transport import *
-from .models.membrane import * 
+from .models.membrane import *
+from .models.thermal import ThermalModel
 from .models.voltage import *
 from .models.catalyst_layer import * 
 

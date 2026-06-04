@@ -23,7 +23,9 @@ and return computed quantities without storing any state.  This keeps
 component parameters separate from the equations that act on them.
 """
 
+from __future__ import annotations
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 import numpy as np
 import cantera as ct
 
@@ -32,6 +34,10 @@ from marapendi.components.electrolyte import ElectrolyteSolution
 from marapendi.models.electrochemistry import enthalpy_condensation
 from marapendi.tools.tools import arrhenius_term, polyval_vec
 from marapendi.models.water import water_molecular_weight, water_molar_volume, water_density
+
+if TYPE_CHECKING:
+    from marapendi.models.transient import TransientCellModel
+    from marapendi.components.cell_state import CellState
 
 @dataclass
 class IonomerModel:
@@ -221,7 +227,62 @@ class MembraneModel(IonomerModel):
         See Wei et al. (2023).
         """
         return reference_liquid_water_content
-    
+
+    def update_transport_matrices(self, state: CellState, cell, tm: TransientCellModel) -> None:
+        """
+        Fill state.R[:,i_lmbd], state.C[:,i_lmbd], state.S[:,i_lmbd] and
+        state.S[:,i_cg[-1]]; compute and store state.J_des and state.lmbd_eq.
+        """
+        import numpy as np
+        i_lmbd = tm.i_lmbd
+
+        # Resistance: water diffusion through ionomer
+        D_lmbd = self.diffusion_coefficient(
+            state.lmbd, state.T,
+            cell.darken_num_ion, cell.darken_den_ion,
+            cell.D_lmbd_ref_ion, cell.E_act_ion,
+        )
+        state.R[:, i_lmbd, ...] = self.calculate_membrane_water_resistance(
+            D_lmbd, cell.thickness, cell.eps_ion, cell.c_ion, cell.tort_ion,
+        )
+
+        # Capacity
+        state.C[:, i_lmbd, ...] = cell.eps_ion * cell.c_ion
+        state.C[~np.array(tm.ionomer_domain), i_lmbd, ...] = np.inf
+
+        # Sorption flux J_des
+        k_des = self.sorption_coefficient(
+            state.f_v, state.T,
+            cell.k_des_ref_ion, cell.E_act_ion, cell.T_ref_des_ion,
+        )
+        lmbd_eq = (
+            (1 - state.s) * self.equilibrium_water_content(state.rh, cell.sorption_coeffs_ion)
+            + state.s * self.liquid_equilibrium_water_content(cell.lmbd_liq_ref_ion)
+        )
+        state.lmbd_eq = lmbd_eq
+        delta = state.lmbd - lmbd_eq
+        rate_factor = np.where(delta > 0, 1.0, 3.53 / 14.2)
+        J_des = k_des * delta * cell.c_ion * rate_factor
+        state.J_des = J_des
+
+        # Sources: ionomer water (absorption/desorption, electrochemical production)
+        for side in (cell.an, cell.ca):
+            L = side.cl.thickness
+            state.S[side.cl.ix, i_lmbd, ...] -= J_des[side.cl.ix, ...] / L
+            state.S[side.cl.ix, tm.i_cg[-1], ...] += J_des[side.cl.ix, ...] / L
+        # Water produced in dissolved form at CCL (Vetter & Schumacher 2019, Eq. 6)
+        state.S[cell.ca.cl.ix, i_lmbd, ...] += state.iF / 2 / cell.ca.cl.thickness
+
+    def add_eod_flux(self, state: CellState, cell, tm: TransientCellModel) -> None:
+        """Add electro-osmotic drag to the λ flux at both ionomer interfaces."""
+        J_eod = (
+            cell.memb.calculate_electroosmotic_drag_coefficient(state.T, state.lmbd)
+            [tm.ionomer_domain, ...]
+            * state.iF
+        )
+        state.J[[cell.an.cl.ix + 1, cell.memb.ix + 1], tm.i_lmbd, ...] += J_eod[[0, 2], ...]
+
+
 @dataclass
 class PFSAModel(MembraneModel):
     """
@@ -283,3 +344,4 @@ class PFSAModel(MembraneModel):
             Water content [mol H₂O / mol SO₃⁻].
         """
         return 2.5 / 22.5 * lmbd
+

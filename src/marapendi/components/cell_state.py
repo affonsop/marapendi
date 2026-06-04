@@ -8,7 +8,7 @@ every downstream method (``_compute_resistances``, ``_compute_fluxes``,
 of an unpacked tuple of 10+ arrays.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 
 
@@ -65,6 +65,23 @@ class CellState:
     lmbd_ca_cl : ndarray
     p_h2 : ndarray  — H2 partial pressure at anode CL
     p_o2_ca_cl : ndarray  — O2 partial pressure at cathode CL
+
+    Transport matrices (populated during rates_of_change)
+    ------------------------------------------------------
+    C : ndarray
+        Capacity matrix, shape (n_layers, n_variables, m).
+    R : ndarray
+        Resistance matrix, shape (n_layers, n_variables, m).
+    S : ndarray
+        Source term matrix, shape (n_layers, n_variables, m).
+    phi : ndarray
+        Driving potential matrix, shape (n_layers, n_variables, m).
+    J_des : ndarray
+        Ionomer-gas sorption flux [kmol m⁻² s⁻¹].
+    S_lv : ndarray
+        Vapour-liquid phase-change rate [kmol m⁻³ s⁻¹].
+    lmbd_eq : ndarray
+        Equilibrium water content [mol H₂O / mol SO₃⁻].
     """
 
     # ---- normalised ODE state vector ----
@@ -76,17 +93,11 @@ class CellState:
     cg_k:  np.ndarray
     s:     np.ndarray
     iF:    object          # float or ndarray
-    p_g:   np.ndarray
-    p_g_k: np.ndarray
-    D_g_k: np.ndarray
     c_sat: np.ndarray
     c_v:   np.ndarray
     rh:    np.ndarray
     rho_l: np.ndarray
     nu_l:  np.ndarray
-    nu_g:  np.ndarray
-    M_g:   np.ndarray
-    rho_g: np.ndarray
     f_v:   np.ndarray
 
     # ---- pre-sliced fields ----
@@ -97,5 +108,35 @@ class CellState:
     f_v_ca_cl: np.ndarray
     f_v_an_cl: np.ndarray
     lmbd_ca_cl: np.ndarray
-    p_h2:      np.ndarray
-    p_o2_ca_cl: np.ndarray
+
+    # ---- gas-mixture fields (set by GasMixtureModel.compute_state) ----
+    p_g:        np.ndarray = field(default=None)
+    p_g_k:      np.ndarray = field(default=None)
+    D_g_k:      np.ndarray = field(default=None)
+    M_g:        np.ndarray = field(default=None)
+    rho_g:      np.ndarray = field(default=None)
+    nu_g:       np.ndarray = field(default=None)
+    p_h2:       np.ndarray = field(default=None)
+    p_o2_ca_cl: np.ndarray = field(default=None)
+
+    # ---- voltage / overpotential fields (set by VoltageModel.update_state) ----
+    p_o2_local:   np.ndarray = field(default=None)
+    t_water_film: np.ndarray = field(default=None)
+    R_o2_local:   np.ndarray = field(default=None)
+    V_cell:    np.ndarray = field(default=None)
+    eta_ohm:   np.ndarray = field(default=None)
+    eta_act:   np.ndarray = field(default=None)
+    E_rev_ca:  np.ndarray = field(default=None)
+    E_rev_an:  np.ndarray = field(default=None)
+    eta_memb:  np.ndarray = field(default=None)
+    eta_gdl:   np.ndarray = field(default=None)
+    eta_ca_cl: np.ndarray = field(default=None)
+
+    # ---- transport matrices (populated during rates_of_change) ----
+    C:      np.ndarray = field(default=None)
+    R:      np.ndarray = field(default=None)
+    S:      np.ndarray = field(default=None)
+    phi:    np.ndarray = field(default=None)
+    J_des:  np.ndarray = field(default=None)   # ionomer-gas sorption flux
+    S_lv:   np.ndarray = field(default=None)   # vapour-liquid phase-change rate
+    lmbd_eq: np.ndarray = field(default=None)  # equilibrium water content
