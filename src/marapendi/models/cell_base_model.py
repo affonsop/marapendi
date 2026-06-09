@@ -19,7 +19,7 @@ from marapendi.models.gas import GasMixtureModel
 from marapendi.models.catalyst_layer import CatalystLayerModel
 from marapendi.models.voltage import VoltageModel
 from marapendi.models.thermal import ThermalModel
-
+from marapendi.models.flowfields import GasFlowFieldModel
 
 @dataclass
 class CellBaseModel(BaseModel):
@@ -73,6 +73,7 @@ class CellBaseModel(BaseModel):
     cl_model: CatalystLayerModel = field(default_factory=CatalystLayerModel)
     voltage_model: VoltageModel = field(default_factory=VoltageModel)
     thermal_model: ThermalModel = field(default_factory=ThermalModel)
+    flowfield_model: GasFlowFieldModel = field(default_factory=GasFlowFieldModel)
 
     def __post_init__(self):
         # Wire named field → submodels dict, then let BaseModel do the rest

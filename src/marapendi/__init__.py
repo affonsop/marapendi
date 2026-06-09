@@ -13,7 +13,7 @@ from .components.electrolyte import *
 from .components.catalyst_layers import *
 from .components.cell import *
 from .components.cell_state import *
-
+from .components.operating_conditions import * 
 
 # ── Degradation models (depend on components) ─────────────────────────────────
 from .models.water import *
@@ -27,6 +27,7 @@ from .models.membrane import *
 from .models.thermal import ThermalModel
 from .models.voltage import *
 from .models.catalyst_layer import * 
+from .models.flowfields import *
 
 # ── Tools & data ──────────────────────────────────────────────────────────────
 from .tools.load_cycles import *
