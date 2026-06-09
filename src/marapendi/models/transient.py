@@ -57,13 +57,17 @@ class TransientCellModel:
 
     cell: Cell = field(default_factory=Cell)
     current_density: Union[float, Callable[[float], float]] = 0.
+    conditions: object = field(default=None, repr=False, compare=False)  # optional CellConditions
     # Injected by CellBaseModel.__post_init__; never set by the caller.
     base_model: object = field(default=None, repr=False, compare=False)
 
     def get_inputs(self, t: float) -> dict:
-        """Return ``{'i': current_density}`` evaluated at time *t*."""
+        """Return inputs dict evaluated at time *t*."""
         i = self.current_density(t) if callable(self.current_density) else float(self.current_density)
-        return {'i': i}
+        result = {'i': i}
+        if self.conditions is not None:
+            result['conditions_snapshot'] = self.conditions.at(t)
+        return result
 
     def __post_init__(self):
         cell = self.cell
@@ -302,14 +306,18 @@ class TransientCellModel:
         ca_cl_ix = cell.ca.cl.ix
         an_cl_ix = cell.an.cl.ix
 
+        rho_l = water_density(T)
+        nu_l  = water_kinematic_viscosity(T)
+
         state = CellState(
             x=x,
             lmbd=lmbd, T=T, cg_k=cg_k, s=s, iF=iF,
             c_sat=water_saturation_concentration(T),
             c_v=cg_k[:, -1, ...],
             rh=cg_k[:, -1, ...] / water_saturation_concentration(T),
-            rho_l=water_density(T),
-            nu_l=water_kinematic_viscosity(T),
+            rho_l=rho_l,
+            nu_l=nu_l,
+            mu_l=nu_l * rho_l,
             f_v=f_v,
             T_memb=T[memb_ix, ...],
             T_ca_cl=T[ca_cl_ix, ...],
@@ -320,8 +328,7 @@ class TransientCellModel:
             lmbd_ca_cl=lmbd[ca_cl_ix, ...],
         )
 
-        # Gas mixture derived quantities (p_g, x_g_k, D_g_k, M_g, rho_g, nu_g, p_h2, p_o2_ca_cl)
-        
+        # Gas mixture derived quantities (p_g, x_g_k, D_g_k, M_g, rho_g, nu_g, mu_g, ...)
 
         return state
 
@@ -329,8 +336,18 @@ class TransientCellModel:
     # Main entry point
     # ------------------------------------------------------------------
 
-    def rates_of_change(self, x, i=0.):
-        """Return dxdt for all state variables across all layers."""
+    def rates_of_change(self, x, i=0., conditions_snapshot=None):
+        """Return dxdt for all state variables across all layers.
+
+        Parameters
+        ----------
+        conditions_snapshot : CellSnapshot, optional
+            When provided, channel gas concentrations are solved dynamically:
+            inlet/outlet flows are added as source terms and dxdt[ch, cg] is
+            not forced to zero.  N₂ through-plane transport is disabled
+            (R_N₂ = ∞ in porous layers); its concentration is derived from
+            the pressure balance by GasMixtureModel.
+        """
         cell = self.cell
         bm   = self.base_model
         x = (
@@ -361,6 +378,18 @@ class TransientCellModel:
         bm.gas_diffusion_model.update_transport_matrices(state, cell, self, bm.gas_model)
         bm.thermal_model.update_transport_matrices(state, cell, self, bm.memb_model)
 
+        # 4b. Channel gas dynamics: inlet/outlet source terms + no N₂ through-plane flux
+        if conditions_snapshot is not None:
+            i_N2 = self.i_cg[1]
+            for layer in cell.layers:
+                if layer not in (cell.ca.ch, cell.an.ch):
+                    state.R[layer.ix, i_N2, ...] = np.inf
+            for side, cond in (
+                (cell.ca, conditions_snapshot.ca),
+                (cell.an, conditions_snapshot.an),
+            ):
+                bm.flowfield_model.add_channel_inlet_outlet_flows(cond, state, side.ch, self)
+
         # 5. Effective inter-layer resistance
         eff_R = (state.R[:-1] + state.R[1:]) / 2
         eff_R[-1, self.i_T] += cell.thermal_resistance / 2
@@ -375,15 +404,16 @@ class TransientCellModel:
         # 7. Flux corrections (EOD adds to λ flux after bulk diffusion is computed)
         bm.memb_model.add_eod_flux(state, cell, self)
 
-        # 8. Assemble dxdt; freeze channel state variables
+        # 8. Assemble dxdt; freeze channel T, s always; freeze cg only when no conditions
         np.nan_to_num(state.C, copy=False, nan=np.inf)
         dxdt = (
             (state.J[:-1] - state.J[1:]) / cell.thickness[:, np.newaxis] + state.S
         ) / state.C
-        
+
         for ch in (cell.ca.ch, cell.an.ch):
-            dxdt[ch.ix, self.i_T,  :] = 0
-            dxdt[ch.ix, self.i_cg, :] = 0
+            dxdt[ch.ix, self.i_T, :] = 0
             dxdt[ch.ix, self.i_s,  :] = 0
+            if conditions_snapshot is None:
+                dxdt[ch.ix, self.i_cg, :] = 0
 
         return (dxdt / self.norm_factor[...,np.newaxis]).reshape(self.n_layers * self.n_variables, state.x.shape[-1])

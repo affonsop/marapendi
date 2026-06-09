@@ -182,5 +182,6 @@ class GasMixtureModel:
         state.M_g     = M_g
         state.rho_g   = rho_g
         state.nu_g    = nu_g
+        state.mu_g    = nu_g * rho_g
         state.p_h2       = p_g_k[cell.an.cl.ix, 2, ...]
         state.p_o2_ca_cl = p_g_k[cell.ca.cl.ix, 0, ...]

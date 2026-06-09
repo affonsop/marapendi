@@ -116,6 +116,8 @@ class CellState:
     M_g:        np.ndarray = field(default=None)
     rho_g:      np.ndarray = field(default=None)
     nu_g:       np.ndarray = field(default=None)
+    mu_g:       np.ndarray = field(default=None)   # dynamic viscosity [Pa·s]
+    mu_l:       np.ndarray = field(default=None)   # liquid dynamic viscosity [Pa·s]
     p_h2:       np.ndarray = field(default=None)
     p_o2_ca_cl: np.ndarray = field(default=None)
 

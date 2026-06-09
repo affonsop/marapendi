@@ -160,7 +160,7 @@ class FlowChannel(PorousLayer):
         Compute gas transport resistance in the channel.
     """
     reactant: str = 'o2'
-    inlet_stoichiometry: float = 0 
+    inlet_stoichiometry: float = 0
     inlet_gas_flow_rate: float = 1e-12
     inlet_liquid_flow_rate: float = 0
     inlet_liquid_saturation: float = 0
@@ -174,17 +174,25 @@ class FlowChannel(PorousLayer):
     sherwood: float = 4.
     transport_resistance_model: ChannelGasResistanceModel = field(default_factory=ChannelGasResistanceModel)
 
-    def __post_init__(self): 
+    def __post_init__(self):
         """
         Initialize geometric and thermodynamic properties after instantiation.
         """
         self.hydraulic_diameter = 2 * self.width * self.height / (self.width + self.height)
         self.channel_flow_section = self.width * self.height
         self.half_width = 0.5 * self.width
+        self.aspect_ratio = min(self.width/self.height, self.height/self.width)
         self.total_flow_section = self.n_parallel * self.channel_flow_section
+        self.total_volume = self.total_flow_section * self.length
         self.thickness = self.height 
+        self.fRe = 24 * np.polyval([-.2537, 0.9564, -1.7012, 1.9467, - 1.3553, 1], self.aspect_ratio)
+
 
         PorousLayer.__post_init__(self)
+
+    def superficial_velocity(self, volumetric_flow_rate):
+        """Return gas superficial speed [m/s] for a given volumetric flow rate [m³/s]."""
+        return volumetric_flow_rate / self.total_flow_section
 
     def set_inlet_stoichiometry(self, stoichiometry):
         """
