@@ -38,8 +38,13 @@ def conditions_pair():
 # ─── FlowChannel additions ────────────────────────────────────────────────────
 
 class TestFlowChannelExtensions:
-    def test_fRe_default(self, channel):
-        assert channel.fRe == pytest.approx(56.0)
+    def test_fRe_positive_and_finite(self, channel):
+        # fRe is computed from aspect-ratio polynomial; square duct ≈ 14.2
+        assert np.isfinite(channel.fRe) and channel.fRe > 0
+
+    def test_fRe_square_duct(self):
+        ch = mrpd.FlowChannel(height=1e-3, width=1e-3, bulk_thermal_conductivity=1.)
+        assert ch.fRe == pytest.approx(14.23, rel=0.01)
 
     def test_total_volume(self, channel):
         expected = channel.total_flow_section * channel.length
