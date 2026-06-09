@@ -243,8 +243,9 @@ class CellConditions:
         ``current_density`` may be a plain float (set directly) or a
         callable ``f(t) -> float``.
         """
+        _cd = self.current_density
         return CellSnapshot(
-            current_density = self.current_density(t),
+            current_density = _cd(t) if callable(_cd) else float(_cd),
             temperature = self.temperature(t),
             ca = self.ca.at(t),
             an = self.an.at(t),

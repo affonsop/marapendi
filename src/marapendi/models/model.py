@@ -32,10 +32,12 @@ Optionally, a submodel may implement:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from types import SimpleNamespace
 from typing import Any, Callable
 
 import numpy as np
 from scipy.integrate import solve_ivp as _solve_ivp
+from scipy.optimize import root as _root
 
 
 @dataclass
@@ -169,6 +171,69 @@ class BaseModel:
             atol=atol,
             max_step=max_step,
             **kwargs,
+        )
+
+    # ------------------------------------------------------------------
+    # Steady-state solver
+    # ------------------------------------------------------------------
+
+    def solve_steady_state(
+        self,
+        y0: np.ndarray,
+        t: float = 0.,
+        *,
+        method: str = 'hybr',
+        tol: float = 1e-8,
+        **kwargs,
+    ) -> SimpleNamespace:
+        """Find the steady-state solution by solving ``rates_of_change(t, x) = 0``.
+
+        Parameters
+        ----------
+        y0 : np.ndarray, shape (n_states,)
+            Initial guess for the root finder.  A good guess (e.g. the
+            solution from the previous operating point) greatly improves
+            convergence.
+        t : float
+            Time at which ``rates_of_change`` is evaluated.  Determines
+            current density and inlet conditions when those are callable.
+        method : str
+            Root-finding algorithm passed to ``scipy.optimize.root``
+            (default ``'hybr'``, which uses MINPACK HYBRD and is
+            well-suited to moderate-size systems).
+        tol : float
+            Convergence tolerance on the residual norm (default ``1e-8``).
+        **kwargs
+            Any additional keyword arguments forwarded verbatim to
+            ``scipy.optimize.root`` (e.g. ``jac``, ``options``).
+
+        Returns
+        -------
+        result : SimpleNamespace
+            Attributes mirror ``solve_ivp``'s ``OdeResult`` for drop-in
+            compatibility with ``postprocess``:
+
+            * ``y``       : ndarray, shape ``(n_states, 1)`` — steady-state
+              solution, or the last iterate when convergence failed.
+            * ``t``       : ndarray, shape ``(1,)`` — evaluation time *t*.
+            * ``fun``     : ndarray, shape ``(n_states,)`` — residual at
+              the returned ``y``.
+            * ``success`` : bool — ``True`` if the root finder converged.
+            * ``message`` : str — solver status message.
+        """
+        sol = _root(
+            lambda x: self.rates_of_change(t, x),
+            y0,
+            method=method,
+            tol=tol,
+            **kwargs,
+        )
+        return SimpleNamespace(
+            y=sol.x[:, np.newaxis],
+            t=np.array([t]),
+            fun=sol.fun,
+            success=bool(sol.success),
+            message=sol.message,
         )
 
     # ------------------------------------------------------------------

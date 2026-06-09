@@ -1,4 +1,5 @@
 """Tests for marapendi.models.model — BaseModel and CellBaseModel."""
+# ruff: noqa: E501
 import numpy as np
 import pytest
 import marapendi as mrpd
@@ -178,3 +179,54 @@ class TestSplitState:
         y_mat = np.stack([y0, y0], axis=1)
         parts = base.split_state(y_mat)
         assert parts['transient_transport'].shape == (base.transient_transport_model.n_states, 2)
+
+
+# ─── BaseModel — solve_steady_state ──────────────────────────────────────────
+
+class TestSolveSteadyState:
+    @pytest.fixture(scope="class")
+    def y0(self, base):
+        return base.initial_state(**IC)
+
+    @pytest.fixture(scope="class")
+    def sol(self, base, y0):
+        return base.solve_steady_state(y0, t=0.)
+
+    def test_y_shape(self, base, sol):
+        assert sol.y.shape == (base.n_states, 1)
+
+    def test_y_finite(self, sol):
+        assert np.all(np.isfinite(sol.y))
+
+    def test_t_stored(self, sol):
+        assert sol.t.shape == (1,)
+        assert sol.t[0] == 0.
+
+    def test_t_propagated(self, base, y0):
+        sol = base.solve_steady_state(y0, t=42.5)
+        assert sol.t[0] == 42.5
+
+    def test_success_is_bool(self, sol):
+        assert isinstance(sol.success, bool)
+
+    def test_message_is_str(self, sol):
+        assert isinstance(sol.message, str)
+
+    def test_fun_shape(self, base, sol):
+        assert sol.fun.shape == (base.n_states,)
+
+    def test_residual_small_when_converged(self, sol):
+        if sol.success:
+            assert np.linalg.norm(sol.fun) < 1e-4
+
+    def test_postprocess_compatible(self, base, sol):
+        # sol.y has shape (n_states, 1), matching what postprocess expects
+        i_density = base.transient_transport_model.current_density
+        st = base.postprocess(sol.y, i_density=i_density)
+        assert np.isfinite(float(st.V_cell[0]))
+
+    def test_warm_start_improves_residual(self, base, y0):
+        # Second solve from the converged solution should have a smaller residual
+        sol1 = base.solve_steady_state(y0, t=0.)
+        sol2 = base.solve_steady_state(sol1.y[:, 0], t=0.)
+        assert np.linalg.norm(sol2.fun) <= np.linalg.norm(sol1.fun) + 1e-12
