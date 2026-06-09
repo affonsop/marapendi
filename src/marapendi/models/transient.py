@@ -330,9 +330,10 @@ class TransientCellModel:
         dxdt = (
             (state.J[:-1] - state.J[1:]) / cell.thickness[:, np.newaxis] + state.S
         ) / state.C
+        
         for ch in (cell.ca.ch, cell.an.ch):
             dxdt[ch.ix, self.i_T,  :] = 0
             dxdt[ch.ix, self.i_cg, :] = 0
             dxdt[ch.ix, self.i_s,  :] = 0
 
-        return dxdt.reshape(self.n_layers * self.n_variables, state.x.shape[-1])
+        return (dxdt / self.norm_factor[...,np.newaxis]).reshape(self.n_layers * self.n_variables, state.x.shape[-1])
