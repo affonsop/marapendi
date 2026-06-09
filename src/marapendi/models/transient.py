@@ -216,6 +216,56 @@ class TransientCellModel:
 
         return (x0 / self.norm_factor).flatten()
 
+    def initial_state_from_conditions(
+        self,
+        snapshot,
+        s_ca: float = 0.,
+        s_an: float = 0.,
+    ) -> np.ndarray:
+        """Build initial state from a CellSnapshot (differential-cell assumption).
+
+        Channel concentrations are set to inlet mole fractions at backpressure,
+        valid when stoichiometry ≫ 1 so that gas depletion along the channel
+        is negligible.
+
+        Parameters
+        ----------
+        snapshot : CellSnapshot
+            Frozen snapshot at t=0 from ``CellConditions.at(0.)``.
+        s_ca, s_an : float
+            Initial liquid saturation at cathode / anode sides.
+        """
+        cell = self.cell
+        ca, an = snapshot.ca, snapshot.an
+
+        def _concentrations(cond):
+            x_k = cond.inlet_gas_molar_flow_rates / cond.inlet_gas_molar_flow_rate
+            return x_k * cond.backpressure / (ct.gas_constant * cond.temperature)
+
+        c_ca = _concentrations(ca)
+        c_an = _concentrations(an)
+
+        rh_ca = c_ca[3] / water_saturation_concentration(ca.temperature)
+        rh_an = c_an[3] / water_saturation_concentration(an.temperature)
+
+        x0 = np.zeros((self.n_layers, self.n_variables))
+        rh_mean = np.full(self.n_layers, (rh_ca + rh_an) / 2)
+        lmbd_eq = self.base_model.memb_model.equilibrium_water_content(
+            rh_mean, cell.sorption_coeffs_ion,
+        )[:, 0]
+        x0[:, self.i_lmbd] = np.nan_to_num(lmbd_eq, nan=0.)
+        x0[:, self.i_T] = (ca.temperature + an.temperature) / 2
+        x0[cell.ca.ix, self.i_s] = s_ca
+        x0[cell.an.ix, self.i_s] = s_an
+
+        memb_ix = cell.memb.ix
+        for layer in cell.layers:
+            if layer is cell.memb:
+                continue
+            x0[layer.ix, self.i_cg] = c_ca if layer.ix > memb_ix else c_an
+
+        return (x0 / self.norm_factor).flatten()
+
     # ------------------------------------------------------------------
     # State unpacking
     # ------------------------------------------------------------------
