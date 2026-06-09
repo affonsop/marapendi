@@ -118,10 +118,85 @@ class TransientCellModel:
             [14, 353.15, 40e-3, 40e-3, 40e-3, 40e-3, 1.]
         )[np.newaxis, :]
 
+        self._rebuild_mask()
+
+    def _rebuild_mask(self) -> None:
+        """Compute the active-state mask for the current conditions setting.
+
+        States that are structurally always dxdt=0 (no ionomer layer for λ,
+        channel nodes for T and s, membrane for gas, wrong side for O₂/H₂, …)
+        are excluded from the ODE.  The reduced state that scipy sees has
+        shape ``(n_active,)`` instead of ``(n_layers × n_variables,)``.
+
+        Uses position-based logic (enumerate index) rather than layer.ix so that
+        models sharing the same layer object across sides do not cause index
+        corruption.  Call again if ``self.conditions`` is changed after construction.
+        """
+        cell = self.cell
+        channel_gas_active = self.conditions is not None
+
+        # Locate key layers by Python identity (unique objects, safe against sharing)
+        an_ch_pos = next(i for i, l in enumerate(cell.layers) if l is cell.an.ch)
+        ca_ch_pos = next(i for i, l in enumerate(cell.layers) if l is cell.ca.ch)
+        memb_pos  = next(i for i, l in enumerate(cell.layers) if l is cell.memb)
+        an_cl_pos = next(i for i, l in enumerate(cell.layers) if l is cell.an.cl)
+        ca_cl_pos = next(i for i, l in enumerate(cell.layers) if l is cell.ca.cl)
+
+        # Side membership by position (anode < membrane < cathode in the canonical ordering)
+        ch_pos  = {an_ch_pos, ca_ch_pos}
+        an_pos  = set(range(0, memb_pos))                     # an.ch … an.cl
+        ca_pos  = set(range(memb_pos + 1, self.n_layers))      # ca.cl … ca.ch
+        ion_pos = {an_cl_pos, memb_pos, ca_cl_pos}
+
+        mask = np.zeros((self.n_layers, self.n_variables), dtype=bool)
+
+        for i in range(self.n_layers):
+            is_ch   = i in ch_pos
+            is_an   = i in an_pos
+            is_ca   = i in ca_pos
+            is_memb = i == memb_pos
+            gas_ok  = not is_ch or channel_gas_active
+
+            # λ — ionomer layers only
+            mask[i, self.i_lmbd]   = i in ion_pos
+            # T — everywhere except channel nodes (frozen to boundary condition)
+            mask[i, self.i_T]      = not is_ch
+            # O₂ — cathode porous + cathode channel if channel dynamics
+            mask[i, self.i_cg[0]] = is_ca and not is_memb and gas_ok
+            # N₂ — channel nodes only when channel dynamics; derived from pressure balance in porous
+            mask[i, self.i_cg[1]] = is_ch and channel_gas_active
+            # H₂ — anode porous + anode channel if channel dynamics
+            mask[i, self.i_cg[2]] = is_an and not is_memb and gas_ok
+            # H₂O — all non-membrane layers; channel only if channel dynamics
+            mask[i, self.i_cg[3]] = not is_memb and gas_ok
+            # s — porous layers only (not membrane, not channel)
+            mask[i, self.i_s]      = not is_memb and not is_ch
+
+        flat               = mask.flatten()
+        self._active_mask  = flat
+        self._active_ix    = np.where(flat)[0]
+        self._inactive_ix  = np.where(~flat)[0]
+        self._n_active     = int(flat.sum())
+        # Background vector holds frozen normalized state values.
+        # Zeros by default; properly set once initial_state() is called.
+        self._background = np.zeros(self.n_layers * self.n_variables)
+
+    def expand_state(self, y_active: np.ndarray) -> np.ndarray:
+        """Reconstruct the full ``(n_layers × n_variables, m)`` state from the
+        active (compressed) portion by inserting frozen background values."""
+        if y_active.ndim == 1:
+            y_full = self._background.copy()
+            y_full[self._active_ix] = y_active
+            return y_full
+        m      = y_active.shape[1]
+        y_full = np.tile(self._background[:, np.newaxis], m)
+        y_full[self._active_ix] = y_active
+        return y_full
+
     @property
     def n_states(self) -> int:
-        """Total length of the normalised flat state vector (n_layers × n_variables)."""
-        return self.n_layers * self.n_variables
+        """Number of active (non-frozen) ODE states passed to the solver."""
+        return self._n_active
 
     # ------------------------------------------------------------------
     # Initial-state helper
@@ -218,7 +293,9 @@ class TransientCellModel:
                 continue
             x0[layer.ix, self.i_cg] = c_ca if layer.ix > memb_ix else c_an
 
-        return (x0 / self.norm_factor).flatten()
+        y_full = (x0 / self.norm_factor).flatten()
+        self._background = y_full.copy()   # frozen values for inactive states
+        return y_full[self._active_mask]   # only active states passed to solver
 
     def initial_state_from_conditions(
         self,
@@ -268,7 +345,9 @@ class TransientCellModel:
                 continue
             x0[layer.ix, self.i_cg] = c_ca if layer.ix > memb_ix else c_an
 
-        return (x0 / self.norm_factor).flatten()
+        y_full = (x0 / self.norm_factor).flatten()
+        self._background = y_full.copy()   # frozen values for inactive states
+        return y_full[self._active_mask]   # only active states passed to solver
 
     # ------------------------------------------------------------------
     # State unpacking
@@ -350,8 +429,12 @@ class TransientCellModel:
         """
         cell = self.cell
         bm   = self.base_model
+
+        # Expand compressed active state → full (n_layers × n_variables, m) state.
+        # BaseModel always passes 2D (n_active, m) here.
+        x_full = self.expand_state(x)    # (n_full, m)
         x = (
-            x.reshape(self.n_layers, self.n_variables, x.shape[-1])
+            x_full.reshape(self.n_layers, self.n_variables, x_full.shape[1])
             * self.norm_factor[..., np.newaxis]
         )
 
@@ -381,6 +464,8 @@ class TransientCellModel:
         # 4b. Channel gas dynamics: inlet/outlet source terms + no N₂ through-plane flux
         if conditions_snapshot is not None:
             i_N2 = self.i_cg[1]
+            # Non-channel N₂ is masked out of the ODE (always dxdt=0) so we only
+            # need to block through-plane transport at the porous layers for consistency.
             for layer in cell.layers:
                 if layer not in (cell.ca.ch, cell.an.ch):
                     state.R[layer.ix, i_N2, ...] = np.inf
@@ -404,16 +489,15 @@ class TransientCellModel:
         # 7. Flux corrections (EOD adds to λ flux after bulk diffusion is computed)
         bm.memb_model.add_eod_flux(state, cell, self)
 
-        # 8. Assemble dxdt; freeze channel T, s always; freeze cg only when no conditions
+        # 8. Assemble dxdt and return only active states.
+        # Inactive states are not passed to the solver, so no explicit zeroing needed —
+        # the mask guarantees they never appear in the ODE output.
         np.nan_to_num(state.C, copy=False, nan=np.inf)
         dxdt = (
             (state.J[:-1] - state.J[1:]) / cell.thickness[:, np.newaxis] + state.S
         ) / state.C
 
-        for ch in (cell.ca.ch, cell.an.ch):
-            dxdt[ch.ix, self.i_T, :] = 0
-            dxdt[ch.ix, self.i_s,  :] = 0
-            if conditions_snapshot is None:
-                dxdt[ch.ix, self.i_cg, :] = 0
-
-        return (dxdt / self.norm_factor[...,np.newaxis]).reshape(self.n_layers * self.n_variables, state.x.shape[-1])
+        dxdt_norm = (dxdt / self.norm_factor[..., np.newaxis]).reshape(
+            self.n_layers * self.n_variables, state.x.shape[-1]
+        )
+        return dxdt_norm[self._active_ix]   # compress to active states only

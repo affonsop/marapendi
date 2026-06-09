@@ -117,8 +117,9 @@ class CellBaseModel(BaseModel):
         if i_density is None:
             i_density = model.get_inputs(0.)['i']
         cell_y = self.split_state(y_flat)['transient_transport']
+        cell_y_full = model.expand_state(cell_y)   # active → full state
         x = (
-            cell_y.reshape(model.n_layers, model.n_variables, -1)
+            cell_y_full.reshape(model.n_layers, model.n_variables, -1)
             * model.norm_factor[..., np.newaxis]
         )
         state = model._compute_derived_quantities(x, i_density)
