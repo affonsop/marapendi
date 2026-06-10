@@ -78,7 +78,6 @@ class GasMixtureModel:
             ]
             for sp in self.species
         ])
-        print(self.molecular_weights)
     # ------------------------------------------------------------------
     # Public interface
     # ------------------------------------------------------------------
