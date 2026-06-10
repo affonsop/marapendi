@@ -197,9 +197,10 @@ class ParameterEstimation:
         penalty_threshold: float = 1e-2,
         popsize: int = 10,
         workers: int = 1,
+        n_restarts: int = 1,
         rtol: float = 0.,
         atol: float = 0.,
-        ftol: float = 0.,
+        ftol: float = 1e-10,
         maxiter: int = 200,
         print_iterations: bool = False,
         initial_guess: np.ndarray | None = None,
@@ -212,25 +213,63 @@ class ParameterEstimation:
         y_exp : array_like
             Measured (or synthetic) output vector.  NaN/Inf entries are ignored.
         method : str
-            ``'differential_evolution'`` (default, global) or any
-            ``scipy.optimize.minimize`` method for local refinement.
+            ``'differential_evolution'`` (default) for global search, or any
+            ``scipy.optimize.minimize`` method (e.g. ``'L-BFGS-B'``) for
+            gradient-based local refinement with numerical gradients
+            (2n_unknown + 1 evaluations per iteration via central differences).
         penalty_threshold : float
             Residuals exceeding this value carry an additional quadratic
             penalty — see Goshtasbi et al. (2020).  Set to ``0`` to disable.
+        n_restarts : int
+            Number of independent starts for gradient-based methods (ignored for
+            DE which already explores the space globally).  Each restart begins
+            from a different Sobol-sampled point in normalised space; the best
+            result is returned.  ``n_restarts=1`` and ``initial_guess`` provided
+            gives a deterministic local polish from a known starting point.
+
+            **Rule of thumb:** ``n_restarts = 5–10`` with ``method='L-BFGS-B'``
+            is typically 10–20× faster than DE for smooth objectives with a
+            small number of unknowns (≤ 10), because each gradient step only
+            needs 2n + 1 ≈ 5 model evaluations and convergence takes ~15–30
+            steps.
         popsize, workers, rtol, atol, maxiter, seed :
             Passed to ``scipy.optimize.differential_evolution``.
+        ftol : float
+            Function-value tolerance for gradient methods (default ``1e-10``).
         print_iterations : bool
-            Print objective value at each callback.
+            Print progress at each callback / restart.
         initial_guess : np.ndarray, optional
-            Physical initial values for gradient-based methods.
+            Physical initial values for the *first* restart of gradient methods.
+            Subsequent restarts use Sobol-sampled starting points.
 
         Returns
         -------
         sol : OptimizeResult
+            Best result across all restarts.
         params_estimated : dict
-            Full parameter dict with estimated values merged in.
+            Full parameter dict with the estimated values merged in.
+
+        Notes
+        -----
+        **Choosing a method**
+
+        * ``'differential_evolution'``: robust global search, O(popsize ×
+          n_params × maxiter) evaluations.  Use when the landscape may be
+          multi-modal or you have no initial guess.
+        * ``'L-BFGS-B'`` with ``n_restarts ≥ 5``: 10–20× fewer evaluations
+          for smooth objectives; multiple starts mitigate local minima.
+        * Bayesian optimisation (``optuna``, ``scikit-optimize``): best
+          sample-efficiency for very expensive models (≤ 100 evaluations
+          regardless of dimensionality).  Not built in; use
+          ``model_fn`` directly with your preferred BO library.
+        * Automatic differentiation through ``solve_steady_state`` requires
+          implicit differentiation via the implicit function theorem
+          (dx/dp = -(∂f/∂x)⁻¹ ∂f/∂p) and a full rewrite of the physics in
+          JAX/PyTorch — high effort but gives analytic gradients.
         """
         y_exp = np.asarray(y_exp, dtype=float)
+        n_unk = len(self.unknown_parameters)
+        bounds = [(0., 1.)] * n_unk
 
         def _objective(theta):
             px = self.params_from_theta(theta)
@@ -242,14 +281,12 @@ class ParameterEstimation:
             if not np.any(valid):
                 return 1e10
             res = y_exp[valid] - y_model[valid]
-            obj = np.dot(res, res) / len(res)
+            obj = float(np.dot(res, res) / len(res))
             if penalty_threshold > 0:
                 pen = np.where(np.abs(res) > penalty_threshold,
                                10. * (np.abs(res) - penalty_threshold), 0.)
-                obj += np.dot(pen, pen)
-            return float(obj)
-
-        bounds = [(0., 1.)] * len(self.unknown_parameters)
+                obj += float(np.dot(pen, pen))
+            return obj
 
         if method == 'differential_evolution':
             sol = differential_evolution(
@@ -263,14 +300,46 @@ class ParameterEstimation:
                 if print_iterations else None,
             )
         else:
-            if initial_guess is not None:
-                x0 = self.p_to_theta(np.asarray(initial_guess, dtype=float))
-            else:
-                x0 = self.nominal_theta()
-            sol = minimize(
-                _objective, x0=x0, method=method, bounds=bounds,
-                options={'ftol': ftol, 'maxiter': maxiter},
+            # ── Gradient optimisation (single or multi-start) ─────────────
+            # n_restarts == 1 (default): deterministic single run from the
+            # nominal parameter values stored in self.params, or from
+            # initial_guess if provided.
+            # n_restarts > 1: first start is the same deterministic point;
+            # remaining starts are drawn from a Sobol sequence so that the
+            # normalised parameter space is covered without random clustering.
+            x0_first = (
+                self.p_to_theta(np.asarray(initial_guess, dtype=float))
+                if initial_guess is not None
+                else self.nominal_theta()   # values from self.params — always deterministic
             )
+
+            if n_restarts == 1:
+                starts = x0_first[np.newaxis]   # shape (1, n_unk)
+            else:
+                sobol = qmc.Sobol(d=n_unk, scramble=True, seed=seed)
+                # Round up to the next power of 2 so Sobol retains its
+                # low-discrepancy balance properties, then trim to the
+                # requested count.
+                n_sobol = 1 << (n_restarts - 1).bit_length()
+                extra = sobol.random(n_sobol)[:n_restarts - 1]
+                starts = np.vstack([x0_first[np.newaxis], extra])
+
+            best_sol = None
+            for k, x0 in enumerate(starts):
+                sol_k = minimize(
+                    _objective, x0=np.clip(x0, 0., 1.),
+                    method=method, bounds=bounds,
+                    options={'ftol': ftol, 'maxiter': maxiter},
+                )
+                if print_iterations:
+                    p_k = self.params_from_theta(sol_k.x)
+                    vals = ', '.join(f'{up.key}={p_k[up.key]:.4g}'
+                                    for up in self.unknown_parameters)
+                    print(f"  restart {k+1}/{len(starts)}: "
+                          f"obj={sol_k.fun:.4g}  [{vals}]")
+                if best_sol is None or sol_k.fun < best_sol.fun:
+                    best_sol = sol_k
+            sol = best_sol
 
         return sol, self.params_from_theta(sol.x)
 

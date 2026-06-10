@@ -3,9 +3,10 @@ import time
 import os
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 from scipy import stats
+from marapendi.simulation.estimation import ParameterEstimation
 
 def run_cross_validation(
     base_model,
@@ -17,7 +18,7 @@ def run_cross_validation(
     cross_validation_results=None,
     estimate_kwargs=None,
     rmse_scale=1e3,
-    checkpoint_callback=None, 
+    checkpoint_callback=None,
 ):
     """
     Leave-one-out cross-validation with resume capability
@@ -25,6 +26,11 @@ def run_cross_validation(
 
     Parameters
     ----------
+    base_model : ParameterEstimation
+        Configured estimator with .unknown_parameters and .params.
+    build_model : callable
+        build_model(case_list, params) -> model_fn where
+        model_fn(params_dict) -> np.ndarray.
     checkpoint_callback : callable or None
         Function called after each complexity level.
         Signature: checkpoint_callback(cross_validation_results)
@@ -32,12 +38,10 @@ def run_cross_validation(
 
     if estimate_kwargs is None:
         estimate_kwargs = dict(
-            t=0,
             print_iterations=False,
             popsize=10,
             ftol=1e-5,
             penalty_threshold=0,
-            vectorized=False,
             rtol=0.1,
             maxiter=120,
         )
@@ -67,9 +71,8 @@ def run_cross_validation(
         if n_parameters in completed_parameter_counts:
             continue
 
-
         selected_parameters = [
-            base_model.unknown_p_list[idx]
+            base_model.unknown_parameters[idx]
             for idx in parameter_indices[:n_parameters]
         ]
 
@@ -82,27 +85,19 @@ def run_cross_validation(
                 if case != test_case
             ]
 
-            fold_simulator = build_model(training_cases, base_model.p)
-            fold_simulator.set_unknown_params(selected_parameters)
+            model_fn = build_model(training_cases, base_model.params)
+            fold_pe = ParameterEstimation(
+                model_fn, base_model.params, selected_parameters
+            )
 
             start_time = time.time()
 
-            optimization_result, estimated_parameters = (
-                fold_simulator.estimate(
-                    get_exp_data(training_cases),
-                    **estimate_kwargs
-                )
+            optimization_result, params_estimated = fold_pe.estimate(
+                get_exp_data(training_cases),
+                **estimate_kwargs
             )
 
             elapsed_time = time.time() - start_time
-
-            fold_simulator.p.update({
-                name: value
-                for name, value in zip(
-                    fold_simulator.p_i_name,
-                    estimated_parameters
-                )
-            })
 
             rmse = np.sqrt(optimization_result.fun) * rmse_scale
 
@@ -110,14 +105,12 @@ def run_cross_validation(
                 "n_parameters": n_parameters,
                 "test_case": test_case,
                 "training_cases": training_cases,
-                "model_parameters": fold_simulator.p,
+                "model_parameters": params_estimated,
                 "optimization_result": optimization_result,
-                "estimated_parameters": dict(
-                    zip(
-                        fold_simulator.p_i_name,
-                        estimated_parameters
-                    )
-                ),
+                "estimated_parameters": {
+                    up.key: params_estimated[up.key]
+                    for up in selected_parameters
+                },
                 "rmse": rmse,
                 "elapsed_time": elapsed_time,
             })
@@ -206,7 +199,7 @@ def load_cross_validation_results(
             test_case = row["test_case"]
 
             # Rebuild parameter dictionary
-            parameters = base_model.p.copy()
+            parameters = base_model.params.copy()
 
             for column in df.columns[4:]:  # skip metadata columns
                 value = row[column]
@@ -352,7 +345,7 @@ def plot_rmse_vs_complexity_extrapolation(
     ax.set_xlim(0.5, len(parameter_indices) + 0.5)
 
     param_labels = [
-        base_model.unknown_p_list[idx][-1]
+        base_model.unknown_parameters[idx].label
         for idx in parameter_indices
     ]
     ax.set_xticklabels(param_labels, rotation=xrotation)
@@ -538,7 +531,7 @@ def plot_rmse_vs_complexity(
     ax.set_xlim(0.5, len(parameter_indices) + 0.5)
 
     param_labels = [
-        base_model.unknown_p_list[idx][-1]
+        base_model.unknown_parameters[idx].label
         for idx in parameter_indices
     ]
 
@@ -621,7 +614,8 @@ def plot_parameter_vs_complexity(
 
             for param_position, param_idx in enumerate(parameter_indices):
 
-                param_name = base_model.unknown_p_list[param_idx][0]
+                up = base_model.unknown_parameters[param_idx]
+                param_name = up.key
                 scale = parameter_units[param_name][1]
 
                 # Parameter estimated only if within complexity
@@ -654,9 +648,9 @@ def plot_parameter_vs_complexity(
 
     for param_position, param_idx in enumerate(parameter_indices):
 
-        param_info = base_model.unknown_p_list[param_idx]
-        param_name = param_info[0]
-        is_log = not param_info[2]
+        up = base_model.unknown_parameters[param_idx]
+        param_name = up.key
+        is_log = up.log_scale
 
         values = all_values[:, :, param_position]
 
@@ -708,8 +702,8 @@ def plot_parameter_vs_complexity(
         col = param_position % n_cols
         axis = axes[row, col]
 
-        param_info = base_model.unknown_p_list[param_idx]
-        param_name = param_info[0]
+        up = base_model.unknown_parameters[param_idx]
+        param_name = up.key
         scale = parameter_units[param_name][1]
 
         axis.plot(
@@ -750,17 +744,17 @@ def plot_parameter_vs_complexity(
         col = param_position % n_cols
         axis = axes[row, col]
 
-        param_info = base_model.unknown_p_list[param_idx]
-        param_name = param_info[0]
+        up = base_model.unknown_parameters[param_idx]
+        param_name = up.key
         scale = parameter_units[param_name][1]
 
-        axis.set_title(f'{param_position + 1} – {param_info[-1]}', fontsize=9)
+        axis.set_title(f'{param_position + 1} – {up.label}', fontsize=9)
         axis.set_ylabel(f'({parameter_units[param_name][2]})', fontsize=8)
 
         axis.set_xlim((1, len(parameter_indices)))
-        axis.set_ylim([bound / scale for bound in param_info[1]])
+        axis.set_ylim([up.lower / scale, up.upper / scale])
 
-        if not param_info[2]:
+        if up.log_scale:
             axis.set_yscale('log')
 
         axis.grid(True)
