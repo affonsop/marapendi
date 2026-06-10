@@ -146,8 +146,8 @@ class BaseModel:
         t_span: tuple,
         *,
         method: str = 'BDF',
-        rtol: float = 1e-3,
-        atol: float = 1e-6,
+        rtol: float = 1e-4,
+        atol: float = 1e-5,
         max_step: float = np.inf,
         **kwargs,
     ):
