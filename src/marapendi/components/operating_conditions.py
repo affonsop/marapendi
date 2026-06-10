@@ -11,6 +11,19 @@ SideConditions
     Time-varying conditions for one electrode side; .at(t) → OperatingConditions.
 CellConditions
     Full cell conditions; .at(t) → CellSnapshot.
+
+Float-vs-callable convention
+-----------------------------
+Every time-varying parameter in this module (temperatures, flow rates, current
+density) accepts **either** a plain ``float`` *or* a ``callable f(t) → float``.
+
+* If a ``float`` is passed **at construction**, it is wrapped into a
+  ``lambda _t: value`` internally so all code paths call a callable uniformly.
+* If a ``float`` is **assigned directly after construction** (e.g.
+  ``conditions.current_density = float(i_k)`` inside a sweep loop), the
+  :meth:`CellConditions.at` method detects the raw float via
+  :func:`callable` and converts it on the fly, so the assignment is safe and
+  no explicit wrapping is required by the caller.
 """
 from __future__ import annotations
 from dataclasses import dataclass, field
@@ -240,8 +253,11 @@ class CellConditions:
     def at(self, t: float) -> CellSnapshot:
         """Return a frozen :class:`CellSnapshot` at time *t*.
 
-        ``current_density`` may be a plain float (set directly) or a
-        callable ``f(t) -> float``.
+        ``current_density`` is evaluated at *t* when callable, or used as a
+        constant when it is a plain ``float``.  Both forms are accepted
+        regardless of whether the value was set at construction or reassigned
+        afterwards (e.g. ``conditions.current_density = float(i_k)`` in a
+        sweep loop).
         """
         _cd = self.current_density
         return CellSnapshot(

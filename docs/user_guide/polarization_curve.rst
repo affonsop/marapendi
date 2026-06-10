@@ -1,13 +1,26 @@
 Simulating a polarization curve
 ================================
 
-This guide walks through a complete transient simulation of a PEMFC
-polarization curve.  The approach mimics a galvanostatic step protocol:
-current density is held constant at each operating point while the internal
-state (water content, temperature, gas concentrations, liquid saturation)
-reaches near-steady state, then the cell voltage is recorded.
+This guide covers two complementary strategies for computing a PEMFC
+polarization curve:
 
-The full runnable version lives in ``notebooks/simulate_polarization_curve.ipynb``.
+1. **Transient sweep** (IVP) — current density is held constant at each
+   operating point while the internal state (water content, temperature, gas
+   concentrations, liquid saturation) is integrated until near-steady state,
+   then the cell voltage is recorded.
+
+2. **Steady-state sweep** — :meth:`~marapendi.models.model.BaseModel.solve_steady_state`
+   solves ``rates_of_change(t, x) = 0`` directly for each operating point,
+   skipping time integration entirely.  Each solve is warm-started from the
+   previous solution.
+
+Both strategies are provided as runnable notebooks:
+
+* ``notebooks/simulate_polarization_curve.ipynb`` — IVP sweep, no channel dynamics.
+* ``notebooks/simulate_polarization_curve_channel.ipynb`` — IVP sweep with dynamic
+  channel gas concentrations.
+* ``notebooks/simulate_polarization_curve_steady_state.ipynb`` — steady-state sweep
+  with channel dynamics; includes a solver benchmark (Section 8).
 
 Design overview
 ---------------
@@ -309,3 +322,102 @@ two cells can be composed directly:
 
 ``BaseModel`` itself exposes ``rates_of_change`` and ``n_states``, so
 composed models can be nested arbitrarily.
+
+----
+
+Steady-state polarization curve
+---------------------------------
+
+:meth:`~marapendi.models.model.BaseModel.solve_steady_state` wraps
+``scipy.optimize.root`` (MINPACK HYBRD by default) to find ``x`` such that
+``rates_of_change(t, x) = 0``.  The evaluation time *t* is used only to
+resolve time-varying inputs (current density, inlet conditions); it has no
+effect on the solution when those are fixed scalars.
+
+.. code-block:: python
+
+    CURRENT_DENSITIES = np.linspace(0, 20000, 101)   # A/m²
+
+    V_arr   = np.full(len(CURRENT_DENSITIES), np.nan)
+    y_store = np.full((len(CURRENT_DENSITIES), len(y0)), np.nan)
+
+    y = y0.copy()
+    for k, i_k in enumerate(CURRENT_DENSITIES):
+        model.current_density      = float(i_k)   # plain float is safe here
+        conditions.current_density = float(i_k)   # CellConditions.at() handles floats
+
+        sol = base.solve_steady_state(y, t=0.)
+        if not sol.success:
+            print(f"Step {k}: solver did not converge — stopping.")
+            break
+
+        st = base.postprocess(sol.y, i_density=float(i_k))
+        V_k = float(st.V_cell[0])
+        if V_k <= 0.:
+            break
+
+        V_arr[k]   = V_k
+        y_store[k] = sol.y[:, 0]
+        y          = sol.y[:, 0]   # warm-start next step
+
+The return value of ``solve_steady_state`` is a
+:class:`types.SimpleNamespace` whose ``.y`` has shape ``(n_states, 1)``,
+making it a drop-in replacement for a single-column ``sol.y`` slice from
+``solve_ivp``:
+
+.. code-block:: python
+
+    # IVP style (single-column slice)
+    st = base.postprocess(sol_ivp.y[:, -1:], i_density=float(i_k))
+
+    # Steady-state style — identical call
+    st = base.postprocess(sol_ss.y, i_density=float(i_k))
+
+**Advantages over IVP:**  each operating point is solved in one shot with
+no integration time, giving a ~10–100× wall-clock speedup (exact ratio
+depends on the integration window and stiffness).
+
+**Limitations:**  the root finder may not converge near the limiting current
+density where the Jacobian becomes ill-conditioned, and it does not capture
+transient overshoot or hysteresis.
+
+Assigning float current density after construction
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Both :class:`~marapendi.components.operating_conditions.CellConditions` and
+:class:`~marapendi.models.transient.TransientCellModel` accept either a plain
+``float`` or a ``callable f(t) → float`` for ``current_density``.  In a
+sweep loop it is common to assign a raw float **after** construction:
+
+.. code-block:: python
+
+    model.current_density      = float(i_k)   # updates TransientCellModel
+    conditions.current_density = float(i_k)   # updates CellConditions
+
+``CellConditions.at(t)`` detects whether ``current_density`` is callable via
+:func:`callable` and uses the float directly when it is not, so no explicit
+wrapping (``lambda _t: i_k``) is needed.  Constructing with a callable and
+reassigning with a float mid-loop is equally valid.
+
+NaN-safe step selection
+~~~~~~~~~~~~~~~~~~~~~~~
+
+When only a subset of steps converge (or the IVP terminates early), the
+voltage array ``V_arr`` contains ``np.nan`` for unreached steps.
+Use :func:`numpy.nanargmin` — not :func:`numpy.argmin` — to find the
+operating point closest to a target voltage:
+
+.. code-block:: python
+
+    # WRONG: np.argmin propagates NaN and may return the first NaN index
+    idx = np.argmin(np.abs(V_arr - 0.6))
+
+    # CORRECT: nanargmin ignores NaN entries
+    idx = np.nanargmin(np.abs(V_arr - 0.6))
+
+If ``np.argmin`` is used and ``V_arr`` contains NaN, it typically returns
+the index of the **first NaN entry** (whose ``|NaN - 0.6| = NaN`` is treated
+as negative infinity by some BLAS implementations).  This causes
+``(idx + 1) * T_STEP > sol_full.t[-1]``, so the state snapshot falls back to
+``sol_full.t[-1]`` — the simulation termination point at high current —
+rather than the intended 0.6 V operating point.

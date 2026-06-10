@@ -28,6 +28,22 @@ Optionally, a submodel may implement:
 * ``base_model``
   any attribute by this name will be overwritten with a reference to the
   owning ``BaseModel`` so submodels can resolve shared model objects.
+
+Solvers
+-------
+Two solver strategies are provided on ``BaseModel``:
+
+* :meth:`BaseModel.solve` — time-integration via ``scipy.integrate.solve_ivp``
+  (BDF by default).  Suitable for transient simulations and galvanostatic
+  sweeps where the quasi-steady-state is reached by integrating for a
+  sufficiently long ``T_STEP``.
+* :meth:`BaseModel.solve_steady_state` — direct nonlinear solve via
+  ``scipy.optimize.root`` (MINPACK HYBRD by default).  Finds ``x`` such
+  that ``rates_of_change(t, x) = 0`` in one shot, skipping the integration
+  entirely.  Warm-starting from the previous operating point is strongly
+  recommended.  Returns a :class:`types.SimpleNamespace` whose ``.y`` field
+  (shape ``(n_states, 1)``) is drop-in compatible with
+  :meth:`CellBaseModel.postprocess`.
 """
 from __future__ import annotations
 

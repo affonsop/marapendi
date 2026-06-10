@@ -219,3 +219,24 @@ class TestCellConditions:
         snap = self._make_cell().at(0.0)
         assert snap.ca.temperature == pytest.approx(T)
         assert snap.an.temperature == pytest.approx(T)
+
+    def test_float_assignment_after_construction(self):
+        """Assigning a plain float to current_density after construction must not
+        raise TypeError when .at(t) is called.
+
+        This covers the polarization-curve sweep pattern:
+            conditions.current_density = float(i_k)
+            snap = conditions.at(0.)   # must not crash
+        """
+        cc = self._make_cell(i=0.)
+        cc.current_density = 7500.0   # raw float assigned post-construction
+        snap = cc.at(0.0)             # must not raise 'float is not callable'
+        assert snap.current_density == pytest.approx(7500.0)
+
+    def test_float_assignment_varies_with_loop(self):
+        """Successive float assignments produce successive snapshots."""
+        cc = self._make_cell(i=0.)
+        values = [1000., 5000., 10000., 15000.]
+        for i_k in values:
+            cc.current_density = float(i_k)
+            assert cc.at(0.).current_density == pytest.approx(i_k)

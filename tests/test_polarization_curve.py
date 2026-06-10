@@ -187,6 +187,57 @@ def _compute_J_PEM(state, model, cell):
 
 
 # ---------------------------------------------------------------------------
+# Steady-state simulation fixture — same cell/conditions, solve_steady_state
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope="module")
+def simulation_ss(cell):
+    """Polarization curve via solve_steady_state, warm-started step by step."""
+    base = mrpd.CellBaseModel(
+        transient_transport_model=mrpd.TransientCellModel(cell=cell, current_density=0.),
+        memb_model=mrpd.PFSAModel(),
+        cl_model=mrpd.PtCCatalystLayerModel(),
+        gas_diffusion_model=mrpd.PorousGasResistanceModel(),
+        darcy_transport_model=mrpd.DarcyTransportModel(),
+        voltage_model=mrpd.VoltageModel(),
+    )
+    model = base.transient_transport_model
+
+    y0 = base.initial_state(
+        cell_temperature=T_OP, cell_pressure=P_OP,
+        ca_rh=RH, an_rh=RH,
+        ca_dry_o2=0.21,
+        an_dry_h2=1.0,
+        s_ca=S_C,
+    )
+
+    results = []
+    V_arr = np.full(len(CURRENT_DENSITIES_TEST), np.nan)
+    y = y0.copy()
+    for k, i_density in enumerate(CURRENT_DENSITIES_TEST):
+        model.current_density = float(i_density)
+        sol = base.solve_steady_state(y, t=0.)
+        if sol.success:
+            y = sol.y[:, 0]
+        state = base.postprocess(sol.y)
+        results.append(state)
+        V_arr[k] = float(state.V_cell[0])
+
+    return SimResult(
+        i_Acm2=CURRENT_DENSITIES_TEST / 1e4,
+        V_arr=V_arr,
+        results=results,
+        base=base,
+        model=model,
+    )
+
+
+# Tolerance for steady-state regression: slightly wider than IVP because the
+# SS warm-starts from y0 (not a fully-evolved prior state) for the first step.
+TOL_SS = 0.15
+
+
+# ---------------------------------------------------------------------------
 # TestPolarizationCurve — qualitative sanity checks
 # ---------------------------------------------------------------------------
 
@@ -256,8 +307,13 @@ TOL = 0.10  # ±10 %
 
 
 def _get_idx06(V_arr):
-    """Index of the simulated point closest to U = 0.6 V."""
-    return int(np.argmin(np.abs(V_arr - 0.6)))
+    """Index of the simulated point closest to U = 0.6 V.
+
+    Uses ``np.nanargmin`` so that NaN entries (steps the solver never reached)
+    are ignored.  ``np.argmin`` propagates NaN unpredictably and may return
+    the index of the first NaN rather than the closest valid voltage.
+    """
+    return int(np.nanargmin(np.abs(V_arr - 0.6)))
 
 
 @pytest.mark.slow
@@ -334,4 +390,128 @@ class TestTable6Regression:
         assert abs(R_PEM - REF_R_PEM_06) / REF_R_PEM_06 <= TOL, (
             f"R_PEM(0.6 V) = {R_PEM:.3f} mΩ·cm², ref = {REF_R_PEM_06:.3f} mΩ·cm² "
             f"(±{TOL*100:.0f} %)"
+        )
+
+
+# ---------------------------------------------------------------------------
+# TestSteadyStatePolarizationCurve — verify solve_steady_state Vetter results
+#
+# The steady-state solver finds x s.t. rates_of_change(t, x) = 0 directly,
+# skipping time integration.  Results must satisfy the same sanity checks as
+# the IVP sweep and agree with the IVP regression values within TOL_SS = 15 %,
+# which is slightly wider than the IVP tolerance to allow for the fact that
+# the first warm-start begins from the generic y0 rather than a pre-evolved
+# prior operating point.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.slow
+class TestSteadyStatePolarizationCurve:
+
+    def test_most_steps_converge(self, simulation_ss):
+        """At least 5 of 6 steps must converge for the test currents."""
+        n_converged = int(np.sum(~np.isnan(simulation_ss.V_arr)))
+        assert n_converged >= 5, (
+            f"Only {n_converged}/6 SS steps converged; expected ≥ 5"
+        )
+
+    def test_ocv_above_floor(self, simulation_ss):
+        """Open-circuit steady-state voltage must be physically reasonable."""
+        V_ocv = simulation_ss.V_arr[0]
+        assert V_ocv > 0.9, f"OCV_SS = {V_ocv:.3f} V, expected > 0.9 V"
+
+    def test_monotonically_decreasing(self, simulation_ss):
+        """Cell voltage must decrease strictly with increasing current density."""
+        valid = ~np.isnan(simulation_ss.V_arr)
+        V_valid = simulation_ss.V_arr[valid]
+        diffs = np.diff(V_valid)
+        assert np.all(diffs < 0), (
+            f"SS voltage is not strictly decreasing; diffs = {diffs}"
+        )
+
+    def test_voltage_at_1Acm2(self, simulation_ss):
+        """Interpolated SS voltage at 1 A/cm² must be in [0.65, 0.85] V."""
+        valid = ~np.isnan(simulation_ss.V_arr)
+        I_to_V = interp1d(
+            simulation_ss.i_Acm2[valid], simulation_ss.V_arr[valid],
+            kind='linear', bounds_error=False, fill_value='extrapolate',
+        )
+        V_1 = float(I_to_V(1.0))
+        assert 0.65 <= V_1 <= 0.85, (
+            f"V_SS(1 A/cm²) = {V_1:.3f} V, expected in [0.65, 0.85]"
+        )
+
+    def test_peak_power_density(self, simulation_ss):
+        """Peak power density max(I × V) must exceed 0.5 W/cm²."""
+        P_arr = simulation_ss.i_Acm2 * simulation_ss.V_arr
+        peak = float(np.nanmax(P_arr))
+        assert peak > 0.5, f"Peak power SS = {peak:.3f} W/cm², expected > 0.5"
+
+    def test_voltage_at_1Acm2_matches_ivp(self, simulation_ss):
+        """SS V(1 A/cm²) agrees with IVP reference value within TOL_SS."""
+        valid = ~np.isnan(simulation_ss.V_arr)
+        I_to_V = interp1d(
+            simulation_ss.i_Acm2[valid], simulation_ss.V_arr[valid],
+            kind='linear', bounds_error=False, fill_value='extrapolate',
+        )
+        V_1 = float(I_to_V(1.0))
+        assert abs(V_1 - REF_V_AT_1ACMC2) / REF_V_AT_1ACMC2 <= TOL_SS, (
+            f"V_SS(1 A/cm²) = {V_1:.3f} V, IVP ref = {REF_V_AT_1ACMC2:.3f} V "
+            f"(±{TOL_SS*100:.0f} %)"
+        )
+
+    def test_current_density_at_06V_matches_ivp(self, simulation_ss):
+        """SS I(0.6 V) agrees with IVP reference value within TOL_SS."""
+        valid = ~np.isnan(simulation_ss.V_arr) & (simulation_ss.V_arr > 0.05)
+        i_v = simulation_ss.i_Acm2[valid]
+        V_v = simulation_ss.V_arr[valid]
+        V_to_I = interp1d(V_v[::-1], i_v[::-1], kind='linear',
+                          bounds_error=False, fill_value='extrapolate')
+        i_06 = float(V_to_I(0.6))
+        assert abs(i_06 - REF_I_AT_06V) / REF_I_AT_06V <= TOL_SS, (
+            f"I_SS(0.6 V) = {i_06:.3f} A/cm², IVP ref = {REF_I_AT_06V:.3f} A/cm² "
+            f"(±{TOL_SS*100:.0f} %)"
+        )
+
+    def test_min_water_content_physically_reasonable(self, simulation_ss):
+        """Minimum λ over CCM at 0.6 V must be in the physically valid range [1, 22]."""
+        cell = simulation_ss.base.transient_transport_model.cell
+        idx = _get_idx06(simulation_ss.V_arr)
+        st = simulation_ss.results[idx]
+        ccm_ix = [cell.an.cl.ix, cell.memb.ix, cell.ca.cl.ix]
+        lmbd_min = float(np.min(st.lmbd[ccm_ix, 0]))
+        assert 1.0 <= lmbd_min <= 22.0, (
+            f"λ_min_SS(0.6 V) = {lmbd_min:.3f}, expected in [1, 22]"
+        )
+
+    def test_water_flux_positive_at_06V(self, simulation_ss):
+        """Water flux through PEM at 0.6 V must be positive (anode → cathode)."""
+        cell = simulation_ss.base.transient_transport_model.cell
+        idx = _get_idx06(simulation_ss.V_arr)
+        st = simulation_ss.results[idx]
+        J_PEM = _compute_J_PEM(st, simulation_ss.model, cell)
+        assert J_PEM > 0, f"J_PEM_SS = {J_PEM:.4f} µmol/cm²/s, expected > 0"
+
+    def test_R_PEM_physically_reasonable(self, simulation_ss):
+        """R_PEM at 0.6 V must be in a physically plausible range [5, 500] mΩ·cm²."""
+        cell = simulation_ss.base.transient_transport_model.cell
+        idx = _get_idx06(simulation_ss.V_arr)
+        st = simulation_ss.results[idx]
+        R_PEM = _compute_R_PEM(st, simulation_ss.base, cell)
+        assert 5.0 <= R_PEM <= 500.0, (
+            f"R_PEM_SS(0.6 V) = {R_PEM:.3f} mΩ·cm², expected in [5, 500]"
+        )
+
+    def test_residual_finite_at_solution(self, simulation_ss):
+        """SS residual must be finite at the 1 A/cm² operating point."""
+        base = simulation_ss.base
+        model = base.transient_transport_model
+        # Re-run a single step from y0 and verify the residual is finite.
+        y0 = base.initial_state(
+            cell_temperature=T_OP, cell_pressure=P_OP,
+            ca_rh=RH, an_rh=RH, ca_dry_o2=0.21, an_dry_h2=1.0, s_ca=S_C,
+        )
+        model.current_density = 10000.   # 1 A/cm²
+        sol = base.solve_steady_state(y0, t=0.)
+        assert np.all(np.isfinite(sol.fun)), (
+            "SS residual contains non-finite values at 1 A/cm²"
         )

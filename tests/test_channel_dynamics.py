@@ -164,7 +164,8 @@ class TestViscosityFields:
 class TestChannelDynamicsFlag:
     """Verify that passing conditions= enables channel gas evolution."""
 
-    def _conditions(self, base, cell):
+    @staticmethod
+    def _make_conditions():
         n_o2 = 1e-5
         ca = mrpd.InletAirConditions(
             temperature=T, backpressure=P, rh_ref_pressure=P,
@@ -176,39 +177,42 @@ class TestChannelDynamicsFlag:
         )
         return mrpd.CellConditions(current_density=0., ca=ca, an=an)
 
+    @staticmethod
+    def _dxdt_2d(base, y0):
+        """Zero-expand a compressed dxdt into (n_layers, n_variables)."""
+        model = base.transient_transport_model
+        dxdt_active = base.rates_of_change(0., y0)
+        full = np.zeros(model.n_layers * model.n_variables)
+        full[model._active_ix] = dxdt_active
+        return full.reshape(model.n_layers, model.n_variables), model
+
     def test_no_conditions_freezes_channel_gas(self):
         base, cell = _make_base()
         y0 = base.initial_state(cell_temperature=T, cell_pressure=P,
                                   ca_rh=0.9, an_rh=0.9, ca_dry_o2=0.21, an_dry_h2=1.0)
-        dxdt = base.rates_of_change(0., y0)
-        model = base.transient_transport_model
-        dxdt_2d = dxdt.reshape(model.n_layers, model.n_variables)
+        dxdt_2d, model = self._dxdt_2d(base, y0)
         for ch in (cell.ca.ch, cell.an.ch):
             np.testing.assert_array_equal(dxdt_2d[ch.ix, model.i_cg], 0.)
 
     def test_with_conditions_unfreezes_channel_gas(self):
-        base, cell = _make_base()
-        cond = self._conditions(base, cell)
-        base.transient_transport_model.conditions = cond
+        # Conditions must be passed at construction so BaseModel._slices is built
+        # with the correct (larger) n_states; post-construction _rebuild_mask()
+        # would change n_states but leave BaseModel._slices stale.
+        cond = self._make_conditions()
+        base, cell = _make_base(conditions=cond)
         y0 = base.initial_state(cell_temperature=T, cell_pressure=P,
                                   ca_rh=0.9, an_rh=0.9, ca_dry_o2=0.21, an_dry_h2=1.0)
-        dxdt = base.rates_of_change(0., y0)
-        model = base.transient_transport_model
-        dxdt_2d = dxdt.reshape(model.n_layers, model.n_variables)
+        dxdt_2d, model = self._dxdt_2d(base, y0)
         for ch in (cell.ca.ch, cell.an.ch):
-            # At least some gas species should have non-zero dxdt
             assert not np.all(dxdt_2d[ch.ix, model.i_cg] == 0.)
 
     def test_channel_T_always_frozen(self):
         """Channel temperature dxdt is always zero regardless of conditions."""
-        base, cell = _make_base()
-        cond = self._conditions(base, cell)
-        base.transient_transport_model.conditions = cond
+        cond = self._make_conditions()
+        base, cell = _make_base(conditions=cond)
         y0 = base.initial_state(cell_temperature=T, cell_pressure=P,
                                   ca_rh=0.9, an_rh=0.9, ca_dry_o2=0.21, an_dry_h2=1.0)
-        dxdt = base.rates_of_change(0., y0)
-        model = base.transient_transport_model
-        dxdt_2d = dxdt.reshape(model.n_layers, model.n_variables)
+        dxdt_2d, model = self._dxdt_2d(base, y0)
         for ch in (cell.ca.ch, cell.an.ch):
             assert dxdt_2d[ch.ix, model.i_T] == pytest.approx(0.)
 
@@ -217,7 +221,6 @@ class TestChannelDynamicsFlag:
 
 class TestN2ThroughPlaneFrozen:
     def test_n2_dxdt_zero_in_porous_layers(self):
-        base, cell = _make_base()
         n_o2 = 1e-5
         ca = mrpd.InletAirConditions(
             temperature=T, backpressure=P, rh_ref_pressure=P,
@@ -228,13 +231,15 @@ class TestN2ThroughPlaneFrozen:
             h2_molar_flow_rate=2 * n_o2, inlet_rh=0.9,
         )
         cond = mrpd.CellConditions(current_density=0., ca=ca, an=an)
-        base.transient_transport_model.conditions = cond
+        base, cell = _make_base(conditions=cond)
 
         y0 = base.initial_state(cell_temperature=T, cell_pressure=P,
                                   ca_rh=0.9, an_rh=0.9, ca_dry_o2=0.21, an_dry_h2=1.0)
-        dxdt = base.rates_of_change(0., y0)
         model = base.transient_transport_model
-        dxdt_2d = dxdt.reshape(model.n_layers, model.n_variables)
+        dxdt_active = base.rates_of_change(0., y0)
+        full = np.zeros(model.n_layers * model.n_variables)
+        full[model._active_ix] = dxdt_active
+        dxdt_2d = full.reshape(model.n_layers, model.n_variables)
         i_N2 = model.i_cg[1]
 
         for layer in cell.layers:
@@ -251,6 +256,20 @@ class TestGasMassBalanceZeroCurrent:
     should be nearly at steady state — dxdt for reactive species should be
     small compared to their values.
     """
+
+    def _modify_channel(self, model, y0, layer_ix, var_ix, value):
+        """Expand active state, set y_full[layer_ix, var_ix] = value, compress back."""
+        y_full = model.expand_state(y0).reshape(model.n_layers, model.n_variables)
+        y_full[layer_ix, var_ix] = value
+        return y_full.flatten()[model._active_ix]
+
+    def _dxdt_at(self, base, y_active, layer_ix, var_ix):
+        """Compute dxdt for one (layer, variable) entry via zero-expansion."""
+        model = base.transient_transport_model
+        dxdt_active = base.rates_of_change(0., y_active)
+        full = np.zeros(model.n_layers * model.n_variables)
+        full[model._active_ix] = dxdt_active
+        return full.reshape(model.n_layers, model.n_variables)[layer_ix, var_ix]
 
     def test_empty_channel_fills_from_inlet(self):
         """With positive inlet O2 flow and zero channel O2, dxdt[ch, O2] > 0 (filling)."""
@@ -269,40 +288,33 @@ class TestGasMassBalanceZeroCurrent:
 
         y0 = base.initial_state(cell_temperature=T, cell_pressure=P,
                                   ca_rh=0.9, an_rh=0.9, ca_dry_o2=0.21, an_dry_h2=1.0)
-        # Empty the cathode channel of O2
-        y0_2d = y0.reshape(model.n_layers, model.n_variables)
-        y0_2d[cell.ca.ch.ix, model.i_cg[0]] = 0.
-        y0_empty = y0_2d.flatten()
+        # Zero cathode channel O2, then compress back to active state
+        y0_mod = self._modify_channel(model, y0, cell.ca.ch.ix, model.i_cg[0], 0.)
 
-        dxdt = base.rates_of_change(0., y0_empty)
-        dxdt_2d = dxdt.reshape(model.n_layers, model.n_variables)
         # Inlet brings in O2 → channel should fill (positive rate)
-        assert dxdt_2d[cell.ca.ch.ix, model.i_cg[0]] > 0
+        assert self._dxdt_at(base, y0_mod, cell.ca.ch.ix, model.i_cg[0]) > 0
 
     def test_channel_drains_when_inlet_zero_and_pressure_above_backpressure(self):
         """Zero inlet flow but channel above backpressure: gas drains out (negative rate)."""
-        n_o2 = 1e-5
-        p_above = P * 1.01   # 1% above backpressure
         ca = mrpd.InletAirConditions(
             temperature=T, backpressure=P, rh_ref_pressure=P,
-            o2_molar_flow_rate=0.,  # no inlet
+            o2_molar_flow_rate=0.,
             o2_dry_mole_fraction=0.21, inlet_rh=0.9,
         )
         an = mrpd.InletHydrogenConditions(
             temperature=T, backpressure=P, rh_ref_pressure=P,
-            h2_molar_flow_rate=0.,  # no inlet
+            h2_molar_flow_rate=0.,
             inlet_rh=0.9,
         )
         cond = mrpd.CellConditions(current_density=0., ca=ca, an=an)
         base, cell = _make_base(conditions=cond)
         model = base.transient_transport_model
 
+        p_above = P * 1.01   # 1% above backpressure → gas drains
         y0 = base.initial_state(cell_temperature=T, cell_pressure=p_above,
                                   ca_rh=0.9, an_rh=0.9, ca_dry_o2=0.21, an_dry_h2=1.0)
-        dxdt = base.rates_of_change(0., y0)
-        dxdt_2d = dxdt.reshape(model.n_layers, model.n_variables)
         # No inlet, pressure above backpressure → gas flows out → negative rate
-        assert dxdt_2d[cell.ca.ch.ix, model.i_cg[0]] < 0
+        assert self._dxdt_at(base, y0, cell.ca.ch.ix, model.i_cg[0]) < 0
 
     def test_n2_channel_dxdt_positive_with_inlet_n2(self):
         """N2 in channel should evolve (non-zero) since it has inlet/outlet flows."""
@@ -319,14 +331,10 @@ class TestGasMassBalanceZeroCurrent:
         base, cell = _make_base(conditions=cond)
         model = base.transient_transport_model
 
-        # Start from zero N2 in cathode channel to guarantee non-zero dxdt
         y0 = base.initial_state(cell_temperature=T, cell_pressure=P,
                                   ca_rh=0.5, an_rh=0.5, ca_dry_o2=0.21, an_dry_h2=1.0)
-        y0_2d = y0.reshape(model.n_layers, model.n_variables)
-        y0_2d[cell.ca.ch.ix, model.i_cg[1]] = 0.  # zero N2 in cathode channel
-        y0_zeroed = y0_2d.flatten()
+        # Zero cathode channel N2 to guarantee positive inlet-driven fill rate
+        y0_mod = self._modify_channel(model, y0, cell.ca.ch.ix, model.i_cg[1], 0.)
 
-        dxdt = base.rates_of_change(0., y0_zeroed)
-        dxdt_2d = dxdt.reshape(model.n_layers, model.n_variables)
         # With inlet N2 > 0 and channel N2 = 0, dxdt should be positive (filling)
-        assert dxdt_2d[cell.ca.ch.ix, model.i_cg[1]] > 0
+        assert self._dxdt_at(base, y0_mod, cell.ca.ch.ix, model.i_cg[1]) > 0

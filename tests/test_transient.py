@@ -96,29 +96,31 @@ class TestLayerIndices:
 
 class TestInitialState:
     def test_shape(self, model, y0):
-        assert y0.shape == (model.n_layers * model.n_variables,)
+        # y0 is the compressed active state; its length equals model.n_states,
+        # not model.n_layers * model.n_variables (which includes frozen entries).
+        assert y0.shape == (model.n_states,)
 
     def test_all_finite(self, y0):
         assert np.all(np.isfinite(y0))
 
     def test_liquid_saturation_starts_at_zero(self, model, y0):
-        x = y0.reshape(model.n_layers, model.n_variables) * model.norm_factor
+        x = model.expand_state(y0).reshape(model.n_layers, model.n_variables) * model.norm_factor
         assert np.all(x[:, model.i_s] == pytest.approx(0.))
 
     def test_anode_gdl_has_nonzero_gas(self, model, y0):
-        x = y0.reshape(model.n_layers, model.n_variables) * model.norm_factor
+        x = model.expand_state(y0).reshape(model.n_layers, model.n_variables) * model.norm_factor
         gdl_ix = model.cell.an.gdl.ix
         assert np.all(x[gdl_ix, model.i_cg] >= 0)
         assert x[gdl_ix, model.i_cg[2]] > 0   # H2 present
 
     def test_cathode_has_oxygen_not_hydrogen(self, model, y0):
-        x = y0.reshape(model.n_layers, model.n_variables) * model.norm_factor
+        x = model.expand_state(y0).reshape(model.n_layers, model.n_variables) * model.norm_factor
         ca_ix = model.cell.ca.cl.ix
         assert x[ca_ix, model.i_cg[0]] > 0    # O2 present
         assert x[ca_ix, model.i_cg[2]] == pytest.approx(0.)  # no H2 by default
 
     def test_anode_has_hydrogen_not_oxygen(self, model, y0):
-        x = y0.reshape(model.n_layers, model.n_variables) * model.norm_factor
+        x = model.expand_state(y0).reshape(model.n_layers, model.n_variables) * model.norm_factor
         an_ix = model.cell.an.cl.ix
         assert x[an_ix, model.i_cg[2]] > 0    # H2 present
         assert x[an_ix, model.i_cg[0]] == pytest.approx(0.)  # no O2 by default
@@ -131,7 +133,8 @@ class TestRatesOfChange:
     def test_shape(self, model, y0, i):
         model.current_density = i
         dxdt = model.rates_of_change(y0[:, np.newaxis], i=i)
-        assert dxdt.shape == (model.n_layers * model.n_variables, 1)
+        # Shape is (n_active, 1); frozen entries are excluded from the ODE.
+        assert dxdt.shape == (model.n_states, 1)
 
     @pytest.mark.parametrize("i", [200., 2000., 10000.])
     def test_all_finite(self, model, y0, i):
@@ -141,15 +144,16 @@ class TestRatesOfChange:
 
     def test_channel_rates_are_zero(self, model, y0):
         model.current_density = 5000.
-        dxdt = model.rates_of_change(y0[:, np.newaxis], i=5000.)[:, 0]
-        n = model.n_variables
+        dxdt_active = model.rates_of_change(y0[:, np.newaxis], i=5000.)[:, 0]
+        # Expand to full shape with zeros for frozen entries (frozen dxdt = 0 by construction).
+        dxdt_full = np.zeros(model.n_layers * model.n_variables)
+        dxdt_full[model._active_ix] = dxdt_active
+        dxdt_2d = dxdt_full.reshape(model.n_layers, model.n_variables)
         for ch in (model.cell.an.ch, model.cell.ca.ch):
-            row = dxdt[ch.ix * n: ch.ix * n + n]
-            # T and gas concentrations frozen; lambda and s may or may not be
-            assert row[model.i_T] == pytest.approx(0.)
+            assert dxdt_2d[ch.ix, model.i_T] == pytest.approx(0.)
             for ig in model.i_cg:
-                assert row[ig] == pytest.approx(0.)
-            assert row[model.i_s] == pytest.approx(0.)
+                assert dxdt_2d[ch.ix, ig] == pytest.approx(0.)
+            assert dxdt_2d[ch.ix, model.i_s] == pytest.approx(0.)
 
 
 # ─── short integration ────────────────────────────────────────────────────────
@@ -177,7 +181,8 @@ class TestShortIntegration:
         # Unpack s from last time step.  The BDF solver (atol=1e-6) can let s drift
         # slightly outside [0,1]; get_states_from_x clips it back during evaluation,
         # so we allow a small numerical margin here.
-        x_end = (sol.y[:, -1].reshape(model.n_layers, model.n_variables)
+        x_end = (model.expand_state(sol.y[:, -1])
+                 .reshape(model.n_layers, model.n_variables)
                  * model.norm_factor)
         s_end = x_end[:, model.i_s]
         assert np.all(s_end >= -5e-3)
@@ -189,7 +194,9 @@ class TestShortIntegration:
 class TestVoltage:
     def _compute_state_with_voltage(self, model, y0, i):
         bm = model.base_model
-        x  = y0.reshape(model.n_layers, model.n_variables, 1) * model.norm_factor[..., np.newaxis]
+        x  = (model.expand_state(y0)
+              .reshape(model.n_layers, model.n_variables, 1)
+              * model.norm_factor[..., np.newaxis])
         state = model._compute_derived_quantities(x, i)
         bm.gas_model.compute_state(state, model.cell, model, bm.gas_diffusion_model)
         bm.cl_model.compute_local_o2_partial_pressure(state, model.cell, bm.memb_model)
