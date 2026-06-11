@@ -14,6 +14,7 @@ from .membrane import Membrane
 from .gas_composition import species_indexes, index_o2, index_n2, index_h2, index_h2ov
 from .water import water_molar_volume, water_saturation_pressure
 from .state import FuelCellState, FuelCellSideState, MembraneState, LayerState, CatalystLayerState, FlowChannelState
+from .voltage import VoltageModel 
 
 
 from dataclasses import dataclass, field
@@ -257,6 +258,7 @@ class FuelCell:
     an: FuelCellSide = field(default_factory=FuelCellSide)
     ca: FuelCellSide = field(default_factory=FuelCellSide)
     membrane: Membrane = field(default_factory=Membrane)
+    voltage_model: VoltageModel = field(default_factory=VoltageModel)
     electrical_resistance: float = 0
     h2_permeation_flux: float = 0 
     crossover_current: float = 0
@@ -270,187 +272,6 @@ class FuelCell:
     def __post_init__(self): 
         self.porous_layers = [layer for side in (self.an, self.ca) for layer in side.porous_layers]
 
-    def reversible_cell_voltage(self): 
-        """
-        Calculate the reversible cell voltage based on the Nernst equation.
-
-        Returns
-        -------
-        float
-            The reversible cell voltage (also known as the Nernst potential) in volts.
-
-        Notes
-        -----
-        The calculation considers the temperature of the catalyst layer and the partial pressures
-        of oxygen and hydrogen at the cathode and anode, respectively.
-        """
-        activity_o2 = self.ca.cl.species_partial_pressure('o2') / STD_PRESSURE
-        activity_h2 = self.an.cl.species_partial_pressure('h2') / STD_PRESSURE
-        return calculate_reversible_cell_voltage(
-            self.ca.cl.temperature,
-            activity_o2 ** 0.5 * activity_h2
-        )
-    
-    def activation_overpotential(self, theta_PtO=0): 
-        """
-        Compute the activation overpotential of the fuel cell.
-
-        Parameters
-        ----------
-        theta_PtO : float, optional
-            The coverage fraction of PtO species on the catalyst surface. Default is 0.
-
-        Returns
-        -------
-        float
-            The activation overpotential in volts.
-
-        Notes
-        -----
-        The activation overpotential is calculated using the Tafel equation, considering 
-        the hydrogen crossover current, gases partial pressure, and platinum surface coverage.
-        It accounts for the voltage drop due to the PtO coverage effect in the cathode.
-        """
-        self.h2_permeation_flux = self.membrane.hydrogen_permeation_flux(self.an.cl.species_partial_pressure('h2'), 
-                                                                        self.membrane.temperature, 
-                                                                        self.an.cl.pressure - self.ca.cl.pressure,
-                                                                        self.membrane.water_vol_fraction(
-                                                                            self.membrane.water_content, 
-                                                                            self.mea_water_molar_volume
-                                                                            )
-                                                                        )
-        self.crossover_current = self.h2_permeation_flux * (2 * ct.faraday)
-        omega_PtO_voltage_drop = self.ca.cl.omega_PtO * theta_PtO / (self.ca.cl.reaction.number_of_electrons *
-                                                                      self.ca.cl.reaction.charge_transfer_coeff * ct.faraday)
-        self.orr_overpotential = self.ca.cl.reaction.tafel_overpotential(
-            (self.current_density + self.crossover_current) / (self.ca.cl.ecsa * self.ca.cl.platinum_loading * (1-theta_PtO)),
-            self.ca.cl.temperature,
-            self.ca.cl.species_partial_pressure('o2')
-        )
-        self.hor_overpotential = 0
-        # self.hor_overpotential = self.an.cl.reaction.linear_overpotential(
-        #     self.current_density / (self.an.cl.ecsa * self.an.cl.platinum_loading),
-        #     self.an.cl.temperature,
-        #     self.an.cl.species_partial_pressure('h2')
-        # )
-        return self.orr_overpotential + omega_PtO_voltage_drop + self.hor_overpotential
-    
-    def high_frequency_resistance(self): 
-        """
-        Compute the high-frequency resistance (HFR) of the fuel cell.
-
-        Returns
-        -------
-        float
-            The high-frequency resistance in ohms.
-
-        Notes
-        -----
-        The high-frequency resistance is mainly due to the proton resistance of the membrane 
-        and the electrical resistance of the cell components. It is an important parameter in 
-        electrochemical impedance spectroscopy (EIS) measurements.
-        """
-        return self.membrane.proton_resistance(self.membrane.temperature, water_saturation=self.ca.cl.liquid_saturation) + self.electrical_resistance
-
-    def ohmic_overpotential(self): 
-        """
-        Compute the ohmic overpotential of the fuel cell.
-
-        Returns
-        -------
-        float
-            The ohmic overpotential in volts.
-
-        Notes
-        -----
-        The ohmic overpotential arises from the resistance to proton conduction in the 
-        catalyst layer and the membrane, as well as the electronic resistance of the 
-        cell components. It is calculated as the product of the current density and 
-        the total internal resistance.
-        """
-        for side in (self.ca, ): 
-            side.cl.proton_resistance = 1./(side.cl.non_wetting_saturation/side.cl.effective_charge_resistance(
-                self.current_density, 
-                side.liquid_eq_water_content, 
-                side.cl.temperature
-            ) + (1-side.cl.non_wetting_saturation)/side.cl.effective_charge_resistance(
-                self.current_density, 
-                side.vapor_eq_water_content, 
-                side.cl.temperature
-            ))
-        return self.current_density * (self.ca.cl.proton_resistance + self.high_frequency_resistance())
-
-    def reversible_voltage_vs_RHE(self): 
-        """
-        Compute the reversible cell voltage referenced to the reversible hydrogen electrode (RHE).
-
-        Returns
-        -------
-        float
-            The reversible voltage in volts.
-
-        Notes
-        -----
-        This function calculates the theoretical reversible voltage assuming a reference 
-        hydrogen pressure of 1 bar (100 kPa). It provides a useful reference for evaluating 
-        fuel cell performance.
-        """
-        return calculate_reversible_cell_voltage(
-            self.ca.cl.temperature,
-            self.ca.cl.species_partial_pressure('o2') / STD_PRESSURE
-        )
-    def calculate_theta_PtO(self): 
-        """
-        Calculate the coverage of platinum oxide (θ_PtO) on the cathode catalyst layer.
-
-        Returns
-        -------
-        float
-            The coverage of platinum oxide (θ_PtO).
-
-        Notes
-        -----
-        This function determines the fraction of the platinum catalyst surface covered 
-        by oxygen species, which affects the activation overpotential. The calculation 
-        iteratively solves for θ_PtO using a convergence criterion of 0.001 V for the 
-        activation overpotential.
-        """
-
-        E_rev_vs_RHE = self.reversible_voltage_vs_RHE()
-        theta_PtO = 0
-        if self.ca.cl.omega_PtO > 0:
-            eps_max = 10
-            eta_act = 0
-            while  eps_max > 0.001:
-                eta_act_old = eta_act
-                eta_act = self.activation_overpotential(theta_PtO) 
-                theta_PtO = 0.5 * theta_PtO +0.5 / (1 + np.exp(22.4 * (0.818 - E_rev_vs_RHE + eta_act)))
-                eps_max = np.mean(np.abs(eta_act - eta_act_old))
-            
-        self.ca.cl.theta_catalyst = theta_PtO
-
-    def calculate_cell_voltage(self):
-        """
-        Compute the cell voltage of the fuel cell.
-
-        Returns
-        -------
-        float
-            The fuel cell voltage in volts.
-
-        Notes
-        -----
-        The cell voltage is calculated as the difference between the reversible cell voltage 
-        and the sum of the activation and ohmic overpotentials. The function first calculates 
-        the platinum oxide coverage (θ_PtO), which is used in the activation overpotential 
-        calculation.
-        """ 
-        self.calculate_theta_PtO()
-        E_rev = self.reversible_cell_voltage()
-        eta_ohm = self.ohmic_overpotential()
-        eta_act = self.activation_overpotential(self.ca.cl.theta_catalyst)
-        self.cell_voltage = np.maximum(0, E_rev - eta_act - eta_ohm)
-        return self.cell_voltage
     
     def set_mea_temperature(self, mea_temperature): 
         """
@@ -666,8 +487,10 @@ class FuelCell:
         self.set_mea_temperature(mea_temperature)
         self.calculate_water_transport()
         self.calculate_gas_concentrations_at_cl()
-        self.calculate_cell_voltage()
-        return self.cell_voltage
+        state = self.to_state()
+        self.voltage_model.compute_cell_voltage(state)
+        self.cell_voltage = state.cell_voltage
+        return state.cell_voltage
 
     def to_state(self) -> FuelCellState:
         """

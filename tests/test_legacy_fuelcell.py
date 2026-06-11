@@ -130,7 +130,8 @@ def test_high_frequency_resistance_matches_reference(fuel_cell, operating_condit
     fuel_cell.compute_ui_curve(
         CURRENT_DENSITIES, stack_temperature, cathode_conditions, anode_conditions
     )
-    hfr = fuel_cell.high_frequency_resistance()
+    state = fuel_cell.to_state()
+    hfr = fuel_cell.voltage_model.high_frequency_resistance(state)
     np.testing.assert_allclose(hfr, REF_HFR, rtol=TOL)
 
 
@@ -147,8 +148,6 @@ def test_to_state_matches_attributes(fuel_cell, operating_conditions):
     np.testing.assert_allclose(state.cell_voltage, fuel_cell.cell_voltage)
     np.testing.assert_allclose(state.mea_temperature, fuel_cell.mea_temperature)
     np.testing.assert_allclose(state.ca.cl.temperature, fuel_cell.ca.cl.temperature)
-    np.testing.assert_allclose(state.ca.cl.overpotential, fuel_cell.orr_overpotential)
-    np.testing.assert_allclose(state.an.cl.overpotential, fuel_cell.hor_overpotential)
     np.testing.assert_allclose(state.membrane.water_content, fuel_cell.membrane.water_content)
     np.testing.assert_allclose(
         state.membrane.proton_resistance,
@@ -173,12 +172,12 @@ def test_voltage_model_matches_calculate_cell_voltage(fuel_cell, operating_condi
     state = voltage_model.compute_cell_voltage(state)
 
     np.testing.assert_allclose(state.cell_voltage, fuel_cell.cell_voltage, rtol=TOL)
-    np.testing.assert_allclose(state.eta_act, fuel_cell.activation_overpotential(fuel_cell.ca.cl.theta_catalyst), rtol=TOL)
-    np.testing.assert_allclose(state.eta_ohm, fuel_cell.ohmic_overpotential(), rtol=TOL)
-    np.testing.assert_allclose(state.E_rev, fuel_cell.reversible_cell_voltage(), rtol=TOL)
+    np.testing.assert_allclose(state.eta_act, fuel_cell.voltage_model.activation_overpotential(state), rtol=TOL)
+    np.testing.assert_allclose(state.eta_ohm, fuel_cell.voltage_model.ohmic_overpotential(state), rtol=TOL)
+    np.testing.assert_allclose(state.E_rev, fuel_cell.voltage_model.reversible_cell_voltage(state), rtol=TOL)
     np.testing.assert_allclose(state.ca.cl.theta_catalyst, fuel_cell.ca.cl.theta_catalyst, rtol=TOL)
     np.testing.assert_allclose(
         state.membrane.proton_resistance + fuel_cell.electrical_resistance,
-        fuel_cell.high_frequency_resistance(),
+        fuel_cell.voltage_model.high_frequency_resistance(state),
         rtol=TOL,
     )
