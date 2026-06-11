@@ -35,6 +35,7 @@ from .tools.load_cycles import *
 # ── Estimation & simulation ───────────────────────────────────────────────────
 from .estimation.cross_validation import *
 from .simulation.estimation import *
+from .simulation.surrogate import *
 
 # ── Materials database ────────────────────────────────────────────────────────
 from .materials.ionomers import *
