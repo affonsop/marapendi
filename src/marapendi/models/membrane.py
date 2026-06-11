@@ -217,7 +217,7 @@ class MembraneModel(IonomerModel):
         float
             Equilibrium water content λ [mol H₂O / mol SO₃⁻].
         """
-        rh = np.clip(rh, 0, 1)
+        rh = np.minimum(np.maximum(rh, 0), 1)
         return polyval_vec(sorption_coeffs[:,::-1], rh)
 
     def liquid_equilibrium_water_content(self, reference_liquid_water_content):

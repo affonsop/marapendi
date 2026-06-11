@@ -193,6 +193,22 @@ class BaseModel:
     # Steady-state solver
     # ------------------------------------------------------------------
 
+    def _vectorized_jac(self, t, x, rel_step=1.5e-8):
+        """Forward-difference Jacobian of ``rates_of_change`` via one batched call.
+
+        Builds an ``(n_states, n_states + 1)`` matrix — the unperturbed state
+        plus one perturbed column per state — and evaluates ``rates_of_change``
+        once with ``m = n_states + 1``, instead of relying on MINPACK's
+        internal finite-difference loop (which calls ``rates_of_change`` with
+        ``m = 1``, once per state).
+        """
+        n = x.shape[0]
+        h = rel_step * np.maximum(np.abs(x), 1.0)
+        X = np.tile(x[:, np.newaxis], n + 1)
+        X[:, 1:] += np.diag(h)
+        F = self.rates_of_change(t, X)
+        return (F[:, 1:] - F[:, :1]) / h
+
     def solve_steady_state(
         self,
         y0: np.ndarray,
@@ -200,6 +216,7 @@ class BaseModel:
         *,
         method: str = 'hybr',
         tol: float = 1e-8,
+        vectorized_jac: bool = False,
         **kwargs,
     ) -> SimpleNamespace:
         """Find the steady-state solution by solving ``rates_of_change(t, x) = 0``.
@@ -219,6 +236,12 @@ class BaseModel:
             well-suited to moderate-size systems).
         tol : float
             Convergence tolerance on the residual norm (default ``1e-8``).
+        vectorized_jac : bool
+            If ``True``, supply a forward-difference Jacobian computed via a
+            single batched call to ``rates_of_change`` (``m = n_states + 1``),
+            switching ``hybr``/``lm`` to HYBRJ/LMDER and avoiding MINPACK's
+            internal ``m = 1`` finite-difference loop. Ignored if ``jac`` is
+            already passed in ``kwargs``.
         **kwargs
             Any additional keyword arguments forwarded verbatim to
             ``scipy.optimize.root`` (e.g. ``jac``, ``options``).
@@ -237,6 +260,9 @@ class BaseModel:
             * ``success`` : bool — ``True`` if the root finder converged.
             * ``message`` : str — solver status message.
         """
+        if vectorized_jac and 'jac' not in kwargs:
+            kwargs['jac'] = lambda x: self._vectorized_jac(t, x)
+
         sol = _root(
             lambda x: self.rates_of_change(t, x),
             y0,

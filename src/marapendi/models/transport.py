@@ -279,7 +279,7 @@ class DarcyTransportModel:
         state.C[:, i_s, ...] = state.rho_l * cell.eps_p
 
         # Phase-change source (stored on state for ThermalModel and GasModel)
-        c_sat = water_saturation_concentration(state.T)
+        c_sat = state.c_sat
         factor = np.where(c_sat > state.c_v, state.s, 1 - state.s)
         state.S_lv = 1000.0 * (state.c_v - c_sat) * factor
 

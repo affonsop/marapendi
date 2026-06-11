@@ -72,8 +72,26 @@ def polyval_vec(coeffs, xs):
     """
     coeffs = np.asarray(coeffs, dtype=float)
     xs     = np.atleast_2d(np.asarray(xs, dtype=float))  # (N, m)
-    result = np.zeros((len(xs), 1))
 
+    N = coeffs.shape[0]
+    if xs.shape == (N, 1):
+        # m=1: a pure-Python Horner loop is faster than numpy here, since
+        # the arrays involved are too small to amortise numpy's per-call
+        # overhead. Same evaluation order as the vectorised loop below, so
+        # results are bit-identical.
+        xs_flat = xs[:, 0].tolist()
+        coeffs_list = coeffs.tolist()
+        result = np.empty((N, 1))
+        for i in range(N):
+            x = xs_flat[i]
+            row = coeffs_list[i]
+            acc = row[0]
+            for c in row[1:]:
+                acc = acc * x + c
+            result[i, 0] = acc
+        return result
+
+    result = np.zeros((len(xs), 1))
     for col in coeffs.T:                   # iterate over coefficient columns
         result = result * xs + col[:, np.newaxis]
     return result

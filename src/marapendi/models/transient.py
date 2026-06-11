@@ -362,9 +362,9 @@ class TransientCellModel:
         the feasible region.
         """
         lmbd = x[:, self.i_lmbd, ...]
-        T    = np.clip(x[:, self.i_T, ...], 275., 600.)
+        T    = np.minimum(np.maximum(x[:, self.i_T, ...], 275.), 600.)
         cg_k = np.maximum(x[:, self.i_cg, ...], 0.)
-        s    = np.clip(x[:, self.i_s, ...], 0., 1.)
+        s    = np.minimum(np.maximum(x[:, self.i_s, ...], 0.), 1.)
         return lmbd, T, cg_k, s
 
     # ------------------------------------------------------------------
@@ -377,23 +377,29 @@ class TransientCellModel:
         m    = self.base_model
         lmbd, T, cg_k, s = self.get_states_from_x(x)
 
-        iF  = i / ct.faraday
-        V_w = water_molar_volume(T)
-        f_v = m.memb_model.water_vol_fraction(lmbd, V_w, cell.V_ion)
-
+        
         memb_ix  = cell.memb.ix
         ca_cl_ix = cell.ca.cl.ix
         an_cl_ix = cell.an.cl.ix
 
+        csat = water_saturation_concentration(T)
+
+        
+
         rho_l = water_density(T)
         nu_l  = water_kinematic_viscosity(T)
+
+        iF  = i / ct.faraday
+        V_w = water_molar_volume(T)
+        f_v = m.memb_model.water_vol_fraction(lmbd, V_w, cell.V_ion)
+
 
         state = CellState(
             x=x,
             lmbd=lmbd, T=T, cg_k=cg_k, s=s, iF=iF,
-            c_sat=water_saturation_concentration(T),
+            c_sat=csat,
             c_v=cg_k[:, -1, ...],
-            rh=cg_k[:, -1, ...] / water_saturation_concentration(T),
+            rh=cg_k[:, -1, ...] / csat,
             rho_l=rho_l,
             nu_l=nu_l,
             mu_l=nu_l * rho_l,
@@ -475,12 +481,17 @@ class TransientCellModel:
             ):
                 bm.flowfield_model.add_channel_inlet_outlet_flows(cond, state, side.ch, self)
 
+        mask = np.isnan(state.R)
+        if mask.any():
+            state.R[mask] = np.inf
+
         # 5. Effective inter-layer resistance
         eff_R = (state.R[:-1] + state.R[1:]) / 2
         eff_R[-1, self.i_T] += cell.thermal_resistance / 2
         eff_R[ 0, self.i_T] += cell.thermal_resistance / 2
-        np.nan_to_num(state.R, copy=False, nan=np.inf, posinf=np.inf)
-        np.nan_to_num(eff_R,   copy=False, nan=np.inf, posinf=np.inf)
+        mask = np.isnan(eff_R)
+        if mask.any():
+            eff_R[mask] = np.inf
         state.eff_R = eff_R
 
         # 6. Bulk inter-layer fluxes
@@ -492,7 +503,9 @@ class TransientCellModel:
         # 8. Assemble dxdt and return only active states.
         # Inactive states are not passed to the solver, so no explicit zeroing needed —
         # the mask guarantees they never appear in the ODE output.
-        np.nan_to_num(state.C, copy=False, nan=np.inf)
+        mask = np.isnan(state.C)
+        if mask.any():
+            state.C[mask] = np.inf
         dxdt = (
             (state.J[:-1] - state.J[1:]) / cell.thickness[:, np.newaxis] + state.S
         ) / state.C

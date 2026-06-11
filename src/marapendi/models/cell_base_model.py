@@ -91,7 +91,7 @@ class CellBaseModel(BaseModel):
         """
         return super().initial_state(transient_transport=kwargs)
 
-    def postprocess(self, y_flat: np.ndarray, i_density: float = None):
+    def postprocess(self, y_flat: np.ndarray, i_density: float = None, transport: bool = True):
         """Post-process a state array into a populated ``CellState``.
 
         Unpacks and un-normalises the state, then calls
@@ -106,12 +106,21 @@ class CellBaseModel(BaseModel):
             Applied current density [A m⁻²] for voltage computation.
             Defaults to the model's current ``current_density`` value
             (evaluated at *t* = 0 for callable current profiles).
+        transport : bool, optional
+            If ``True`` (default), also fill in the transport-matrix fields
+            (``state.R``, ``state.C``, ``state.S``, ``state.J``,
+            ``state.eff_R``, etc.) for diagnostics/plotting. Set to ``False``
+            to skip this extra work when only ``V_cell``/overpotentials and
+            other fields set by ``_compute_derived_quantities`` are needed
+            (e.g. in tight optimization loops).
 
         Returns
         -------
         CellState
             Snapshot with ``V_cell``, ``eta_act``, ``eta_ohm``, species
             concentrations, temperatures, and saturation fields populated.
+            If ``transport=True``, also includes ``state.R``, ``state.C``,
+            ``state.S``, ``state.J``, and ``state.eff_R``.
         """
         model = self.transient_transport_model
         if i_density is None:
@@ -127,27 +136,28 @@ class CellBaseModel(BaseModel):
         self.cl_model.compute_local_o2_partial_pressure(state, model.cell, self.memb_model)
         self.voltage_model.compute_cell_voltage(state, model.cell, self.memb_model, self.cl_model)
 
-        cell = model.cell
-        m_dim = x.shape[-1]
-        state.C   = np.ones((model.n_layers, model.n_variables, m_dim))
-        state.R   = np.full((model.n_layers, model.n_variables, m_dim), np.inf)
-        state.S   = np.zeros((model.n_layers, model.n_variables, m_dim))
-        state.phi = x.copy()
-        state.J   = np.zeros((model.n_layers + 1, model.n_variables, m_dim))
-        state.J_des = None
-        state.S_lv  = None
+        if transport:
+            cell = model.cell
+            m_dim = x.shape[-1]
+            state.C   = np.ones((model.n_layers, model.n_variables, m_dim))
+            state.R   = np.full((model.n_layers, model.n_variables, m_dim), np.inf)
+            state.S   = np.zeros((model.n_layers, model.n_variables, m_dim))
+            state.phi = x.copy()
+            state.J   = np.zeros((model.n_layers + 1, model.n_variables, m_dim))
+            state.J_des = None
+            state.S_lv  = None
 
-        self.memb_model.update_transport_matrices(state, cell, model)
-        self.darcy_transport_model.update_transport_matrices(state, cell, model)
-        self.gas_diffusion_model.update_transport_matrices(state, cell, model, self.gas_model)
-        self.thermal_model.update_transport_matrices(state, cell, model, self.memb_model)
+            self.memb_model.update_transport_matrices(state, cell, model)
+            self.darcy_transport_model.update_transport_matrices(state, cell, model)
+            self.gas_diffusion_model.update_transport_matrices(state, cell, model, self.gas_model)
+            self.thermal_model.update_transport_matrices(state, cell, model, self.memb_model)
 
-        eff_R = (state.R[:-1] + state.R[1:]) / 2
-        eff_R[-1, model.i_T] += cell.thermal_resistance / 2
-        eff_R[ 0, model.i_T] += cell.thermal_resistance / 2
-        np.nan_to_num(state.R, copy=False, nan=np.inf, posinf=np.inf)
-        np.nan_to_num(eff_R,   copy=False, nan=np.inf, posinf=np.inf)
-        state.J[1:-1] = -(state.phi[1:] - state.phi[:-1]) / eff_R
-        state.eff_R   = eff_R
-        self.memb_model.add_eod_flux(state, cell, model)
+            eff_R = (state.R[:-1] + state.R[1:]) / 2
+            eff_R[-1, model.i_T] += cell.thermal_resistance / 2
+            eff_R[ 0, model.i_T] += cell.thermal_resistance / 2
+            np.nan_to_num(state.R, copy=False, nan=np.inf, posinf=np.inf)
+            np.nan_to_num(eff_R,   copy=False, nan=np.inf, posinf=np.inf)
+            state.J[1:-1] = -(state.phi[1:] - state.phi[:-1]) / eff_R
+            state.eff_R   = eff_R
+            self.memb_model.add_eod_flux(state, cell, model)
         return state
