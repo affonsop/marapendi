@@ -778,7 +778,6 @@ def plot_cross_validation_curves(
     n_parameters,
     cv_results,
     case_list,
-    case_table,
     condition_color,
     simulate_callback,
     model_builder,
@@ -944,6 +943,225 @@ def get_folds_for_complexity(cv_results, n_parameters):
         f"n_parameters={n_parameters} not available. "
         f"Available levels: {available}"
     )
+
+class CrossValidation:
+    """
+    Simplified, stateful interface around the free functions in this module.
+
+    Wraps :func:`run_cross_validation`, the save/load helpers, and the
+    plotting functions so a notebook only needs to provide a
+    ``build_model(case_list) -> model_fn`` callable and an experimental-data
+    getter — no manual adapters or repeated argument lists.
+
+    Parameters
+    ----------
+    base_model : ParameterEstimation
+        Configured estimator with ``.unknown_parameters`` and ``.params``.
+    parameter_indices : sequence of int
+        Order in which parameters are added across complexity levels
+        (e.g. from ``base_model.plot_parameter_ranking()``).
+    case_list : list
+        All experimental cases/conditions.
+    build_model : callable
+        ``build_model(case_list) -> model_fn`` where
+        ``model_fn(params_dict) -> np.ndarray``.
+    get_exp_data : callable
+        ``get_exp_data(case_list) -> np.ndarray``.
+    model_builder, simulate_callback : callable, optional
+        Forwarded to the plotting helpers — see
+        :func:`plot_rmse_vs_complexity` and :func:`plot_cross_validation_curves`.
+    filename : str, optional
+        Base name used for checkpoint/result files
+        (``results_{filename}_cv.csv``) in ``output_dir``.
+    output_dir : str
+        Directory for checkpoint/result files (default ``"results"``).
+    estimate_kwargs : dict, optional
+        Default kwargs forwarded to ``ParameterEstimation.estimate``.
+
+    Examples
+    --------
+    ::
+
+        cv = CrossValidation(
+            base_model=pe,
+            parameter_indices=P,
+            case_list=full_case_list,
+            build_model=build_model,
+            get_exp_data=get_cases_exp_data,
+            model_builder=model_builder,
+            simulate_callback=simulate_callback,
+            filename=filename,
+        )
+        cv_results = cv.run()
+        fig, ax, rmse_df, optimal_n = cv.plot_rmse_vs_complexity()
+    """
+
+    def __init__(
+        self,
+        base_model,
+        parameter_indices,
+        case_list,
+        build_model,
+        get_exp_data,
+        model_builder=None,
+        simulate_callback=None,
+        filename=None,
+        output_dir="results",
+        estimate_kwargs=None,
+        rmse_scale=1e3,
+        min_parameters=1,
+        condition_color=None,
+    ):
+        self.base_model = base_model
+        self.parameter_indices = parameter_indices
+        self.case_list = case_list
+        self.build_model = build_model
+        self.get_exp_data = get_exp_data
+        self.model_builder = model_builder
+        self.simulate_callback = simulate_callback
+        self.filename = filename
+        self.output_dir = output_dir
+        self.estimate_kwargs = estimate_kwargs
+        self.rmse_scale = rmse_scale
+        self.min_parameters = min_parameters
+        self.condition_color = condition_color or {
+            case: f"C{k}" for k, case in enumerate(case_list)
+        }
+
+        self.results = None
+        self.rmse_df = None
+        self.optimal_n = None
+
+    # ------------------------------------------------------------
+    # Estimation
+    # ------------------------------------------------------------
+
+    @property
+    def filepath(self):
+        if self.filename is None:
+            return None
+        return os.path.join(self.output_dir, f"results_{self.filename}_cv.csv")
+
+    def load(self):
+        """Load previously saved results into ``self.results``."""
+        self.results = load_cross_validation_results(
+            filepath=self.filepath,
+            base_model=self.base_model,
+        )
+        return self.results
+
+    def save(self):
+        """Save ``self.results`` to ``self.filepath``."""
+        return save_cross_validation_results(
+            cross_validation_results=self.results,
+            filename=f"{self.filename}_cv",
+            output_dir=self.output_dir,
+        )
+
+    def run(self, resume=True, checkpoint=True, **estimate_kwargs):
+        """Run leave-one-out cross-validation.
+
+        Parameters
+        ----------
+        resume : bool
+            Load and skip complexity levels already saved at ``self.filepath``.
+        checkpoint : bool
+            Save results after each complexity level.
+        **estimate_kwargs
+            Override entries of ``self.estimate_kwargs``.
+        """
+        cross_validation_results = self.load() if resume and self.filepath else None
+
+        def _build_model(case_list, _params):
+            return self.build_model(case_list)
+
+        def _checkpoint(results):
+            self.results = results
+            if checkpoint and self.filename:
+                self.save()
+
+        self.results = run_cross_validation(
+            base_model=self.base_model,
+            parameter_indices=self.parameter_indices,
+            case_list=self.case_list,
+            build_model=_build_model,
+            get_exp_data=self.get_exp_data,
+            min_parameters=self.min_parameters,
+            cross_validation_results=cross_validation_results,
+            estimate_kwargs={**(self.estimate_kwargs or {}), **estimate_kwargs},
+            rmse_scale=self.rmse_scale,
+            checkpoint_callback=_checkpoint,
+        )
+        return self.results
+
+    # ------------------------------------------------------------
+    # Complexity-level helpers
+    # ------------------------------------------------------------
+
+    def get_complexity_levels(self):
+        return get_complexity_levels(self.results)
+
+    def get_folds_for_complexity(self, n_parameters):
+        return get_folds_for_complexity(self.results, n_parameters)
+
+    # ------------------------------------------------------------
+    # Plots / tables
+    # ------------------------------------------------------------
+
+    def plot_rmse_vs_complexity(self, **kwargs):
+        fig, ax, rmse_df, optimal_n = plot_rmse_vs_complexity(
+            cv_results=self.results,
+            case_list=self.case_list,
+            parameter_indices=self.parameter_indices,
+            base_model=self.base_model,
+            model_builder=self.model_builder,
+            simulate_callback=self.simulate_callback,
+            **kwargs,
+        )
+        self.rmse_df = rmse_df
+        self.optimal_n = optimal_n
+        return fig, ax, rmse_df, optimal_n
+
+    def plot_rmse_vs_complexity_extrapolation(
+        self, training_test_case, extrapolation_cases, **kwargs
+    ):
+        return plot_rmse_vs_complexity_extrapolation(
+            cv_results=self.results,
+            training_test_case=training_test_case,
+            extrapolation_cases=extrapolation_cases,
+            parameter_indices=self.parameter_indices,
+            base_model=self.base_model,
+            model_builder=self.model_builder,
+            simulate_callback=self.simulate_callback,
+            condition_color=kwargs.pop('condition_color', self.condition_color),
+            **kwargs,
+        )
+
+    def plot_parameter_vs_complexity(self, parameter_units, initial_parameters, **kwargs):
+        return plot_parameter_vs_complexity(
+            cv_results=self.results,
+            parameter_indices=self.parameter_indices,
+            base_model=self.base_model,
+            parameter_units=parameter_units,
+            condition_color=kwargs.pop('condition_color', self.condition_color),
+            initial_parameters=initial_parameters,
+            **kwargs,
+        )
+
+    def plot_cross_validation_curves(self, n_parameters=None, **kwargs):
+        return plot_cross_validation_curves(
+            n_parameters=n_parameters if n_parameters is not None else self.optimal_n,
+            cv_results=self.results,
+            case_list=self.case_list,
+            condition_color=kwargs.pop('condition_color', self.condition_color),
+            simulate_callback=self.simulate_callback,
+            model_builder=self.model_builder,
+            **kwargs,
+        )
+
+    def rmse_complexity_table(self, filename=None):
+        return rmse_complexity_table(self.rmse_df, filename=filename)
+
 
 def rmse_complexity_table(rmse_vs_complexity_df, filename=None):
     
