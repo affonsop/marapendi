@@ -11,8 +11,9 @@ from .porous_layers import PorousLayer
 from .catalyst_layers import PtCCatalystLayer
 from .flow_channels import FlowChannel
 from .membrane import Membrane
-from .gas_composition import species_indexes 
-from .water import water_molar_volume
+from .gas_composition import species_indexes, index_o2, index_n2, index_h2, index_h2ov
+from .water import water_molar_volume, water_saturation_pressure
+from .state import FuelCellState, FuelCellSideState, MembraneState, LayerState, CatalystLayerState, FlowChannelState
 
 
 from dataclasses import dataclass, field
@@ -668,6 +669,85 @@ class FuelCell:
         self.calculate_cell_voltage()
         return self.cell_voltage
 
+    def to_state(self) -> FuelCellState:
+        """
+        Snapshot the fuel cell's current attributes into a :class:`FuelCellState`.
+
+        This is a read-only view: it does not change any internal attribute and
+        can be called any time after :meth:`compute_ui_curve` /
+        :meth:`explicit_steady_state_model`. It provides a structured,
+        ``marapendi.legacy.state``-shaped alternative to reaching into
+        ``fuel_cell.ca.cl.<attr>`` etc. directly, without changing how the
+        underlying physics is computed.
+        """
+        def _layer_state(layer, cls=LayerState, **extra):
+            dry_o2 = dry_h2 = relative_humidity = None
+            gas = getattr(layer, 'gas', None)
+            X = getattr(gas, 'X', None)
+            if X is not None:
+                dry_total = 1 - X[..., index_h2ov]
+                dry_o2 = np.divide(X[..., index_o2], dry_total, out=np.zeros_like(dry_total, dtype=float), where=dry_total > 0)
+                dry_h2 = np.divide(X[..., index_h2], dry_total, out=np.zeros_like(dry_total, dtype=float), where=dry_total > 0)
+                relative_humidity = getattr(gas, 'relative_humidity', None)
+            return cls(
+                temperature=getattr(layer, 'temperature', None),
+                pressure=getattr(layer, 'pressure', None),
+                dry_o2_mole_fraction=dry_o2,
+                dry_h2_mole_fraction=dry_h2,
+                relative_humidity=relative_humidity,
+                liquid_saturation=getattr(layer, 'liquid_saturation', 0.),
+                non_wetting_saturation=getattr(layer, 'non_wetting_saturation', 0.),
+                capillary_pressure=getattr(layer, 'capillary_pressure', None),
+                **extra,
+            )
+
+        def _side_state(side, overpotential):
+            ch = side.ch
+            return FuelCellSideState(
+                cl=_layer_state(
+                    side.cl, CatalystLayerState,
+                    ionomer_water_content=getattr(side.cl, 'ionomer_water_content', None),
+                    overpotential=overpotential,
+                    crossover_current=getattr(self, 'crossover_current', None),
+                    water_film_thickness=getattr(side.cl, 'water_film_thickness', None),
+                ),
+                gdl=_layer_state(side.gdl),
+                ch=FlowChannelState(
+                    inlet_gas_flow_rate=getattr(ch, 'inlet_gas_flow_rate', None),
+                    inlet_liquid_flow_rate=getattr(ch, 'inlet_liquid_flow_rate', None),
+                    inlet_liquid_saturation=getattr(ch, 'inlet_liquid_saturation', None),
+                    inlet_stoichiometry=getattr(ch, 'inlet_stoichiometry', None),
+                ),
+                reactant_consumption=getattr(side, 'reactant_consumption', None),
+                h2o_production=getattr(side, 'h2o_production', None),
+                h2ov_transport_resistance=getattr(side, 'h2ov_transport_resistance', None),
+                membrane_water_flux=getattr(side, 'membrane_water_flux', None),
+                water_flux=getattr(side, 'water_flux', None),
+                s_relax=getattr(side, 's_relax', None),
+                t_relax=getattr(side, 't_relax', None),
+            )
+
+        return FuelCellState(
+            ca=_side_state(self.ca, getattr(self, 'orr_overpotential', None)),
+            an=_side_state(self.an, getattr(self, 'hor_overpotential', None)),
+            membrane=MembraneState(
+                temperature=getattr(self.membrane, 'temperature', None),
+                water_content=getattr(self.membrane, 'water_content', None),
+                water_flux=getattr(self.ca, 'membrane_water_flux', None),
+                h2_permeation_flux=getattr(self, 'h2_permeation_flux', None),
+                proton_resistance=self.membrane.proton_resistance(
+                    self.membrane.temperature, water_saturation=self.ca.cl.liquid_saturation
+                ) if getattr(self.membrane, 'temperature', None) is not None else None,
+            ),
+            current_density=self.current_density,
+            temperature=self.temperature,
+            mea_temperature=getattr(self, 'mea_temperature', None),
+            cell_voltage=getattr(self, 'cell_voltage', None),
+            heat_release_rate=getattr(self, 'heat_release_rate', None),
+            thermal_resistance=getattr(self, 'thermal_resistance', None),
+            fuel_cell=self,
+        )
+
     def temperature_rate_of_change(self):
         self.calculate_heat_transport(dynamic=True) 
         return (self.heat_release_rate -  
@@ -819,6 +899,12 @@ class FuelCell:
         - The gas flow rate at the channel inlet is determined based on the 
         stoichiometric ratio and reactant consumption.
         """
+        cathode_conditions, anode_conditions = (
+            conditions if isinstance(conditions, OperatingConditions)
+            else OperatingConditions.from_components(conditions)
+            for conditions in (cathode_conditions, anode_conditions)
+        )
+
         self.current_density = current_density
         self.o2_consumption = current_density / (4 * ct.faraday)
         self.h2_consumption = 2 * self.o2_consumption
@@ -861,7 +947,14 @@ class FuelCell:
                 component.set_gas_temperature_and_pressure(stack_temperature, conditions.inlet_pressure)
             
             cell_side.ch.set_fixed_inlet_liquid_flow_rate(conditions.inlet_liquid_flow_rate)
-            
+
+            if conditions.stoichiometry == 0:
+                # Fixed inlet gas flow rate only (e.g. conditions converted via
+                # OperatingConditions.from_components): clear any stoichiometry
+                # left over from a previous call, which would otherwise still
+                # contribute to calculate_inlet_gas_flow_rate below.
+                cell_side.ch.inlet_stoichiometry = 0
+
             cell_side.ch.set_inlet_gas_flow_rate_from_stoichiometry(
                 (self.o2_consumption if cell_side == self.ca else self.h2_consumption) * self.cell_area, conditions.stoichiometry, 
                 fixed_inlet_gas_flow_rate=conditions.inlet_gas_flow_rate
@@ -924,8 +1017,45 @@ class OperatingConditions:
             self.inlet_pressure = self.outlet_pressure if self.outlet_pressure is not None else 101325.0
         if self.outlet_pressure is None:
             self.outlet_pressure = self.inlet_pressure
-        
+
         self.average_pressure = 0.5 * (self.inlet_pressure + self.outlet_pressure)
+
+    @classmethod
+    def from_components(cls, conditions):
+        """
+        Build a legacy ``OperatingConditions`` from
+        ``marapendi.components.operating_conditions.OperatingConditions``.
+
+        The new representation describes the inlet gas composition through
+        per-species molar flow rates ``[o2, n2, h2, h2ov]`` rather than dry
+        mole fractions + relative humidity, and uses a single
+        ``backpressure`` rather than separate inlet/outlet pressures. The
+        flow rate is taken as a fixed inlet gas flow rate (stoichiometry=0).
+        """
+        flows = np.asarray(conditions.inlet_gas_molar_flow_rates)
+        o2, n2, h2, h2ov = (flows[index_o2, ...], flows[index_n2, ...],
+                             flows[index_h2, ...], flows[index_h2ov, ...])
+        dry_flow = o2 + n2 + h2
+        total_flow = dry_flow + h2ov
+
+        dry_o2_mole_fraction = np.divide(o2, dry_flow, out=np.zeros_like(dry_flow, dtype=float), where=dry_flow > 0)
+        dry_h2_mole_fraction = np.divide(h2, dry_flow, out=np.zeros_like(dry_flow, dtype=float), where=dry_flow > 0)
+        h2ov_mole_fraction = np.divide(h2ov, total_flow, out=np.zeros_like(total_flow, dtype=float), where=total_flow > 0)
+
+        relative_humidity = (h2ov_mole_fraction * conditions.backpressure
+                              / water_saturation_pressure(conditions.temperature))
+
+        return cls(
+            inlet_temperature=conditions.temperature,
+            inlet_pressure=conditions.backpressure,
+            outlet_pressure=conditions.backpressure,
+            dry_o2_mole_fraction=dry_o2_mole_fraction,
+            dry_h2_mole_fraction=dry_h2_mole_fraction,
+            inlet_relative_humidity=relative_humidity,
+            stoichiometry=0,
+            inlet_gas_flow_rate=total_flow,
+            inlet_liquid_flow_rate=conditions.inlet_h2ol_molar_flow_rate,
+        )
 
 
 
