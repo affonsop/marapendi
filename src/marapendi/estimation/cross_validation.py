@@ -90,6 +90,11 @@ def run_cross_validation(
                 model_fn, base_model.params, selected_parameters
             )
 
+            print(
+                f"[CV] n_parameters={n_parameters}, "
+                f"test_case={test_case!r}"
+            )
+
             start_time = time.time()
 
             optimization_result, params_estimated = fold_pe.estimate(
