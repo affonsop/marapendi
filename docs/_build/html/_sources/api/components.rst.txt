@@ -1,55 +1,46 @@
 Components
 ==========
 
-Physical building blocks of an electrochemical cell — electrodes,
-membrane, flow channels, and supporting structures.
+Physical building blocks of an electrochemical cell, and the per-simulation
+state that mirrors them.
 
 Component classes are dataclasses that hold geometric and material
-parameters only — no physics equations.  Computation is delegated to the
-strategy model objects owned by
-:class:`~marapendi.models.cell_base_model.CellBaseModel` (see :doc:`models`).
+parameters, together with the correlation methods that turn those
+parameters (and a state object) into transport and electrochemical
+quantities. Computation across components is orchestrated by
+:class:`~marapendi.model.CellModel` (see :doc:`models`).
 
-.. automodule:: marapendi.components.cell
+.. automodule:: marapendi.cell
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.components.cell_state
+.. automodule:: marapendi.state
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.components.catalyst_layers
+.. automodule:: marapendi.catalyst_layers
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.components.porous_layers
+.. automodule:: marapendi.porous_layers
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.components.membrane
+.. automodule:: marapendi.membrane
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.components.ionomer
+.. automodule:: marapendi.flow_channels
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.components.layer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: marapendi.components.flow_channels
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: marapendi.components.electrolyte
+.. automodule:: marapendi.ionomer
    :members:
    :undoc-members:
    :show-inheritance:

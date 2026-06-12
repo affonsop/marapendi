@@ -41,12 +41,15 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="components.html">Components</a></li>
 <li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
-<li class="toctree-l1"><a class="reference internal" href="materials.html">Materials</a></li>
-<li class="toctree-l1"><a class="reference internal" href="simulation.html">Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="correlations.html">Correlations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="estimation.html">Estimation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Tools</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#marapendi.tools.tools.Updatable"><code class="docutils literal notranslate"><span class="pre">Updatable</span></code></a><ul>
@@ -109,18 +112,29 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="marapendi.tools.tools.polyval_vec">
 <span class="sig-prename descclassname"><span class="pre">marapendi.tools.tools.</span></span><span class="sig-name descname"><span class="pre">polyval_vec</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">coeffs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">xs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/tools/tools.html#polyval_vec"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.tools.tools.polyval_vec" title="Link to this definition"></a></dt>
-<dd><p>Vectorised polyval: evaluate one polynomial per row.</p>
+<dd><p>Vectorised polyval: evaluate N polynomials, each at one or more points.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>coeffs</strong> (<em>(</em><em>N</em><em>, </em><em>D</em><em>) </em><em>array  — N polynomials</em><em>, </em><em>each</em><em> of </em><em>degree D-1</em><em>,</em>) – coefficients in descending order (like np.polyval)</p></li>
-<li><p><strong>xs</strong> (<em>(</em><em>N</em><em>,</em><em>)   </em><em>array  — one evaluation point per polynomial</em>)</p></li>
+<li><p><strong>coeffs</strong> (<em>(</em><em>N</em><em>, </em><em>D</em><em>) </em><em>array</em>) – N polynomials of degree D-1; coefficients in descending order
+(highest degree first, like <code class="docutils literal notranslate"><span class="pre">np.polyval</span></code>).</p></li>
+<li><p><strong>xs</strong> (<em>(</em><em>N</em><em>,</em><em>) or </em><em>(</em><em>N</em><em>, </em><em>m</em><em>) </em><em>array</em>) – Evaluation points.  A 1-D input of shape <code class="docutils literal notranslate"><span class="pre">(N,)</span></code> is treated as
+<code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">1)</span></code> — one point per polynomial.  A 2-D input of shape
+<code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">m)</span></code> evaluates each polynomial at m points simultaneously.</p></li>
 </ul>
 </dd>
-<dt class="field-even">Return type<span class="colon">:</span></dt>
-<dd class="field-even"><p>(N,) array of evaluated values</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">result[i,</span> <span class="pre">j]</span> <span class="pre">=</span> <span class="pre">poly_i(xs[i,</span> <span class="pre">j])</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>(N, m) array</p>
 </dd>
 </dl>
+<p class="rubric">Notes</p>
+<p>The Horner step is <code class="docutils literal notranslate"><span class="pre">result</span> <span class="pre">=</span> <span class="pre">result</span> <span class="pre">*</span> <span class="pre">xs</span> <span class="pre">+</span> <span class="pre">coeff_column</span></code>.  When xs is
+1-D the step becomes an <code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">1)</span> <span class="pre">×</span> <span class="pre">(N,)</span></code> outer product, giving a wrong
+<code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">N)</span></code> result.  Promoting xs to at least 2-D with <code class="docutils literal notranslate"><span class="pre">atleast_2d</span></code>
+keeps the multiplication element-wise.</p>
 </dd></dl>
 
 <dl class="py function">

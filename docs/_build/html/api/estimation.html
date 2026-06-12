@@ -20,7 +20,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Tools" href="tools.html" />
-    <link rel="prev" title="Simulation" href="simulation.html" /> 
+    <link rel="prev" title="Correlations" href="correlations.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -42,13 +42,54 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../user_guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="components.html">Components</a></li>
 <li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
-<li class="toctree-l1"><a class="reference internal" href="materials.html">Materials</a></li>
-<li class="toctree-l1"><a class="reference internal" href="simulation.html">Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="correlations.html">Correlations</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Estimation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#classes">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#marapendi.estimation.parameter_estimation.Case"><code class="docutils literal notranslate"><span class="pre">Case</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.parameter_estimation.Case.cell"><code class="docutils literal notranslate"><span class="pre">Case.cell</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.parameter_estimation.Case.conditions"><code class="docutils literal notranslate"><span class="pre">Case.conditions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.parameter_estimation.Case.exp_data"><code class="docutils literal notranslate"><span class="pre">Case.exp_data</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.parameter_estimation.Case.name"><code class="docutils literal notranslate"><span class="pre">Case.name</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">Case.cell</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id1"><code class="docutils literal notranslate"><span class="pre">Case.conditions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2"><code class="docutils literal notranslate"><span class="pre">Case.exp_data</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id3"><code class="docutils literal notranslate"><span class="pre">Case.name</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#marapendi.estimation.parameter_estimation.ParameterEstimation"><code class="docutils literal notranslate"><span class="pre">ParameterEstimation</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.parameter_estimation.ParameterEstimation.cell_model"><code class="docutils literal notranslate"><span class="pre">ParameterEstimation.cell_model</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.parameter_estimation.ParameterEstimation.extract_case_data"><code class="docutils literal notranslate"><span class="pre">ParameterEstimation.extract_case_data</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.parameter_estimation.ParameterEstimation.cases"><code class="docutils literal notranslate"><span class="pre">ParameterEstimation.cases</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.parameter_estimation.ParameterEstimation.build_dataset"><code class="docutils literal notranslate"><span class="pre">ParameterEstimation.build_dataset()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4"><code class="docutils literal notranslate"><span class="pre">ParameterEstimation.cases</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id5"><code class="docutils literal notranslate"><span class="pre">ParameterEstimation.cell_model</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.parameter_estimation.ParameterEstimation.compare_sim_exp"><code class="docutils literal notranslate"><span class="pre">ParameterEstimation.compare_sim_exp()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id6"><code class="docutils literal notranslate"><span class="pre">ParameterEstimation.extract_case_data</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.parameter_estimation.ParameterEstimation.simulate_model"><code class="docutils literal notranslate"><span class="pre">ParameterEstimation.simulate_model()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#marapendi.estimation.cross_validation.CrossValidation"><code class="docutils literal notranslate"><span class="pre">CrossValidation</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.cross_validation.CrossValidation.filepath"><code class="docutils literal notranslate"><span class="pre">CrossValidation.filepath</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.cross_validation.CrossValidation.get_complexity_levels"><code class="docutils literal notranslate"><span class="pre">CrossValidation.get_complexity_levels()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.cross_validation.CrossValidation.get_folds_for_complexity"><code class="docutils literal notranslate"><span class="pre">CrossValidation.get_folds_for_complexity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.cross_validation.CrossValidation.load"><code class="docutils literal notranslate"><span class="pre">CrossValidation.load()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.cross_validation.CrossValidation.plot_cross_validation_curves"><code class="docutils literal notranslate"><span class="pre">CrossValidation.plot_cross_validation_curves()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.cross_validation.CrossValidation.plot_parameter_vs_complexity"><code class="docutils literal notranslate"><span class="pre">CrossValidation.plot_parameter_vs_complexity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.cross_validation.CrossValidation.plot_rmse_vs_complexity"><code class="docutils literal notranslate"><span class="pre">CrossValidation.plot_rmse_vs_complexity()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.cross_validation.CrossValidation.plot_rmse_vs_complexity_extrapolation"><code class="docutils literal notranslate"><span class="pre">CrossValidation.plot_rmse_vs_complexity_extrapolation()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.cross_validation.CrossValidation.rmse_complexity_table"><code class="docutils literal notranslate"><span class="pre">CrossValidation.rmse_complexity_table()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.cross_validation.CrossValidation.run"><code class="docutils literal notranslate"><span class="pre">CrossValidation.run()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#marapendi.estimation.cross_validation.CrossValidation.save"><code class="docutils literal notranslate"><span class="pre">CrossValidation.save()</span></code></a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#marapendi.estimation.cross_validation.get_complexity_levels"><code class="docutils literal notranslate"><span class="pre">get_complexity_levels()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#marapendi.estimation.cross_validation.get_folds_for_complexity"><code class="docutils literal notranslate"><span class="pre">get_folds_for_complexity()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="#marapendi.estimation.cross_validation.load_cross_validation_results"><code class="docutils literal notranslate"><span class="pre">load_cross_validation_results()</span></code></a></li>
@@ -90,8 +131,317 @@
              
   <section id="estimation">
 <h1>Estimation<a class="headerlink" href="#estimation" title="Link to this heading"></a></h1>
-<p>Statistical estimation utilities, including cross-validation.</p>
-<dl class="py function" id="module-marapendi.estimation.cross_validation">
+<p>Parameter estimation and leave-one-out cross-validation for fitting the
+steady-state model to experimental polarization data.</p>
+<p id="module-marapendi.estimation.parameter_estimation">Parameter estimation glue between <code class="xref py py-mod docutils literal notranslate"><span class="pre">marapendi</span></code> cell models and
+experimental datasets.</p>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>Case</dt><dd><p>One experimental case: a <a class="reference internal" href="components.html#marapendi.cell.Cell" title="marapendi.cell.Cell"><code class="xref py py-class docutils literal notranslate"><span class="pre">Cell</span></code></a>, its
+<a class="reference internal" href="correlations.html#marapendi.conditions.CellOperatingConditions" title="marapendi.conditions.CellOperatingConditions"><code class="xref py py-class docutils literal notranslate"><span class="pre">CellOperatingConditions</span></code></a>, and a
+dict of experimental data arrays.</p>
+</dd>
+<dt>ParameterEstimation</dt><dd><p>Simulates <a class="reference internal" href="#marapendi.estimation.parameter_estimation.Case" title="marapendi.estimation.parameter_estimation.Case"><code class="xref py py-class docutils literal notranslate"><span class="pre">Case</span></code></a> objects with a
+<a class="reference internal" href="models.html#marapendi.model.CellModel" title="marapendi.model.CellModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">CellModel</span></code></a> and assembles simulated /
+experimental datasets for fitting.</p>
+</dd>
+</dl>
+</section>
+<dl class="py class">
+<dt class="sig sig-object py" id="marapendi.estimation.parameter_estimation.Case">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">marapendi.estimation.parameter_estimation.</span></span><span class="sig-name descname"><span class="pre">Case</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cell:</span> <span class="pre">~marapendi.cell.Cell</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">conditions:</span> <span class="pre">~marapendi.conditions.CellOperatingConditions</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exp_data:</span> <span class="pre">dict[str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">~numpy.ndarray]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name:</span> <span class="pre">str</span> <span class="pre">=</span> <span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/parameter_estimation.html#Case"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.parameter_estimation.Case" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>One experimental case: a cell, its operating conditions, and experimental data.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.estimation.parameter_estimation.Case.cell">
+<span class="sig-name descname"><span class="pre">cell</span></span><a class="headerlink" href="#marapendi.estimation.parameter_estimation.Case.cell" title="Link to this definition"></a></dt>
+<dd><p>The cell configuration (static physical properties) for this case.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="components.html#marapendi.cell.Cell" title="marapendi.cell.Cell">Cell</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.estimation.parameter_estimation.Case.conditions">
+<span class="sig-name descname"><span class="pre">conditions</span></span><a class="headerlink" href="#marapendi.estimation.parameter_estimation.Case.conditions" title="Link to this definition"></a></dt>
+<dd><p>Operating conditions at which to evaluate the cell model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="correlations.html#marapendi.conditions.CellOperatingConditions" title="marapendi.conditions.CellOperatingConditions">CellOperatingConditions</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.estimation.parameter_estimation.Case.exp_data">
+<span class="sig-name descname"><span class="pre">exp_data</span></span><a class="headerlink" href="#marapendi.estimation.parameter_estimation.Case.exp_data" title="Link to this definition"></a></dt>
+<dd><p>Experimental data, keyed by output-quantity name (e.g.
+<code class="docutils literal notranslate"><span class="pre">'cell_voltage'</span></code>, <code class="docutils literal notranslate"><span class="pre">'hfr'</span></code>). Each value is an array matching the
+shape of <code class="docutils literal notranslate"><span class="pre">conditions.current_density</span></code>. Keys must be registered in
+<code class="xref py py-attr docutils literal notranslate"><span class="pre">ParameterEstimation.OUTPUT_EXTRACTORS</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict[str, np.ndarray]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.estimation.parameter_estimation.Case.name">
+<span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#marapendi.estimation.parameter_estimation.Case.name" title="Link to this definition"></a></dt>
+<dd><p>Optional human-readable identifier for the case.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">cell</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="components.html#marapendi.cell.Cell" title="marapendi.cell.Cell"><span class="pre">Cell</span></a></em><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">conditions</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="correlations.html#marapendi.conditions.CellOperatingConditions" title="marapendi.conditions.CellOperatingConditions"><span class="pre">CellOperatingConditions</span></a></em><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">exp_data</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id2" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">''</span></em><a class="headerlink" href="#id3" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="marapendi.estimation.parameter_estimation.ParameterEstimation">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">marapendi.estimation.parameter_estimation.</span></span><span class="sig-name descname"><span class="pre">ParameterEstimation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="pre">cell_model:</span> <span class="pre">~marapendi.model.CellModel,</span> <span class="pre">extract_case_data:</span> <span class="pre">~typing.Callable[[dict[str,</span> <span class="pre">~numpy.ndarray],</span> <span class="pre">~marapendi.state.CellState],</span> <span class="pre">tuple[~numpy.ndarray,</span> <span class="pre">~numpy.ndarray]],</span> <span class="pre">cases:</span> <span class="pre">list[~marapendi.estimation.parameter_estimation.Case]</span> <span class="pre">=</span> <span class="pre">&lt;factory&gt;</span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/parameter_estimation.html#ParameterEstimation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.parameter_estimation.ParameterEstimation" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Simulates <a class="reference internal" href="#marapendi.estimation.parameter_estimation.Case" title="marapendi.estimation.parameter_estimation.Case"><code class="xref py py-class docutils literal notranslate"><span class="pre">Case</span></code></a> objects with a <code class="xref py py-class docutils literal notranslate"><span class="pre">CellModel</span></code>.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.estimation.parameter_estimation.ParameterEstimation.cell_model">
+<span class="sig-name descname"><span class="pre">cell_model</span></span><a class="headerlink" href="#marapendi.estimation.parameter_estimation.ParameterEstimation.cell_model" title="Link to this definition"></a></dt>
+<dd><p>Orchestrator used to compute the steady-state solution. Its <code class="docutils literal notranslate"><span class="pre">cell</span></code>
+attribute is overwritten by <a class="reference internal" href="#marapendi.estimation.parameter_estimation.ParameterEstimation.simulate_model" title="marapendi.estimation.parameter_estimation.ParameterEstimation.simulate_model"><code class="xref py py-meth docutils literal notranslate"><span class="pre">simulate_model()</span></code></a> for each case.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="models.html#marapendi.model.CellModel" title="marapendi.model.CellModel">CellModel</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.estimation.parameter_estimation.ParameterEstimation.extract_case_data">
+<span class="sig-name descname"><span class="pre">extract_case_data</span></span><a class="headerlink" href="#marapendi.estimation.parameter_estimation.ParameterEstimation.extract_case_data" title="Link to this definition"></a></dt>
+<dd><p>User-supplied function <code class="docutils literal notranslate"><span class="pre">(exp_data,</span> <span class="pre">state)</span> <span class="pre">-&gt;</span> <span class="pre">(y_sim,</span> <span class="pre">y_exp)</span></code>. Given
+a case’s <code class="docutils literal notranslate"><span class="pre">exp_data</span></code> and the simulated <code class="xref py py-class docutils literal notranslate"><span class="pre">CellState</span></code>, it must
+return the simulated and experimental output vectors for that case,
+in matching order/shape. This is where the mapping from raw state
+quantities (e.g. <code class="docutils literal notranslate"><span class="pre">state.cell_voltage</span></code>) to experimental data keys
+is defined, so <a class="reference internal" href="#marapendi.estimation.parameter_estimation.ParameterEstimation" title="marapendi.estimation.parameter_estimation.ParameterEstimation"><code class="xref py py-class docutils literal notranslate"><span class="pre">ParameterEstimation</span></code></a> stays agnostic to what
+is being fitted.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Callable[[dict[str, np.ndarray], <a class="reference internal" href="components.html#marapendi.state.CellState" title="marapendi.state.CellState">CellState</a>], tuple[np.ndarray, np.ndarray]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.estimation.parameter_estimation.ParameterEstimation.cases">
+<span class="sig-name descname"><span class="pre">cases</span></span><a class="headerlink" href="#marapendi.estimation.parameter_estimation.ParameterEstimation.cases" title="Link to this definition"></a></dt>
+<dd><p>Experimental cases to simulate/compare.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list[<a class="reference internal" href="#marapendi.estimation.parameter_estimation.Case" title="marapendi.estimation.parameter_estimation.Case">Case</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.estimation.parameter_estimation.ParameterEstimation.build_dataset">
+<span class="sig-name descname"><span class="pre">build_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cases</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#marapendi.estimation.parameter_estimation.Case" title="marapendi.estimation.parameter_estimation.Case"><span class="pre">Case</span></a><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/marapendi/estimation/parameter_estimation.html#ParameterEstimation.build_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.parameter_estimation.ParameterEstimation.build_dataset" title="Link to this definition"></a></dt>
+<dd><p>Simulate <code class="docutils literal notranslate"><span class="pre">cases</span></code> and stack inputs/outputs for fitting.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>cases</strong> (<em>list</em><em>[</em><a class="reference internal" href="#marapendi.estimation.parameter_estimation.Case" title="marapendi.estimation.parameter_estimation.Case"><em>Case</em></a><em>]</em><em>, </em><em>optional</em>) – Cases to simulate (defaults to <a class="reference internal" href="#id4" title="marapendi.estimation.parameter_estimation.ParameterEstimation.cases"><code class="xref py py-attr docutils literal notranslate"><span class="pre">cases</span></code></a>).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><ul class="simple">
+<li><p><strong>x</strong> (<em>np.ndarray</em>) – Concatenated current densities, tiled to the size of
+<code class="docutils literal notranslate"><span class="pre">y_sim</span></code>/<code class="docutils literal notranslate"><span class="pre">y_exp</span></code> for each case (e.g. if
+<a class="reference internal" href="#id6" title="marapendi.estimation.parameter_estimation.ParameterEstimation.extract_case_data"><code class="xref py py-attr docutils literal notranslate"><span class="pre">extract_case_data</span></code></a> concatenates several quantities per
+case).</p></li>
+<li><p><strong>y_sim</strong> (<em>np.ndarray</em>) – Concatenated simulated outputs, as returned by
+<a class="reference internal" href="#id6" title="marapendi.estimation.parameter_estimation.ParameterEstimation.extract_case_data"><code class="xref py py-attr docutils literal notranslate"><span class="pre">extract_case_data</span></code></a> for each case.</p></li>
+<li><p><strong>y_exp</strong> (<em>np.ndarray</em>) – Concatenated experimental outputs, matching <code class="docutils literal notranslate"><span class="pre">y_sim</span></code>.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">cases</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">list</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#marapendi.estimation.parameter_estimation.Case" title="marapendi.estimation.parameter_estimation.Case"><span class="pre">Case</span></a><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id4" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">cell_model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="models.html#marapendi.model.CellModel" title="marapendi.model.CellModel"><span class="pre">CellModel</span></a></em><a class="headerlink" href="#id5" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.estimation.parameter_estimation.ParameterEstimation.compare_sim_exp">
+<span class="sig-name descname"><span class="pre">compare_sim_exp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">case</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#marapendi.estimation.parameter_estimation.Case" title="marapendi.estimation.parameter_estimation.Case"><span class="pre">Case</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../_modules/marapendi/estimation/parameter_estimation.html#ParameterEstimation.compare_sim_exp"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.parameter_estimation.ParameterEstimation.compare_sim_exp" title="Link to this definition"></a></dt>
+<dd><p>Simulate a single <code class="docutils literal notranslate"><span class="pre">case</span></code> and return its simulated vs. experimental data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">{'current_density':</span> <span class="pre">...,</span> <span class="pre">'sim':</span> <span class="pre">...,</span> <span class="pre">'exp':</span> <span class="pre">...}</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">extract_case_data</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference internal" href="components.html#marapendi.state.CellState" title="marapendi.state.CellState"><span class="pre">CellState</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">ndarray</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#id6" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.estimation.parameter_estimation.ParameterEstimation.simulate_model">
+<span class="sig-name descname"><span class="pre">simulate_model</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">conditions</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="correlations.html#marapendi.conditions.CellOperatingConditions" title="marapendi.conditions.CellOperatingConditions"><span class="pre">CellOperatingConditions</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">cell</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="components.html#marapendi.cell.Cell" title="marapendi.cell.Cell"><span class="pre">Cell</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="components.html#marapendi.state.CellState" title="marapendi.state.CellState"><span class="pre">CellState</span></a></span></span><a class="reference internal" href="../_modules/marapendi/estimation/parameter_estimation.html#ParameterEstimation.simulate_model"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.parameter_estimation.ParameterEstimation.simulate_model" title="Link to this definition"></a></dt>
+<dd><p>Compute the steady-state solution of <code class="docutils literal notranslate"><span class="pre">cell</span></code> under <code class="docutils literal notranslate"><span class="pre">conditions</span></code>.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class" id="module-marapendi.estimation.cross_validation">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.CrossValidation">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">marapendi.estimation.cross_validation.</span></span><span class="sig-name descname"><span class="pre">CrossValidation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">base_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">parameter_indices</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">case_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">build_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">get_exp_data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_builder</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simulate_callback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dir</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'results'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">estimate_kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">rmse_scale</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">condition_color</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#CrossValidation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.CrossValidation" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Simplified, stateful interface around the free functions in this module.</p>
+<p>Wraps <a class="reference internal" href="#marapendi.estimation.cross_validation.run_cross_validation" title="marapendi.estimation.cross_validation.run_cross_validation"><code class="xref py py-func docutils literal notranslate"><span class="pre">run_cross_validation()</span></code></a>, the save/load helpers, and the
+plotting functions so a notebook only needs to provide a
+<code class="docutils literal notranslate"><span class="pre">build_model(case_list)</span> <span class="pre">-&gt;</span> <span class="pre">model_fn</span></code> callable and an experimental-data
+getter — no manual adapters or repeated argument lists.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>base_model</strong> (<a class="reference internal" href="#marapendi.estimation.parameter_estimation.ParameterEstimation" title="marapendi.estimation.parameter_estimation.ParameterEstimation"><em>ParameterEstimation</em></a>) – Configured estimator with <code class="docutils literal notranslate"><span class="pre">.unknown_parameters</span></code> and <code class="docutils literal notranslate"><span class="pre">.params</span></code>.</p></li>
+<li><p><strong>parameter_indices</strong> (<em>sequence</em><em> of </em><em>int</em>) – Order in which parameters are added across complexity levels
+(e.g. from <code class="docutils literal notranslate"><span class="pre">base_model.plot_parameter_ranking()</span></code>).</p></li>
+<li><p><strong>case_list</strong> (<em>list</em>) – All experimental cases/conditions.</p></li>
+<li><p><strong>build_model</strong> (<em>callable</em>) – <code class="docutils literal notranslate"><span class="pre">build_model(case_list)</span> <span class="pre">-&gt;</span> <span class="pre">model_fn</span></code> where
+<code class="docutils literal notranslate"><span class="pre">model_fn(params_dict)</span> <span class="pre">-&gt;</span> <span class="pre">np.ndarray</span></code>.</p></li>
+<li><p><strong>get_exp_data</strong> (<em>callable</em>) – <code class="docutils literal notranslate"><span class="pre">get_exp_data(case_list)</span> <span class="pre">-&gt;</span> <span class="pre">np.ndarray</span></code>.</p></li>
+<li><p><strong>model_builder</strong> (<em>callable</em><em>, </em><em>optional</em>) – Forwarded to the plotting helpers — see
+<a class="reference internal" href="#marapendi.estimation.cross_validation.plot_rmse_vs_complexity" title="marapendi.estimation.cross_validation.plot_rmse_vs_complexity"><code class="xref py py-func docutils literal notranslate"><span class="pre">plot_rmse_vs_complexity()</span></code></a> and <a class="reference internal" href="#marapendi.estimation.cross_validation.plot_cross_validation_curves" title="marapendi.estimation.cross_validation.plot_cross_validation_curves"><code class="xref py py-func docutils literal notranslate"><span class="pre">plot_cross_validation_curves()</span></code></a>.</p></li>
+<li><p><strong>simulate_callback</strong> (<em>callable</em><em>, </em><em>optional</em>) – Forwarded to the plotting helpers — see
+<a class="reference internal" href="#marapendi.estimation.cross_validation.plot_rmse_vs_complexity" title="marapendi.estimation.cross_validation.plot_rmse_vs_complexity"><code class="xref py py-func docutils literal notranslate"><span class="pre">plot_rmse_vs_complexity()</span></code></a> and <a class="reference internal" href="#marapendi.estimation.cross_validation.plot_cross_validation_curves" title="marapendi.estimation.cross_validation.plot_cross_validation_curves"><code class="xref py py-func docutils literal notranslate"><span class="pre">plot_cross_validation_curves()</span></code></a>.</p></li>
+<li><p><strong>filename</strong> (<em>str</em><em>, </em><em>optional</em>) – Base name used for checkpoint/result files
+(<code class="docutils literal notranslate"><span class="pre">results_{filename}_cv.csv</span></code>) in <code class="docutils literal notranslate"><span class="pre">output_dir</span></code>.</p></li>
+<li><p><strong>output_dir</strong> (<em>str</em>) – Directory for checkpoint/result files (default <code class="docutils literal notranslate"><span class="pre">&quot;results&quot;</span></code>).</p></li>
+<li><p><strong>estimate_kwargs</strong> (<em>dict</em><em>, </em><em>optional</em>) – Default kwargs forwarded to <code class="docutils literal notranslate"><span class="pre">ParameterEstimation.estimate</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cv</span> <span class="o">=</span> <span class="n">CrossValidation</span><span class="p">(</span>
+    <span class="n">base_model</span><span class="o">=</span><span class="n">pe</span><span class="p">,</span>
+    <span class="n">parameter_indices</span><span class="o">=</span><span class="n">P</span><span class="p">,</span>
+    <span class="n">case_list</span><span class="o">=</span><span class="n">full_case_list</span><span class="p">,</span>
+    <span class="n">build_model</span><span class="o">=</span><span class="n">build_model</span><span class="p">,</span>
+    <span class="n">get_exp_data</span><span class="o">=</span><span class="n">get_cases_exp_data</span><span class="p">,</span>
+    <span class="n">model_builder</span><span class="o">=</span><span class="n">model_builder</span><span class="p">,</span>
+    <span class="n">simulate_callback</span><span class="o">=</span><span class="n">simulate_callback</span><span class="p">,</span>
+    <span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">cv_results</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">rmse_df</span><span class="p">,</span> <span class="n">optimal_n</span> <span class="o">=</span> <span class="n">cv</span><span class="o">.</span><span class="n">plot_rmse_vs_complexity</span><span class="p">()</span>
+</pre></div>
+</div>
+<dl class="py property">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.CrossValidation.filepath">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">filepath</span></span><a class="headerlink" href="#marapendi.estimation.cross_validation.CrossValidation.filepath" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.CrossValidation.get_complexity_levels">
+<span class="sig-name descname"><span class="pre">get_complexity_levels</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#CrossValidation.get_complexity_levels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.CrossValidation.get_complexity_levels" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.CrossValidation.get_folds_for_complexity">
+<span class="sig-name descname"><span class="pre">get_folds_for_complexity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_parameters</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#CrossValidation.get_folds_for_complexity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.CrossValidation.get_folds_for_complexity" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.CrossValidation.load">
+<span class="sig-name descname"><span class="pre">load</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#CrossValidation.load"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.CrossValidation.load" title="Link to this definition"></a></dt>
+<dd><p>Load previously saved results into <code class="docutils literal notranslate"><span class="pre">self.results</span></code>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.CrossValidation.plot_cross_validation_curves">
+<span class="sig-name descname"><span class="pre">plot_cross_validation_curves</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_parameters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#CrossValidation.plot_cross_validation_curves"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.CrossValidation.plot_cross_validation_curves" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.CrossValidation.plot_parameter_vs_complexity">
+<span class="sig-name descname"><span class="pre">plot_parameter_vs_complexity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parameter_units</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">initial_parameters</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#CrossValidation.plot_parameter_vs_complexity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.CrossValidation.plot_parameter_vs_complexity" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.CrossValidation.plot_rmse_vs_complexity">
+<span class="sig-name descname"><span class="pre">plot_rmse_vs_complexity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#CrossValidation.plot_rmse_vs_complexity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.CrossValidation.plot_rmse_vs_complexity" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.CrossValidation.plot_rmse_vs_complexity_extrapolation">
+<span class="sig-name descname"><span class="pre">plot_rmse_vs_complexity_extrapolation</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">training_test_case</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extrapolation_cases</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#CrossValidation.plot_rmse_vs_complexity_extrapolation"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.CrossValidation.plot_rmse_vs_complexity_extrapolation" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.CrossValidation.rmse_complexity_table">
+<span class="sig-name descname"><span class="pre">rmse_complexity_table</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">filename</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#CrossValidation.rmse_complexity_table"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.CrossValidation.rmse_complexity_table" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.CrossValidation.run">
+<span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">resume</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">checkpoint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">estimate_kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#CrossValidation.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.CrossValidation.run" title="Link to this definition"></a></dt>
+<dd><p>Run leave-one-out cross-validation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>resume</strong> (<em>bool</em>) – Load and skip complexity levels already saved at <code class="docutils literal notranslate"><span class="pre">self.filepath</span></code>.</p></li>
+<li><p><strong>checkpoint</strong> (<em>bool</em>) – Save results after each complexity level.</p></li>
+<li><p><strong>**estimate_kwargs</strong> – Override entries of <code class="docutils literal notranslate"><span class="pre">self.estimate_kwargs</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.estimation.cross_validation.CrossValidation.save">
+<span class="sig-name descname"><span class="pre">save</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#CrossValidation.save"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.CrossValidation.save" title="Link to this definition"></a></dt>
+<dd><p>Save <code class="docutils literal notranslate"><span class="pre">self.results</span></code> to <code class="docutils literal notranslate"><span class="pre">self.filepath</span></code>.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="marapendi.estimation.cross_validation.get_complexity_levels">
 <span class="sig-prename descclassname"><span class="pre">marapendi.estimation.cross_validation.</span></span><span class="sig-name descname"><span class="pre">get_complexity_levels</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cv_results</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#get_complexity_levels"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.get_complexity_levels" title="Link to this definition"></a></dt>
 <dd><p>Return sorted list of available model complexities
@@ -121,7 +471,7 @@ Raises ValueError if not available.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="marapendi.estimation.cross_validation.plot_cross_validation_curves">
-<span class="sig-prename descclassname"><span class="pre">marapendi.estimation.cross_validation.</span></span><span class="sig-name descname"><span class="pre">plot_cross_validation_curves</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cv_results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">case_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">case_table</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">condition_color</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simulate_callback</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Cell</span> <span class="pre">voltage'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity_symbol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'$V_{cell}$'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity_unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'V'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">case_titles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'$i$</span> <span class="pre">(A/cm$^2$)'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dpi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uncertainty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#plot_cross_validation_curves"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.plot_cross_validation_curves" title="Link to this definition"></a></dt>
+<span class="sig-prename descclassname"><span class="pre">marapendi.estimation.cross_validation.</span></span><span class="sig-name descname"><span class="pre">plot_cross_validation_curves</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">n_parameters</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cv_results</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">case_list</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">condition_color</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">simulate_callback</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model_builder</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'Cell</span> <span class="pre">voltage'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity_symbol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'$V_{cell}$'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">quantity_unit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'V'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">case_titles</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x_label</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'$i$</span> <span class="pre">(A/cm$^2$)'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dpi</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uncertainty</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/estimation/cross_validation.html#plot_cross_validation_curves"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.estimation.cross_validation.plot_cross_validation_curves" title="Link to this definition"></a></dt>
 <dd><p>Cross-validation curve plotting compatible with new cv_results format.</p>
 </dd></dl>
 
@@ -167,8 +517,13 @@ training nor the testing dataset, for a given fixed test case.</p>
 and automatic checkpoint saving.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>checkpoint_callback</strong> (<em>callable</em><em> or </em><em>None</em>) – Function called after each complexity level.
-Signature: checkpoint_callback(cross_validation_results)</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>base_model</strong> (<a class="reference internal" href="#marapendi.estimation.parameter_estimation.ParameterEstimation" title="marapendi.estimation.parameter_estimation.ParameterEstimation"><em>ParameterEstimation</em></a>) – Configured estimator with .unknown_parameters and .params.</p></li>
+<li><p><strong>build_model</strong> (<em>callable</em>) – build_model(case_list, params) -&gt; model_fn where
+model_fn(params_dict) -&gt; np.ndarray.</p></li>
+<li><p><strong>checkpoint_callback</strong> (<em>callable</em><em> or </em><em>None</em>) – Function called after each complexity level.
+Signature: checkpoint_callback(cross_validation_results)</p></li>
+</ul>
 </dd>
 </dl>
 </dd></dl>
@@ -185,7 +540,7 @@ Signature: checkpoint_callback(cross_validation_results)</p>
            </div>
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="simulation.html" class="btn btn-neutral float-left" title="Simulation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="correlations.html" class="btn btn-neutral float-left" title="Correlations" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
         <a href="tools.html" class="btn btn-neutral float-right" title="Tools" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 

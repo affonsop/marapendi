@@ -1,44 +1,91 @@
+
+
 <!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>marapendi.estimation.cross_validation &mdash; marapendi 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
 
-<html lang="en" data-content_root="../../../">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>marapendi.estimation.cross_validation &#8212; marapendi 0.1.0 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=686e5160" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
-    <script src="../../../_static/documentation_options.js?v=01f34227"></script>
-    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../../genindex.html" />
-    <link rel="search" title="Search" href="../../../search.html" />
-   
-  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
-  
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
 
-  
-  
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
 
-  </head><body>
-  
-
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
           
+          
+          <a href="../../../index.html" class="icon icon-home">
+            marapendi
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/components.html">Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/correlations.html">Correlations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/estimation.html">Estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/tools.html">Tools</a></li>
+</ul>
 
-          <div class="body" role="main">
-            
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">marapendi</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">marapendi.estimation.cross_validation</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
   <h1>Source code for marapendi.estimation.cross_validation</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span> 
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.patches</span><span class="w"> </span><span class="kn">import</span> <span class="n">Patch</span>
 <span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">marapendi.dynamic.simulation.estimation</span><span class="w"> </span><span class="kn">import</span> <span class="n">ParameterEstimation</span>
 
 <div class="viewcode-block" id="run_cross_validation">
 <a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.run_cross_validation">[docs]</a>
@@ -52,7 +99,7 @@
     <span class="n">cross_validation_results</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">estimate_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="n">rmse_scale</span><span class="o">=</span><span class="mf">1e3</span><span class="p">,</span>
-    <span class="n">checkpoint_callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+    <span class="n">checkpoint_callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
 <span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Leave-one-out cross-validation with resume capability</span>
@@ -60,6 +107,11 @@
 
 <span class="sd">    Parameters</span>
 <span class="sd">    ----------</span>
+<span class="sd">    base_model : ParameterEstimation</span>
+<span class="sd">        Configured estimator with .unknown_parameters and .params.</span>
+<span class="sd">    build_model : callable</span>
+<span class="sd">        build_model(case_list, params) -&gt; model_fn where</span>
+<span class="sd">        model_fn(params_dict) -&gt; np.ndarray.</span>
 <span class="sd">    checkpoint_callback : callable or None</span>
 <span class="sd">        Function called after each complexity level.</span>
 <span class="sd">        Signature: checkpoint_callback(cross_validation_results)</span>
@@ -67,12 +119,10 @@
 
     <span class="k">if</span> <span class="n">estimate_kwargs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
         <span class="n">estimate_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
-            <span class="n">t</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
             <span class="n">print_iterations</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="n">popsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
             <span class="n">ftol</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span>
             <span class="n">penalty_threshold</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
-            <span class="n">vectorized</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
             <span class="n">rtol</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
             <span class="n">maxiter</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span>
         <span class="p">)</span>
@@ -102,9 +152,8 @@
         <span class="k">if</span> <span class="n">n_parameters</span> <span class="ow">in</span> <span class="n">completed_parameter_counts</span><span class="p">:</span>
             <span class="k">continue</span>
 
-
         <span class="n">selected_parameters</span> <span class="o">=</span> <span class="p">[</span>
-            <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_p_list</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+            <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_parameters</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
             <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">parameter_indices</span><span class="p">[:</span><span class="n">n_parameters</span><span class="p">]</span>
         <span class="p">]</span>
 
@@ -117,27 +166,24 @@
                 <span class="k">if</span> <span class="n">case</span> <span class="o">!=</span> <span class="n">test_case</span>
             <span class="p">]</span>
 
-            <span class="n">fold_simulator</span> <span class="o">=</span> <span class="n">build_model</span><span class="p">(</span><span class="n">training_cases</span><span class="p">,</span> <span class="n">base_model</span><span class="o">.</span><span class="n">p</span><span class="p">)</span>
-            <span class="n">fold_simulator</span><span class="o">.</span><span class="n">set_unknown_params</span><span class="p">(</span><span class="n">selected_parameters</span><span class="p">)</span>
+            <span class="n">model_fn</span> <span class="o">=</span> <span class="n">build_model</span><span class="p">(</span><span class="n">training_cases</span><span class="p">,</span> <span class="n">base_model</span><span class="o">.</span><span class="n">params</span><span class="p">)</span>
+            <span class="n">fold_pe</span> <span class="o">=</span> <span class="n">ParameterEstimation</span><span class="p">(</span>
+                <span class="n">model_fn</span><span class="p">,</span> <span class="n">base_model</span><span class="o">.</span><span class="n">params</span><span class="p">,</span> <span class="n">selected_parameters</span>
+            <span class="p">)</span>
+
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;[CV] n_parameters=</span><span class="si">{</span><span class="n">n_parameters</span><span class="si">}</span><span class="s2">, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;test_case=</span><span class="si">{</span><span class="n">test_case</span><span class="si">!r}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
 
             <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
 
-            <span class="n">optimization_result</span><span class="p">,</span> <span class="n">estimated_parameters</span> <span class="o">=</span> <span class="p">(</span>
-                <span class="n">fold_simulator</span><span class="o">.</span><span class="n">estimate</span><span class="p">(</span>
-                    <span class="n">get_exp_data</span><span class="p">(</span><span class="n">training_cases</span><span class="p">),</span>
-                    <span class="o">**</span><span class="n">estimate_kwargs</span>
-                <span class="p">)</span>
+            <span class="n">optimization_result</span><span class="p">,</span> <span class="n">params_estimated</span> <span class="o">=</span> <span class="n">fold_pe</span><span class="o">.</span><span class="n">estimate</span><span class="p">(</span>
+                <span class="n">get_exp_data</span><span class="p">(</span><span class="n">training_cases</span><span class="p">),</span>
+                <span class="o">**</span><span class="n">estimate_kwargs</span>
             <span class="p">)</span>
 
             <span class="n">elapsed_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
-
-            <span class="n">fold_simulator</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
-                <span class="n">name</span><span class="p">:</span> <span class="n">value</span>
-                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
-                    <span class="n">fold_simulator</span><span class="o">.</span><span class="n">p_i_name</span><span class="p">,</span>
-                    <span class="n">estimated_parameters</span>
-                <span class="p">)</span>
-            <span class="p">})</span>
 
             <span class="n">rmse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">optimization_result</span><span class="o">.</span><span class="n">fun</span><span class="p">)</span> <span class="o">*</span> <span class="n">rmse_scale</span>
 
@@ -145,14 +191,12 @@
                 <span class="s2">&quot;n_parameters&quot;</span><span class="p">:</span> <span class="n">n_parameters</span><span class="p">,</span>
                 <span class="s2">&quot;test_case&quot;</span><span class="p">:</span> <span class="n">test_case</span><span class="p">,</span>
                 <span class="s2">&quot;training_cases&quot;</span><span class="p">:</span> <span class="n">training_cases</span><span class="p">,</span>
-                <span class="s2">&quot;model_parameters&quot;</span><span class="p">:</span> <span class="n">fold_simulator</span><span class="o">.</span><span class="n">p</span><span class="p">,</span>
+                <span class="s2">&quot;model_parameters&quot;</span><span class="p">:</span> <span class="n">params_estimated</span><span class="p">,</span>
                 <span class="s2">&quot;optimization_result&quot;</span><span class="p">:</span> <span class="n">optimization_result</span><span class="p">,</span>
-                <span class="s2">&quot;estimated_parameters&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span>
-                    <span class="nb">zip</span><span class="p">(</span>
-                        <span class="n">fold_simulator</span><span class="o">.</span><span class="n">p_i_name</span><span class="p">,</span>
-                        <span class="n">estimated_parameters</span>
-                    <span class="p">)</span>
-                <span class="p">),</span>
+                <span class="s2">&quot;estimated_parameters&quot;</span><span class="p">:</span> <span class="p">{</span>
+                    <span class="n">up</span><span class="o">.</span><span class="n">key</span><span class="p">:</span> <span class="n">params_estimated</span><span class="p">[</span><span class="n">up</span><span class="o">.</span><span class="n">key</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">up</span> <span class="ow">in</span> <span class="n">selected_parameters</span>
+                <span class="p">},</span>
                 <span class="s2">&quot;rmse&quot;</span><span class="p">:</span> <span class="n">rmse</span><span class="p">,</span>
                 <span class="s2">&quot;elapsed_time&quot;</span><span class="p">:</span> <span class="n">elapsed_time</span><span class="p">,</span>
             <span class="p">})</span>
@@ -247,7 +291,7 @@
             <span class="n">test_case</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;test_case&quot;</span><span class="p">]</span>
 
             <span class="c1"># Rebuild parameter dictionary</span>
-            <span class="n">parameters</span> <span class="o">=</span> <span class="n">base_model</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">parameters</span> <span class="o">=</span> <span class="n">base_model</span><span class="o">.</span><span class="n">params</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
             <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="mi">4</span><span class="p">:]:</span>  <span class="c1"># skip metadata columns</span>
                 <span class="n">value</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">column</span><span class="p">]</span>
@@ -396,7 +440,7 @@
     <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameter_indices</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
 
     <span class="n">param_labels</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_p_list</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_parameters</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">label</span>
         <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">parameter_indices</span>
     <span class="p">]</span>
     <span class="n">ax</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">param_labels</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="n">xrotation</span><span class="p">)</span>
@@ -585,7 +629,7 @@
     <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameter_indices</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
 
     <span class="n">param_labels</span> <span class="o">=</span> <span class="p">[</span>
-        <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_p_list</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_parameters</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">label</span>
         <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">parameter_indices</span>
     <span class="p">]</span>
 
@@ -671,7 +715,8 @@
 
             <span class="k">for</span> <span class="n">param_position</span><span class="p">,</span> <span class="n">param_idx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">parameter_indices</span><span class="p">):</span>
 
-                <span class="n">param_name</span> <span class="o">=</span> <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_p_list</span><span class="p">[</span><span class="n">param_idx</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">up</span> <span class="o">=</span> <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_parameters</span><span class="p">[</span><span class="n">param_idx</span><span class="p">]</span>
+                <span class="n">param_name</span> <span class="o">=</span> <span class="n">up</span><span class="o">.</span><span class="n">key</span>
                 <span class="n">scale</span> <span class="o">=</span> <span class="n">parameter_units</span><span class="p">[</span><span class="n">param_name</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
 
                 <span class="c1"># Parameter estimated only if within complexity</span>
@@ -704,9 +749,9 @@
 
     <span class="k">for</span> <span class="n">param_position</span><span class="p">,</span> <span class="n">param_idx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">parameter_indices</span><span class="p">):</span>
 
-        <span class="n">param_info</span> <span class="o">=</span> <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_p_list</span><span class="p">[</span><span class="n">param_idx</span><span class="p">]</span>
-        <span class="n">param_name</span> <span class="o">=</span> <span class="n">param_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-        <span class="n">is_log</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">param_info</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="n">up</span> <span class="o">=</span> <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_parameters</span><span class="p">[</span><span class="n">param_idx</span><span class="p">]</span>
+        <span class="n">param_name</span> <span class="o">=</span> <span class="n">up</span><span class="o">.</span><span class="n">key</span>
+        <span class="n">is_log</span> <span class="o">=</span> <span class="n">up</span><span class="o">.</span><span class="n">log_scale</span>
 
         <span class="n">values</span> <span class="o">=</span> <span class="n">all_values</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">param_position</span><span class="p">]</span>
 
@@ -758,8 +803,8 @@
         <span class="n">col</span> <span class="o">=</span> <span class="n">param_position</span> <span class="o">%</span> <span class="n">n_cols</span>
         <span class="n">axis</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span>
 
-        <span class="n">param_info</span> <span class="o">=</span> <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_p_list</span><span class="p">[</span><span class="n">param_idx</span><span class="p">]</span>
-        <span class="n">param_name</span> <span class="o">=</span> <span class="n">param_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">up</span> <span class="o">=</span> <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_parameters</span><span class="p">[</span><span class="n">param_idx</span><span class="p">]</span>
+        <span class="n">param_name</span> <span class="o">=</span> <span class="n">up</span><span class="o">.</span><span class="n">key</span>
         <span class="n">scale</span> <span class="o">=</span> <span class="n">parameter_units</span><span class="p">[</span><span class="n">param_name</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
 
         <span class="n">axis</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
@@ -800,17 +845,17 @@
         <span class="n">col</span> <span class="o">=</span> <span class="n">param_position</span> <span class="o">%</span> <span class="n">n_cols</span>
         <span class="n">axis</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span>
 
-        <span class="n">param_info</span> <span class="o">=</span> <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_p_list</span><span class="p">[</span><span class="n">param_idx</span><span class="p">]</span>
-        <span class="n">param_name</span> <span class="o">=</span> <span class="n">param_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">up</span> <span class="o">=</span> <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_parameters</span><span class="p">[</span><span class="n">param_idx</span><span class="p">]</span>
+        <span class="n">param_name</span> <span class="o">=</span> <span class="n">up</span><span class="o">.</span><span class="n">key</span>
         <span class="n">scale</span> <span class="o">=</span> <span class="n">parameter_units</span><span class="p">[</span><span class="n">param_name</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
 
-        <span class="n">axis</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">param_position</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1"> – </span><span class="si">{</span><span class="n">param_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span><span class="p">)</span>
+        <span class="n">axis</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">param_position</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1"> – </span><span class="si">{</span><span class="n">up</span><span class="o">.</span><span class="n">label</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span><span class="p">)</span>
         <span class="n">axis</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;(</span><span class="si">{</span><span class="n">parameter_units</span><span class="p">[</span><span class="n">param_name</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s1">)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
 
         <span class="n">axis</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameter_indices</span><span class="p">)))</span>
-        <span class="n">axis</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">([</span><span class="n">bound</span> <span class="o">/</span> <span class="n">scale</span> <span class="k">for</span> <span class="n">bound</span> <span class="ow">in</span> <span class="n">param_info</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+        <span class="n">axis</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">([</span><span class="n">up</span><span class="o">.</span><span class="n">lower</span> <span class="o">/</span> <span class="n">scale</span><span class="p">,</span> <span class="n">up</span><span class="o">.</span><span class="n">upper</span> <span class="o">/</span> <span class="n">scale</span><span class="p">])</span>
 
-        <span class="k">if</span> <span class="ow">not</span> <span class="n">param_info</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span>
+        <span class="k">if</span> <span class="n">up</span><span class="o">.</span><span class="n">log_scale</span><span class="p">:</span>
             <span class="n">axis</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
 
         <span class="n">axis</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
@@ -837,7 +882,6 @@
     <span class="n">n_parameters</span><span class="p">,</span>
     <span class="n">cv_results</span><span class="p">,</span>
     <span class="n">case_list</span><span class="p">,</span>
-    <span class="n">case_table</span><span class="p">,</span>
     <span class="n">condition_color</span><span class="p">,</span>
     <span class="n">simulate_callback</span><span class="p">,</span>
     <span class="n">model_builder</span><span class="p">,</span>
@@ -1011,6 +1055,258 @@
     <span class="p">)</span></div>
 
 
+<div class="viewcode-block" id="CrossValidation">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.CrossValidation">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">CrossValidation</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Simplified, stateful interface around the free functions in this module.</span>
+
+<span class="sd">    Wraps :func:`run_cross_validation`, the save/load helpers, and the</span>
+<span class="sd">    plotting functions so a notebook only needs to provide a</span>
+<span class="sd">    ``build_model(case_list) -&gt; model_fn`` callable and an experimental-data</span>
+<span class="sd">    getter — no manual adapters or repeated argument lists.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    base_model : ParameterEstimation</span>
+<span class="sd">        Configured estimator with ``.unknown_parameters`` and ``.params``.</span>
+<span class="sd">    parameter_indices : sequence of int</span>
+<span class="sd">        Order in which parameters are added across complexity levels</span>
+<span class="sd">        (e.g. from ``base_model.plot_parameter_ranking()``).</span>
+<span class="sd">    case_list : list</span>
+<span class="sd">        All experimental cases/conditions.</span>
+<span class="sd">    build_model : callable</span>
+<span class="sd">        ``build_model(case_list) -&gt; model_fn`` where</span>
+<span class="sd">        ``model_fn(params_dict) -&gt; np.ndarray``.</span>
+<span class="sd">    get_exp_data : callable</span>
+<span class="sd">        ``get_exp_data(case_list) -&gt; np.ndarray``.</span>
+<span class="sd">    model_builder, simulate_callback : callable, optional</span>
+<span class="sd">        Forwarded to the plotting helpers — see</span>
+<span class="sd">        :func:`plot_rmse_vs_complexity` and :func:`plot_cross_validation_curves`.</span>
+<span class="sd">    filename : str, optional</span>
+<span class="sd">        Base name used for checkpoint/result files</span>
+<span class="sd">        (``results_{filename}_cv.csv``) in ``output_dir``.</span>
+<span class="sd">    output_dir : str</span>
+<span class="sd">        Directory for checkpoint/result files (default ``&quot;results&quot;``).</span>
+<span class="sd">    estimate_kwargs : dict, optional</span>
+<span class="sd">        Default kwargs forwarded to ``ParameterEstimation.estimate``.</span>
+
+<span class="sd">    Examples</span>
+<span class="sd">    --------</span>
+<span class="sd">    ::</span>
+
+<span class="sd">        cv = CrossValidation(</span>
+<span class="sd">            base_model=pe,</span>
+<span class="sd">            parameter_indices=P,</span>
+<span class="sd">            case_list=full_case_list,</span>
+<span class="sd">            build_model=build_model,</span>
+<span class="sd">            get_exp_data=get_cases_exp_data,</span>
+<span class="sd">            model_builder=model_builder,</span>
+<span class="sd">            simulate_callback=simulate_callback,</span>
+<span class="sd">            filename=filename,</span>
+<span class="sd">        )</span>
+<span class="sd">        cv_results = cv.run()</span>
+<span class="sd">        fig, ax, rmse_df, optimal_n = cv.plot_rmse_vs_complexity()</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">base_model</span><span class="p">,</span>
+        <span class="n">parameter_indices</span><span class="p">,</span>
+        <span class="n">case_list</span><span class="p">,</span>
+        <span class="n">build_model</span><span class="p">,</span>
+        <span class="n">get_exp_data</span><span class="p">,</span>
+        <span class="n">model_builder</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">simulate_callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">output_dir</span><span class="o">=</span><span class="s2">&quot;results&quot;</span><span class="p">,</span>
+        <span class="n">estimate_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">rmse_scale</span><span class="o">=</span><span class="mf">1e3</span><span class="p">,</span>
+        <span class="n">min_parameters</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">condition_color</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">base_model</span> <span class="o">=</span> <span class="n">base_model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameter_indices</span> <span class="o">=</span> <span class="n">parameter_indices</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">case_list</span> <span class="o">=</span> <span class="n">case_list</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">build_model</span> <span class="o">=</span> <span class="n">build_model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">get_exp_data</span> <span class="o">=</span> <span class="n">get_exp_data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_builder</span> <span class="o">=</span> <span class="n">model_builder</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">simulate_callback</span> <span class="o">=</span> <span class="n">simulate_callback</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_dir</span> <span class="o">=</span> <span class="n">output_dir</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">estimate_kwargs</span> <span class="o">=</span> <span class="n">estimate_kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rmse_scale</span> <span class="o">=</span> <span class="n">rmse_scale</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">min_parameters</span> <span class="o">=</span> <span class="n">min_parameters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">condition_color</span> <span class="o">=</span> <span class="n">condition_color</span> <span class="ow">or</span> <span class="p">{</span>
+            <span class="n">case</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;C</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">case</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">case_list</span><span class="p">)</span>
+        <span class="p">}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rmse_df</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">optimal_n</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># Estimation</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">filepath</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;results_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="si">}</span><span class="s2">_cv.csv&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="CrossValidation.load">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.CrossValidation.load">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load previously saved results into ``self.results``.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="n">load_cross_validation_results</span><span class="p">(</span>
+            <span class="n">filepath</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span>
+            <span class="n">base_model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base_model</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span></div>
+
+
+<div class="viewcode-block" id="CrossValidation.save">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.CrossValidation.save">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Save ``self.results`` to ``self.filepath``.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">save_cross_validation_results</span><span class="p">(</span>
+            <span class="n">cross_validation_results</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">,</span>
+            <span class="n">filename</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="si">}</span><span class="s2">_cv&quot;</span><span class="p">,</span>
+            <span class="n">output_dir</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_dir</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CrossValidation.run">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.CrossValidation.run">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">resume</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">checkpoint</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">estimate_kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run leave-one-out cross-validation.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        resume : bool</span>
+<span class="sd">            Load and skip complexity levels already saved at ``self.filepath``.</span>
+<span class="sd">        checkpoint : bool</span>
+<span class="sd">            Save results after each complexity level.</span>
+<span class="sd">        **estimate_kwargs</span>
+<span class="sd">            Override entries of ``self.estimate_kwargs``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cross_validation_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">load</span><span class="p">()</span> <span class="k">if</span> <span class="n">resume</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_build_model</span><span class="p">(</span><span class="n">case_list</span><span class="p">,</span> <span class="n">_params</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">build_model</span><span class="p">(</span><span class="n">case_list</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_checkpoint</span><span class="p">(</span><span class="n">results</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="n">results</span>
+            <span class="k">if</span> <span class="n">checkpoint</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">filename</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">save</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="n">run_cross_validation</span><span class="p">(</span>
+            <span class="n">base_model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base_model</span><span class="p">,</span>
+            <span class="n">parameter_indices</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameter_indices</span><span class="p">,</span>
+            <span class="n">case_list</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">case_list</span><span class="p">,</span>
+            <span class="n">build_model</span><span class="o">=</span><span class="n">_build_model</span><span class="p">,</span>
+            <span class="n">get_exp_data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">get_exp_data</span><span class="p">,</span>
+            <span class="n">min_parameters</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">min_parameters</span><span class="p">,</span>
+            <span class="n">cross_validation_results</span><span class="o">=</span><span class="n">cross_validation_results</span><span class="p">,</span>
+            <span class="n">estimate_kwargs</span><span class="o">=</span><span class="p">{</span><span class="o">**</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">estimate_kwargs</span> <span class="ow">or</span> <span class="p">{}),</span> <span class="o">**</span><span class="n">estimate_kwargs</span><span class="p">},</span>
+            <span class="n">rmse_scale</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rmse_scale</span><span class="p">,</span>
+            <span class="n">checkpoint_callback</span><span class="o">=</span><span class="n">_checkpoint</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">results</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># Complexity-level helpers</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="CrossValidation.get_complexity_levels">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.CrossValidation.get_complexity_levels">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_complexity_levels</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">get_complexity_levels</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CrossValidation.get_folds_for_complexity">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.CrossValidation.get_folds_for_complexity">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_folds_for_complexity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_parameters</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">get_folds_for_complexity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">,</span> <span class="n">n_parameters</span><span class="p">)</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># Plots / tables</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="CrossValidation.plot_rmse_vs_complexity">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.CrossValidation.plot_rmse_vs_complexity">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot_rmse_vs_complexity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">rmse_df</span><span class="p">,</span> <span class="n">optimal_n</span> <span class="o">=</span> <span class="n">plot_rmse_vs_complexity</span><span class="p">(</span>
+            <span class="n">cv_results</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">,</span>
+            <span class="n">case_list</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">case_list</span><span class="p">,</span>
+            <span class="n">parameter_indices</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameter_indices</span><span class="p">,</span>
+            <span class="n">base_model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base_model</span><span class="p">,</span>
+            <span class="n">model_builder</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model_builder</span><span class="p">,</span>
+            <span class="n">simulate_callback</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">simulate_callback</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rmse_df</span> <span class="o">=</span> <span class="n">rmse_df</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">optimal_n</span> <span class="o">=</span> <span class="n">optimal_n</span>
+        <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">rmse_df</span><span class="p">,</span> <span class="n">optimal_n</span></div>
+
+
+<div class="viewcode-block" id="CrossValidation.plot_rmse_vs_complexity_extrapolation">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.CrossValidation.plot_rmse_vs_complexity_extrapolation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot_rmse_vs_complexity_extrapolation</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">training_test_case</span><span class="p">,</span> <span class="n">extrapolation_cases</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="n">plot_rmse_vs_complexity_extrapolation</span><span class="p">(</span>
+            <span class="n">cv_results</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">,</span>
+            <span class="n">training_test_case</span><span class="o">=</span><span class="n">training_test_case</span><span class="p">,</span>
+            <span class="n">extrapolation_cases</span><span class="o">=</span><span class="n">extrapolation_cases</span><span class="p">,</span>
+            <span class="n">parameter_indices</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameter_indices</span><span class="p">,</span>
+            <span class="n">base_model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base_model</span><span class="p">,</span>
+            <span class="n">model_builder</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model_builder</span><span class="p">,</span>
+            <span class="n">simulate_callback</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">simulate_callback</span><span class="p">,</span>
+            <span class="n">condition_color</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;condition_color&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">condition_color</span><span class="p">),</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CrossValidation.plot_parameter_vs_complexity">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.CrossValidation.plot_parameter_vs_complexity">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot_parameter_vs_complexity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">parameter_units</span><span class="p">,</span> <span class="n">initial_parameters</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">plot_parameter_vs_complexity</span><span class="p">(</span>
+            <span class="n">cv_results</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">,</span>
+            <span class="n">parameter_indices</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">parameter_indices</span><span class="p">,</span>
+            <span class="n">base_model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">base_model</span><span class="p">,</span>
+            <span class="n">parameter_units</span><span class="o">=</span><span class="n">parameter_units</span><span class="p">,</span>
+            <span class="n">condition_color</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;condition_color&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">condition_color</span><span class="p">),</span>
+            <span class="n">initial_parameters</span><span class="o">=</span><span class="n">initial_parameters</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CrossValidation.plot_cross_validation_curves">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.CrossValidation.plot_cross_validation_curves">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">plot_cross_validation_curves</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_parameters</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">plot_cross_validation_curves</span><span class="p">(</span>
+            <span class="n">n_parameters</span><span class="o">=</span><span class="n">n_parameters</span> <span class="k">if</span> <span class="n">n_parameters</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimal_n</span><span class="p">,</span>
+            <span class="n">cv_results</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">,</span>
+            <span class="n">case_list</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">case_list</span><span class="p">,</span>
+            <span class="n">condition_color</span><span class="o">=</span><span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;condition_color&#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">condition_color</span><span class="p">),</span>
+            <span class="n">simulate_callback</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">simulate_callback</span><span class="p">,</span>
+            <span class="n">model_builder</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">model_builder</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CrossValidation.rmse_complexity_table">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.CrossValidation.rmse_complexity_table">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">rmse_complexity_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">rmse_complexity_table</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">rmse_df</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="n">filename</span><span class="p">)</span></div>
+</div>
+
+
+
 <div class="viewcode-block" id="rmse_complexity_table">
 <a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.rmse_complexity_table">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">rmse_complexity_table</span><span class="p">(</span><span class="n">rmse_vs_complexity_df</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
@@ -1072,73 +1368,31 @@
 
 </pre></div>
 
+           </div>
           </div>
-          
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Pedro Affonso Nobrega.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
         </div>
       </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="Main">
-        <div class="sphinxsidebarwrapper">
-<h1 class="logo"><a href="../../../index.html">marapendi</a></h1>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
 
-
-
-
-
-
-
-
-
-<search id="searchbox" style="display: none" role="search">
-    <div class="searchformwrapper">
-    <form class="search" action="../../../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
-      <input type="submit" value="Go" />
-    </form>
-    </div>
-</search>
-<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
-<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../api/components.html">Components</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../api/models.html">Models</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../api/simulation.html">Simulation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../api/estimation.html">Estimation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../api/tools.html">Tools</a></li>
-</ul>
-
-<div class="relations">
-<h3>Related Topics</h3>
-<ul>
-  <li><a href="../../../index.html">Documentation overview</a><ul>
-  <li><a href="../../index.html">Module code</a><ul>
-  </ul></li>
-  </ul></li>
-</ul>
-</div>
-
-
-
-
-
-
-
-
-        </div>
-      </div>
-      <div class="clearer"></div>
-    </div>
-    <div class="footer">
-      &#169;2024, Pedro Affonso Nobrega.
-      
-      |
-      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
-      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
-      
-    </div>
-
-    
-
-    
-  </body>
+</body>
 </html>
