@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 from scipy import stats
-from marapendi.simulation.estimation import ParameterEstimation
+from marapendi.dynamic.simulation.estimation import ParameterEstimation
 
 def run_cross_validation(
     base_model,

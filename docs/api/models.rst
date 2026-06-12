@@ -1,63 +1,33 @@
 Models
 ======
 
-Stateless mathematical models for ionomer physics, membrane transport,
-catalyst-layer electrokinetics, gas-phase transport, voltage, water
-thermodynamics, transient dynamics, and degradation.
+Orchestration classes that combine a :class:`~marapendi.cell.Cell` and a
+:class:`~marapendi.state.CellState` to compute the cell's behaviour:
+membrane water balance, gas transport, voltage and thermal sub-models.
+:class:`~marapendi.model.ExplicitSteadyStateModel` composes these into a
+single explicit steady-state evaluation.
 
-Each model class is a pure strategy object: it accepts component
-dataclasses as arguments and returns computed quantities without storing
-state.  Component dataclasses (see :doc:`components`) carry the physical
-parameters; model classes carry the equations.
-
-See the :doc:`../user_guide/polarization_curve` guide for a worked example.
-
-.. automodule:: marapendi.models.model
+.. automodule:: marapendi.model
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.models.transient
+.. automodule:: marapendi.water_balance
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.models.cell_base_model
+.. automodule:: marapendi.transport
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.models.membrane
+.. automodule:: marapendi.voltage
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.models.catalyst_layer
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: marapendi.models.transport
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: marapendi.models.voltage
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: marapendi.models.water
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: marapendi.models.electrochemistry
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: marapendi.models.degradation
+.. automodule:: marapendi.thermal
    :members:
    :undoc-members:
    :show-inheritance:

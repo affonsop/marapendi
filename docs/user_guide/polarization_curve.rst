@@ -1,3 +1,13 @@
+:orphan:
+
+.. note::
+
+   This guide describes the experimental, transient-capable
+   :mod:`marapendi.dynamic` package (inspired by Yang et al. 2019), which is
+   under evaluation and not part of the main documented API. Module paths
+   below (``marapendi.components.*``, ``marapendi.models.*``) refer to
+   ``marapendi.dynamic.components.*`` / ``marapendi.dynamic.models.*``.
+
 Simulating a polarization curve
 ================================
 

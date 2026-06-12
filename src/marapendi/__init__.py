@@ -1,43 +1,16 @@
-# Load order follows dependency graph (no circular imports)
+"""
+marapendi: framework for modelling anion and proton exchange membrane
+electrochemical cell devices, such as water electrolyzers and fuel cells.
 
-# ── Base utilities ────────────────────────────────────────────────────────────
-from .tools.tools import *
+The top-level package holds the reference cell model: static component
+dataclasses (:mod:`marapendi.cell`, :mod:`marapendi.catalyst_layers`,
+:mod:`marapendi.porous_layers`, :mod:`marapendi.membrane`, ...), their
+per-simulation state (:mod:`marapendi.state`), and the orchestration models
+(:mod:`marapendi.model`, :mod:`marapendi.water_balance`,
+:mod:`marapendi.transport`, :mod:`marapendi.voltage`,
+:mod:`marapendi.thermal`).
 
-# ── Physical components ───────────────────────────────────────────────────────
-from .components.layer import *
-from .components.membrane import *
-from .components.porous_layers import *
-from .components.flow_channels import *
-from .components.ionomer import *
-from .components.electrolyte import *
-from .components.catalyst_layers import *
-from .components.cell import *
-from .components.cell_state import *
-from .components.operating_conditions import * 
-
-# ── Degradation models (depend on components) ─────────────────────────────────
-from .models.water import *
-from .models.degradation import *
-from .models.model import *
-from .models.transient import *
-from .models.cell_base_model import *
-from .models.electrochemistry import *
-from .models.transport import *
-from .models.membrane import *
-from .models.thermal import ThermalModel
-from .models.voltage import *
-from .models.catalyst_layer import * 
-from .models.flowfields import *
-
-# ── Tools & data ──────────────────────────────────────────────────────────────
-from .tools.load_cycles import *
-
-# ── Estimation & simulation ───────────────────────────────────────────────────
-from .estimation.cross_validation import *
-from .simulation.estimation import *
-from .simulation.surrogate import *
-
-# ── Materials database ────────────────────────────────────────────────────────
-from .materials.ionomers import *
-from .materials.membranes import *
-from .materials.gdl import *
+:mod:`marapendi.dynamic` holds an independent, transient-capable cell model
+with a partially overlapping (and not yet unified) set of components and
+correlations.
+"""
