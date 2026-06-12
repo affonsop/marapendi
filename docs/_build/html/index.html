@@ -1,0 +1,248 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>marapendi &mdash; marapendi 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="User Guide" href="user_guide/index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="#" class="icon icon-home">
+            marapendi
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="user_guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/components.html">Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/simulation.html">Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/estimation.html">Estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/tools.html">Tools</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">marapendi</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="#" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">marapendi</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="marapendi">
+<h1>marapendi<a class="headerlink" href="#marapendi" title="Link to this heading"></a></h1>
+<p><strong>marapendi</strong> is a Python framework for modelling anion and proton exchange
+membrane (AEM/PEM) electrochemical cell devices, including water electrolyzers
+and fuel cells.</p>
+<section id="philosophy">
+<h2>Philosophy<a class="headerlink" href="#philosophy" title="Link to this heading"></a></h2>
+<p>The philosophy of <strong>marapendi</strong> is that <cite>components</cite> store physical (measureable)
+properties of cell components (<em>e.g.</em> membranes, catalyst layers, diffusion layers, flow fields, etc.).
+That can include parameters of well-established correlations (<em>e.g.</em> for membrane conductivity).</p>
+<p><cite>models</cite> store all kind of sub-models for calculating needed quantities and physical variables. Those are
+grouped under a <cite>Model</cite> class. Sub-models typically include voltage models, membrane models, gas and liquid
+transport models, heat transfer models and so on. Sub-models are defined as classes which can be inherited
+to make user-defined models.</p>
+<p><cite>estimation</cite> contains a number of methods allowing for sensitivity analysis and parameter estimation.</p>
+<p><cite>materials</cite> is a database of pre-defined common materials.</p>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="user_guide/index.html">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/polarization_curve.html">Simulating a polarization curve</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="api/components.html">Components</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/components.html#marapendi.components.cell.Cell"><code class="docutils literal notranslate"><span class="pre">Cell</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/components.html#marapendi.components.cell.CellSide"><code class="docutils literal notranslate"><span class="pre">CellSide</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/components.html#marapendi.components.cell_state.CellState"><code class="docutils literal notranslate"><span class="pre">CellState</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/components.html#marapendi.components.catalyst_layers.CatalystLayer"><code class="docutils literal notranslate"><span class="pre">CatalystLayer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/components.html#marapendi.components.catalyst_layers.PtCCatalystLayer"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/components.html#marapendi.components.porous_layers.PorousLayer"><code class="docutils literal notranslate"><span class="pre">PorousLayer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/components.html#marapendi.components.membrane.Membrane"><code class="docutils literal notranslate"><span class="pre">Membrane</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/components.html#marapendi.components.membrane.PFSAMembrane"><code class="docutils literal notranslate"><span class="pre">PFSAMembrane</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/components.html#classes">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/components.html#marapendi.components.ionomer.Ionomer"><code class="docutils literal notranslate"><span class="pre">Ionomer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/components.html#marapendi.components.ionomer.PFSAIonomer"><code class="docutils literal notranslate"><span class="pre">PFSAIonomer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/components.html#marapendi.components.layer.Layer"><code class="docutils literal notranslate"><span class="pre">Layer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/components.html#id38">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/components.html#marapendi.components.flow_channels.ChannelConditions"><code class="docutils literal notranslate"><span class="pre">ChannelConditions</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/components.html#marapendi.components.flow_channels.FlowChannel"><code class="docutils literal notranslate"><span class="pre">FlowChannel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/components.html#marapendi.components.electrolyte.ElectrolyteSolution"><code class="docutils literal notranslate"><span class="pre">ElectrolyteSolution</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/components.html#marapendi.components.electrolyte.KOH_solution"><code class="docutils literal notranslate"><span class="pre">KOH_solution</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/models.html">Models</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#classes">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#protocol">Protocol</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.model.BaseModel"><code class="docutils literal notranslate"><span class="pre">BaseModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#id1">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.transient.TransientCellModel"><code class="docutils literal notranslate"><span class="pre">TransientCellModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#id2">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.cell_base_model.CellBaseModel"><code class="docutils literal notranslate"><span class="pre">CellBaseModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#id3">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#design-note">Design note</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.membrane.IonomerModel"><code class="docutils literal notranslate"><span class="pre">IonomerModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.membrane.MembraneModel"><code class="docutils literal notranslate"><span class="pre">MembraneModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.membrane.PFSAModel"><code class="docutils literal notranslate"><span class="pre">PFSAModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#id4">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#id5">Design note</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.catalyst_layer.CatalystLayerModel"><code class="docutils literal notranslate"><span class="pre">CatalystLayerModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.catalyst_layer.PtCCatalystLayerModel"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayerModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.transport.ChannelGasResistanceModel"><code class="docutils literal notranslate"><span class="pre">ChannelGasResistanceModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.transport.DarcyTransportModel"><code class="docutils literal notranslate"><span class="pre">DarcyTransportModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.transport.PorousGasResistanceModel"><code class="docutils literal notranslate"><span class="pre">PorousGasResistanceModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#id11">Classes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.voltage.VoltageModel"><code class="docutils literal notranslate"><span class="pre">VoltageModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.water.o2_water_diffusivity"><code class="docutils literal notranslate"><span class="pre">o2_water_diffusivity()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.water.water_density"><code class="docutils literal notranslate"><span class="pre">water_density()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.water.water_dew_point"><code class="docutils literal notranslate"><span class="pre">water_dew_point()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.water.water_dynamic_viscosity"><code class="docutils literal notranslate"><span class="pre">water_dynamic_viscosity()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.water.water_kinematic_viscosity"><code class="docutils literal notranslate"><span class="pre">water_kinematic_viscosity()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.water.water_molar_volume"><code class="docutils literal notranslate"><span class="pre">water_molar_volume()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.water.water_saturation_concentration"><code class="docutils literal notranslate"><span class="pre">water_saturation_concentration()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.water.water_saturation_pressure"><code class="docutils literal notranslate"><span class="pre">water_saturation_pressure()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.water.water_surface_tension"><code class="docutils literal notranslate"><span class="pre">water_surface_tension()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.electrochemistry.ElectrochemicalReaction"><code class="docutils literal notranslate"><span class="pre">ElectrochemicalReaction</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.electrochemistry.calculate_exchange_current_density"><code class="docutils literal notranslate"><span class="pre">calculate_exchange_current_density()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.electrochemistry.calculate_linear_overpotential"><code class="docutils literal notranslate"><span class="pre">calculate_linear_overpotential()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.electrochemistry.calculate_reversible_cell_voltage"><code class="docutils literal notranslate"><span class="pre">calculate_reversible_cell_voltage()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.electrochemistry.calculate_tafel_overpotential"><code class="docutils literal notranslate"><span class="pre">calculate_tafel_overpotential()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.electrochemistry.calculate_tafel_slope"><code class="docutils literal notranslate"><span class="pre">calculate_tafel_slope()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.degradation.CarbonCorrosion"><code class="docutils literal notranslate"><span class="pre">CarbonCorrosion</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.degradation.CathodicDissolution"><code class="docutils literal notranslate"><span class="pre">CathodicDissolution</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.degradation.OxidePlaceExchange"><code class="docutils literal notranslate"><span class="pre">OxidePlaceExchange</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.degradation.PlatinumDissolution"><code class="docutils literal notranslate"><span class="pre">PlatinumDissolution</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.degradation.PlatinumOxideDissolution"><code class="docutils literal notranslate"><span class="pre">PlatinumOxideDissolution</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.degradation.PlatinumOxideFormation"><code class="docutils literal notranslate"><span class="pre">PlatinumOxideFormation</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.degradation.PlatinumSpecies"><code class="docutils literal notranslate"><span class="pre">PlatinumSpecies</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.degradation.PtDissolution"><code class="docutils literal notranslate"><span class="pre">PtDissolution</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/models.html#marapendi.models.degradation.PtSizeDistribution"><code class="docutils literal notranslate"><span class="pre">PtSizeDistribution</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/simulation.html">Simulation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/simulation.html#marapendi.simulation.estimation.DynamicModel"><code class="docutils literal notranslate"><span class="pre">DynamicModel</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/simulation.html#marapendi.simulation.estimation.SteadyStateModel"><code class="docutils literal notranslate"><span class="pre">SteadyStateModel</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/estimation.html">Estimation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/estimation.html#marapendi.estimation.cross_validation.get_complexity_levels"><code class="docutils literal notranslate"><span class="pre">get_complexity_levels()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/estimation.html#marapendi.estimation.cross_validation.get_folds_for_complexity"><code class="docutils literal notranslate"><span class="pre">get_folds_for_complexity()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/estimation.html#marapendi.estimation.cross_validation.load_cross_validation_results"><code class="docutils literal notranslate"><span class="pre">load_cross_validation_results()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/estimation.html#marapendi.estimation.cross_validation.plot_cross_validation_curves"><code class="docutils literal notranslate"><span class="pre">plot_cross_validation_curves()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/estimation.html#marapendi.estimation.cross_validation.plot_parameter_vs_complexity"><code class="docutils literal notranslate"><span class="pre">plot_parameter_vs_complexity()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/estimation.html#marapendi.estimation.cross_validation.plot_rmse_vs_complexity"><code class="docutils literal notranslate"><span class="pre">plot_rmse_vs_complexity()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/estimation.html#marapendi.estimation.cross_validation.plot_rmse_vs_complexity_extrapolation"><code class="docutils literal notranslate"><span class="pre">plot_rmse_vs_complexity_extrapolation()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/estimation.html#marapendi.estimation.cross_validation.rmse_complexity_table"><code class="docutils literal notranslate"><span class="pre">rmse_complexity_table()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/estimation.html#marapendi.estimation.cross_validation.run_cross_validation"><code class="docutils literal notranslate"><span class="pre">run_cross_validation()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/estimation.html#marapendi.estimation.cross_validation.save_cross_validation_results"><code class="docutils literal notranslate"><span class="pre">save_cross_validation_results()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api/tools.html">Tools</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/tools.html#marapendi.tools.tools.Updatable"><code class="docutils literal notranslate"><span class="pre">Updatable</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/tools.html#marapendi.tools.tools.arrhenius_term"><code class="docutils literal notranslate"><span class="pre">arrhenius_term()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/tools.html#marapendi.tools.tools.polyval_vec"><code class="docutils literal notranslate"><span class="pre">polyval_vec()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/tools.html#marapendi.tools.tools.potential_activation"><code class="docutils literal notranslate"><span class="pre">potential_activation()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/tools.html#marapendi.tools.tools.sigmoid"><code class="docutils literal notranslate"><span class="pre">sigmoid()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="indices-and-tables">
+<h2>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="user_guide/index.html" class="btn btn-neutral float-right" title="User Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Pedro Affonso Nobrega.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

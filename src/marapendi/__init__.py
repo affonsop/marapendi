@@ -1,19 +1,16 @@
-from .electrochemistry import *
-from .water import *
-from .tools import *
-from .fuelcell import *
-from .aem_electrolyzer import *
-from .membrane import * 
-from .gas_composition import *
-from .flow_channels import *
-from .porous_layers import * 
-from .transport_models import * 
-from .estimation import *
-from .electrolyte import *
-from .ionomer import *
-from .water_balance_models import *
-from .membrane_permeation_models import * 
-from .catalyst_layers import *
-from .degradation import * 
-from .load_cycles import *
-from .cross_validation import *
+"""
+marapendi: framework for modelling anion and proton exchange membrane
+electrochemical cell devices, such as water electrolyzers and fuel cells.
+
+The top-level package holds the reference cell model: static component
+dataclasses (:mod:`marapendi.cell`, :mod:`marapendi.catalyst_layers`,
+:mod:`marapendi.porous_layers`, :mod:`marapendi.membrane`, ...), their
+per-simulation state (:mod:`marapendi.state`), and the orchestration models
+(:mod:`marapendi.model`, :mod:`marapendi.water_balance`,
+:mod:`marapendi.transport`, :mod:`marapendi.voltage`,
+:mod:`marapendi.thermal`).
+
+:mod:`marapendi.dynamic` holds an independent, transient-capable cell model
+with a partially overlapping (and not yet unified) set of components and
+correlations.
+"""

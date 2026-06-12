@@ -1,8 +1,17 @@
 """
-Module providing a water thermodynamic and physical properties. 
-Based on Cantera's Water object. 
-See: https://cantera.org/documentation/docs-3.0/sphinx/html/cython/importing.html#cantera.Water
+Liquid water and water vapor properties.
+
+Free functions provide thermodynamic and physical properties of water
+(based on Cantera's ``Water`` object and standard correlations).
+:class:`WaterModel` wraps the liquid-water property functions with
+stateless correlations as pure functions of ``state.temperature``, cached
+on the ``state`` object to avoid recomputing them.
+
+References
+----------
+https://cantera.org/documentation/docs-3.0/sphinx/html/cython/importing.html#cantera.Water
 """
+from __future__ import annotations
 
 import cantera as ct
 import numpy as np
@@ -11,233 +20,78 @@ h2o_phase = ct.Water()
 
 water_molecular_weight = h2o_phase.molecular_weights[0]
 
+
 def water_saturation_pressure(temperature):
-    """
-    Calculate the saturation pressure of water at a given temperature.
-
-    Parameters:
-    -----------
-    temperature : float
-        Temperature in Kelvin (K).
-
-    Returns:
-    --------
-    float
-        Saturation pressure of water in Pascals (Pa).
-    """
+    """Saturation pressure of water (Pa) at ``temperature`` (K)."""
     Tcelsius = temperature - 273.15
-    return 611.21 * np.exp((18.678 - Tcelsius /  234.5) * (Tcelsius / (257.14 + Tcelsius)))
-    # return np.piecewise(
-    #     Tcelsius, [Tcelsius > 0, Tcelsius <= 0], [
-    #         lambda Tcelsius: 611.21 * np.exp((18.678 - Tcelsius /  234.5) * (Tcelsius / (257.14 + Tcelsius))), 
-    #         lambda Tcelsius: 611.15 * np.exp((23.036 - Tcelsius /  333.7) * (Tcelsius / (279.82 + Tcelsius)))
-    #     ])
- 
-    # h2o = ct.SolutionArray(h2o_phase, np.shape(temperature))
-    # h2o.TQ = temperature, 0  # Set temperature and vapor quality
-    # return h2o.P_sat
-
-
-def water_saturation_concentration(temperature):
-    """
-    Calculate the saturation concentration of water vapor in the gas phase.
-
-    Parameters:
-    -----------
-    temperature : float
-        Temperature in Kelvin (K).
-
-    Returns:
-    --------
-    float
-        Saturation concentration of water vapor in kmol/m³.
-    """
-    return water_saturation_pressure(temperature) / (ct.gas_constant * temperature)
-
-
-def water_dew_point(vapor_pressure):
-    """
-    Calculate the dew point temperature of water given its partial pressure.
-
-    Parameters:
-    -----------
-    vapor_pressure : float
-        Partial pressure of water vapor in Pascals (Pa).
-
-    Returns:
-    --------
-    float
-        Dew point temperature in Kelvin (K).
-    """
-    h2o = ct.SolutionArray(h2o_phase, np.shape(vapor_pressure))
-    h2o.PQ = vapor_pressure, 0  # Set pressure and vapor quality
-    return h2o.T
+    return 611.21 * np.exp((18.678 - Tcelsius / 234.5) * (Tcelsius / (257.14 + Tcelsius)))
 
 
 def water_dynamic_viscosity(temperature=300):
-    """
-    Calculate the dynamic viscosity of water at a given temperature.
-
-    Parameters:
-    -----------
-    temperature : float, optional, default=300
-        Temperature in Kelvin (K). Default is 300 K.
-
-    Returns:
-    --------
-    float
-        Dynamic viscosity of water in Pascal-seconds (Pa·s).
-    """
+    """Dynamic viscosity of water (Pa.s) at ``temperature`` (K)."""
     h2o = ct.SolutionArray(h2o_phase, np.shape(temperature))
     h2o.TQ = temperature, 0  # Set temperature and vapor quality
     return h2o.viscosity
 
+
 def water_kinematic_viscosity(temperature=300):
-    """
-    Calculate the kinemattic viscosity of water at a given temperature.
-
-    Parameters:
-    -----------
-    temperature : float, optional, default=300
-        Temperature in Kelvin (K). Default is 300 K.
-
-    Returns:
-    --------
-    float
-        Kinematic viscosity of water in m2/s.
-    """
+    """Kinematic viscosity of water (m^2/s) at ``temperature`` (K)."""
     return water_dynamic_viscosity(temperature) / water_density(temperature)
 
-def water_surface_tension(temperature=300): 
-    return 0.076 - 1.677e-4 * (temperature - 273.15)  # N/m
 
-def water_density(temperature=300): 
+def water_surface_tension(temperature=300):
+    """Surface tension of water (N/m) at ``temperature`` (K)."""
+    return 0.076 - 1.677e-4 * (temperature - 273.15)
+
+
+def water_density(temperature=300):
+    """Density of water (kg/m^3) at ``temperature`` (K).
+
+    Source: https://onlinelibrary.wiley.com/doi/pdf/10.1002/9780470516430.app3
     """
-    Calculate the density of water at a given temperature.
-
-    Parameters:
-    -----------
-    temperature : float, optional, default=300
-        Temperature in Kelvin (K). Default is 300 K.
-
-    Returns:
-    --------
-    float
-        Density of water in kg/m³.
-    """
-    # Source : https://onlinelibrary.wiley.com/doi/pdf/10.1002/9780470516430.app3
     T_Celsius = temperature - 273.15
-    return np.polyval([- 2.658e-3, - 0.155, 1001.3], T_Celsius) # kg/m3
+    return np.polyval([-2.658e-3, -0.155, 1001.3], T_Celsius)
 
-    # h2o = ct.SolutionArray(h2o_phase, np.shape(temperature))
-    # h2o.TQ = temperature, 0 
-    # return h2o.density_mass
 
-def water_molar_volume(temperature=300): 
+def water_molar_volume(temperature=300):
+    """Molar volume of water (m^3/kmol) at ``temperature`` (K)."""
+    return h2o_phase.molecular_weights[0] / water_density(temperature)
+
+
+def o2_water_diffusivity(temperature=300):
+    """O2 diffusivity in liquid water (m^2/s) at ``temperature`` (K).
+
+    Uses the value at 298 K from Tsimpanogiannis et al. (2021), table 11.
     """
-    Calculate the molar volume of water at a given temperature.
+    return 4.6e-7 * np.exp(-0.155e4 / temperature)
 
-    Parameters:
-    -----------
-    temperature : float, optional, default=300
-        Temperature in Kelvin (K). Default is 300 K.
 
-    Returns:
-    --------
-    float
-        Molar volume of water m³/kmol.
-    """
-    # h2o = ct.SolutionArray(h2o_phase, np.shape(temperature))
-    # h2o.TQ = temperature, 0 
-    return  h2o_phase.molecular_weights[0] / water_density(temperature)
+class WaterModel:
+    """Stateless correlations for liquid water properties.
 
-def o2_water_diffusivity(temperature=300): 
-    """
-    Calculate the O2 diffusivity in liquid water at a given temperature.
-    Uses value at 298 K from Tsimpanogiannis et al. (2021), table 11.
-    Parameters:
-    -----------
-    temperature : float, optional, default=300
-        Temperature in Kelvin (K). Default is 300 K.
-
-    Returns:
-    --------
-    float
-        O2 diffusivity in liquid water in m2/s.
-    """
-    return 4.6e-7 * np.exp(-0.155e4/temperature)
-
-class WaterProperties:
-    """
-    A class to hold and compute thermophysical properties of water.
-
-    Attributes:
-    -----------
-    h2o : ct.Water
-        An instance of Cantera's `Water` class for thermophysical property calculations.
-    density : float
-        The density of water in kg/m³.
-    dynamic_viscosity : float
-        The dynamic viscosity of water in Pa·s.
-    molar_volume : float
-        The molar volume of water in m³/mol.
-    saturation_pressure : float
-        The saturation pressure of water in Pascals (Pa).
-
-    Methods:
-    --------
-    set_temperature(temperature: float):
-        Set the temperature of water and update its properties.
-
-    Notes:
-    ------
-    This class uses Cantera's `Water` class to compute water's properties at 
-    a given temperature. Ensure Cantera is installed and properly configured.
+    All methods take a ``state`` object exposing ``temperature`` (K) --
+    typically a :class:`~marapendi.state.LayerState` or
+    :class:`~marapendi.state.MembraneState` -- and cache their
+    result on the state.
     """
 
-    def __init__(self, temperature: float = 300):
-        """
-        Initialize the WaterProperties class with a given temperature.
+    @staticmethod
+    def surface_tension(state) -> float:
+        """Surface tension of water at ``state.temperature`` (N/m)."""
+        if state.surface_tension is None:
+            state.surface_tension = water_surface_tension(state.temperature)
+        return state.surface_tension
 
-        Parameters:
-        -----------
-        temperature : float
-            The temperature in Kelvin (K) at which the water properties are computed.
+    @staticmethod
+    def kinematic_viscosity(state) -> float:
+        """Kinematic viscosity of water at ``state.temperature`` (m^2/s)."""
+        if state.kinematic_viscosity is None:
+            state.kinematic_viscosity = water_kinematic_viscosity(state.temperature)
+        return state.kinematic_viscosity
 
-        Notes:
-        ------
-        The `set_temperature` method is called during initialization to set the water 
-        temperature and compute the corresponding properties.
-        """
-        self.h2o = ct.SolutionArray(ct.Water(), np.shape(temperature))
-        self.set_temperature(temperature)
-
-    def set_temperature(self, temperature: float):
-        """
-        Set the temperature of water and update its thermophysical properties.
-
-        Parameters:
-        -----------
-        temperature : float
-            The temperature in Kelvin (K) to set the water properties.
-
-        Updates:
-        --------
-        - density : float
-        - dynamic_viscosity : float
-        - molar_volume : float
-        - saturation_pressure : float
-
-        Example:
-        --------
-        >>> water = WaterProperties(temperature=373.15)
-        >>> print(water.density)
-        958.366
-        """
-        self.h2o.TQ = temperature, 0  # Set the temperature and quality (0 for liquid water)
-        self.density = self.h2o.density_mass  # kg/m³
-        self.dynamic_viscosity = self.h2o.viscosity  # Pa·s
-        self.molar_volume = self.h2o.volume_mole  # m³/mol
-        self.saturation_pressure = self.h2o.P_sat  # Pa
-
-
+    @staticmethod
+    def density(state) -> float:
+        """Density of water at ``state.temperature`` (kg/m^3)."""
+        if state.density is None:
+            state.density = water_density(state.temperature)
+        return state.density

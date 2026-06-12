@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>marapendi.components.water &#8212; marapendi 0.1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for marapendi.components.water</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Module providing a water thermodynamic and physical properties. </span>
+<span class="sd">Based on Cantera&#39;s Water object. </span>
+<span class="sd">See: https://cantera.org/documentation/docs-3.0/sphinx/html/cython/importing.html#cantera.Water</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">cantera</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ct</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="n">h2o_phase</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">Water</span><span class="p">()</span>
+
+<span class="n">water_molecular_weight</span> <span class="o">=</span> <span class="n">h2o_phase</span><span class="o">.</span><span class="n">molecular_weights</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<div class="viewcode-block" id="water_saturation_pressure">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.water.water_saturation_pressure">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">water_saturation_pressure</span><span class="p">(</span><span class="n">temperature</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate the saturation pressure of water at a given temperature.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    temperature : float</span>
+<span class="sd">        Temperature in Kelvin (K).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">    float</span>
+<span class="sd">        Saturation pressure of water in Pascals (Pa).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">Tcelsius</span> <span class="o">=</span> <span class="n">temperature</span> <span class="o">-</span> <span class="mf">273.15</span>
+    <span class="k">return</span> <span class="mf">611.21</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">((</span><span class="mf">18.678</span> <span class="o">-</span> <span class="n">Tcelsius</span> <span class="o">/</span>  <span class="mf">234.5</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">Tcelsius</span> <span class="o">/</span> <span class="p">(</span><span class="mf">257.14</span> <span class="o">+</span> <span class="n">Tcelsius</span><span class="p">)))</span></div>
+
+    <span class="c1"># return np.piecewise(</span>
+    <span class="c1">#     Tcelsius, [Tcelsius &gt; 0, Tcelsius &lt;= 0], [</span>
+    <span class="c1">#         lambda Tcelsius: 611.21 * np.exp((18.678 - Tcelsius /  234.5) * (Tcelsius / (257.14 + Tcelsius))), </span>
+    <span class="c1">#         lambda Tcelsius: 611.15 * np.exp((23.036 - Tcelsius /  333.7) * (Tcelsius / (279.82 + Tcelsius)))</span>
+    <span class="c1">#     ])</span>
+ 
+    <span class="c1"># h2o = ct.SolutionArray(h2o_phase, np.shape(temperature))</span>
+    <span class="c1"># h2o.TQ = temperature, 0  # Set temperature and vapor quality</span>
+    <span class="c1"># return h2o.P_sat</span>
+
+
+<div class="viewcode-block" id="water_saturation_concentration">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.water.water_saturation_concentration">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">water_saturation_concentration</span><span class="p">(</span><span class="n">temperature</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate the saturation concentration of water vapor in the gas phase.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    temperature : float</span>
+<span class="sd">        Temperature in Kelvin (K).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">    float</span>
+<span class="sd">        Saturation concentration of water vapor in kmol/m³.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">water_saturation_pressure</span><span class="p">(</span><span class="n">temperature</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">gas_constant</span> <span class="o">*</span> <span class="n">temperature</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="water_dew_point">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.water.water_dew_point">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">water_dew_point</span><span class="p">(</span><span class="n">vapor_pressure</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate the dew point temperature of water given its partial pressure.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    vapor_pressure : float</span>
+<span class="sd">        Partial pressure of water vapor in Pascals (Pa).</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">    float</span>
+<span class="sd">        Dew point temperature in Kelvin (K).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">h2o</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">SolutionArray</span><span class="p">(</span><span class="n">h2o_phase</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">vapor_pressure</span><span class="p">))</span>
+    <span class="n">h2o</span><span class="o">.</span><span class="n">PQ</span> <span class="o">=</span> <span class="n">vapor_pressure</span><span class="p">,</span> <span class="mi">0</span>  <span class="c1"># Set pressure and vapor quality</span>
+    <span class="k">return</span> <span class="n">h2o</span><span class="o">.</span><span class="n">T</span></div>
+
+
+
+<div class="viewcode-block" id="water_dynamic_viscosity">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.water.water_dynamic_viscosity">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">water_dynamic_viscosity</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mi">300</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate the dynamic viscosity of water at a given temperature.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    temperature : float, optional, default=300</span>
+<span class="sd">        Temperature in Kelvin (K). Default is 300 K.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">    float</span>
+<span class="sd">        Dynamic viscosity of water in Pascal-seconds (Pa·s).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">h2o</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">SolutionArray</span><span class="p">(</span><span class="n">h2o_phase</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">temperature</span><span class="p">))</span>
+    <span class="n">h2o</span><span class="o">.</span><span class="n">TQ</span> <span class="o">=</span> <span class="n">temperature</span><span class="p">,</span> <span class="mi">0</span>  <span class="c1"># Set temperature and vapor quality</span>
+    <span class="k">return</span> <span class="n">h2o</span><span class="o">.</span><span class="n">viscosity</span></div>
+
+
+<div class="viewcode-block" id="water_kinematic_viscosity">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.water.water_kinematic_viscosity">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">water_kinematic_viscosity</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mi">300</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate the kinemattic viscosity of water at a given temperature.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    temperature : float, optional, default=300</span>
+<span class="sd">        Temperature in Kelvin (K). Default is 300 K.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">    float</span>
+<span class="sd">        Kinematic viscosity of water in m2/s.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">water_dynamic_viscosity</span><span class="p">(</span><span class="n">temperature</span><span class="p">)</span> <span class="o">/</span> <span class="n">water_density</span><span class="p">(</span><span class="n">temperature</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="water_surface_tension">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.water.water_surface_tension">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">water_surface_tension</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mi">300</span><span class="p">):</span> 
+    <span class="k">return</span> <span class="mf">0.076</span> <span class="o">-</span> <span class="mf">1.677e-4</span> <span class="o">*</span> <span class="p">(</span><span class="n">temperature</span> <span class="o">-</span> <span class="mf">273.15</span><span class="p">)</span>  <span class="c1"># N/m</span></div>
+
+
+<div class="viewcode-block" id="water_density">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.water.water_density">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">water_density</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mi">300</span><span class="p">):</span> 
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate the density of water at a given temperature.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    temperature : float, optional, default=300</span>
+<span class="sd">        Temperature in Kelvin (K). Default is 300 K.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">    float</span>
+<span class="sd">        Density of water in kg/m³.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Source : https://onlinelibrary.wiley.com/doi/pdf/10.1002/9780470516430.app3</span>
+    <span class="n">T_Celsius</span> <span class="o">=</span> <span class="n">temperature</span> <span class="o">-</span> <span class="mf">273.15</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">polyval</span><span class="p">([</span><span class="o">-</span> <span class="mf">2.658e-3</span><span class="p">,</span> <span class="o">-</span> <span class="mf">0.155</span><span class="p">,</span> <span class="mf">1001.3</span><span class="p">],</span> <span class="n">T_Celsius</span><span class="p">)</span> <span class="c1"># kg/m3</span></div>
+
+
+    <span class="c1"># h2o = ct.SolutionArray(h2o_phase, np.shape(temperature))</span>
+    <span class="c1"># h2o.TQ = temperature, 0 </span>
+    <span class="c1"># return h2o.density_mass</span>
+
+<div class="viewcode-block" id="water_molar_volume">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.water.water_molar_volume">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">water_molar_volume</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mi">300</span><span class="p">):</span> 
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate the molar volume of water at a given temperature.</span>
+
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    temperature : float, optional, default=300</span>
+<span class="sd">        Temperature in Kelvin (K). Default is 300 K.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">    float</span>
+<span class="sd">        Molar volume of water m³/kmol.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># h2o = ct.SolutionArray(h2o_phase, np.shape(temperature))</span>
+    <span class="c1"># h2o.TQ = temperature, 0 </span>
+    <span class="k">return</span>  <span class="n">h2o_phase</span><span class="o">.</span><span class="n">molecular_weights</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">water_density</span><span class="p">(</span><span class="n">temperature</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="o2_water_diffusivity">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.water.o2_water_diffusivity">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">o2_water_diffusivity</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mi">300</span><span class="p">):</span> 
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculate the O2 diffusivity in liquid water at a given temperature.</span>
+<span class="sd">    Uses value at 298 K from Tsimpanogiannis et al. (2021), table 11.</span>
+<span class="sd">    Parameters:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    temperature : float, optional, default=300</span>
+<span class="sd">        Temperature in Kelvin (K). Default is 300 K.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">    --------</span>
+<span class="sd">    float</span>
+<span class="sd">        O2 diffusivity in liquid water in m2/s.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="mf">4.6e-7</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mf">0.155e4</span><span class="o">/</span><span class="n">temperature</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="WaterProperties">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.water.WaterProperties">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">WaterProperties</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A class to hold and compute thermophysical properties of water.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    h2o : ct.Water</span>
+<span class="sd">        An instance of Cantera&#39;s `Water` class for thermophysical property calculations.</span>
+<span class="sd">    density : float</span>
+<span class="sd">        The density of water in kg/m³.</span>
+<span class="sd">    dynamic_viscosity : float</span>
+<span class="sd">        The dynamic viscosity of water in Pa·s.</span>
+<span class="sd">    molar_volume : float</span>
+<span class="sd">        The molar volume of water in m³/mol.</span>
+<span class="sd">    saturation_pressure : float</span>
+<span class="sd">        The saturation pressure of water in Pascals (Pa).</span>
+
+<span class="sd">    Methods:</span>
+<span class="sd">    --------</span>
+<span class="sd">    set_temperature(temperature: float):</span>
+<span class="sd">        Set the temperature of water and update its properties.</span>
+
+<span class="sd">    Notes:</span>
+<span class="sd">    ------</span>
+<span class="sd">    This class uses Cantera&#39;s `Water` class to compute water&#39;s properties at </span>
+<span class="sd">    a given temperature. Ensure Cantera is installed and properly configured.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="WaterProperties.__init__">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.water.WaterProperties.__init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">300</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the WaterProperties class with a given temperature.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">        temperature : float</span>
+<span class="sd">            The temperature in Kelvin (K) at which the water properties are computed.</span>
+
+<span class="sd">        Notes:</span>
+<span class="sd">        ------</span>
+<span class="sd">        The `set_temperature` method is called during initialization to set the water </span>
+<span class="sd">        temperature and compute the corresponding properties.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h2o</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">SolutionArray</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">Water</span><span class="p">(),</span> <span class="n">np</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">temperature</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_temperature</span><span class="p">(</span><span class="n">temperature</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="WaterProperties.set_temperature">
+<a class="viewcode-back" href="../../../api/components.html#marapendi.components.water.WaterProperties.set_temperature">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_temperature</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set the temperature of water and update its thermophysical properties.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">        temperature : float</span>
+<span class="sd">            The temperature in Kelvin (K) to set the water properties.</span>
+
+<span class="sd">        Updates:</span>
+<span class="sd">        --------</span>
+<span class="sd">        - density : float</span>
+<span class="sd">        - dynamic_viscosity : float</span>
+<span class="sd">        - molar_volume : float</span>
+<span class="sd">        - saturation_pressure : float</span>
+
+<span class="sd">        Example:</span>
+<span class="sd">        --------</span>
+<span class="sd">        &gt;&gt;&gt; water = WaterProperties(temperature=373.15)</span>
+<span class="sd">        &gt;&gt;&gt; print(water.density)</span>
+<span class="sd">        958.366</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">h2o</span><span class="o">.</span><span class="n">TQ</span> <span class="o">=</span> <span class="n">temperature</span><span class="p">,</span> <span class="mi">0</span>  <span class="c1"># Set the temperature and quality (0 for liquid water)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">density</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">h2o</span><span class="o">.</span><span class="n">density_mass</span>  <span class="c1"># kg/m³</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dynamic_viscosity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">h2o</span><span class="o">.</span><span class="n">viscosity</span>  <span class="c1"># Pa·s</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">molar_volume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">h2o</span><span class="o">.</span><span class="n">volume_mole</span>  <span class="c1"># m³/mol</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">saturation_pressure</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">h2o</span><span class="o">.</span><span class="n">P_sat</span>  <span class="c1"># Pa</span></div>
+</div>
+
+
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">marapendi</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/components.html">Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/simulation.html">Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/estimation.html">Estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/tools.html">Tools</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Pedro Affonso Nobrega.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

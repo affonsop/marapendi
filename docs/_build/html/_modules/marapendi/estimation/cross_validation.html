@@ -1,0 +1,1144 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>marapendi.estimation.cross_validation &#8212; marapendi 0.1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for marapendi.estimation.cross_validation</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span> 
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.patches</span><span class="w"> </span><span class="kn">import</span> <span class="n">Patch</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy</span><span class="w"> </span><span class="kn">import</span> <span class="n">stats</span>
+
+<div class="viewcode-block" id="run_cross_validation">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.run_cross_validation">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">run_cross_validation</span><span class="p">(</span>
+    <span class="n">base_model</span><span class="p">,</span>
+    <span class="n">parameter_indices</span><span class="p">,</span>
+    <span class="n">case_list</span><span class="p">,</span>
+    <span class="n">build_model</span><span class="p">,</span>
+    <span class="n">get_exp_data</span><span class="p">,</span>
+    <span class="n">min_parameters</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">cross_validation_results</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">estimate_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">rmse_scale</span><span class="o">=</span><span class="mf">1e3</span><span class="p">,</span>
+    <span class="n">checkpoint_callback</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> 
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Leave-one-out cross-validation with resume capability</span>
+<span class="sd">    and automatic checkpoint saving.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    checkpoint_callback : callable or None</span>
+<span class="sd">        Function called after each complexity level.</span>
+<span class="sd">        Signature: checkpoint_callback(cross_validation_results)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">estimate_kwargs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">estimate_kwargs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">t</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">print_iterations</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">popsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+            <span class="n">ftol</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">,</span>
+            <span class="n">penalty_threshold</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">vectorized</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">rtol</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+            <span class="n">maxiter</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># ---------------------------------------------</span>
+    <span class="c1"># Initialize / Resume</span>
+    <span class="c1"># ---------------------------------------------</span>
+    <span class="k">if</span> <span class="n">cross_validation_results</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">cross_validation_results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">completed_parameter_counts</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">completed_parameter_counts</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">folds</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;n_parameters&quot;</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">folds</span> <span class="ow">in</span> <span class="n">cross_validation_results</span>
+        <span class="p">]</span>
+
+    <span class="n">full_parameter_range</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span>
+        <span class="n">min_parameters</span><span class="p">,</span>
+        <span class="nb">len</span><span class="p">(</span><span class="n">parameter_indices</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ---------------------------------------------</span>
+    <span class="c1"># Main Loop</span>
+    <span class="c1"># ---------------------------------------------</span>
+    <span class="k">for</span> <span class="n">n_parameters</span> <span class="ow">in</span> <span class="n">full_parameter_range</span><span class="p">:</span>
+
+        <span class="k">if</span> <span class="n">n_parameters</span> <span class="ow">in</span> <span class="n">completed_parameter_counts</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+
+        <span class="n">selected_parameters</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_p_list</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">parameter_indices</span><span class="p">[:</span><span class="n">n_parameters</span><span class="p">]</span>
+        <span class="p">]</span>
+
+        <span class="n">fold_results</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">fold_index</span><span class="p">,</span> <span class="n">test_case</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">case_list</span><span class="p">):</span>
+
+            <span class="n">training_cases</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">case</span> <span class="k">for</span> <span class="n">case</span> <span class="ow">in</span> <span class="n">case_list</span>
+                <span class="k">if</span> <span class="n">case</span> <span class="o">!=</span> <span class="n">test_case</span>
+            <span class="p">]</span>
+
+            <span class="n">fold_simulator</span> <span class="o">=</span> <span class="n">build_model</span><span class="p">(</span><span class="n">training_cases</span><span class="p">,</span> <span class="n">base_model</span><span class="o">.</span><span class="n">p</span><span class="p">)</span>
+            <span class="n">fold_simulator</span><span class="o">.</span><span class="n">set_unknown_params</span><span class="p">(</span><span class="n">selected_parameters</span><span class="p">)</span>
+
+            <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+            <span class="n">optimization_result</span><span class="p">,</span> <span class="n">estimated_parameters</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">fold_simulator</span><span class="o">.</span><span class="n">estimate</span><span class="p">(</span>
+                    <span class="n">get_exp_data</span><span class="p">(</span><span class="n">training_cases</span><span class="p">),</span>
+                    <span class="o">**</span><span class="n">estimate_kwargs</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="n">elapsed_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">start_time</span>
+
+            <span class="n">fold_simulator</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">update</span><span class="p">({</span>
+                <span class="n">name</span><span class="p">:</span> <span class="n">value</span>
+                <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+                    <span class="n">fold_simulator</span><span class="o">.</span><span class="n">p_i_name</span><span class="p">,</span>
+                    <span class="n">estimated_parameters</span>
+                <span class="p">)</span>
+            <span class="p">})</span>
+
+            <span class="n">rmse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">optimization_result</span><span class="o">.</span><span class="n">fun</span><span class="p">)</span> <span class="o">*</span> <span class="n">rmse_scale</span>
+
+            <span class="n">fold_results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s2">&quot;n_parameters&quot;</span><span class="p">:</span> <span class="n">n_parameters</span><span class="p">,</span>
+                <span class="s2">&quot;test_case&quot;</span><span class="p">:</span> <span class="n">test_case</span><span class="p">,</span>
+                <span class="s2">&quot;training_cases&quot;</span><span class="p">:</span> <span class="n">training_cases</span><span class="p">,</span>
+                <span class="s2">&quot;model_parameters&quot;</span><span class="p">:</span> <span class="n">fold_simulator</span><span class="o">.</span><span class="n">p</span><span class="p">,</span>
+                <span class="s2">&quot;optimization_result&quot;</span><span class="p">:</span> <span class="n">optimization_result</span><span class="p">,</span>
+                <span class="s2">&quot;estimated_parameters&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span>
+                    <span class="nb">zip</span><span class="p">(</span>
+                        <span class="n">fold_simulator</span><span class="o">.</span><span class="n">p_i_name</span><span class="p">,</span>
+                        <span class="n">estimated_parameters</span>
+                    <span class="p">)</span>
+                <span class="p">),</span>
+                <span class="s2">&quot;rmse&quot;</span><span class="p">:</span> <span class="n">rmse</span><span class="p">,</span>
+                <span class="s2">&quot;elapsed_time&quot;</span><span class="p">:</span> <span class="n">elapsed_time</span><span class="p">,</span>
+            <span class="p">})</span>
+
+        <span class="n">cross_validation_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fold_results</span><span class="p">)</span>
+
+        <span class="c1"># -----------------------------------------</span>
+        <span class="c1"># Automatic checkpoint</span>
+        <span class="c1"># -----------------------------------------</span>
+        <span class="k">if</span> <span class="n">checkpoint_callback</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">checkpoint_callback</span><span class="p">(</span><span class="n">cross_validation_results</span><span class="p">)</span>
+
+    <span class="c1"># Ensure sorted by complexity</span>
+    <span class="n">cross_validation_results</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span>
+        <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">folds</span><span class="p">:</span> <span class="n">folds</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;n_parameters&quot;</span><span class="p">]</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">cross_validation_results</span></div>
+
+
+<div class="viewcode-block" id="save_cross_validation_results">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.save_cross_validation_results">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">save_cross_validation_results</span><span class="p">(</span>
+    <span class="n">cross_validation_results</span><span class="p">,</span>
+    <span class="n">filename</span><span class="p">,</span>
+    <span class="n">output_dir</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Save cross-validation results to CSV.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">filepath</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;results_</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">.csv&quot;</span><span class="p">)</span>
+
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">fold_results</span> <span class="ow">in</span> <span class="n">cross_validation_results</span><span class="p">:</span>
+
+        <span class="k">for</span> <span class="n">fold</span> <span class="ow">in</span> <span class="n">fold_results</span><span class="p">:</span>
+
+            <span class="n">row</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;n_parameters&quot;</span><span class="p">:</span> <span class="n">fold</span><span class="p">[</span><span class="s2">&quot;n_parameters&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;computation_time&quot;</span><span class="p">:</span> <span class="n">fold</span><span class="p">[</span><span class="s2">&quot;elapsed_time&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;objective_value&quot;</span><span class="p">:</span> <span class="p">(</span>
+                    <span class="n">fold</span><span class="p">[</span><span class="s2">&quot;optimization_result&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">fun</span>
+                    <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">fold</span><span class="p">[</span><span class="s2">&quot;optimization_result&quot;</span><span class="p">],</span> <span class="s2">&quot;fun&quot;</span><span class="p">)</span>
+                    <span class="k">else</span> <span class="n">fold</span><span class="p">[</span><span class="s2">&quot;optimization_result&quot;</span><span class="p">]</span>
+                <span class="p">),</span>
+                <span class="s2">&quot;test_case&quot;</span><span class="p">:</span> <span class="n">fold</span><span class="p">[</span><span class="s2">&quot;test_case&quot;</span><span class="p">],</span>
+            <span class="p">}</span>
+
+            <span class="c1"># Store estimated parameters</span>
+            <span class="k">for</span> <span class="n">param_name</span><span class="p">,</span> <span class="n">param_value</span> <span class="ow">in</span> <span class="n">fold</span><span class="p">[</span><span class="s2">&quot;estimated_parameters&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">row</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">param_value</span>
+
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">filepath</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">filepath</span></div>
+
+
+<div class="viewcode-block" id="load_cross_validation_results">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.load_cross_validation_results">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">load_cross_validation_results</span><span class="p">(</span>
+    <span class="n">filepath</span><span class="p">,</span>
+    <span class="n">base_model</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Load cross-validation results from CSV and rebuild fold structure.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    cross_validation_results : list or None</span>
+<span class="sd">        Returns None if file does not exist.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">filepath</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+
+    <span class="n">cross_validation_results</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">n_parameters</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;n_parameters&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()):</span>
+
+        <span class="n">df_n</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">&quot;n_parameters&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">n_parameters</span><span class="p">]</span>
+        <span class="n">fold_results</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">df_n</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+
+            <span class="n">test_case</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;test_case&quot;</span><span class="p">]</span>
+
+            <span class="c1"># Rebuild parameter dictionary</span>
+            <span class="n">parameters</span> <span class="o">=</span> <span class="n">base_model</span><span class="o">.</span><span class="n">p</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+            <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="mi">4</span><span class="p">:]:</span>  <span class="c1"># skip metadata columns</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="n">row</span><span class="p">[</span><span class="n">column</span><span class="p">]</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+                    <span class="n">parameters</span><span class="p">[</span><span class="n">column</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+            <span class="n">fold_results</span><span class="o">.</span><span class="n">append</span><span class="p">({</span>
+                <span class="s2">&quot;n_parameters&quot;</span><span class="p">:</span> <span class="n">n_parameters</span><span class="p">,</span>
+                <span class="s2">&quot;test_case&quot;</span><span class="p">:</span> <span class="n">test_case</span><span class="p">,</span>
+                <span class="s2">&quot;training_cases&quot;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="s2">&quot;model_parameters&quot;</span><span class="p">:</span> <span class="n">parameters</span><span class="p">,</span>
+                <span class="s2">&quot;optimization_result&quot;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;objective_value&quot;</span><span class="p">],</span>
+                <span class="s2">&quot;estimated_parameters&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span>
+                    <span class="nb">zip</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="mi">4</span><span class="p">:],</span> <span class="n">row</span><span class="p">[</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span><span class="mi">4</span><span class="p">:]]</span><span class="o">.</span><span class="n">values</span><span class="p">)</span>
+                <span class="p">),</span>
+                <span class="s2">&quot;rmse&quot;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">&quot;objective_value&quot;</span><span class="p">]),</span>
+                <span class="s2">&quot;elapsed_time&quot;</span><span class="p">:</span> <span class="n">row</span><span class="p">[</span><span class="s2">&quot;computation_time&quot;</span><span class="p">],</span>
+            <span class="p">})</span>
+
+        <span class="n">cross_validation_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fold_results</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">cross_validation_results</span></div>
+
+
+<div class="viewcode-block" id="plot_rmse_vs_complexity_extrapolation">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.plot_rmse_vs_complexity_extrapolation">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_rmse_vs_complexity_extrapolation</span><span class="p">(</span>
+    <span class="n">cv_results</span><span class="p">,</span>
+    <span class="n">training_test_case</span><span class="p">,</span>
+    <span class="n">extrapolation_cases</span><span class="p">,</span>
+    <span class="n">parameter_indices</span><span class="p">,</span>
+    <span class="n">base_model</span><span class="p">,</span>
+    <span class="n">model_builder</span><span class="p">,</span>
+    <span class="n">simulate_callback</span><span class="p">,</span>
+    <span class="n">ylabel</span><span class="o">=</span><span class="s2">&quot;RMSE&quot;</span><span class="p">,</span>
+    <span class="n">quantity_multiplier</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+    <span class="n">condition_color</span><span class="o">=</span><span class="p">{},</span>
+    <span class="n">use_median</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span>
+    <span class="n">xrotation</span><span class="o">=</span><span class="mi">45</span><span class="p">,</span>
+    <span class="n">save_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plot RMSE vs model complexity for conditions that are neither in the</span>
+<span class="sd">    training nor the testing dataset, for a given fixed test case.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cv_results : dict</span>
+<span class="sd">        Cross-validation results.</span>
+<span class="sd">    training_test_case : int or str</span>
+<span class="sd">        The test case (left-out condition) used to select the fold.</span>
+<span class="sd">    extrapolation_cases : list</span>
+<span class="sd">        Conditions not included in training or testing, to evaluate on.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">complexity_levels</span> <span class="o">=</span> <span class="n">get_complexity_levels</span><span class="p">(</span><span class="n">cv_results</span><span class="p">)</span>
+
+    <span class="n">rmse_values</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">case_column</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">complexity_column</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># Collect RMSE values</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="k">for</span> <span class="n">n_parameters</span> <span class="ow">in</span> <span class="n">complexity_levels</span><span class="p">:</span>
+
+        <span class="n">folds</span> <span class="o">=</span> <span class="n">get_folds_for_complexity</span><span class="p">(</span><span class="n">cv_results</span><span class="p">,</span> <span class="n">n_parameters</span><span class="p">)</span>
+
+        <span class="c1"># Select only the fold corresponding to the fixed test case</span>
+        <span class="n">matching_folds</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">folds</span> <span class="k">if</span> <span class="n">f</span><span class="p">[</span><span class="s2">&quot;test_case&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">training_test_case</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">fold</span> <span class="ow">in</span> <span class="n">matching_folds</span><span class="p">:</span>
+
+            <span class="n">model_parameters</span> <span class="o">=</span> <span class="n">fold</span><span class="p">[</span><span class="s2">&quot;model_parameters&quot;</span><span class="p">]</span>
+            <span class="n">cell_model</span> <span class="o">=</span> <span class="n">model_builder</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">,</span> <span class="n">training_test_case</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">case</span> <span class="ow">in</span> <span class="n">extrapolation_cases</span><span class="p">:</span>
+
+                <span class="n">x_sim</span><span class="p">,</span> <span class="n">y_sim</span><span class="p">,</span> <span class="n">x_exp</span><span class="p">,</span> <span class="n">y_exp</span> <span class="o">=</span> <span class="n">simulate_callback</span><span class="p">(</span><span class="n">case</span><span class="p">,</span> <span class="n">cell_model</span><span class="p">)</span>
+
+                <span class="n">residuals</span> <span class="o">=</span> <span class="n">y_exp</span> <span class="o">-</span> <span class="n">y_sim</span>
+                <span class="n">rmse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">residuals</span><span class="p">,</span> <span class="n">residuals</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">residuals</span><span class="p">))</span> <span class="o">*</span> <span class="n">quantity_multiplier</span>
+
+                <span class="n">rmse_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rmse</span><span class="p">)</span>
+                <span class="n">case_column</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">case</span><span class="p">)</span>
+                <span class="n">complexity_column</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">n_parameters</span><span class="p">)</span>
+
+    <span class="n">rmse_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+        <span class="s2">&quot;rmse&quot;</span><span class="p">:</span> <span class="n">rmse_values</span><span class="p">,</span>
+        <span class="s2">&quot;case&quot;</span><span class="p">:</span> <span class="n">case_column</span><span class="p">,</span>
+        <span class="s2">&quot;n_parameters&quot;</span><span class="p">:</span> <span class="n">complexity_column</span><span class="p">,</span>
+    <span class="p">})</span>
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># Aggregate</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="n">agg_fn</span> <span class="o">=</span> <span class="s2">&quot;median&quot;</span> <span class="k">if</span> <span class="n">use_median</span> <span class="k">else</span> <span class="s2">&quot;mean&quot;</span>
+    <span class="n">overall_trend</span> <span class="o">=</span> <span class="n">rmse_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;n_parameters&quot;</span><span class="p">)[</span><span class="s2">&quot;rmse&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="n">agg_fn</span><span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># Plot</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">condition_color</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span> 
+        <span class="n">condition_color</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">case</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;C</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">case</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">extrapolation_cases</span><span class="p">)</span>
+        <span class="p">}</span>
+
+    <span class="n">handles</span><span class="p">,</span> <span class="n">labels</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+
+    <span class="c1"># Individual RMSE per extrapolation condition</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">case</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">extrapolation_cases</span><span class="p">):</span>
+
+        <span class="n">case_df</span> <span class="o">=</span> <span class="n">rmse_df</span><span class="p">[</span><span class="n">rmse_df</span><span class="p">[</span><span class="s2">&quot;case&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">case</span><span class="p">]</span>
+
+        <span class="n">line</span><span class="p">,</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">semilogy</span><span class="p">(</span>
+            <span class="n">case_df</span><span class="p">[</span><span class="s2">&quot;n_parameters&quot;</span><span class="p">],</span>
+            <span class="n">case_df</span><span class="p">[</span><span class="s2">&quot;rmse&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;s&quot;</span> <span class="o">+</span> <span class="n">condition_color</span><span class="p">[</span><span class="n">case</span><span class="p">],</span>
+            <span class="n">markersize</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">handles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="n">labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">case</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Overall trend</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">semilogy</span><span class="p">(</span>
+        <span class="n">complexity_levels</span><span class="p">,</span>
+        <span class="n">overall_trend</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="s2">&quot;dimgray&quot;</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Median&quot;</span> <span class="k">if</span> <span class="n">use_median</span> <span class="k">else</span> <span class="s2">&quot;Average&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; RMSE - extrapolation&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># Formatting</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="n">full_parameter_range</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameter_indices</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">ylabel</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">full_parameter_range</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameter_indices</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
+
+    <span class="n">param_labels</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_p_list</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">parameter_indices</span>
+    <span class="p">]</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">param_labels</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="n">xrotation</span><span class="p">)</span>
+
+    <span class="c1"># Top x-axis</span>
+    <span class="n">ax_top</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">twiny</span><span class="p">()</span>
+    <span class="n">ax_top</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">full_parameter_range</span><span class="p">)</span>
+    <span class="n">ax_top</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">ax</span><span class="o">.</span><span class="n">get_xlim</span><span class="p">())</span>
+    <span class="n">ax_top</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Number of selected parameters&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Legends</span>
+    <span class="n">leg1</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span>
+        <span class="n">handles</span><span class="o">=</span><span class="n">handles</span><span class="p">,</span>
+        <span class="n">labels</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span>
+        <span class="n">loc</span><span class="o">=</span><span class="s2">&quot;upper left&quot;</span><span class="p">,</span>
+        <span class="n">bbox_to_anchor</span><span class="o">=</span><span class="p">(</span><span class="mf">0.99</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">),</span>
+        <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Condition&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">leg1</span><span class="p">)</span>
+
+    <span class="c1"># ax.set_title(f&quot;Extrapolation RMSE (fold: test case = {training_test_case})&quot;)</span>
+
+    <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">save_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">save_path</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="n">dpi</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">&quot;tight&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">rmse_df</span></div>
+
+
+<div class="viewcode-block" id="plot_rmse_vs_complexity">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.plot_rmse_vs_complexity">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_rmse_vs_complexity</span><span class="p">(</span>
+    <span class="n">cv_results</span><span class="p">,</span>
+    <span class="n">case_list</span><span class="p">,</span>
+    <span class="n">parameter_indices</span><span class="p">,</span>
+    <span class="n">base_model</span><span class="p">,</span>
+    <span class="n">model_builder</span><span class="p">,</span>
+    <span class="n">simulate_callback</span><span class="p">,</span>
+    <span class="n">ylabel</span><span class="o">=</span><span class="s2">&quot;RMSE&quot;</span><span class="p">,</span>
+    <span class="n">quantity_multiplier</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span>
+    <span class="n">use_median</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> 
+    <span class="n">plot_one_sigma_interval</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="mi">4</span><span class="p">),</span>
+    <span class="n">xrotation</span><span class="o">=</span><span class="mi">45</span><span class="p">,</span>
+    <span class="n">save_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plot train and test RMSE vs model complexity.</span>
+<span class="sd">    Compatible with cv_results format.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">complexity_levels</span> <span class="o">=</span> <span class="n">get_complexity_levels</span><span class="p">(</span><span class="n">cv_results</span><span class="p">)</span>
+
+    <span class="n">rmse_values</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">case_column</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">test_case_column</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">complexity_column</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># Collect RMSE values</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="k">for</span> <span class="n">n_parameters</span> <span class="ow">in</span> <span class="n">complexity_levels</span><span class="p">:</span>
+
+        <span class="n">folds</span> <span class="o">=</span> <span class="n">get_folds_for_complexity</span><span class="p">(</span><span class="n">cv_results</span><span class="p">,</span> <span class="n">n_parameters</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">fold</span> <span class="ow">in</span> <span class="n">folds</span><span class="p">:</span>
+
+            <span class="n">test_case</span> <span class="o">=</span> <span class="n">fold</span><span class="p">[</span><span class="s2">&quot;test_case&quot;</span><span class="p">]</span>
+            <span class="n">model_parameters</span> <span class="o">=</span> <span class="n">fold</span><span class="p">[</span><span class="s2">&quot;model_parameters&quot;</span><span class="p">]</span>
+            <span class="n">cell_model</span> <span class="o">=</span> <span class="n">model_builder</span><span class="p">(</span><span class="n">model_parameters</span><span class="p">,</span> <span class="n">test_case</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">case</span> <span class="ow">in</span> <span class="n">case_list</span><span class="p">:</span>
+
+                <span class="n">x_sim</span><span class="p">,</span> <span class="n">y_sim</span><span class="p">,</span> <span class="n">x_exp</span><span class="p">,</span> <span class="n">y_exp</span> <span class="o">=</span> <span class="n">simulate_callback</span><span class="p">(</span><span class="n">case</span><span class="p">,</span> <span class="n">cell_model</span><span class="p">)</span>
+
+                <span class="n">residuals</span> <span class="o">=</span> <span class="n">y_exp</span> <span class="o">-</span> <span class="n">y_sim</span>
+                <span class="n">rmse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">residuals</span><span class="p">,</span> <span class="n">residuals</span><span class="p">)</span> <span class="o">/</span> <span class="nb">len</span><span class="p">(</span><span class="n">residuals</span><span class="p">))</span> <span class="o">*</span> <span class="n">quantity_multiplier</span>
+
+                <span class="n">rmse_values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rmse</span><span class="p">)</span>
+                <span class="n">case_column</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">case</span><span class="p">)</span>
+                <span class="n">test_case_column</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">test_case</span><span class="p">)</span>
+                <span class="n">complexity_column</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">n_parameters</span><span class="p">)</span>
+
+    <span class="n">rmse_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">({</span>
+        <span class="s2">&quot;rmse&quot;</span><span class="p">:</span> <span class="n">rmse_values</span><span class="p">,</span>
+        <span class="s2">&quot;case&quot;</span><span class="p">:</span> <span class="n">case_column</span><span class="p">,</span>
+        <span class="s2">&quot;test_case&quot;</span><span class="p">:</span> <span class="n">test_case_column</span><span class="p">,</span>
+        <span class="s2">&quot;n_parameters&quot;</span><span class="p">:</span> <span class="n">complexity_column</span><span class="p">,</span>
+    <span class="p">})</span>
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># Separate train and test</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="n">test_df</span> <span class="o">=</span> <span class="n">rmse_df</span><span class="p">[</span><span class="n">rmse_df</span><span class="p">[</span><span class="s2">&quot;case&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">rmse_df</span><span class="p">[</span><span class="s2">&quot;test_case&quot;</span><span class="p">]]</span>
+    <span class="n">train_df</span> <span class="o">=</span> <span class="n">rmse_df</span><span class="p">[</span><span class="n">rmse_df</span><span class="p">[</span><span class="s2">&quot;case&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">rmse_df</span><span class="p">[</span><span class="s2">&quot;test_case&quot;</span><span class="p">]]</span>
+
+    <span class="n">test_mean</span> <span class="o">=</span> <span class="n">test_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;n_parameters&quot;</span><span class="p">)[</span><span class="s2">&quot;rmse&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">test_median</span> <span class="o">=</span> <span class="n">test_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;n_parameters&quot;</span><span class="p">)[</span><span class="s2">&quot;rmse&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">median</span><span class="p">()</span>
+    <span class="n">test_std</span> <span class="o">=</span> <span class="n">test_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;n_parameters&quot;</span><span class="p">)[</span><span class="s2">&quot;rmse&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">std</span><span class="p">()</span>
+    <span class="n">train_mean</span> <span class="o">=</span> <span class="n">train_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;n_parameters&quot;</span><span class="p">)[</span><span class="s2">&quot;rmse&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">train_median</span> <span class="o">=</span> <span class="n">train_df</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s2">&quot;n_parameters&quot;</span><span class="p">)[</span><span class="s2">&quot;rmse&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">median</span><span class="p">()</span>
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># Optimal number of parameters based on 1 std deviaiton rule </span>
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># See https://esl.hohoweiya.xyz/book/The%20Elements%20of%20Statistical%20Learning.pdf</span>
+    
+    <span class="n">optimal_n</span> <span class="o">=</span> <span class="n">test_mean</span><span class="o">.</span><span class="n">idxmin</span><span class="p">()</span>
+
+    <span class="n">best</span> <span class="o">=</span> <span class="n">test_mean</span><span class="o">.</span><span class="n">idxmin</span><span class="p">()</span>
+    <span class="n">threshold</span> <span class="o">=</span> <span class="n">test_mean</span><span class="p">[</span><span class="n">best</span><span class="p">]</span> <span class="o">+</span> <span class="n">test_std</span><span class="p">[</span><span class="n">best</span><span class="p">]</span>
+
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">test_mean</span><span class="o">.</span><span class="n">index</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">test_mean</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">threshold</span><span class="p">:</span>
+            <span class="n">optimal_n</span> <span class="o">=</span> <span class="n">n</span>
+            <span class="k">break</span>
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># Plot</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">,</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">condition_color</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">case</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;C</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">case</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">case_list</span><span class="p">)</span>
+    <span class="p">}</span>
+
+    <span class="n">handles</span><span class="p">,</span> <span class="n">labels</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+
+    <span class="c1"># Individual test RMSE per condition</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">case</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">case_list</span><span class="p">):</span>
+
+        <span class="n">case_df</span> <span class="o">=</span> <span class="n">test_df</span><span class="p">[</span><span class="n">test_df</span><span class="p">[</span><span class="s2">&quot;case&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">case</span><span class="p">]</span>
+
+        <span class="n">line</span><span class="p">,</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+            <span class="n">case_df</span><span class="p">[</span><span class="s2">&quot;n_parameters&quot;</span><span class="p">],</span>
+            <span class="n">case_df</span><span class="p">[</span><span class="s2">&quot;rmse&quot;</span><span class="p">],</span>
+            <span class="s2">&quot;s&quot;</span> <span class="o">+</span> <span class="n">condition_color</span><span class="p">[</span><span class="n">case</span><span class="p">],</span>
+            <span class="n">markersize</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">handles</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+        <span class="n">labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Average test/train curves</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+        <span class="n">complexity_levels</span><span class="p">,</span>
+        <span class="p">(</span><span class="n">test_median</span> <span class="k">if</span> <span class="n">use_median</span> <span class="k">else</span> <span class="n">test_mean</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="s2">&quot;dimgray&quot;</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Median&quot;</span> <span class="k">if</span> <span class="n">use_median</span> <span class="k">else</span> <span class="s2">&quot;Average&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; RMSE - test&quot;</span>
+    <span class="p">)</span>
+ 
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+        <span class="n">complexity_levels</span><span class="p">,</span>
+        <span class="p">(</span><span class="n">train_median</span> <span class="k">if</span> <span class="n">use_median</span> <span class="k">else</span> <span class="n">train_mean</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="s2">&quot;dimgray&quot;</span><span class="p">,</span>
+        <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;Median&quot;</span> <span class="k">if</span> <span class="n">use_median</span> <span class="k">else</span> <span class="s2">&quot;Average&quot;</span><span class="p">)</span> <span class="o">+</span> <span class="s2">&quot; RMSE - train&quot;</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">plot_one_sigma_interval</span><span class="p">:</span> 
+        <span class="n">ax</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span>
+            <span class="n">complexity_levels</span><span class="p">,</span>
+            <span class="n">test_mean</span><span class="o">.</span><span class="n">values</span> <span class="o">-</span> <span class="n">test_std</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+            <span class="n">test_mean</span><span class="o">.</span><span class="n">values</span> <span class="o">+</span> <span class="n">test_std</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+            <span class="n">color</span><span class="o">=</span><span class="s2">&quot;dimgray&quot;</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+            <span class="n">label</span><span class="o">=</span><span class="s2">&quot;$\pm$ 1$\sigma$ RMSE - test&quot;</span>
+        <span class="p">)</span>
+
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># Formatting</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="n">full_parameter_range</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameter_indices</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">ylabel</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">bottom</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+
+    <span class="c1"># X-axis spans ALL unknown parameters</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">full_parameter_range</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameter_indices</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
+
+    <span class="n">param_labels</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_p_list</span><span class="p">[</span><span class="n">idx</span><span class="p">][</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">parameter_indices</span>
+    <span class="p">]</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">param_labels</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="n">xrotation</span><span class="p">)</span>
+
+    <span class="c1"># Top x-axis: number of selected parameters</span>
+    <span class="n">ax_top</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">twiny</span><span class="p">()</span>
+    <span class="n">ax_top</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">full_parameter_range</span><span class="p">)</span>
+    <span class="n">ax_top</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">ax</span><span class="o">.</span><span class="n">get_xlim</span><span class="p">())</span>
+    <span class="n">ax_top</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;Number of selected parameters&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Legends</span>
+    <span class="n">leg1</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span>
+        <span class="n">handles</span><span class="o">=</span><span class="n">handles</span><span class="p">,</span>
+        <span class="n">labels</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span>
+        <span class="n">loc</span><span class="o">=</span><span class="s2">&quot;upper left&quot;</span><span class="p">,</span>
+        <span class="n">bbox_to_anchor</span><span class="o">=</span><span class="p">(</span><span class="mf">0.99</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">),</span>
+        <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span>
+        <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Condition&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">add_artist</span><span class="p">(</span><span class="n">leg1</span><span class="p">)</span>
+
+    <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">save_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">save_path</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="n">dpi</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s2">&quot;tight&quot;</span><span class="p">)</span>
+
+   
+
+    <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">rmse_df</span><span class="p">,</span> <span class="n">optimal_n</span></div>
+
+
+<div class="viewcode-block" id="plot_parameter_vs_complexity">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.plot_parameter_vs_complexity">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_parameter_vs_complexity</span><span class="p">(</span>
+    <span class="n">cv_results</span><span class="p">,</span>
+    <span class="n">parameter_indices</span><span class="p">,</span>
+    <span class="n">base_model</span><span class="p">,</span>
+    <span class="n">parameter_units</span><span class="p">,</span>
+    <span class="n">condition_color</span><span class="p">,</span>
+    <span class="n">initial_parameters</span><span class="p">,</span>
+    <span class="n">plot_ci</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">n_cols</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span>
+    <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span>
+    <span class="n">confidence</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span>
+    <span class="n">save_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plot evolution of parameters across complexity levels.</span>
+
+<span class="sd">    Parameters not yet estimated remain empty (NaN).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">parameter_counts</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([</span>
+        <span class="n">folds</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;n_parameters&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">folds</span> <span class="ow">in</span> <span class="n">cv_results</span>
+    <span class="p">])</span>
+
+    <span class="n">n_display</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameter_indices</span><span class="p">)</span>
+    <span class="n">n_rows</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">n_display</span> <span class="o">/</span> <span class="n">n_cols</span><span class="p">))</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">n_rows</span><span class="p">,</span> <span class="n">n_cols</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">,</span> <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">axes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">axes</span><span class="p">)</span>
+
+    <span class="n">n_cases</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">cv_results</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">n_steps</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameter_counts</span><span class="p">)</span>
+
+    <span class="n">all_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">n_cases</span><span class="p">,</span> <span class="n">n_steps</span><span class="p">,</span> <span class="n">n_display</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># 1) Collect scaled values (only if estimated)</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="k">for</span> <span class="n">case_index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_cases</span><span class="p">):</span>
+
+        <span class="n">test_case</span> <span class="o">=</span> <span class="n">cv_results</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">case_index</span><span class="p">][</span><span class="s2">&quot;test_case&quot;</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">step_index</span><span class="p">,</span> <span class="n">folds</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cv_results</span><span class="p">):</span>
+
+            <span class="n">fold</span> <span class="o">=</span> <span class="n">folds</span><span class="p">[</span><span class="n">case_index</span><span class="p">]</span>
+            <span class="n">estimated_params</span> <span class="o">=</span> <span class="n">fold</span><span class="p">[</span><span class="s2">&quot;estimated_parameters&quot;</span><span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">param_position</span><span class="p">,</span> <span class="n">param_idx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">parameter_indices</span><span class="p">):</span>
+
+                <span class="n">param_name</span> <span class="o">=</span> <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_p_list</span><span class="p">[</span><span class="n">param_idx</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+                <span class="n">scale</span> <span class="o">=</span> <span class="n">parameter_units</span><span class="p">[</span><span class="n">param_name</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+
+                <span class="c1"># Parameter estimated only if within complexity</span>
+                <span class="k">if</span> <span class="n">param_name</span> <span class="ow">in</span> <span class="n">estimated_params</span><span class="p">:</span>
+                    <span class="n">value</span> <span class="o">=</span> <span class="n">estimated_params</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span> <span class="o">/</span> <span class="n">scale</span>
+                    <span class="n">all_values</span><span class="p">[</span><span class="n">case_index</span><span class="p">,</span> <span class="n">step_index</span><span class="p">,</span> <span class="n">param_position</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+
+        <span class="c1"># Plot markers</span>
+        <span class="k">for</span> <span class="n">param_position</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_display</span><span class="p">):</span>
+
+            <span class="n">row</span> <span class="o">=</span> <span class="n">param_position</span> <span class="o">//</span> <span class="n">n_cols</span>
+            <span class="n">col</span> <span class="o">=</span> <span class="n">param_position</span> <span class="o">%</span> <span class="n">n_cols</span>
+            <span class="n">axis</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span>
+
+            <span class="n">axis</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+                <span class="n">parameter_counts</span><span class="p">,</span>
+                <span class="n">all_values</span><span class="p">[</span><span class="n">case_index</span><span class="p">,</span> <span class="p">:,</span> <span class="n">param_position</span><span class="p">],</span>
+                <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;.&#39;</span><span class="p">,</span>
+                <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;None&#39;</span><span class="p">,</span>
+                <span class="n">color</span><span class="o">=</span><span class="n">condition_color</span><span class="p">[</span><span class="n">test_case</span><span class="p">],</span>
+                <span class="n">alpha</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># 2) Mean + CI (NaN-aware + log-aware)</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="n">mean_vals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">n_steps</span><span class="p">,</span> <span class="n">n_display</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="n">lower_ci</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full_like</span><span class="p">(</span><span class="n">mean_vals</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+    <span class="n">upper_ci</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full_like</span><span class="p">(</span><span class="n">mean_vals</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">param_position</span><span class="p">,</span> <span class="n">param_idx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">parameter_indices</span><span class="p">):</span>
+
+        <span class="n">param_info</span> <span class="o">=</span> <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_p_list</span><span class="p">[</span><span class="n">param_idx</span><span class="p">]</span>
+        <span class="n">param_name</span> <span class="o">=</span> <span class="n">param_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">is_log</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">param_info</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+        <span class="n">values</span> <span class="o">=</span> <span class="n">all_values</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">param_position</span><span class="p">]</span>
+
+        <span class="k">for</span> <span class="n">step_index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_steps</span><span class="p">):</span>
+
+            <span class="n">valid</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">values</span><span class="p">[:,</span> <span class="n">step_index</span><span class="p">])</span>
+            <span class="n">valid_values</span> <span class="o">=</span> <span class="n">values</span><span class="p">[</span><span class="n">valid</span><span class="p">,</span> <span class="n">step_index</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">valid_values</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">continue</span>  <span class="c1"># not enough data for CI</span>
+
+            <span class="k">if</span> <span class="n">is_log</span><span class="p">:</span>
+                <span class="n">log_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log10</span><span class="p">(</span><span class="n">valid_values</span><span class="p">)</span>
+                <span class="n">mean_log</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">log_values</span><span class="p">)</span>
+                <span class="n">std_log</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">log_values</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+                <span class="n">t_multiplier</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">t</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span>
+                    <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">confidence</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span>
+                    <span class="n">df</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">valid_values</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="p">)</span>
+
+                <span class="n">ci_half</span> <span class="o">=</span> <span class="n">t_multiplier</span> <span class="o">*</span> <span class="n">std_log</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">valid_values</span><span class="p">))</span>
+
+                <span class="n">mean_vals</span><span class="p">[</span><span class="n">step_index</span><span class="p">,</span> <span class="n">param_position</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">**</span> <span class="n">mean_log</span>
+                <span class="n">lower_ci</span><span class="p">[</span><span class="n">step_index</span><span class="p">,</span> <span class="n">param_position</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="n">mean_log</span> <span class="o">-</span> <span class="n">ci_half</span><span class="p">)</span>
+                <span class="n">upper_ci</span><span class="p">[</span><span class="n">step_index</span><span class="p">,</span> <span class="n">param_position</span><span class="p">]</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="n">mean_log</span> <span class="o">+</span> <span class="n">ci_half</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">mean_lin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">valid_values</span><span class="p">)</span>
+                <span class="n">std_lin</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">valid_values</span><span class="p">,</span> <span class="n">ddof</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+                <span class="n">t_multiplier</span> <span class="o">=</span> <span class="n">stats</span><span class="o">.</span><span class="n">t</span><span class="o">.</span><span class="n">ppf</span><span class="p">(</span>
+                    <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">confidence</span><span class="p">)</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span>
+                    <span class="n">df</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">valid_values</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="p">)</span>
+
+                <span class="n">ci_half</span> <span class="o">=</span> <span class="n">t_multiplier</span> <span class="o">*</span> <span class="n">std_lin</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">valid_values</span><span class="p">))</span>
+
+                <span class="n">mean_vals</span><span class="p">[</span><span class="n">step_index</span><span class="p">,</span> <span class="n">param_position</span><span class="p">]</span> <span class="o">=</span> <span class="n">mean_lin</span>
+                <span class="n">lower_ci</span><span class="p">[</span><span class="n">step_index</span><span class="p">,</span> <span class="n">param_position</span><span class="p">]</span> <span class="o">=</span> <span class="n">mean_lin</span> <span class="o">-</span> <span class="n">ci_half</span>
+                <span class="n">upper_ci</span><span class="p">[</span><span class="n">step_index</span><span class="p">,</span> <span class="n">param_position</span><span class="p">]</span> <span class="o">=</span> <span class="n">mean_lin</span> <span class="o">+</span> <span class="n">ci_half</span>
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># 3) Plot mean + CI + reference</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="k">for</span> <span class="n">param_position</span><span class="p">,</span> <span class="n">param_idx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">parameter_indices</span><span class="p">):</span>
+
+        <span class="n">row</span> <span class="o">=</span> <span class="n">param_position</span> <span class="o">//</span> <span class="n">n_cols</span>
+        <span class="n">col</span> <span class="o">=</span> <span class="n">param_position</span> <span class="o">%</span> <span class="n">n_cols</span>
+        <span class="n">axis</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span>
+
+        <span class="n">param_info</span> <span class="o">=</span> <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_p_list</span><span class="p">[</span><span class="n">param_idx</span><span class="p">]</span>
+        <span class="n">param_name</span> <span class="o">=</span> <span class="n">param_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">parameter_units</span><span class="p">[</span><span class="n">param_name</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">axis</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+            <span class="n">parameter_counts</span><span class="p">,</span>
+            <span class="n">mean_vals</span><span class="p">[:,</span> <span class="n">param_position</span><span class="p">],</span>
+            <span class="n">color</span><span class="o">=</span><span class="s1">&#39;dimgray&#39;</span><span class="p">,</span>
+            <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Mean&#39;</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">plot_ci</span><span class="p">:</span>
+            <span class="n">axis</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span>
+                <span class="n">parameter_counts</span><span class="p">,</span>
+                <span class="n">lower_ci</span><span class="p">[:,</span> <span class="n">param_position</span><span class="p">],</span>
+                <span class="n">upper_ci</span><span class="p">[:,</span> <span class="n">param_position</span><span class="p">],</span>
+                <span class="n">color</span><span class="o">=</span><span class="s1">&#39;dimgray&#39;</span><span class="p">,</span>
+                <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">,</span>
+                <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">confidence</span><span class="o">*</span><span class="mi">100</span><span class="p">)</span><span class="si">}</span><span class="s1">% CI&#39;</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Reference line (always visible)</span>
+        <span class="n">ref</span> <span class="o">=</span> <span class="mf">0.99</span> <span class="o">*</span> <span class="n">initial_parameters</span><span class="p">[</span><span class="n">param_name</span><span class="p">]</span> <span class="o">/</span> <span class="n">scale</span>
+        <span class="n">axis</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+            <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameter_indices</span><span class="p">)],</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">ref</span><span class="p">,</span>
+            <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;--&#39;</span><span class="p">,</span>
+            <span class="n">color</span><span class="o">=</span><span class="s1">&#39;dimgray&#39;</span><span class="p">,</span>
+            <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.1</span><span class="p">,</span>
+            <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Reference&#39;</span>
+        <span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># 4) Formatting (unchanged logic)</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="k">for</span> <span class="n">param_position</span><span class="p">,</span> <span class="n">param_idx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">parameter_indices</span><span class="p">):</span>
+
+        <span class="n">row</span> <span class="o">=</span> <span class="n">param_position</span> <span class="o">//</span> <span class="n">n_cols</span>
+        <span class="n">col</span> <span class="o">=</span> <span class="n">param_position</span> <span class="o">%</span> <span class="n">n_cols</span>
+        <span class="n">axis</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="n">row</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span>
+
+        <span class="n">param_info</span> <span class="o">=</span> <span class="n">base_model</span><span class="o">.</span><span class="n">unknown_p_list</span><span class="p">[</span><span class="n">param_idx</span><span class="p">]</span>
+        <span class="n">param_name</span> <span class="o">=</span> <span class="n">param_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">scale</span> <span class="o">=</span> <span class="n">parameter_units</span><span class="p">[</span><span class="n">param_name</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+
+        <span class="n">axis</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">param_position</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s1"> – </span><span class="si">{</span><span class="n">param_info</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span><span class="p">)</span>
+        <span class="n">axis</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;(</span><span class="si">{</span><span class="n">parameter_units</span><span class="p">[</span><span class="n">param_name</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s1">)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+
+        <span class="n">axis</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">parameter_indices</span><span class="p">)))</span>
+        <span class="n">axis</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">([</span><span class="n">bound</span> <span class="o">/</span> <span class="n">scale</span> <span class="k">for</span> <span class="n">bound</span> <span class="ow">in</span> <span class="n">param_info</span><span class="p">[</span><span class="mi">1</span><span class="p">]])</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">param_info</span><span class="p">[</span><span class="mi">2</span><span class="p">]:</span>
+            <span class="n">axis</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s1">&#39;log&#39;</span><span class="p">)</span>
+
+        <span class="n">axis</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_cols</span><span class="p">):</span>
+        <span class="n">axes</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">col</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s1">&#39;Number of selected</span><span class="se">\n</span><span class="s1">parameters&#39;</span><span class="p">)</span>
+
+    <span class="n">handles</span><span class="p">,</span> <span class="n">labels</span> <span class="o">=</span> <span class="n">axes</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">get_legend_handles_labels</span><span class="p">()</span>
+    <span class="n">by_label</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">labels</span><span class="p">,</span> <span class="n">handles</span><span class="p">))</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">by_label</span><span class="o">.</span><span class="n">values</span><span class="p">(),</span> <span class="n">by_label</span><span class="o">.</span><span class="n">keys</span><span class="p">(),</span>
+               <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper center&#39;</span><span class="p">,</span> <span class="n">ncol</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+
+    <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">(</span><span class="n">rect</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">0.96</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">save_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">save_path</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="n">dpi</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">axes</span><span class="p">,</span> <span class="n">mean_vals</span><span class="p">,</span> <span class="n">lower_ci</span><span class="p">,</span> <span class="n">upper_ci</span></div>
+
+
+<div class="viewcode-block" id="plot_cross_validation_curves">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.plot_cross_validation_curves">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_cross_validation_curves</span><span class="p">(</span>
+    <span class="n">n_parameters</span><span class="p">,</span>
+    <span class="n">cv_results</span><span class="p">,</span>
+    <span class="n">case_list</span><span class="p">,</span>
+    <span class="n">case_table</span><span class="p">,</span>
+    <span class="n">condition_color</span><span class="p">,</span>
+    <span class="n">simulate_callback</span><span class="p">,</span>
+    <span class="n">model_builder</span><span class="p">,</span>
+    <span class="n">quantity_name</span><span class="o">=</span><span class="s2">&quot;Cell voltage&quot;</span><span class="p">,</span>
+    <span class="n">quantity_symbol</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;$V_</span><span class="si">{cell}</span><span class="s2">$&quot;</span><span class="p">,</span>
+    <span class="n">quantity_unit</span><span class="o">=</span><span class="s2">&quot;V&quot;</span><span class="p">,</span>
+    <span class="n">case_titles</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">x_label</span><span class="o">=</span><span class="sa">r</span><span class="s2">&quot;$i$ (A/cm$^2$)&quot;</span><span class="p">,</span>
+    <span class="n">save_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">dpi</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span>
+    <span class="n">uncertainty</span><span class="o">=</span><span class="mf">0.1</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Cross-validation curve plotting compatible with new cv_results format.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># Select correct complexity level</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="n">folds</span> <span class="o">=</span> <span class="n">get_folds_for_complexity</span><span class="p">(</span><span class="n">cv_results</span><span class="p">,</span> <span class="n">n_parameters</span><span class="p">)</span>
+
+    <span class="n">n_cases</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">case_list</span><span class="p">)</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span>
+        <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span>
+        <span class="n">nrows</span><span class="o">=</span><span class="n">n_cases</span><span class="p">,</span>
+        <span class="n">ncols</span><span class="o">=</span><span class="n">n_cases</span><span class="p">,</span>
+        <span class="n">sharex</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">sharey</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+
+    <span class="n">fig</span><span class="o">.</span><span class="n">set_tight_layout</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">rmse_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">maxerr_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># Loop over folds (left-out condition)</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">fold</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">folds</span><span class="p">):</span>
+
+        <span class="n">case_left_out</span> <span class="o">=</span> <span class="n">fold</span><span class="p">[</span><span class="s2">&quot;test_case&quot;</span><span class="p">]</span>
+
+        <span class="c1"># Rebuild model from stored parameters</span>
+        <span class="n">cell_model</span> <span class="o">=</span> <span class="n">model_builder</span><span class="p">(</span><span class="n">fold</span><span class="p">[</span><span class="s2">&quot;model_parameters&quot;</span><span class="p">],</span> <span class="n">case_left_out</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">case</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">case_list</span><span class="p">):</span>
+
+            <span class="c1"># ---- Simulation ----</span>
+            <span class="n">x_sim</span><span class="p">,</span> <span class="n">y_sim</span><span class="p">,</span> <span class="n">x_exp</span><span class="p">,</span> <span class="n">y_exp</span> <span class="o">=</span> <span class="n">simulate_callback</span><span class="p">(</span><span class="n">case</span><span class="p">,</span> <span class="n">cell_model</span><span class="p">)</span>
+
+            <span class="c1"># ---- Errors ----</span>
+            <span class="n">y_sim_interp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span><span class="n">x_exp</span><span class="p">,</span> <span class="n">x_sim</span><span class="p">,</span> <span class="n">y_sim</span><span class="p">)</span>
+
+            <span class="n">rmse</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">((</span><span class="n">y_sim_interp</span> <span class="o">-</span> <span class="n">y_exp</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">))</span>
+            <span class="n">maxerr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">y_sim_interp</span> <span class="o">-</span> <span class="n">y_exp</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="n">case</span> <span class="o">==</span> <span class="n">case_left_out</span><span class="p">:</span>
+                <span class="n">rmse_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rmse</span><span class="p">)</span>
+                <span class="n">maxerr_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">maxerr</span><span class="p">)</span>
+
+            <span class="c1"># ---- Plot ----</span>
+            <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+                <span class="n">x_sim</span><span class="p">,</span>
+                <span class="n">y_sim</span><span class="p">,</span>
+                <span class="s1">&#39;-&#39;</span> <span class="o">+</span> <span class="n">condition_color</span><span class="p">[</span><span class="n">case</span><span class="p">]</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">uncertainty</span><span class="p">:</span>  
+                <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span>
+                    <span class="n">x_sim</span><span class="p">,</span> 
+                    <span class="p">(</span><span class="mi">1</span><span class="o">-</span><span class="n">uncertainty</span><span class="p">)</span><span class="o">*</span><span class="n">y_sim</span><span class="p">,(</span><span class="mi">1</span><span class="o">+</span><span class="n">uncertainty</span><span class="p">)</span><span class="o">*</span><span class="n">y_sim</span><span class="p">,</span> 
+                    <span class="n">color</span><span class="o">=</span><span class="n">condition_color</span><span class="p">[</span><span class="n">case</span><span class="p">],</span>
+                    <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+
+            <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+                <span class="n">x_exp</span><span class="p">,</span>
+                <span class="n">y_exp</span><span class="p">,</span>
+                <span class="s1">&#39;s&#39;</span> <span class="o">+</span> <span class="n">condition_color</span><span class="p">[</span><span class="n">case</span><span class="p">],</span>
+                <span class="n">markersize</span><span class="o">=</span><span class="mf">3.5</span><span class="p">,</span> 
+                <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span>
+            <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="n">k</span><span class="p">:</span>
+                <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s1">&#39;#f0f0f0&#39;</span><span class="p">)</span>
+
+            <span class="c1"># Column titles</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
+                    <span class="n">case_titles</span><span class="p">[</span><span class="n">case</span><span class="p">],</span>
+                    <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span>
+                <span class="p">)</span>
+
+            <span class="c1"># Row labels</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s1">&#39;Cond. </span><span class="si">{</span><span class="n">k</span><span class="o">+</span><span class="mi">1</span><span class="si">}</span><span class="se">\n</span><span class="s1">left out</span><span class="se">\n</span><span class="s1">&#39;</span>
+                    <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">quantity_symbol</span><span class="si">}</span><span class="s1"> (</span><span class="si">{</span><span class="n">quantity_unit</span><span class="si">}</span><span class="s1">)&#39;</span>
+                <span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="n">n_cases</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">x_label</span><span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># Legend</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span>
+        <span class="n">handles</span><span class="o">=</span><span class="p">[</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">Line2D</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;C0&#39;</span><span class="p">),</span>
+            <span class="n">plt</span><span class="o">.</span><span class="n">Line2D</span><span class="p">([</span><span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">marker</span><span class="o">=</span><span class="s1">&#39;s&#39;</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s1">&#39;None&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;C0&#39;</span><span class="p">),</span>
+            <span class="n">Patch</span><span class="p">(</span><span class="n">facecolor</span><span class="o">=</span><span class="s1">&#39;C0&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.3</span><span class="p">)</span>
+        <span class="p">],</span>
+        <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;Sim.&#39;</span><span class="p">,</span> <span class="s1">&#39;Exp.&#39;</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;± </span><span class="si">{</span><span class="n">uncertainty</span><span class="o">*</span><span class="mi">100</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1"> %&#39;</span><span class="p">],</span>
+        <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper left&#39;</span><span class="p">,</span> 
+        <span class="n">bbox_to_anchor</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">1.05</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">save_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fig</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">save_path</span><span class="p">,</span> <span class="n">dpi</span><span class="o">=</span><span class="n">dpi</span><span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="c1"># LaTeX-ready metrics</span>
+    <span class="c1"># ------------------------------------------------------------</span>
+    <span class="n">rmse_string</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">rf</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">quantity_name</span><span class="si">}</span><span class="s2"> RMSE &amp; &quot;</span>
+        <span class="o">+</span> <span class="s2">&quot; &amp; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">rmse_list</span><span class="p">])</span>
+        <span class="o">+</span> <span class="sa">r</span><span class="s2">&quot; </span><span class="se">\\</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">maxerr_string</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="sa">rf</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">quantity_name</span><span class="si">}</span><span class="s2"> max. error &amp; &quot;</span>
+        <span class="o">+</span> <span class="s2">&quot; &amp; &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">v</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">maxerr_list</span><span class="p">])</span>
+        <span class="o">+</span> <span class="sa">r</span><span class="s2">&quot; </span><span class="se">\\</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span><span class="p">,</span> <span class="n">rmse_list</span><span class="p">,</span> <span class="n">maxerr_list</span><span class="p">,</span> <span class="n">rmse_string</span><span class="p">,</span> <span class="n">maxerr_string</span></div>
+
+
+<div class="viewcode-block" id="get_complexity_levels">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.get_complexity_levels">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_complexity_levels</span><span class="p">(</span><span class="n">cv_results</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return sorted list of available model complexities</span>
+<span class="sd">    (number of estimated parameters).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">cv_results</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">cv_results</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="k">return</span> <span class="nb">sorted</span><span class="p">([</span>
+        <span class="n">folds</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;n_parameters&quot;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">folds</span> <span class="ow">in</span> <span class="n">cv_results</span>
+    <span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="get_folds_for_complexity">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.get_folds_for_complexity">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_folds_for_complexity</span><span class="p">(</span><span class="n">cv_results</span><span class="p">,</span> <span class="n">n_parameters</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return fold list for a given number of parameters.</span>
+<span class="sd">    Raises ValueError if not available.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">folds</span> <span class="ow">in</span> <span class="n">cv_results</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">folds</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;n_parameters&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="n">n_parameters</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">folds</span>
+
+    <span class="n">available</span> <span class="o">=</span> <span class="n">get_complexity_levels</span><span class="p">(</span><span class="n">cv_results</span><span class="p">)</span>
+    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;n_parameters=</span><span class="si">{</span><span class="n">n_parameters</span><span class="si">}</span><span class="s2"> not available. &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;Available levels: </span><span class="si">{</span><span class="n">available</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="rmse_complexity_table">
+<a class="viewcode-back" href="../../../api/estimation.html#marapendi.estimation.cross_validation.rmse_complexity_table">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">rmse_complexity_table</span><span class="p">(</span><span class="n">rmse_vs_complexity_df</span><span class="p">,</span> <span class="n">filename</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    
+    <span class="n">group</span> <span class="o">=</span> <span class="p">(</span><span class="n">rmse_vs_complexity_df</span><span class="p">[</span><span class="n">rmse_vs_complexity_df</span><span class="o">.</span><span class="n">case</span> <span class="o">==</span> <span class="n">rmse_vs_complexity_df</span><span class="o">.</span><span class="n">test_case</span><span class="p">]</span>
+        <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;n_parameters&#39;</span><span class="p">,</span> <span class="s1">&#39;test_case&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s1">&#39;n_parameters&#39;</span><span class="p">))</span>
+
+    <span class="n">per_case</span> <span class="o">=</span> <span class="p">(</span><span class="n">rmse_vs_complexity_df</span><span class="p">[</span><span class="n">rmse_vs_complexity_df</span><span class="o">.</span><span class="n">case</span> <span class="o">==</span> <span class="n">rmse_vs_complexity_df</span><span class="o">.</span><span class="n">test_case</span><span class="p">]</span>
+        <span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;n_parameters&#39;</span><span class="p">,</span> <span class="s1">&#39;test_case&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+        <span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        <span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s1">&#39;n_parameters&#39;</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s1">&#39;test_case&#39;</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="s1">&#39;rmse&#39;</span><span class="p">))</span>
+
+    <span class="n">stats_df</span> <span class="o">=</span> <span class="p">(</span><span class="n">group</span><span class="o">.</span><span class="n">agg</span><span class="p">([</span><span class="s1">&#39;min&#39;</span><span class="p">,</span> <span class="s1">&#39;max&#39;</span><span class="p">,</span> <span class="s1">&#39;median&#39;</span><span class="p">,</span> <span class="s1">&#39;mean&#39;</span><span class="p">])</span>
+        <span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;case&#39;</span><span class="p">,</span> <span class="s1">&#39;test_case&#39;</span><span class="p">],</span> <span class="n">level</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+    <span class="n">stats_df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;_&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">col</span><span class="p">)</span> <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">stats_df</span><span class="o">.</span><span class="n">columns</span><span class="p">]</span>
+
+    <span class="n">stats_df</span> <span class="o">=</span> <span class="n">stats_df</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">per_case</span><span class="p">)</span>
+
+    <span class="c1"># reorder</span>
+    <span class="n">stat_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">stats_df</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">c</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span> <span class="ow">and</span> <span class="s1">&#39;_&#39;</span> <span class="ow">in</span> <span class="n">c</span><span class="p">]</span>
+    <span class="n">case_cols</span> <span class="o">=</span> <span class="p">[</span><span class="n">c</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">stats_df</span><span class="o">.</span><span class="n">columns</span> <span class="k">if</span> <span class="n">c</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">stat_cols</span><span class="p">]</span>
+    <span class="n">stats_df</span> <span class="o">=</span> <span class="n">stats_df</span><span class="p">[</span><span class="n">case_cols</span> <span class="o">+</span> <span class="n">stat_cols</span><span class="p">]</span>
+
+    <span class="c1"># rename</span>
+    <span class="n">stats_df</span> <span class="o">=</span> <span class="n">stats_df</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">{</span>
+        <span class="s1">&#39;rmse_min&#39;</span><span class="p">:</span> <span class="s1">&#39;Min.&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;rmse_max&#39;</span><span class="p">:</span> <span class="s1">&#39;Max.&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;rmse_median&#39;</span><span class="p">:</span> <span class="s1">&#39;Median&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;rmse_mean&#39;</span><span class="p">:</span> <span class="s1">&#39;Mean&#39;</span><span class="p">,</span>
+    <span class="p">})</span>
+
+    <span class="n">stats_df</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+        <span class="n">columns</span><span class="o">=</span><span class="p">{</span><span class="n">c</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">c</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1">&#39;</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">case_cols</span><span class="p">}</span>
+    <span class="p">)</span>
+    <span class="c1"># build latex</span>
+    <span class="n">n_cases</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">case_cols</span><span class="p">)</span>
+    <span class="n">latex</span> <span class="o">=</span> <span class="p">(</span><span class="n">stats_df</span><span class="o">.</span><span class="n">to_latex</span><span class="p">(</span>
+            <span class="n">float_format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%.1f</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">na_rep</span><span class="o">=</span><span class="s2">&quot;-&quot;</span><span class="p">,</span>
+            <span class="n">caption</span><span class="o">=</span><span class="s2">&quot;RMSE vs complexity&quot;</span><span class="p">,</span>
+            <span class="n">label</span><span class="o">=</span><span class="s2">&quot;tab:rmse_complexity&quot;</span><span class="p">,</span>
+            <span class="n">position</span><span class="o">=</span><span class="s2">&quot;h&quot;</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+            <span class="sa">r</span><span class="s1">&#39;\toprule&#39;</span><span class="p">,</span>
+            <span class="sa">r</span><span class="s1">&#39;\toprule&#39;</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+            <span class="sa">rf</span><span class="s1">&#39; &amp; \multicolumn</span><span class="se">{{</span><span class="si">{</span><span class="n">n_cases</span><span class="si">}</span><span class="se">}}{{</span><span class="s1">c</span><span class="se">}}{{</span><span class="s1">Cases</span><span class="se">}}</span><span class="s1"> </span><span class="se">\\</span><span class="s1">&#39;</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">+</span>
+            <span class="sa">rf</span><span class="s1">&#39;\cmidrule(lr)</span><span class="se">{{</span><span class="s1">2-</span><span class="si">{</span><span class="n">n_cases</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="se">}}</span><span class="s1">&#39;</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">filename</span><span class="p">:</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">latex</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">stats_df</span><span class="p">,</span> <span class="n">latex</span></div>
+
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">marapendi</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/components.html">Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/simulation.html">Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/estimation.html">Estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/tools.html">Tools</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Pedro Affonso Nobrega.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

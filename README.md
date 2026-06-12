@@ -1,6 +1,19 @@
 # marapendi
 
-marapendi is a framework for modelling anion and proton exchange membrane electrochemical cell devices, such as water electrolyzers and fuel cells. 
+marapendi is a framework for modelling proton and anion exchange membrane electrochemical cell devices, such as fuel cells and water electrolyzers.
+
+## Structure
+
+- `marapendi.cell`, `marapendi.state` — dataclasses describing a cell's components (catalyst layers, porous layers, membrane, flow channels, ionomer) and the physical state at one operating point.
+- `marapendi.model`, `marapendi.water_balance`, `marapendi.transport`, `marapendi.voltage`, `marapendi.thermal` — orchestration of the steady-state cell model.
+- `marapendi.water`, `marapendi.electrochemistry`, `marapendi.membrane_permeation_models`, `marapendi.transport_models`, `marapendi.gas`, `marapendi.conditions`, `marapendi.constants` — underlying physics correlations.
+- `marapendi.estimation` — parameter estimation and cross-validation against experimental polarization data.
+
+The steady-state model implements the model described in Affonso Nobrega et al., *J. Electrochem. Soc.* 173, 114503 (2026).
+
+`marapendi.dynamic` is a separate, transient-capable implementation inspired by Yang et al. (2019), currently under evaluation.
+
+See the [documentation](docs/index.rst) for details.
 
 ## Installation
 

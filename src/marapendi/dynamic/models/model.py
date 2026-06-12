@@ -1,0 +1,314 @@
+"""
+Base model for composing multiple submodels into a single ODE system.
+
+Classes
+-------
+BaseModel
+    Generic ODE compositor.  Composes any number of submodels—each
+    exposing ``rates_of_change`` and ``n_states``—into one combined ODE.
+    If a submodel defines a ``get_inputs(t)`` method, ``BaseModel``
+    registers it automatically in ``input_fns`` during ``__post_init__``;
+    no manual ``input_fns`` dict is needed for the common case.
+
+Protocol
+--------
+A submodel is compatible with ``BaseModel`` when it implements:
+
+* ``rates_of_change(x, **inputs) -> np.ndarray``
+  where ``x`` has shape ``(n_states, m)`` and the return has the same shape.
+* ``n_states: int``
+  total length of the normalised flat state vector.
+
+Optionally, a submodel may implement:
+
+* ``get_inputs(t: float) -> dict``
+  returns keyword arguments forwarded to ``rates_of_change`` at time *t*.
+  When present, this is registered in ``input_fns`` automatically (explicit
+  entries in ``input_fns`` take precedence).
+* ``base_model``
+  any attribute by this name will be overwritten with a reference to the
+  owning ``BaseModel`` so submodels can resolve shared model objects.
+
+Solvers
+-------
+Two solver strategies are provided on ``BaseModel``:
+
+* :meth:`BaseModel.solve` — time-integration via ``scipy.integrate.solve_ivp``
+  (BDF by default).  Suitable for transient simulations and galvanostatic
+  sweeps where the quasi-steady-state is reached by integrating for a
+  sufficiently long ``T_STEP``.
+* :meth:`BaseModel.solve_steady_state` — direct nonlinear solve via
+  ``scipy.optimize.root`` (MINPACK HYBRD by default).  Finds ``x`` such
+  that ``rates_of_change(t, x) = 0`` in one shot, skipping the integration
+  entirely.  Warm-starting from the previous operating point is strongly
+  recommended.  Returns a :class:`types.SimpleNamespace` whose ``.y`` field
+  (shape ``(n_states, 1)``) is drop-in compatible with
+  :meth:`CellBaseModel.postprocess`.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from types import SimpleNamespace
+from typing import Any, Callable
+
+import numpy as np
+from scipy.integrate import solve_ivp as _solve_ivp
+from scipy.optimize import root as _root
+
+
+@dataclass
+class BaseModel:
+    """
+    Generic compositor: combine any number of ODE submodels.
+
+    Parameters
+    ----------
+    submodels : dict[str, object]
+        Ordered mapping of ``name → submodel``.  Each submodel must expose
+        ``rates_of_change(x, **inputs)`` and ``n_states``.
+    input_fns : dict[str, callable], optional
+        Explicit ``name → f(t)`` overrides.  Submodels not listed here
+        fall back to their own ``get_inputs`` method, if any.
+
+    Attributes
+    ----------
+    n_states : int
+        Total length of the combined normalised state vector.
+    """
+
+    submodels: dict[str, Any] = field(default_factory=dict)
+    input_fns: dict[str, Callable] = field(default_factory=dict)
+
+    def __post_init__(self):
+        offset = 0
+        self._slices: dict[str, slice] = {}
+        for name, model in self.submodels.items():
+            if not hasattr(model, 'n_states'):
+                raise AttributeError(
+                    f"Submodel '{name}' must expose an 'n_states' integer attribute."
+                )
+            size = model.n_states
+            self._slices[name] = slice(offset, offset + size)
+            offset += size
+        self.n_states: int = offset
+
+        # Auto-register get_inputs from submodels (explicit input_fns take priority)
+        for name, model in self.submodels.items():
+            if hasattr(model, 'get_inputs') and name not in self.input_fns:
+                self.input_fns[name] = model.get_inputs
+
+        # Inject self into any submodel that declares a base_model slot
+        for model in self.submodels.values():
+            if hasattr(model, 'base_model'):
+                model.base_model = self
+
+    # ------------------------------------------------------------------
+    # ODE interface
+    # ------------------------------------------------------------------
+
+    def rates_of_change(self, t, x):
+        """
+        Assemble dxdt by dispatching each slice to its submodel.
+
+        ``(t, x)`` matches the ``solve_ivp`` convention, so
+        ``base.rates_of_change`` can be passed directly as ``fun``.
+
+        Parameters
+        ----------
+        t : float
+            Current time, passed to each ``input_fn``/``get_inputs``.
+        x : np.ndarray, shape (n_states,) or (n_states, m)
+
+        Returns
+        -------
+        np.ndarray
+            Same shape as ``x``.
+        """
+        scalar = x.ndim == 1
+        if scalar:
+            x = x[:, np.newaxis]
+
+        dxdt = np.empty_like(x)
+        for name, model in self.submodels.items():
+            sl = self._slices[name]
+            inputs = self.input_fns.get(name, lambda _t: {})
+            dxdt[sl] = model.rates_of_change(x[sl], **inputs(t))
+
+        return dxdt[:, 0] if scalar else dxdt
+
+    # ------------------------------------------------------------------
+    # Solver
+    # ------------------------------------------------------------------
+
+    def solve(
+        self,
+        y0: np.ndarray,
+        t_span: tuple,
+        *,
+        method: str = 'BDF',
+        rtol: float = 1e-4,
+        atol: float = 1e-5,
+        max_step: float = np.inf,
+        **kwargs,
+    ):
+        """Integrate the ODE system with ``scipy.integrate.solve_ivp``.
+
+        Parameters
+        ----------
+        y0 : np.ndarray
+            Initial state vector, typically from ``initial_state``.
+        t_span : tuple[float, float]
+            ``(t0, tf)`` integration interval.
+        method : str
+            Integration method passed to ``solve_ivp`` (default ``'BDF'``,
+            which handles stiff problems well).
+        rtol : float
+            Relative tolerance (default 1e-3).
+        atol : float
+            Absolute tolerance (default 1e-6).
+        max_step : float
+            Maximum allowed step size (default ``np.inf``).
+        **kwargs
+            Any additional keyword arguments forwarded verbatim to
+            ``scipy.integrate.solve_ivp`` (e.g. ``t_eval``, ``dense_output``).
+
+        Returns
+        -------
+        scipy.integrate.OdeSolution
+            The result object returned by ``solve_ivp``.  Check
+            ``sol.success`` or ``sol.status`` before using ``sol.y``.
+        """
+        return _solve_ivp(
+            self.rates_of_change,
+            t_span=t_span,
+            y0=y0,
+            method=method,
+            rtol=rtol,
+            atol=atol,
+            max_step=max_step,
+            **kwargs,
+        )
+
+    # ------------------------------------------------------------------
+    # Steady-state solver
+    # ------------------------------------------------------------------
+
+    def _vectorized_jac(self, t, x, rel_step=1.5e-8):
+        """Forward-difference Jacobian of ``rates_of_change`` via one batched call.
+
+        Builds an ``(n_states, n_states + 1)`` matrix — the unperturbed state
+        plus one perturbed column per state — and evaluates ``rates_of_change``
+        once with ``m = n_states + 1``, instead of relying on MINPACK's
+        internal finite-difference loop (which calls ``rates_of_change`` with
+        ``m = 1``, once per state).
+        """
+        n = x.shape[0]
+        h = rel_step * np.maximum(np.abs(x), 1.0)
+        X = np.tile(x[:, np.newaxis], n + 1)
+        X[:, 1:] += np.diag(h)
+        F = self.rates_of_change(t, X)
+        return (F[:, 1:] - F[:, :1]) / h
+
+    def solve_steady_state(
+        self,
+        y0: np.ndarray,
+        t: float = 0.,
+        *,
+        method: str = 'hybr',
+        tol: float = 1e-8,
+        vectorized_jac: bool = False,
+        **kwargs,
+    ) -> SimpleNamespace:
+        """Find the steady-state solution by solving ``rates_of_change(t, x) = 0``.
+
+        Parameters
+        ----------
+        y0 : np.ndarray, shape (n_states,)
+            Initial guess for the root finder.  A good guess (e.g. the
+            solution from the previous operating point) greatly improves
+            convergence.
+        t : float
+            Time at which ``rates_of_change`` is evaluated.  Determines
+            current density and inlet conditions when those are callable.
+        method : str
+            Root-finding algorithm passed to ``scipy.optimize.root``
+            (default ``'hybr'``, which uses MINPACK HYBRD and is
+            well-suited to moderate-size systems).
+        tol : float
+            Convergence tolerance on the residual norm (default ``1e-8``).
+        vectorized_jac : bool
+            If ``True``, supply a forward-difference Jacobian computed via a
+            single batched call to ``rates_of_change`` (``m = n_states + 1``),
+            switching ``hybr``/``lm`` to HYBRJ/LMDER and avoiding MINPACK's
+            internal ``m = 1`` finite-difference loop. Ignored if ``jac`` is
+            already passed in ``kwargs``.
+        **kwargs
+            Any additional keyword arguments forwarded verbatim to
+            ``scipy.optimize.root`` (e.g. ``jac``, ``options``).
+
+        Returns
+        -------
+        result : SimpleNamespace
+            Attributes mirror ``solve_ivp``'s ``OdeResult`` for drop-in
+            compatibility with ``postprocess``:
+
+            * ``y``       : ndarray, shape ``(n_states, 1)`` — steady-state
+              solution, or the last iterate when convergence failed.
+            * ``t``       : ndarray, shape ``(1,)`` — evaluation time *t*.
+            * ``fun``     : ndarray, shape ``(n_states,)`` — residual at
+              the returned ``y``.
+            * ``success`` : bool — ``True`` if the root finder converged.
+            * ``message`` : str — solver status message.
+        """
+        if vectorized_jac and 'jac' not in kwargs:
+            kwargs['jac'] = lambda x: self._vectorized_jac(t, x)
+
+        sol = _root(
+            lambda x: self.rates_of_change(t, x),
+            y0,
+            method=method,
+            tol=tol,
+            **kwargs,
+        )
+        return SimpleNamespace(
+            y=sol.x[:, np.newaxis],
+            t=np.array([t]),
+            fun=sol.fun,
+            success=bool(sol.success),
+            message=sol.message,
+        )
+
+    # ------------------------------------------------------------------
+    # Initial state
+    # ------------------------------------------------------------------
+
+    def initial_state(self, **per_model_kwargs) -> np.ndarray:
+        """
+        Concatenate initial states from all submodels.
+
+        Parameters
+        ----------
+        **per_model_kwargs
+            Keyword arguments keyed by submodel name, forwarded to each
+            submodel's ``initial_state`` method.
+
+        Returns
+        -------
+        np.ndarray, shape (n_states,)
+        """
+        parts = []
+        for name, model in self.submodels.items():
+            if not hasattr(model, 'initial_state'):
+                raise AttributeError(
+                    f"Submodel '{name}' has no 'initial_state' method."
+                )
+            parts.append(model.initial_state(**per_model_kwargs.get(name, {})))
+        return np.concatenate(parts)
+
+    # ------------------------------------------------------------------
+    # Post-processing
+    # ------------------------------------------------------------------
+
+    def split_state(self, x: np.ndarray) -> dict[str, np.ndarray]:
+        """Split a combined state array into per-submodel slices."""
+        return {name: x[sl] for name, sl in self._slices.items()}

@@ -29,7 +29,8 @@ dependencies = [
     "pytest",
     "pytest-cov",
     "notebook",
-    "sphinx"
+    "sphinx",
+    "scikit-learn"
 ]
 
 [build-system]

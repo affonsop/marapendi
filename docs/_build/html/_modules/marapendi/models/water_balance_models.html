@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>marapendi.models.water_balance_models &#8212; marapendi 0.1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=686e5160" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for marapendi.models.water_balance_models</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">cantera</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ct</span> 
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.linalg</span><span class="w"> </span><span class="kn">import</span> <span class="n">solve</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">marapendi.tools.tools</span><span class="w"> </span><span class="kn">import</span> <span class="n">arrhenius_term</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">marapendi.components.water</span><span class="w"> </span><span class="kn">import</span> <span class="n">water_molar_volume</span><span class="p">,</span> <span class="n">water_dynamic_viscosity</span>
+
+<div class="viewcode-block" id="MembraneWaterBalanceModel">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MembraneWaterBalanceModel</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A class representing a membrane water balance model with various parameters related to water diffusivity and absorption.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    sorption_activity_driving_force : bool, optional</span>
+<span class="sd">        Boolean flag indicating whether water activity is the driving force for water absorption (default is False).</span>
+<span class="sd">        If false, water content difference is considered as the driving force. </span>
+<span class="sd">    eod_parallel_to_sorption : bool, optional</span>
+<span class="sd">        Boolean flag indicating if electro-osmotic drag is parallel to water absorption/desorption (default is False).</span>
+<span class="sd">        If True, electro-osmotic drag is added to the water absorption flux on the RHS of the water balance boundary conditions.  </span>
+
+<span class="sd">    Notes</span>
+<span class="sd">    -----</span>
+<span class="sd">    The class is based on the equations and assumptions in Ferrara et al. (2018), while accounting </span>
+<span class="sd">    for gas transport resistance and non-equilibrium conditions at the membrane interface.</span>
+
+<span class="sd">    References:</span>
+<span class="sd">    -----------</span>
+<span class="sd">    Ferrara, A. et al. J. Power Sources 390, 197–207 (2018).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">sorption_activity_driving_force</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">eod_parallel_to_sorption</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>                            
+
+
+    
+<div class="viewcode-block" id="MembraneWaterBalanceModel.calculate_peclet_number">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.calculate_peclet_number">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_peclet_number</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">current_density</span><span class="p">,</span> <span class="n">membrane</span><span class="p">,</span> <span class="n">water_diffusivity</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the Peclet number using electroosmotic drag speed, membrane thickness, and water diffusivity.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        temperature : float</span>
+<span class="sd">            The temperature at which to calculate the Peclet number, in Kelvin (K).</span>
+<span class="sd">        current_density : float</span>
+<span class="sd">            The current density crossing the membrane (A/m2).</span>
+<span class="sd">        membrane : object</span>
+<span class="sd">            An object with membrane properties, including dry thickness (m).</span>
+<span class="sd">        water_diffusivity : float</span>
+<span class="sd">            The adsorbed water diffusivity (m²/s).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            The calculated Peclet number, dimensionless.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Calculate and return the Peclet number</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">membrane</span><span class="o">.</span><span class="n">calculate_electroosmotic_drag_speed</span><span class="p">(</span><span class="n">temperature</span><span class="p">,</span> <span class="n">current_density</span><span class="p">)</span> <span class="o">*</span>
+                <span class="n">membrane</span><span class="o">.</span><span class="n">dry_thickness</span> <span class="o">/</span> <span class="n">water_diffusivity</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="MembraneWaterBalanceModel.calculate_biot_number">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.calculate_biot_number">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_biot_number</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">absorption_coefficient</span><span class="p">,</span> <span class="n">membrane</span><span class="p">,</span> <span class="n">water_diffusivity</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the Biot number using absorption coefficient, membrane thickness, and water diffusivity.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        absorption_coefficient : float</span>
+<span class="sd">            The water absorption coefficient (m/s).</span>
+<span class="sd">        membrane : object</span>
+<span class="sd">            An object with membrane properties, including dry thickness.</span>
+<span class="sd">        water_diffusivity : float</span>
+<span class="sd">            The membrane water diffusivity (m²/s).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            The calculated Biot number, dimensionless.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">absorption_coefficient</span> <span class="o">*</span> <span class="n">membrane</span><span class="o">.</span><span class="n">dry_thickness</span> <span class="o">/</span> <span class="n">water_diffusivity</span></div>
+
+
+<div class="viewcode-block" id="MembraneWaterBalanceModel.estimate_equilibrium_water_contents">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.estimate_equilibrium_water_contents">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">estimate_equilibrium_water_contents</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimates the equilibrium water content and its derivative for both the cathode and anode sides of the cell.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cell : FuelCell</span>
+<span class="sd">            An object representing the cell with properties ca (cathode) and an (anode), each being a CellSide object.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        The function updates the cell sides (ca and an) with estimated water content and its derivative.</span>
+<span class="sd">        The calculations assume no water crossover from cathode to anode for RH at catalyst layer.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">for</span> <span class="n">side</span> <span class="ow">in</span> <span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="p">):</span>
+            <span class="c1"># Calculate RH at catalyst layer supposing no water crossover from cathode to anode  </span>
+            <span class="n">side</span><span class="o">.</span><span class="n">rh_at_cl_without_crossover</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">side</span><span class="o">.</span><span class="n">ch</span><span class="o">.</span><span class="n">vapor_concentration</span><span class="p">()</span> <span class="o">+</span> <span class="n">side</span><span class="o">.</span><span class="n">h2o_production</span> <span class="o">*</span> <span class="n">side</span><span class="o">.</span><span class="n">h2ov_transport_resistance</span><span class="p">)</span>
+                <span class="o">/</span> <span class="n">side</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">saturation_concentration</span><span class="p">()</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Get estimated values for equilibrium water content and its derivative in CL </span>
+            
+            <span class="n">side</span><span class="o">.</span><span class="n">estimated_water_content</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">equilibrium_water_content</span><span class="p">(</span>
+                    <span class="n">side</span><span class="o">.</span><span class="n">rh_at_cl_without_crossover</span><span class="p">,</span> 
+                    <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span> 
+                    <span class="n">side</span><span class="o">.</span><span class="n">s_relax</span>
+                <span class="p">)</span>
+            <span class="n">side</span><span class="o">.</span><span class="n">estimated_water_content_derivative</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">equilibrium_water_content_derivative</span><span class="p">(</span>
+                    <span class="n">side</span><span class="o">.</span><span class="n">rh_at_cl_without_crossover</span><span class="p">,</span> 
+                    <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span> 
+                    <span class="n">side</span><span class="o">.</span><span class="n">s_relax</span>
+                <span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="MembraneWaterBalanceModel.update_water_contents">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.update_water_contents">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_water_contents</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Set the water content values for different parts of the cell, including catalyst layers and membrane.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cell : FuelCell object</span>
+<span class="sd">            An object representing the cell with properties ca (cathode), an (anode), membrane, etc.,</span>
+<span class="sd">            each having attributes related to water content and transport properties.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        This function updates the following attributes of the cell:</span>
+<span class="sd">        - Equilibrium water content in the cathode and anode catalyst layers.</span>
+<span class="sd">        - Average water content in the membrane.</span>
+<span class="sd">        - Ionomer water content in the cathode and anode catalyst layers.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Set the average water content in the membrane</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">water_content</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">water_content_profile</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> 
+
+        <span class="c1"># Set water content at the interface of each catalyst layer </span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">memb_interface_water_content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_content_profile</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">...</span><span class="p">]</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">memb_interface_water_content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_content_profile</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="o">...</span><span class="p">]</span>
+
+        <span class="c1"># Calculate equilibrium water contents at the CL</span>
+        <span class="k">for</span> <span class="n">side</span> <span class="ow">in</span> <span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="p">):</span>
+            <span class="n">side</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">eq_water_content</span> <span class="o">=</span> <span class="p">(</span><span class="n">side</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">memb_interface_water_content</span> <span class="o">-</span>
+                                        <span class="n">side</span><span class="o">.</span><span class="n">membrane_water_flux</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">absorption_coefficient</span> <span class="o">/</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">dry_concentration</span><span class="p">)</span></div>
+
+                                            
+    
+<div class="viewcode-block" id="MembraneWaterBalanceModel.update_water_profile">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.update_water_profile">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_water_profile</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">):</span> 
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the water content profile across the cell based on various parameters.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cell : FuelCell object</span>
+<span class="sd">            An object representing the cell with properties related to water content, transport,</span>
+<span class="sd">            membrane properties, and other physical and structural properties.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        This function computes the water content profile based on an extension of the work of Ferrara et al. (2018) </span>
+<span class="sd">        accounting for non-equilibrium conditions at the membrane interfaces. </span>
+<span class="sd">        Parameters are calculated in the water_balance functions. </span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">Pe</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">peclet_number</span> 
+        <span class="n">ePe</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">ePe</span>
+        <span class="n">ePexi</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">ePexi</span>
+
+        <span class="n">denominator</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">ePe</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span>
+                    <span class="mi">1</span> <span class="o">+</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span> <span class="o">-</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span> <span class="o">+</span>
+                    <span class="o">-</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span>
+                <span class="p">)</span> <span class="o">+</span>
+                <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span> <span class="o">+</span> <span class="n">ePe</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span> <span class="o">+</span>
+                <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span> <span class="o">*</span> <span class="p">(</span><span class="n">ePe</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">alpha</span> <span class="o">-</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
+            <span class="p">)</span>
+        
+        <span class="c1"># Calculate the water content profile using a detailed mathematical formula</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">water_content_profile</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span>
+                <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">estimated_water_content</span> <span class="o">*</span> <span class="p">((</span><span class="n">ePe</span> <span class="o">-</span> <span class="n">ePexi</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span><span class="p">)</span> <span class="o">+</span> <span class="n">ePe</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span><span class="p">)</span> <span class="o">+</span>
+                <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">estimated_water_content</span> <span class="o">*</span> <span class="p">((</span><span class="n">ePexi</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span><span class="p">)</span> <span class="o">+</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span><span class="p">)</span>
+            <span class="p">)</span> <span class="o">/</span> <span class="n">denominator</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">water_content_derivative_profile</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span>
+                <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">estimated_water_content</span> <span class="o">*</span> <span class="p">(</span><span class="n">ePexi</span> <span class="o">*</span> <span class="n">Pe</span> <span class="o">*</span> <span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="o">+</span>
+                <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">estimated_water_content</span> <span class="o">*</span> <span class="p">(</span><span class="n">ePexi</span> <span class="o">*</span> <span class="n">Pe</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">alpha</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span><span class="p">)</span> <span class="p">)</span>
+            <span class="p">)</span> <span class="o">/</span> <span class="n">denominator</span> 
+        <span class="p">)</span>
+        
+        <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="n">Pe</span> <span class="o">*</span> <span class="n">ePe</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span><span class="o">-</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span><span class="p">)</span> <span class="o">/</span> <span class="n">denominator</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">a</span> <span class="o">=</span> <span class="o">-</span> <span class="n">Pe</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span> <span class="p">)</span> <span class="o">/</span> <span class="n">denominator</span></div>
+
+
+<div class="viewcode-block" id="MembraneWaterBalanceModel.update_non_dimensional_parameters">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.update_non_dimensional_parameters">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_non_dimensional_parameters</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate various non-dimensional parameters related to water transport and equilibrium in a cell.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cell : FuelCell object</span>
+<span class="sd">            An object representing the cell with properties related to water content, transport,</span>
+<span class="sd">            membrane properties, and other physical and structural properties.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        This function computes various non-dimensional parameters used in the analysis of water balance within the cell,</span>
+<span class="sd">        including the Peclet number, non-dimensional water vapor resistance, Biot number, and others.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Calculate Peclet number for the membrane</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">peclet_number</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_peclet_number</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">temperature</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">current_density</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_diffusivity</span><span class="p">)</span>
+
+        <span class="c1"># Generate evenly spaced points over the interval</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">xi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">current_density</span><span class="p">),</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">ePexi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">xi</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">peclet_number</span><span class="p">)</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">ePe</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">peclet_number</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">side</span> <span class="ow">in</span> <span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="p">):</span>
+            <span class="c1"># Calculate non-dimensional water vapor resistance based on a water content driving force</span>
+            <span class="n">side</span><span class="o">.</span><span class="n">R_v_star</span> <span class="o">=</span> <span class="n">side</span><span class="o">.</span><span class="n">h2ov_transport_resistance</span> <span class="o">/</span> <span class="p">(</span><span class="n">side</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">saturation_concentration</span><span class="p">()</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane_water_diffusion_resistance</span><span class="p">)</span> <span class="o">*</span> <span class="n">side</span><span class="o">.</span><span class="n">estimated_water_content_derivative</span>
+
+            <span class="c1"># Calculate Biot number</span>
+            <span class="n">side</span><span class="o">.</span><span class="n">biot_number</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_biot_number</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">absorption_coefficient</span> <span class="o">/</span> 
+                <span class="p">(</span><span class="n">side</span><span class="o">.</span><span class="n">estimated_water_content_derivative</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sorption_activity_driving_force</span> <span class="k">else</span> <span class="mi">1</span><span class="p">),</span>
+                <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_diffusivity</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Calculate equivalent non-dimensional resistance and other non-dimensional numbers</span>
+            <span class="n">side</span><span class="o">.</span><span class="n">R_eq_star</span> <span class="o">=</span> <span class="n">side</span><span class="o">.</span><span class="n">R_v_star</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">side</span><span class="o">.</span><span class="n">biot_number</span>
+            <span class="n">side</span><span class="o">.</span><span class="n">modified_Bi</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">side</span><span class="o">.</span><span class="n">R_eq_star</span>
+            <span class="n">side</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">peclet_number</span> <span class="o">/</span> <span class="n">side</span><span class="o">.</span><span class="n">modified_Bi</span>
+            <span class="n">side</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="p">(</span><span class="mi">1</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">eod_parallel_to_sorption</span> <span class="k">else</span> <span class="mi">0</span><span class="p">)</span> <span class="o">/</span> <span class="n">side</span><span class="o">.</span><span class="n">biot_number</span> <span class="o">/</span> <span class="n">side</span><span class="o">.</span><span class="n">R_eq_star</span></div>
+
+
+<div class="viewcode-block" id="MembraneWaterBalanceModel.calculate_cathode_membrane_flux">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.calculate_cathode_membrane_flux">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_cathode_membrane_flux</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the water flux at the cathode/membrane interface.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cell : FuelCell object</span>
+<span class="sd">            An object representing the cell with properties related to water content and transport.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            The calculated water flux at the cathode (kmol/m²/s).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="n">non_dimensional_membrane_water_flux</span> <span class="o">=</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_content_derivative_profile</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">...</span><span class="p">]</span> <span class="o">+</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">peclet_number</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_content_profile</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+   
+        <span class="k">return</span> <span class="n">non_dimensional_membrane_water_flux</span> <span class="o">/</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane_water_diffusion_resistance</span></div>
+
+
+<div class="viewcode-block" id="MembraneWaterBalanceModel.calculate_anode_membrane_flux">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.calculate_anode_membrane_flux">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_anode_membrane_flux</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the water flux at the anode/membrane interface.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cell : FuelCell object</span>
+<span class="sd">            An object representing the cell with properties related to water content and transport.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            The calculated water flux at the anode (kmol/m²/s).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">non_dimensional_membrane_water_flux</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_content_derivative_profile</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="o">...</span><span class="p">]</span> <span class="o">-</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">peclet_number</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_content_profile</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="o">...</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">non_dimensional_membrane_water_flux</span> <span class="o">/</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane_water_diffusion_resistance</span> </div>
+
+
+<div class="viewcode-block" id="MembraneWaterBalanceModel.update_cell_side_water_fluxes">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.update_cell_side_water_fluxes">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_cell_side_water_fluxes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell_side</span><span class="p">,</span> <span class="n">dynamic</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the liquid and vapor fluxes for a given side of the cell (cathode or anode).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cell_side : CellSide object</span>
+<span class="sd">            An object representing a side of the cell with properties related to water and vapor content, transport,</span>
+<span class="sd">            and other physical properties.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        This function calculates the maximum vapor removal flux and then determines the liquid flux</span>
+<span class="sd">        by comparing the water flux with the maximum vapor removal flux.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Calculate maximum vapor removal flux</span>
+        <span class="n">max_vapor_removal_flux</span> <span class="o">=</span> <span class="n">cell_side</span><span class="o">.</span><span class="n">max_water_vapor_removal</span><span class="p">()</span>
+
+        <span class="c1"># Calculate liquid flux, ensuring it is above a minimum threshold</span>
+        <span class="n">cell_side</span><span class="o">.</span><span class="n">liquid_flux</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">cell_side</span><span class="o">.</span><span class="n">water_flux</span> <span class="o">-</span> <span class="n">max_vapor_removal_flux</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Calculate vapor flux</span>
+        <span class="n">cell_side</span><span class="o">.</span><span class="n">vapor_flux</span> <span class="o">=</span> <span class="n">cell_side</span><span class="o">.</span><span class="n">water_flux</span> <span class="o">-</span> <span class="n">cell_side</span><span class="o">.</span><span class="n">liquid_flux</span></div>
+
+
+<div class="viewcode-block" id="MembraneWaterBalanceModel.update_water_fluxes">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.update_water_fluxes">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_water_fluxes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">dynamic</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate water fluxes for both the cathode and anode sides of the cell.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cell : object</span>
+<span class="sd">            An object representing the cell with properties related to water content, transport,</span>
+<span class="sd">            and other physical properties for cathode and anode.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        This function calculates the water flux for both the cathode and anode sides of the cell,</span>
+<span class="sd">        and then calculates the liquid flux for each side.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Calculate water flux for cathode and anode</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">membrane_water_flux</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_cathode_membrane_flux</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">membrane_water_flux</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_anode_membrane_flux</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">water_flux</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">h2o_production</span> <span class="o">+</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">membrane_water_flux</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">water_flux</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">h2o_production</span> <span class="o">+</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">membrane_water_flux</span>
+        
+        <span class="c1"># Calculate liquid flux for both cathode and anode sides</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_cell_side_water_fluxes</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="p">,</span> <span class="n">dynamic</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_cell_side_water_fluxes</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="p">,</span> <span class="n">dynamic</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">dynamic</span><span class="p">:</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">membrane_diffusion_flux</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_content_derivative_profile</span> <span class="o">/</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane_water_diffusion_resistance</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">membrane_eod_flux</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">peclet_number</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_content_profile</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">membrane_water_flux</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">membrane_diffusion_flux</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">membrane_eod_flux</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">membrane_water_net_flux</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">membrane_diffusion_flux</span><span class="p">,</span>
+                                                    <span class="n">prepend</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                                                    <span class="n">append</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">membrane_water_net_flux</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="o">...</span><span class="p">]</span> <span class="o">-=</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">membrane_water_flux</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">membrane_water_net_flux</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">...</span><span class="p">]</span> <span class="o">-=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">membrane_water_flux</span></div>
+
+    
+<div class="viewcode-block" id="MembraneWaterBalanceModel.solve_water_balance">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.models.water_balance_models.MembraneWaterBalanceModel.solve_water_balance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve_water_balance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">water_profile</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dynamic</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate and update the water balance properties in the cell.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cell : FuelCell</span>
+<span class="sd">            Cell object containing membrane, cathode (ca), and anode (an) components.</span>
+<span class="sd">        water_profile : np.ndarray, optional</span>
+<span class="sd">            Initial water content profile, required when dynamic=True.</span>
+<span class="sd">        dynamic : bool</span>
+<span class="sd">            If True, solves for a prescribed water profile without updating fluxes.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_saturation_water_contents</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialize_interface_water_contents</span><span class="p">(</span><span class="n">cell</span><span class="p">,</span> <span class="n">water_profile</span><span class="p">,</span> <span class="n">dynamic</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">absorption_coefficient</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">calculate_water_absorption_coefficient</span><span class="p">(</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">temperature</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">water_diffusivity</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">calculate_water_diffusivity</span><span class="p">(</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">temperature</span><span class="p">)</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">membrane_water_diffusion_resistance</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">dry_thickness</span>
+            <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">water_diffusivity</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">dry_concentration</span><span class="p">)</span>
+        <span class="p">)</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">estimate_equilibrium_water_contents</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_non_dimensional_parameters</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+        
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">dynamic</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_solve_static_water_balance</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+            
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_water_fluxes</span><span class="p">(</span><span class="n">cell</span><span class="p">,</span> <span class="n">dynamic</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">update_water_contents</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+
+        
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_content_profile</span></div>
+
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_saturation_water_contents</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Cache vapor- and liquid-equilibrium water contents at full saturation for use as boundary limits.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">vapor_equilibrium_saturation_water_content</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">equilibrium_water_content</span><span class="p">(</span>
+            <span class="n">rh</span><span class="o">=</span><span class="mf">1.</span><span class="p">,</span> <span class="n">temperature</span><span class="o">=</span><span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">temperature</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">liquid_equilibrium_saturation_water_content</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">liquid_equilibrium_water_content</span><span class="p">(</span>
+            <span class="n">temperature</span><span class="o">=</span><span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">temperature</span><span class="p">)</span>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_initialize_interface_water_contents</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">water_profile</span><span class="p">,</span> <span class="n">dynamic</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set membrane interface water contents from profile (dynamic) or zero (static).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">dynamic</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">water_content_profile</span> <span class="o">=</span> <span class="n">water_profile</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">membrane_interface_water_content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_content_profile</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">membrane_interface_water_content</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_content_profile</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">side</span> <span class="ow">in</span> <span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="p">):</span>
+                <span class="n">side</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">membrane_interface_water_content</span> <span class="o">=</span> <span class="mi">0</span>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_solve_static_water_balance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Solve static water balance, branching into liquid-equilibrated treatment if needed.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_water_profile</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_water_fluxes</span><span class="p">(</span><span class="n">cell</span><span class="p">,</span> <span class="n">dynamic</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_water_contents</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">is_liquid_equilibrated</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">liquid_flux</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">is_liquid_equilibrated</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_solve_liquid_equilibrated_balance</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span> 
+            <span class="bp">self</span><span class="o">.</span><span class="n">_store_vapor_equilibrium_state</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_store_liquid_equilibrium_state</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+            
+    <span class="k">def</span><span class="w"> </span><span class="nf">_solve_liquid_equilibrated_balance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Three-stage solution for liquid-equilibrated cathode locations:</span>
+<span class="sd">        1. Apply vapor-equilibrium boundary condition and store resulting state.</span>
+<span class="sd">        2. Apply liquid-equilibrium boundary condition and store resulting state.</span>
+<span class="sd">        3. Blend the two states weighted by non-wetting saturation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_store_vapor_equilibrium_state</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_apply_liquid_equilibrium_condition</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_store_liquid_equilibrium_state</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">non_wetting_saturation</span><span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">is_liquid_equilibrated</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_compute_non_wetting_saturation</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_blend_equilibrium_profiles</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_update_blended_fluxes</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_cell_side_water_fluxes</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="p">,</span> <span class="n">dynamic</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_cell_side_water_fluxes</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="p">,</span> <span class="n">dynamic</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_store_vapor_equilibrium_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Store water fluxes and profiles after applying the vapor-equilibrium condition.&quot;&quot;&quot;</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">vapor_eq_sat_membrane_water_flux</span>   <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">membrane_water_flux</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">vapor_eq_sat_water_flux</span>            <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">water_flux</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">vapor_eq_sat_liquid_flux</span>           <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">liquid_flux</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">vapor_eq_water_content</span>              <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">eq_water_content</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">vapor_eq_sat_water_profile</span>         <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_content_profile</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">vapor_eq_sat_water_derivative_profile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_content_derivative_profile</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_apply_liquid_equilibrium_condition</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Impose liquid-equilibrium water content at liquid-equilibrated cathode locations</span>
+<span class="sd">        and recompute the water profile and fluxes.</span>
+
+<span class="sd">        The Peclet/Biot ratio is divided by 100 to represent the much higher</span>
+<span class="sd">        water activity at the membrane interface under liquid equilibrium.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">liquid_equilibrated_mask</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">is_liquid_equilibrated</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">liquid_equilibrated_mask</span><span class="p">,</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">peclet_number</span> <span class="o">/</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">biot_number</span> <span class="o">/</span> <span class="mi">100</span><span class="p">,</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">peclet_over_modified_biot</span>
+        <span class="p">)</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">estimated_water_content</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">liquid_equilibrated_mask</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">liquid_equilibrium_saturation_water_content</span><span class="p">,</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">estimated_water_content</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_water_profile</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_water_fluxes</span><span class="p">(</span><span class="n">cell</span><span class="p">,</span> <span class="n">dynamic</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_water_contents</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_store_liquid_equilibrium_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Store water fluxes and profiles after applying the liquid-equilibrium condition.&quot;&quot;&quot;</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">liquid_eq_sat_membrane_water_flux</span>    <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">membrane_water_flux</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">liquid_eq_sat_water_flux</span>             <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">water_flux</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">liquid_eq_sat_liquid_flux</span>            <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">liquid_flux</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">liquid_eq_water_content</span>              <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">eq_water_content</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">liquid_eq_sat_water_profile</span>          <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_content_profile</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">liquid_eq_sat_water_derivative_profile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_content_derivative_profile</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_non_wetting_saturation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Estimate non-wetting saturation at liquid-equilibrated cathode locations.</span>
+<span class="sd">        Delegates parameter assembly and root-finding to separate methods.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">liquid_equilibrated_mask</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">is_liquid_equilibrated</span>
+        <span class="n">modified_abs_permeability</span><span class="p">,</span> <span class="n">membrane_flux_difference</span><span class="p">,</span> <span class="n">vapor_eq_liquid_flux</span><span class="p">,</span> <span class="n">combined_flux_exponent</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_assemble_saturation_equation_params</span><span class="p">(</span><span class="n">cell</span><span class="p">,</span> <span class="n">liquid_equilibrated_mask</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_halley_solve_saturation</span><span class="p">(</span>
+            <span class="n">modified_abs_permeability</span><span class="p">,</span>
+            <span class="n">membrane_flux_difference</span><span class="p">,</span>
+            <span class="n">vapor_eq_liquid_flux</span><span class="p">,</span>
+            <span class="n">combined_flux_exponent</span><span class="p">,</span>
+            <span class="n">n_iter</span>
+        <span class="p">)</span>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_assemble_saturation_equation_params</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">liquid_equilibrated_mask</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Assemble coefficients for the non-wetting saturation equation:</span>
+<span class="sd">            modified_abs_permeability * s^combined_flux_exponent + membrane_flux_difference * s - vapor_eq_liquid_flux = 0</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        modified_abs_permeability : np.ndarray</span>
+<span class="sd">            Effective absolute permeability combining GDL and CL transport properties.</span>
+<span class="sd">        membrane_flux_difference : np.ndarray</span>
+<span class="sd">            Difference in membrane water flux between vapor- and liquid-equilibrium states.</span>
+<span class="sd">        vapor_eq_liquid_flux : np.ndarray</span>
+<span class="sd">            Liquid water flux under vapor-equilibrium conditions.</span>
+<span class="sd">        combined_flux_exponent : float</span>
+<span class="sd">            Combined exponent m+n from GDL permeability and CL J-function exponents.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cathode</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span>
+        <span class="n">gdl_permeability_exponent</span> <span class="o">=</span> <span class="n">cathode</span><span class="o">.</span><span class="n">gdl</span><span class="o">.</span><span class="n">n_rel</span>
+        <span class="n">cl_J_function_exponent</span>    <span class="o">=</span> <span class="n">cathode</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">two_phase_transport_model</span><span class="o">.</span><span class="n">J_function_exponent</span>
+        <span class="n">gdl_J_function_exponent</span>   <span class="o">=</span> <span class="n">cathode</span><span class="o">.</span><span class="n">gdl</span><span class="o">.</span><span class="n">two_phase_transport_model</span><span class="o">.</span><span class="n">J_function_exponent</span>
+
+        <span class="n">combined_flux_exponent</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">gdl_permeability_exponent</span> <span class="o">*</span> <span class="n">cl_J_function_exponent</span> <span class="o">/</span> <span class="n">gdl_J_function_exponent</span>
+            <span class="o">+</span> <span class="n">cl_J_function_exponent</span>
+        <span class="p">)</span>
+
+        <span class="n">cl_to_gdl_capillary_pressure_ratio</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">cathode</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">capillary_pressure_J_ratio</span>
+            <span class="o">/</span> <span class="n">cathode</span><span class="o">.</span><span class="n">gdl</span><span class="o">.</span><span class="n">capillary_pressure_J_ratio</span>
+        <span class="p">)</span>
+
+        <span class="n">modified_abs_permeability</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">current_density</span><span class="p">)</span>
+            <span class="o">*</span> <span class="mf">1.</span> <span class="o">/</span> <span class="n">cathode</span><span class="o">.</span><span class="n">gdl</span><span class="o">.</span><span class="n">saturation_flow_resistance</span>
+            <span class="o">*</span> <span class="n">gdl_J_function_exponent</span> <span class="o">/</span> <span class="p">(</span><span class="n">gdl_permeability_exponent</span> <span class="o">+</span> <span class="n">gdl_J_function_exponent</span><span class="p">)</span>
+            <span class="o">*</span> <span class="n">cl_to_gdl_capillary_pressure_ratio</span> <span class="o">**</span> <span class="p">(</span><span class="n">gdl_permeability_exponent</span> <span class="o">/</span> <span class="n">gdl_J_function_exponent</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="p">)[</span><span class="n">liquid_equilibrated_mask</span><span class="p">]</span>
+
+        <span class="n">membrane_flux_difference</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">cathode</span><span class="o">.</span><span class="n">vapor_eq_sat_membrane_water_flux</span>
+            <span class="o">-</span> <span class="n">cathode</span><span class="o">.</span><span class="n">liquid_eq_sat_membrane_water_flux</span>
+        <span class="p">)[</span><span class="n">liquid_equilibrated_mask</span><span class="p">]</span>
+
+        <span class="n">vapor_eq_liquid_flux</span> <span class="o">=</span> <span class="n">cathode</span><span class="o">.</span><span class="n">vapor_eq_sat_liquid_flux</span><span class="p">[</span><span class="n">liquid_equilibrated_mask</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">modified_abs_permeability</span><span class="p">,</span> <span class="n">membrane_flux_difference</span><span class="p">,</span> <span class="n">vapor_eq_liquid_flux</span><span class="p">,</span> <span class="n">combined_flux_exponent</span>
+
+
+    <span class="nd">@staticmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_halley_solve_saturation</span><span class="p">(</span><span class="n">modified_abs_permeability</span><span class="p">,</span> <span class="n">membrane_flux_difference</span><span class="p">,</span>
+                                <span class="n">vapor_eq_liquid_flux</span><span class="p">,</span> <span class="n">combined_flux_exponent</span><span class="p">,</span> <span class="n">n_iter</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Halley&#39;s method root-finder for the non-wetting saturation equation:</span>
+<span class="sd">            f(s) = modified_abs_permeability * s^combined_flux_exponent</span>
+<span class="sd">                + membrane_flux_difference * s - vapor_eq_liquid_flux = 0</span>
+
+<span class="sd">        Initial guess of 0.1 is a reasonable for low saturations.</span>
+<span class="sd">        Saturation is clipped to [0, 0.9] each iteration to remain in the physical range.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">saturation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full_like</span><span class="p">(</span><span class="n">membrane_flux_difference</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_iter</span><span class="p">):</span>
+            <span class="n">residual</span>     <span class="o">=</span> <span class="p">(</span><span class="n">modified_abs_permeability</span> <span class="o">*</span> <span class="n">saturation</span><span class="o">**</span><span class="n">combined_flux_exponent</span>
+                            <span class="o">+</span> <span class="n">membrane_flux_difference</span> <span class="o">*</span> <span class="n">saturation</span>
+                            <span class="o">-</span> <span class="n">vapor_eq_liquid_flux</span><span class="p">)</span>
+            <span class="n">first_deriv</span>  <span class="o">=</span> <span class="p">(</span><span class="n">combined_flux_exponent</span> <span class="o">*</span> <span class="n">modified_abs_permeability</span>
+                            <span class="o">*</span> <span class="n">saturation</span><span class="o">**</span><span class="p">(</span><span class="n">combined_flux_exponent</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                            <span class="o">+</span> <span class="n">membrane_flux_difference</span><span class="p">)</span>
+            <span class="n">second_deriv</span> <span class="o">=</span> <span class="p">(</span><span class="n">combined_flux_exponent</span> <span class="o">*</span> <span class="p">(</span><span class="n">combined_flux_exponent</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+                            <span class="o">*</span> <span class="n">modified_abs_permeability</span>
+                            <span class="o">*</span> <span class="n">saturation</span><span class="o">**</span><span class="p">(</span><span class="n">combined_flux_exponent</span> <span class="o">-</span> <span class="mi">2</span><span class="p">))</span>
+            <span class="n">saturation</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span>
+                <span class="n">saturation</span> <span class="o">-</span> <span class="n">residual</span> <span class="o">*</span> <span class="n">first_deriv</span> <span class="o">/</span> <span class="p">(</span><span class="n">first_deriv</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">residual</span> <span class="o">*</span> <span class="n">second_deriv</span><span class="p">),</span>
+                <span class="mi">0</span><span class="p">,</span> <span class="mf">0.9</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">saturation</span>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_blend_equilibrium_profiles</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Linearly interpolate water content profiles between vapor- and liquid-equilibrium states, weighted by non-wetting saturation.&quot;&quot;&quot;</span>
+        <span class="n">liquid_saturation</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">liquid_saturation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">water_content_profile</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">vapor_eq_sat_water_profile</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">liquid_saturation</span><span class="p">)</span>
+            <span class="o">+</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">liquid_eq_sat_water_profile</span> <span class="o">*</span> <span class="n">liquid_saturation</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">water_content_derivative_profile</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">vapor_eq_sat_water_derivative_profile</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">liquid_saturation</span><span class="p">)</span>
+            <span class="o">+</span> <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">liquid_eq_sat_water_derivative_profile</span> <span class="o">*</span> <span class="n">liquid_saturation</span>
+        <span class="p">)</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">eq_water_content</span> <span class="o">=</span>  <span class="p">(</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">vapor_eq_water_content</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">liquid_saturation</span><span class="p">)</span>
+            <span class="o">+</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">liquid_eq_water_content</span> <span class="o">*</span> <span class="n">liquid_saturation</span>
+        <span class="p">)</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">water_content</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">water_content_profile</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_blended_fluxes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update membrane and total water fluxes using the blended non-wetting saturation.&quot;&quot;&quot;</span>
+        <span class="n">membrane_flux_difference</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">vapor_eq_sat_membrane_water_flux</span>
+            <span class="o">-</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">liquid_eq_sat_membrane_water_flux</span>
+        <span class="p">)</span>
+        <span class="n">non_wetting_saturation</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">non_wetting_saturation</span>
+
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">membrane_water_flux</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">vapor_eq_sat_membrane_water_flux</span>
+            <span class="o">-</span> <span class="n">membrane_flux_difference</span> <span class="o">*</span> <span class="n">non_wetting_saturation</span>
+        <span class="p">)</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">membrane_water_flux</span> <span class="o">=</span> <span class="o">-</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">membrane_water_flux</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">water_flux</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">h2o_production</span> <span class="o">+</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">membrane_water_flux</span>
+        <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">water_flux</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">h2o_production</span> <span class="o">+</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">membrane_water_flux</span></div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">marapendi</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/components.html">Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/simulation.html">Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/estimation.html">Estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/tools.html">Tools</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2024, Pedro Affonso Nobrega.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.1.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

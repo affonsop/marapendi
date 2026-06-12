@@ -2,7 +2,7 @@
 Module providing classes for different membrane permeation models. 
 """
 from dataclasses import dataclass
-from marapendi.tools import arrhenius_term
+from marapendi.tools.tools import arrhenius_term
 
 
 @dataclass

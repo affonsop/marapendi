@@ -1,0 +1,674 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>marapendi.models.transient &mdash; marapendi 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            marapendi
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/components.html">Components</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/materials.html">Materials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/simulation.html">Simulation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/estimation.html">Estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/tools.html">Tools</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">marapendi</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">marapendi.models.transient</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for marapendi.models.transient</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Transient cell model for PEM/AEM electrochemical cells.</span>
+
+<span class="sd">Classes</span>
+<span class="sd">-------</span>
+<span class="sd">TransientCellModel : ODE engine that integrates the full spatially-resolved</span>
+<span class="sd">    transient equations (water content, temperature, gas concentrations,</span>
+<span class="sd">    liquid saturation).  Physics models are resolved from the parent</span>
+<span class="sd">    ``CellBaseModel`` that injects itself via ``base_model``.</span>
+<span class="sd">    The applied current density is held in the ``current_density`` field and</span>
+<span class="sd">    exposed to ``BaseModel`` through ``get_inputs``.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">cantera</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ct</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Union</span><span class="p">,</span> <span class="n">Callable</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">marapendi.components.cell</span><span class="w"> </span><span class="kn">import</span> <span class="n">Cell</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">marapendi.components.cell_state</span><span class="w"> </span><span class="kn">import</span> <span class="n">CellState</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">marapendi.models.water</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">water_saturation_concentration</span><span class="p">,</span>
+    <span class="n">water_density</span><span class="p">,</span>
+    <span class="n">water_molar_volume</span><span class="p">,</span>
+    <span class="n">water_kinematic_viscosity</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">marapendi.models.electrochemistry</span><span class="w"> </span><span class="kn">import</span> <span class="n">enthalpy_condensation</span>
+
+
+<div class="viewcode-block" id="TransientCellModel">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.models.transient.TransientCellModel">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">TransientCellModel</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Spatially-resolved transient ODE model for a PEM/AEM cell.</span>
+
+<span class="sd">    The model assembles dxdt for the state vector</span>
+<span class="sd">    ``x[n_layers, n_variables]`` where the variables are:</span>
+
+<span class="sd">    * ``i_lmbd = 0`` : ionomer water content λ</span>
+<span class="sd">    * ``i_T    = 1`` : temperature T [K]</span>
+<span class="sd">    * ``i_cg   = [2,3,4,5]`` : gas concentrations [O₂, N₂, H₂, H₂O] [kmol m⁻³]</span>
+<span class="sd">    * ``i_s    = 6`` : liquid water saturation s [–]</span>
+
+<span class="sd">    Physics models are resolved from the parent ``CellBaseModel`` via</span>
+<span class="sd">    ``base_model``, injected automatically during ``CellBaseModel.__post_init__``.</span>
+<span class="sd">    Do not set ``base_model`` manually.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cell : Cell</span>
+<span class="sd">        Cell geometry and material property arrays (no model objects).</span>
+<span class="sd">    current_density : float or callable</span>
+<span class="sd">        Applied current density [A m⁻²].  May be a scalar (constant) or a</span>
+<span class="sd">        callable ``f(t) -&gt; float`` for time-varying protocols.  Exposed to</span>
+<span class="sd">        ``CellBaseModel`` via ``get_inputs`` so no manual ``input_fns`` dict</span>
+<span class="sd">        is needed.  Default: 0.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">cell</span><span class="p">:</span> <span class="n">Cell</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">Cell</span><span class="p">)</span>
+    <span class="n">current_density</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">float</span><span class="p">],</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="mf">0.</span>
+    <span class="c1"># Injected by CellBaseModel.__post_init__; never set by the caller.</span>
+    <span class="n">base_model</span><span class="p">:</span> <span class="nb">object</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">compare</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TransientCellModel.get_inputs">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.models.transient.TransientCellModel.get_inputs">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_inputs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ``{&#39;i&#39;: current_density}`` evaluated at time *t*.&quot;&quot;&quot;</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_density</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_density</span><span class="p">)</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">current_density</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">{</span><span class="s1">&#39;i&#39;</span><span class="p">:</span> <span class="n">i</span><span class="p">}</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">cell</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_layers</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">layers</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_layers</span> <span class="o">=</span> <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">cl</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">memb</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_domain</span> <span class="o">=</span> <span class="p">[</span><span class="n">l</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_layers</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">cell</span><span class="o">.</span><span class="n">layers</span><span class="p">]</span>
+        <span class="c1"># Catalyst layers only: membrane lambda is quasi-steady (inf capacity)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cl_domain</span> <span class="o">=</span> <span class="p">[</span><span class="n">l</span> <span class="ow">in</span> <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">cl</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="p">]</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">cell</span><span class="o">.</span><span class="n">layers</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">porous_domain</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="p">(</span><span class="n">l</span> <span class="ow">in</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">porous_layers</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">l</span> <span class="ow">in</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">porous_layers</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">cell</span><span class="o">.</span><span class="n">layers</span>
+        <span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">channel_domain</span> <span class="o">=</span> <span class="p">[</span><span class="n">l</span> <span class="ow">in</span> <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">ch</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">ch</span><span class="p">]</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">cell</span><span class="o">.</span><span class="n">layers</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">layer_thickness</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">ch</span><span class="o">.</span><span class="n">height</span><span class="p">]</span>
+            <span class="o">+</span> <span class="p">[</span><span class="n">l</span><span class="o">.</span><span class="n">thickness</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">porous_layers</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+            <span class="o">+</span> <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">memb</span><span class="o">.</span><span class="n">thickness</span><span class="p">]</span>
+            <span class="o">+</span> <span class="p">[</span><span class="n">l</span><span class="o">.</span><span class="n">thickness</span> <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">porous_layers</span><span class="p">]</span>
+            <span class="o">+</span> <span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">ch</span><span class="o">.</span><span class="n">height</span><span class="p">]</span>
+        <span class="p">)[</span><span class="o">...</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">x_h2_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="mi">1</span> <span class="k">if</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">porous_layers</span> <span class="k">else</span> <span class="mi">0</span>
+            <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">cell</span><span class="o">.</span><span class="n">layers</span>
+        <span class="p">])</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">layers</span><span class="p">):</span>
+            <span class="n">layer</span><span class="o">.</span><span class="n">ix</span> <span class="o">=</span> <span class="n">i</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_variables</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="mi">1</span>   <span class="c1"># ionomer water content</span>
+            <span class="o">+</span> <span class="mi">1</span>   <span class="c1"># temperature</span>
+            <span class="o">+</span> <span class="mi">4</span>   <span class="c1"># gas concentrations</span>
+            <span class="o">+</span> <span class="mi">1</span>   <span class="c1"># liquid water saturation</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">i_lmbd</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">i_T</span>    <span class="o">=</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">i_cg</span>   <span class="o">=</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">i_s</span>    <span class="o">=</span> <span class="mi">6</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">norm_factor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+            <span class="p">[</span><span class="mi">14</span><span class="p">,</span> <span class="mf">353.15</span><span class="p">,</span> <span class="mf">40e-3</span><span class="p">,</span> <span class="mf">40e-3</span><span class="p">,</span> <span class="mf">40e-3</span><span class="p">,</span> <span class="mf">40e-3</span><span class="p">,</span> <span class="mf">1.</span><span class="p">]</span>
+        <span class="p">)[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">n_states</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Total length of the normalised flat state vector (n_layers × n_variables).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_layers</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_variables</span>
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Initial-state helper</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="TransientCellModel.initial_state">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.models.transient.TransientCellModel.initial_state">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">initial_state</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">cell_temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">353.15</span><span class="p">,</span>
+        <span class="n">cell_pressure</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e5</span><span class="p">,</span>
+        <span class="n">ca_rh</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span>
+        <span class="n">an_rh</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.7</span><span class="p">,</span> 
+        <span class="n">ca_dry_o2</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.21</span><span class="p">,</span>
+        <span class="n">ca_dry_h2</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> 
+        <span class="n">an_dry_o2</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.</span><span class="p">,</span>
+        <span class="n">an_dry_h2</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a normalised flat initial-state vector from operating conditions.</span>
+
+<span class="sd">        Ionomer water content is initialised at the equilibrium value for the</span>
+<span class="sd">        average of the two inlet relative humidities.  Liquid saturation starts</span>
+<span class="sd">        at zero.  Gas compositions are assigned per-side via the ideal-gas law.</span>
+
+<span class="sd">        The returned vector is normalised by ``self.norm_factor`` and flattened,</span>
+<span class="sd">        making it suitable for direct use as ``y0`` in</span>
+<span class="sd">        ``scipy.integrate.solve_ivp``.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cell_temperature : float</span>
+<span class="sd">            Operating temperature [K] (default 353.15 K = 80 °C).</span>
+<span class="sd">        cell_pressure : float</span>
+<span class="sd">            Total gas pressure [Pa] (default 1e5 Pa = 1 bara).</span>
+<span class="sd">        ca_rh : float</span>
+<span class="sd">            Cathode inlet relative humidity, 0–1 (default 0.7).</span>
+<span class="sd">        an_rh : float</span>
+<span class="sd">            Anode inlet relative humidity, 0–1 (default 0.7).</span>
+<span class="sd">        ca_dry_o2 : float</span>
+<span class="sd">            O₂ mole fraction in the dry cathode gas (default 0.21 for air).</span>
+<span class="sd">        ca_dry_h2 : float</span>
+<span class="sd">            H₂ mole fraction in the dry cathode gas (default 0, none in air).</span>
+<span class="sd">        an_dry_o2 : float</span>
+<span class="sd">            O₂ mole fraction in the dry anode gas (default 0).</span>
+<span class="sd">        an_dry_h2 : float</span>
+<span class="sd">            H₂ mole fraction in the dry anode gas (default 1.0 for pure H₂).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        np.ndarray</span>
+<span class="sd">            Normalised flat state vector of shape ``(n_layers * n_variables,)``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">marapendi.models.water</span><span class="w"> </span><span class="kn">import</span> <span class="n">water_saturation_pressure</span>
+
+        <span class="n">cell</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+        <span class="n">RT</span>    <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">gas_constant</span> <span class="o">*</span> <span class="n">cell_temperature</span>
+        <span class="n">p_v</span> <span class="o">=</span> <span class="n">ca_rh</span> <span class="o">*</span> <span class="n">water_saturation_pressure</span><span class="p">(</span><span class="n">cell_temperature</span><span class="p">)</span>
+        <span class="n">p_dry</span>  <span class="o">=</span> <span class="n">cell_pressure</span> <span class="o">-</span> <span class="n">p_v</span>
+        <span class="n">c_v</span> <span class="o">=</span> <span class="n">p_v</span> <span class="o">/</span> <span class="n">RT</span>
+
+        <span class="c1"># Species order in state vector: [O₂, N₂, H₂, H₂O]</span>
+        <span class="n">c_ca</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="n">ca_dry_o2</span>       <span class="o">*</span> <span class="n">p_dry</span> <span class="o">/</span> <span class="n">RT</span><span class="p">,</span>   <span class="c1"># O₂</span>
+            <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">ca_dry_o2</span> <span class="o">-</span> <span class="n">ca_dry_h2</span><span class="p">)</span> <span class="o">*</span> <span class="n">p_dry</span> <span class="o">/</span> <span class="n">RT</span><span class="p">,</span>   <span class="c1"># N₂</span>
+            <span class="n">ca_dry_h2</span><span class="p">,</span>                             <span class="c1"># H₂  (trace)</span>
+            <span class="n">c_v</span><span class="p">,</span>
+        <span class="p">])</span>
+        <span class="n">c_an</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+            <span class="n">an_dry_o2</span><span class="p">,</span>                             <span class="c1"># O₂  (trace)</span>
+            <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">an_dry_h2</span><span class="o">-</span><span class="n">an_dry_o2</span><span class="p">)</span> <span class="o">*</span> <span class="n">p_dry</span> <span class="o">/</span> <span class="n">RT</span><span class="p">,</span>   <span class="c1"># N₂  (if any)</span>
+            <span class="n">an_dry_h2</span>       <span class="o">*</span> <span class="n">p_dry</span> <span class="o">/</span> <span class="n">RT</span><span class="p">,</span>   <span class="c1"># H₂</span>
+            <span class="n">c_v</span><span class="p">,</span>
+        <span class="p">])</span>
+
+        <span class="n">x0</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n_layers</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_variables</span><span class="p">))</span>
+        <span class="n">rh_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_layers</span><span class="p">,</span> <span class="p">(</span><span class="n">ca_rh</span> <span class="o">+</span> <span class="n">an_rh</span><span class="p">)</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">lmbd_eq</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_model</span><span class="o">.</span><span class="n">memb_model</span><span class="o">.</span><span class="n">equilibrium_water_content</span><span class="p">(</span>
+            <span class="n">rh_mean</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">sorption_coeffs_ion</span><span class="p">,</span>
+        <span class="p">)[:,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="c1"># Non-ionomer layers (GDL, channel) return NaN — zero is fine since</span>
+        <span class="c1"># those lambda states are frozen (infinite capacity) during integration.</span>
+        <span class="n">x0</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_lmbd</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">lmbd_eq</span><span class="p">,</span> <span class="n">nan</span><span class="o">=</span><span class="mf">0.</span><span class="p">)</span>
+        <span class="n">x0</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_T</span><span class="p">]</span>    <span class="o">=</span> <span class="n">cell_temperature</span>
+        <span class="n">x0</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_s</span><span class="p">]</span>    <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="n">memb_ix</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">memb</span><span class="o">.</span><span class="n">ix</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">cell</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">layer</span> <span class="ow">is</span> <span class="n">cell</span><span class="o">.</span><span class="n">memb</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">x0</span><span class="p">[</span><span class="n">layer</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_cg</span><span class="p">]</span> <span class="o">=</span> <span class="n">c_ca</span> <span class="k">if</span> <span class="n">layer</span><span class="o">.</span><span class="n">ix</span> <span class="o">&gt;</span> <span class="n">memb_ix</span> <span class="k">else</span> <span class="n">c_an</span>
+
+        <span class="k">return</span> <span class="p">(</span><span class="n">x0</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm_factor</span><span class="p">)</span><span class="o">.</span><span class="n">flatten</span><span class="p">()</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># State unpacking</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="TransientCellModel.get_states_from_x">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.models.transient.TransientCellModel.get_states_from_x">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_states_from_x</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unpack normalised state vector into named fields.</span>
+
+<span class="sd">        Physical bounds are enforced here so that model functions</span>
+<span class="sd">        (Cantera calls, log/sqrt) never receive unphysical inputs,</span>
+<span class="sd">        even when the BDF solver evaluates Jacobian trial steps outside</span>
+<span class="sd">        the feasible region.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">lmbd</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_lmbd</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+        <span class="n">T</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_T</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="mf">275.</span><span class="p">,</span> <span class="mf">600.</span><span class="p">)</span>
+        <span class="n">cg_k</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_cg</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="mf">0.</span><span class="p">)</span>
+        <span class="n">s</span>    <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_s</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="mf">0.</span><span class="p">,</span> <span class="mf">1.</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">lmbd</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">cg_k</span><span class="p">,</span> <span class="n">s</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># rates_of_change — sub-steps</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_derived_quantities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CellState</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unpack state vector and compute thermodynamic fields.&quot;&quot;&quot;</span>
+        <span class="n">cell</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+        <span class="n">m</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_model</span>
+        <span class="n">lmbd</span><span class="p">,</span> <span class="n">T</span><span class="p">,</span> <span class="n">cg_k</span><span class="p">,</span> <span class="n">s</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_states_from_x</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="n">iF</span>    <span class="o">=</span> <span class="n">i</span> <span class="o">/</span> <span class="n">ct</span><span class="o">.</span><span class="n">faraday</span>
+        <span class="n">c_g</span>   <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">cg_k</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">p_g</span>   <span class="o">=</span> <span class="n">c_g</span> <span class="o">*</span> <span class="n">ct</span><span class="o">.</span><span class="n">gas_constant</span> <span class="o">*</span> <span class="n">T</span>
+        <span class="n">x_g_k</span> <span class="o">=</span> <span class="n">cg_k</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">c_g</span><span class="p">,</span> <span class="mf">1e-30</span><span class="p">)[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+        <span class="n">p_g_k</span> <span class="o">=</span> <span class="n">p_g</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">*</span> <span class="n">x_g_k</span>
+        <span class="n">D_g_k</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">gas_diffusion_model</span><span class="o">.</span><span class="n">species_diffusion_coefficient</span><span class="p">(</span><span class="n">T</span><span class="p">,</span> <span class="n">p_g</span><span class="p">,</span> <span class="n">x_h2</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">x_h2_mask</span><span class="p">)</span>
+        <span class="n">c_sat</span> <span class="o">=</span> <span class="n">water_saturation_concentration</span><span class="p">(</span><span class="n">T</span><span class="p">)</span>
+        <span class="n">c_v</span>   <span class="o">=</span> <span class="n">cg_k</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+        <span class="n">rh</span>    <span class="o">=</span> <span class="n">c_v</span> <span class="o">/</span> <span class="n">c_sat</span>
+        <span class="n">rho_l</span> <span class="o">=</span> <span class="n">water_density</span><span class="p">(</span><span class="n">T</span><span class="p">)</span>
+        <span class="n">nu_l</span>  <span class="o">=</span> <span class="n">water_kinematic_viscosity</span><span class="p">(</span><span class="n">T</span><span class="p">)</span>
+        <span class="n">M_k</span>   <span class="o">=</span> <span class="n">x_g_k</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">32.</span><span class="p">,</span> <span class="mf">28.</span><span class="p">,</span> <span class="mf">2.</span><span class="p">,</span> <span class="mf">18.</span><span class="p">])[</span><span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="p">:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+        <span class="n">V_w</span>   <span class="o">=</span> <span class="n">water_molar_volume</span><span class="p">(</span><span class="n">T</span><span class="p">)</span>
+
+        <span class="n">f_v</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">memb_model</span><span class="o">.</span><span class="n">water_vol_fraction</span><span class="p">(</span><span class="n">lmbd</span><span class="p">,</span> <span class="n">V_w</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">V_ion</span><span class="p">)</span>
+
+        <span class="n">memb_ix</span>  <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">memb</span><span class="o">.</span><span class="n">ix</span>
+        <span class="n">ca_cl_ix</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span>
+        <span class="n">an_cl_ix</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span>
+
+        <span class="k">return</span> <span class="n">CellState</span><span class="p">(</span>
+            <span class="n">x</span><span class="o">=</span><span class="n">x</span><span class="p">,</span>
+            <span class="n">lmbd</span><span class="o">=</span><span class="n">lmbd</span><span class="p">,</span> <span class="n">T</span><span class="o">=</span><span class="n">T</span><span class="p">,</span> <span class="n">cg_k</span><span class="o">=</span><span class="n">cg_k</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="n">s</span><span class="p">,</span>
+            <span class="n">iF</span><span class="o">=</span><span class="n">iF</span><span class="p">,</span> <span class="n">p_g</span><span class="o">=</span><span class="n">p_g</span><span class="p">,</span> <span class="n">p_g_k</span><span class="o">=</span><span class="n">p_g_k</span><span class="p">,</span> <span class="n">D_g_k</span><span class="o">=</span><span class="n">D_g_k</span><span class="p">,</span>
+            <span class="n">c_sat</span><span class="o">=</span><span class="n">c_sat</span><span class="p">,</span> <span class="n">c_v</span><span class="o">=</span><span class="n">c_v</span><span class="p">,</span> <span class="n">rh</span><span class="o">=</span><span class="n">rh</span><span class="p">,</span>
+            <span class="n">rho_l</span><span class="o">=</span><span class="n">rho_l</span><span class="p">,</span> <span class="n">nu_l</span><span class="o">=</span><span class="n">nu_l</span><span class="p">,</span> <span class="n">M_k</span><span class="o">=</span><span class="n">M_k</span><span class="p">,</span> <span class="n">f_v</span><span class="o">=</span><span class="n">f_v</span><span class="p">,</span>
+            <span class="n">T_memb</span><span class="o">=</span><span class="n">T</span><span class="p">[</span><span class="n">memb_ix</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+            <span class="n">T_ca_cl</span><span class="o">=</span><span class="n">T</span><span class="p">[</span><span class="n">ca_cl_ix</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+            <span class="n">T_an_cl</span><span class="o">=</span><span class="n">T</span><span class="p">[</span><span class="n">an_cl_ix</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+            <span class="n">f_v_memb</span><span class="o">=</span><span class="n">f_v</span><span class="p">[</span><span class="n">memb_ix</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+            <span class="n">f_v_ca_cl</span><span class="o">=</span><span class="n">f_v</span><span class="p">[</span><span class="n">ca_cl_ix</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+            <span class="n">lmbd_ca_cl</span><span class="o">=</span><span class="n">lmbd</span><span class="p">[</span><span class="n">ca_cl_ix</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+            <span class="n">p_h2</span><span class="o">=</span><span class="n">p_g_k</span><span class="p">[</span><span class="n">an_cl_ix</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+            <span class="n">p_o2_ca_cl</span><span class="o">=</span><span class="n">p_g_k</span><span class="p">[</span><span class="n">ca_cl_ix</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_voltage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">CellState</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute local O₂ pressure and cell voltage; populate state in-place.&quot;&quot;&quot;</span>
+        <span class="n">cell</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+        <span class="n">m</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_model</span>
+
+        <span class="n">state</span><span class="o">.</span><span class="n">t_water_film</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">cl_model</span><span class="o">.</span><span class="n">water_film_thickness</span><span class="p">(</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">s</span><span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">state</span><span class="o">.</span><span class="n">R_o2_local</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">cl_model</span><span class="o">.</span><span class="n">o2_ionomer_film_resistance</span><span class="p">(</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">lmbd_ca_cl</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">T_ca_cl</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="p">,</span> <span class="n">m</span><span class="o">.</span><span class="n">memb_model</span><span class="p">,</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">t_ion_film</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">t_water_film</span><span class="p">,</span> <span class="n">coverage_ratio</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">c_o2_local</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">cg_k</span><span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">-</span> <span class="n">state</span><span class="o">.</span><span class="n">R_o2_local</span> <span class="o">*</span> <span class="n">state</span><span class="o">.</span><span class="n">iF</span> <span class="o">/</span> <span class="mi">4</span><span class="p">,</span>
+            <span class="mf">1e-30</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">state</span><span class="o">.</span><span class="n">p_o2_local</span> <span class="o">=</span> <span class="n">c_o2_local</span> <span class="o">*</span> <span class="n">ct</span><span class="o">.</span><span class="n">gas_constant</span> <span class="o">*</span> <span class="n">state</span><span class="o">.</span><span class="n">T_ca_cl</span>
+
+        <span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">V_cell</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">eta_ohm</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">eta_act</span><span class="p">,</span>
+         <span class="n">state</span><span class="o">.</span><span class="n">E_rev_ca</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">E_rev_an</span><span class="p">,</span>
+         <span class="n">state</span><span class="o">.</span><span class="n">eta_memb</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">eta_gdl</span><span class="p">)</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">voltage_model</span><span class="o">.</span><span class="n">calculate_cell_voltage</span><span class="p">(</span>
+            <span class="n">T_an_cl</span><span class="o">=</span><span class="n">state</span><span class="o">.</span><span class="n">T_an_cl</span><span class="p">,</span>
+            <span class="n">T_ca_cl</span><span class="o">=</span><span class="n">state</span><span class="o">.</span><span class="n">T_ca_cl</span><span class="p">,</span>
+            <span class="n">T_memb</span><span class="o">=</span><span class="n">state</span><span class="o">.</span><span class="n">T_memb</span><span class="p">,</span>
+            <span class="n">f_v_memb</span><span class="o">=</span><span class="n">state</span><span class="o">.</span><span class="n">f_v_memb</span><span class="p">,</span>
+            <span class="n">f_v_ca_cl</span><span class="o">=</span><span class="n">state</span><span class="o">.</span><span class="n">f_v_ca_cl</span><span class="p">,</span>
+            <span class="n">s_ca_cl</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">p_h2</span><span class="o">=</span><span class="n">state</span><span class="o">.</span><span class="n">p_h2</span><span class="p">,</span>
+            <span class="n">p_o2_local</span><span class="o">=</span><span class="n">state</span><span class="o">.</span><span class="n">p_o2_local</span><span class="p">,</span>
+            <span class="n">p_o2_ca_cl</span><span class="o">=</span><span class="n">state</span><span class="o">.</span><span class="n">p_o2_ca_cl</span><span class="p">,</span>
+            <span class="n">i</span><span class="o">=</span><span class="n">state</span><span class="o">.</span><span class="n">iF</span> <span class="o">*</span> <span class="n">ct</span><span class="o">.</span><span class="n">faraday</span><span class="p">,</span>
+            <span class="n">memb</span><span class="o">=</span><span class="n">cell</span><span class="o">.</span><span class="n">memb</span><span class="p">,</span>
+            <span class="n">electrical_resistance</span><span class="o">=</span><span class="n">cell</span><span class="o">.</span><span class="n">electrical_resistance</span><span class="p">,</span>
+            <span class="n">memb_model</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">memb_model</span><span class="p">,</span>
+            <span class="n">ionomer_model</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">memb_model</span><span class="p">,</span>
+            <span class="n">ca_cl_model</span><span class="o">=</span><span class="n">m</span><span class="o">.</span><span class="n">cl_model</span><span class="p">,</span>
+            <span class="n">ca_cl</span><span class="o">=</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="p">,</span>
+            <span class="n">charge</span><span class="o">=</span><span class="n">cell</span><span class="o">.</span><span class="n">charge</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_resistances</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">CellState</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build layer resistance array R and harmonic-mean inter-layer eff_R.&quot;&quot;&quot;</span>
+        <span class="n">cell</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+        <span class="n">m</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_model</span>
+        <span class="n">R</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="n">R</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_s</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">darcy_transport_model</span><span class="o">.</span><span class="n">calculate_liquid_darcy_flow_resistance</span><span class="p">(</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">s</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">nu_l</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">thickness</span><span class="p">,</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">K_abs</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">n_rel</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">R</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_cg</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">gas_diffusion_model</span><span class="o">.</span><span class="n">total_diffusion_resistance</span><span class="p">(</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">T</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">s</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">D_g_k</span><span class="p">,</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">M_k</span><span class="p">,</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">thickness</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">eps_p</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">tort</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">d_p</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">n_s</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="n">R</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_T</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">thickness</span> <span class="o">/</span> <span class="n">cell</span><span class="o">.</span><span class="n">bulk_thermal_conductivity</span>
+
+        <span class="c1"># λ transport is only defined in the ionomer domain; default to inf everywhere</span>
+        <span class="c1"># and overwrite for ionomer layers only to avoid divide-by-zero on other layers.</span>
+        <span class="n">D_lmbd</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">memb_model</span><span class="o">.</span><span class="n">diffusion_coefficient</span><span class="p">(</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">lmbd</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">f_v</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">T</span><span class="p">,</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">darken_num_ion</span><span class="p">,</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">darken_den_ion</span><span class="p">,</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">D_lmbd_ref_ion</span><span class="p">,</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">E_act_ion</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">R</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_lmbd</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">memb_model</span><span class="o">.</span><span class="n">calculate_membrane_water_resistance</span><span class="p">(</span>
+            <span class="n">D_lmbd</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">thickness</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">eps_ion</span><span class="p">,</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">c_ion</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">tau_ion</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">ch</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">ch</span><span class="p">):</span>
+            <span class="n">R</span><span class="p">[</span><span class="n">layer</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_s</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>  <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">R</span><span class="p">[</span><span class="n">layer</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_cg</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">layer</span><span class="o">.</span><span class="n">hydraulic_diameter</span> <span class="o">/</span> <span class="n">state</span><span class="o">.</span><span class="n">D_g_k</span><span class="p">[</span><span class="n">layer</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">/</span> <span class="n">layer</span><span class="o">.</span><span class="n">sherwood</span>
+            <span class="p">)</span>
+            <span class="n">R</span><span class="p">[</span><span class="n">layer</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_T</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>  <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">layer</span><span class="o">.</span><span class="n">height</span> <span class="o">/</span> <span class="n">layer</span><span class="o">.</span><span class="n">bulk_thermal_conductivity</span>
+
+        <span class="n">R</span><span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">memb</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">i_s</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_cg</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">R</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">nan</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">,</span> <span class="n">posinf</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+
+        <span class="n">eff_R</span> <span class="o">=</span> <span class="p">(</span><span class="n">R</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">+</span> <span class="n">R</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="o">...</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">eff_R</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_T</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">+=</span> <span class="n">cell</span><span class="o">.</span><span class="n">thermal_resistance</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">eff_R</span><span class="p">[</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_T</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">+=</span> <span class="n">cell</span><span class="o">.</span><span class="n">thermal_resistance</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="k">return</span> <span class="n">R</span><span class="p">,</span> <span class="n">eff_R</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_fluxes</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">eff_R</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">CellState</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute inter-layer flux array J (diffusion + advection + EOD)</span>
+<span class="sd">        and return V_cell, eta_ohm, eta_act, S_T_losses, p_o2_local.&quot;&quot;&quot;</span>
+        <span class="n">cell</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+        <span class="n">m</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_model</span>
+        <span class="n">phi</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># Liquid-water driving potential: gas pressure + capillary pressure</span>
+        <span class="n">phi</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_s</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">p_g</span>
+        <span class="n">phi</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">porous_domain</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_s</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">+=</span> <span class="p">(</span>
+            <span class="n">m</span><span class="o">.</span><span class="n">darcy_transport_model</span><span class="o">.</span><span class="n">capillary_pressure_from_saturation</span><span class="p">(</span>
+                <span class="n">state</span><span class="o">.</span><span class="n">s</span><span class="p">,</span>
+                <span class="n">cell</span><span class="o">.</span><span class="n">p_b</span><span class="p">,</span>
+                <span class="n">cell</span><span class="o">.</span><span class="n">van_genuchten_m</span><span class="p">,</span>
+                <span class="n">cell</span><span class="o">.</span><span class="n">van_genuchten_n</span><span class="p">,</span>
+            <span class="p">)[</span><span class="bp">self</span><span class="o">.</span><span class="n">porous_domain</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="n">J</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n_layers</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_variables</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">J</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="n">phi</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="o">...</span><span class="p">]</span> <span class="o">-</span> <span class="n">phi</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span> <span class="o">/</span> <span class="n">eff_R</span>
+
+        <span class="c1"># Electro-osmotic drag</span>
+        <span class="n">J_eod</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">memb</span><span class="o">.</span><span class="n">calculate_electroosmotic_drag_coefficient</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">lmbd</span><span class="p">)</span>
+            <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">ionomer_domain</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+            <span class="o">*</span> <span class="n">state</span><span class="o">.</span><span class="n">iF</span>
+        <span class="p">)</span>
+        <span class="n">J</span><span class="p">[[</span><span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">memb</span><span class="o">.</span><span class="n">ix</span> <span class="o">+</span> <span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_lmbd</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">+=</span> <span class="n">J_eod</span><span class="p">[:</span><span class="mi">1</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">J</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_water_exchange</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">CellState</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return ionomer absorption/desorption flux J_des.&quot;&quot;&quot;</span>
+        <span class="n">cell</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+        <span class="n">m</span>    <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_model</span>
+        <span class="n">k_abs</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">memb_model</span><span class="o">.</span><span class="n">sorption_coefficient</span><span class="p">(</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">f_v</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">T</span><span class="p">,</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">k_des_ref_ion</span><span class="p">,</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">E_act_ion</span><span class="p">,</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">T_ref_des_ion</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">lmbd_eq</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">state</span><span class="o">.</span><span class="n">s</span><span class="p">)</span> <span class="o">*</span> <span class="n">m</span><span class="o">.</span><span class="n">memb_model</span><span class="o">.</span><span class="n">equilibrium_water_content</span><span class="p">(</span>
+                <span class="n">state</span><span class="o">.</span><span class="n">rh</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">sorption_coeffs_ion</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="o">+</span> <span class="n">state</span><span class="o">.</span><span class="n">s</span> <span class="o">*</span> <span class="n">m</span><span class="o">.</span><span class="n">memb_model</span><span class="o">.</span><span class="n">liquid_equilibrium_water_content</span><span class="p">(</span>
+                <span class="n">cell</span><span class="o">.</span><span class="n">lmbd_liq_ref_ion</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">k_abs</span> <span class="o">*</span> <span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">lmbd</span> <span class="o">-</span> <span class="n">lmbd_eq</span><span class="p">)</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">c_ion</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_phase_change</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">CellState</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return vapour–liquid phase-change source term S_vl.</span>
+
+<span class="sd">        Positive when condensation occurs (c_v &gt; c_sat), negative when evaporating.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">c_sat</span>  <span class="o">=</span> <span class="n">water_saturation_concentration</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+        <span class="n">factor</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">c_sat</span> <span class="o">&gt;</span> <span class="n">state</span><span class="o">.</span><span class="n">c_v</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">s</span><span class="p">,</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">state</span><span class="o">.</span><span class="n">s</span><span class="p">)</span>
+        <span class="k">return</span> <span class="mf">1000.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">c_v</span> <span class="o">-</span> <span class="n">c_sat</span><span class="p">)</span> <span class="o">*</span> <span class="n">factor</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_sources</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">CellState</span><span class="p">,</span> <span class="n">J_des</span><span class="p">,</span> <span class="n">S_vl</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Populate source term array S.&quot;&quot;&quot;</span>
+        <span class="n">cell</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+        <span class="n">S</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="c1"># Assemble per-layer thermal loss array</span>
+        <span class="n">memb_ix</span>   <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">memb</span><span class="o">.</span><span class="n">ix</span>
+        <span class="n">ca_cl_ix</span>  <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span>
+        <span class="n">an_cl_ix</span>  <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span>
+        <span class="n">ca_gdl_ix</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">gdl</span><span class="o">.</span><span class="n">ix</span>
+        <span class="n">an_gdl_ix</span> <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">gdl</span><span class="o">.</span><span class="n">ix</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">iF</span> <span class="o">*</span> <span class="n">ct</span><span class="o">.</span><span class="n">faraday</span>
+
+        <span class="n">S_T_losses</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+        <span class="n">S_T_losses</span><span class="p">[</span><span class="n">memb_ix</span><span class="p">,</span>   <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">eta_memb</span>  <span class="o">*</span> <span class="n">i</span>
+        <span class="n">S_T_losses</span><span class="p">[</span><span class="n">ca_cl_ix</span><span class="p">,</span>  <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">eta_act</span> <span class="o">+</span> <span class="n">state</span><span class="o">.</span><span class="n">E_rev_ca</span><span class="p">)</span> <span class="o">*</span> <span class="n">i</span>
+        <span class="n">S_T_losses</span><span class="p">[</span><span class="n">an_cl_ix</span><span class="p">,</span>  <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">E_rev_an</span>  <span class="o">*</span> <span class="n">i</span>
+        <span class="n">S_T_losses</span><span class="p">[</span><span class="n">ca_gdl_ix</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">eta_gdl</span>   <span class="o">*</span> <span class="n">i</span>
+        <span class="n">S_T_losses</span><span class="p">[</span><span class="n">an_gdl_ix</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">eta_gdl</span>   <span class="o">*</span> <span class="n">i</span>
+
+        <span class="c1"># Ionomer water: absorption sink ± electrolysis production</span>
+        <span class="n">S</span><span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_lmbd</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">+=</span> <span class="p">(</span>
+            <span class="o">-</span><span class="n">J_des</span><span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+        <span class="p">)</span> <span class="o">/</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">thickness</span>
+        <span class="n">S</span><span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_lmbd</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">+=</span> <span class="p">(</span>
+            <span class="n">state</span><span class="o">.</span><span class="n">iF</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">-</span> <span class="n">J_des</span><span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+        <span class="p">)</span> <span class="o">/</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">thickness</span>
+
+        <span class="c1"># Liquid water: phase change (blocked in membrane)</span>
+        <span class="n">S</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_s</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>            <span class="o">=</span> <span class="n">S_vl</span>
+        <span class="n">S</span><span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">memb</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_s</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># Water vapour: condensation sink</span>
+        <span class="n">S</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_cg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">S_vl</span>
+
+        <span class="c1"># Gas species: electrolysis consumption</span>
+        <span class="n">S</span><span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_cg</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">state</span><span class="o">.</span><span class="n">iF</span> <span class="o">/</span> <span class="mi">4</span><span class="p">)</span> <span class="o">/</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">thickness</span>
+        <span class="n">S</span><span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_cg</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="n">state</span><span class="o">.</span><span class="n">iF</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">/</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">thickness</span>
+
+        <span class="c1"># Water vapour: re-evaporation from absorbed water</span>
+        <span class="k">for</span> <span class="n">side</span> <span class="ow">in</span> <span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="p">):</span>
+            <span class="n">S</span><span class="p">[</span><span class="n">side</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_cg</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="o">...</span><span class="p">]</span> <span class="o">+=</span> <span class="n">J_des</span><span class="p">[</span><span class="n">side</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">/</span> <span class="n">side</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">thickness</span>
+        <span class="n">S</span><span class="p">[</span><span class="n">cell</span><span class="o">.</span><span class="n">memb</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_cg</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="c1"># Temperature: ohmic/activation losses + phase-change enthalpy</span>
+        <span class="n">h_vl</span> <span class="o">=</span> <span class="n">enthalpy_condensation</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+        <span class="n">S</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_T</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">S_T_losses</span> <span class="o">/</span> <span class="n">cell</span><span class="o">.</span><span class="n">thickness</span> <span class="o">+</span> <span class="n">S_vl</span> <span class="o">*</span> <span class="n">h_vl</span>
+        <span class="k">for</span> <span class="n">side</span> <span class="ow">in</span> <span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="p">):</span>
+            <span class="n">S</span><span class="p">[</span><span class="n">side</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_T</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">-=</span> <span class="p">(</span>
+                <span class="n">J_des</span><span class="p">[</span><span class="n">side</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">/</span> <span class="n">side</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">thickness</span>
+                <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">base_model</span><span class="o">.</span><span class="n">memb_model</span><span class="o">.</span><span class="n">heat_of_adsorption</span><span class="p">(</span>
+                    <span class="n">state</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="n">side</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span> <span class="n">cell</span><span class="o">.</span><span class="n">memb</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">S</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_capacities</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="n">CellState</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Populate capacity array C.&quot;&quot;&quot;</span>
+        <span class="n">cell</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+        <span class="n">C</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="c1"># Membrane lambda is quasi-steady → inf capacity; only CLs have finite dynamics</span>
+        <span class="n">C</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_lmbd</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">cell</span><span class="o">.</span><span class="n">eps_ion</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">c_ion</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">thickness</span>
+        <span class="p">)</span>
+        <span class="n">C</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_s</span><span class="p">,</span>  <span class="o">...</span><span class="p">]</span>   <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">rho_l</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">eps_p</span>
+        <span class="n">C</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_cg</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>   <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">eps_p</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+        <span class="n">C</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_T</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>    <span class="o">=</span> <span class="n">cell</span><span class="o">.</span><span class="n">bulk_density</span> <span class="o">*</span> <span class="n">cell</span><span class="o">.</span><span class="n">bulk_specific_heat_capacity</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">nan_to_num</span><span class="p">(</span><span class="n">C</span><span class="p">,</span> <span class="n">copy</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">nan</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">)</span>
+        <span class="c1"># Non-ionomer layers (GDL, channel) have eps_ion=0, giving C_lmbd=0.</span>
+        <span class="c1"># With no λ flux or source there, dxdt=0/0=NaN — block dynamics instead.</span>
+        <span class="n">non_ionomer</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ionomer_domain</span><span class="p">)</span>
+        <span class="n">C</span><span class="p">[</span><span class="n">non_ionomer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_lmbd</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">inf</span>
+        <span class="k">return</span> <span class="n">C</span>
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Main entry point</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="TransientCellModel.rates_of_change">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.models.transient.TransientCellModel.rates_of_change">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">rates_of_change</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">i</span><span class="o">=</span><span class="mf">0.</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return dxdt for all state variables across all layers.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : ndarray, shape (n_layers * n_variables, m)</span>
+<span class="sd">        i : float</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cell</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cell</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">x</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_layers</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_variables</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+            <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">norm_factor</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 1. Derived thermodynamic quantities → CellState</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_derived_quantities</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span>
+
+        <span class="c1"># 2. Local O₂ pressure + cell voltage</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_compute_voltage</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+        <span class="c1"># 3. Transport resistances</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">eff_R</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_resistances</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+        <span class="c1"># 4. Inter-layer fluxes (including EOD)</span>
+        <span class="n">J</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_fluxes</span><span class="p">(</span><span class="n">eff_R</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+
+        <span class="c1"># 5. Water exchange between phases</span>
+        <span class="n">J_des</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_water_exchange</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+        <span class="n">S_vl</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_phase_change</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+        <span class="c1"># 6. Source terms</span>
+        <span class="n">S</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_sources</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="n">J_des</span><span class="p">,</span> <span class="n">S_vl</span><span class="p">)</span>
+
+        <span class="c1"># 7. Capacities</span>
+        <span class="n">C</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_capacities</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+        <span class="c1"># 8. Assemble dxdt; enforce channel boundary conditions</span>
+        <span class="n">dxdt</span> <span class="o">=</span> <span class="p">((</span><span class="n">J</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">-</span> <span class="n">J</span><span class="p">[</span><span class="mi">1</span><span class="p">:,</span> <span class="o">...</span><span class="p">])</span> <span class="o">/</span> <span class="n">cell</span><span class="o">.</span><span class="n">thickness</span><span class="p">[:,</span> <span class="n">np</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span> <span class="o">+</span> <span class="n">S</span><span class="p">)</span> <span class="o">/</span> <span class="n">C</span>
+        <span class="k">for</span> <span class="n">ch</span> <span class="ow">in</span> <span class="p">(</span><span class="n">cell</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">ch</span><span class="p">,</span> <span class="n">cell</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">ch</span><span class="p">):</span>
+            <span class="n">dxdt</span><span class="p">[</span><span class="n">ch</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_T</span><span class="p">,</span>  <span class="p">:]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">dxdt</span><span class="p">[</span><span class="n">ch</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_cg</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="mi">0</span>
+            <span class="n">dxdt</span><span class="p">[</span><span class="n">ch</span><span class="o">.</span><span class="n">ix</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">i_s</span><span class="p">,</span>  <span class="p">:]</span> <span class="o">=</span> <span class="mi">0</span>
+
+        <span class="k">return</span> <span class="n">dxdt</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_layers</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_variables</span><span class="p">,</span> <span class="n">state</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Pedro Affonso Nobrega.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
