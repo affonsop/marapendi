@@ -20,3 +20,5 @@ from .membrane_permeation_models import *
 from .catalyst_layers import *
 from .state import *
 from .voltage import *
+from .thermal import * 
+

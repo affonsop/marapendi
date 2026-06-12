@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, fields
 import numpy as np
-
+from .gas_composition import index_h2, index_n2, index_o2, index_h2ov 
 
 @dataclass
 class LayerState:
@@ -36,6 +36,39 @@ class LayerState:
     equivalent_flow_resistance: float = None
     liquid_balance: float = None
 
+    def set_composition(self, dry_o2_mole_fraction: float, dry_h2_mole_fraction: float, relative_humidity: float, saturation_pressure: float):
+            """
+            Set the composition of the gas mixture.
+
+            The mole fraction of water vapor is calculated based on the relative humidity 
+            and the saturation pressure at the current temperature. The wet gas composition 
+            is updated accordingly. 
+
+            Parameters:
+            -----------
+            dry_o2_mole_fraction : float
+                Mole fraction of oxygen in the dry gas mixture.
+            dry_h2_mole_fraction : float
+                Mole fraction of hydrogen in the dry gas mixture.
+            relative_humidity : float
+                Relative humidity of the gas mixture.
+            """
+            dry_mole_fractions = np.zeros_like(self.X)
+            dry_mole_fractions[...,index_o2] = dry_o2_mole_fraction
+            dry_mole_fractions[...,index_h2] = dry_h2_mole_fraction
+            dry_mole_fractions[...,index_n2] = 1 - dry_o2_mole_fraction - dry_h2_mole_fraction
+
+
+            self.saturation_pressure = saturation_pressure
+            h2o_mole_fraction = relative_humidity *  self.saturation_pressure / self.pressure
+
+            vapor_mole_fractions = np.zeros_like(self.X)
+            vapor_mole_fractions[...,index_h2ov] = h2o_mole_fraction
+
+            self.X = dry_mole_fractions * (1 - vapor_mole_fractions[...,index_h2ov, np.newaxis]) + vapor_mole_fractions
+            self.relative_humidity = self.pressure * vapor_mole_fractions[...,index_h2ov] / self.saturation_pressure
+            self.mixture_molecular_weight = np.sum(self.molecular_weights * self.X, axis=-1)
+            self.mixture_kinematic_viscosity = self.calculate_mixture_kinematic_viscosity()
 
 @dataclass
 class CatalystLayerState(LayerState):
@@ -91,10 +124,14 @@ class FuelCellSideState:
     water_flux: float = None
 
     @property
-    def layers(self) -> list[LayerState]:
+    def porous_layers(self) -> list[LayerState]:
         """All layer states on this side, GDL-to-CL order, including MPL if present."""
         return [layer for layer in (self.gdl, self.mpl, self.cl) if layer is not None]
-
+    
+    @property
+    def layers(self) -> list[LayerState]:
+        """All layer states on this side, GDL-to-CL order, including MPL if present."""
+        return [layer for layer in (self.ch, self.gdl, self.mpl, self.cl) if layer is not None]
 
 @dataclass
 class FuelCellState:
@@ -124,6 +161,13 @@ class FuelCellState:
         return (self.ca, self.an)
 
     @property
-    def layers(self) -> list[LayerState]:
+    def side_layers(self) -> list[LayerState]:
         """All layer states across both sides (GDL/MPL/CL), GDL-to-CL order."""
         return [layer for side in self.sides for layer in side.layers]
+
+    @property
+    def layers(self) -> list[LayerState]:
+        """All layer states across both sides (GDL/MPL/CL), GDL-to-CL order plus the membrane."""
+        return self.side_layers + [self.membrane]
+
+

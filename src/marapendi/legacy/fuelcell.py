@@ -15,7 +15,7 @@ from .gas_composition import species_indexes, index_o2, index_n2, index_h2, inde
 from .water import water_molar_volume, water_saturation_pressure
 from .state import FuelCellState, FuelCellSideState, MembraneState, LayerState, CatalystLayerState, FlowChannelState
 from .voltage import VoltageModel 
-
+from .thermal import ThermalModel
 
 from dataclasses import dataclass, field
 
@@ -259,50 +259,16 @@ class FuelCell:
     ca: FuelCellSide = field(default_factory=FuelCellSide)
     membrane: Membrane = field(default_factory=Membrane)
     voltage_model: VoltageModel = field(default_factory=VoltageModel)
+    thermal_model: ThermalModel = field(default_factory=ThermalModel)
     electrical_resistance: float = 0
-    h2_permeation_flux: float = 0 
-    crossover_current: float = 0
     thermal_resistance: float = 0
-    heat_release_rate: float = 0
-    mea_temperature_increase: float = 0
-    mea_temperature: float = 0
-    mea_surface_heat_capacity: float = 10000.
+    state: FuelCellState = field(default_factory=FuelCellState)
     use_eq_water_content_for_ionomer: bool = True
 
     def __post_init__(self): 
         self.porous_layers = [layer for side in (self.an, self.ca) for layer in side.porous_layers]
 
     
-    def set_mea_temperature(self, mea_temperature): 
-        """
-        Set the membrane electrode assembly (MEA) temperature and update associated components.
-        The underlying hypotheses is that the membrane and the CLs are at the
-        same temperature.
-
-        Parameters
-        ----------
-        mea_temperature : float
-            The new temperature of the MEA in Kelvin.
-
-        Notes
-        -----
-        This method updates the temperature of various fuel cell components, including:
-        - Cathode catalyst layer (CL)
-        - Anode catalyst layer (CL)
-        - Membrane
-
-        It also calculates the temperature increase of the MEA relative to the initial temperature.
-        """
-        self.mea_temperature = mea_temperature
-        self.mea_temperature_increase = mea_temperature - self.temperature
-        self.ca.cl.set_gas_temperature(mea_temperature)
-        self.an.cl.set_gas_temperature(mea_temperature)
-
-        # self.ca.gdl.gas.set_temperature(mea_temperature)
-        self.membrane.temperature = mea_temperature
-        self.mea_temperature_increase = self.mea_temperature - self.temperature
-        self.mea_water_molar_volume = water_molar_volume(self.mea_temperature)
-
     def calculate_water_transport(self, dynamic=False): 
         """
         Calculate the water balance across the fuel cell components.
@@ -474,9 +440,11 @@ class FuelCell:
         float
             The fuel cell voltage in volts.
         """
+        state = self.to_state()
+
         self.calculate_heat_transfer_resistance()
         if mea_tempearture_estimation: 
-            self.set_mea_temperature(self.temperature)
+            self.thermal_model.set_mea_temperature(self.temperature, state)
             self.calculate_water_transport()
             self.calculate_gas_concentrations_at_cl()
             v0 = self.calculate_cell_voltage()
@@ -484,7 +452,7 @@ class FuelCell:
                                                        self.thermal_resistance)
         else: 
             mea_temperature = self.temperature + (self.current_density * 0.7) * self.thermal_resistance
-        self.set_mea_temperature(mea_temperature)
+        self.thermal_model.set_mea_temperature(mea_temperature, state)
         self.calculate_water_transport()
         self.calculate_gas_concentrations_at_cl()
         state = self.to_state()
@@ -558,9 +526,9 @@ class FuelCell:
                 water_content=getattr(self.membrane, 'water_content', None),
                 water_flux=getattr(self.ca, 'membrane_water_flux', None),
                 h2_permeation_flux=getattr(self, 'h2_permeation_flux', None),
-                proton_resistance=self.membrane.proton_resistance(
-                    self.membrane.temperature, water_saturation=self.ca.cl.liquid_saturation
-                ) if getattr(self.membrane, 'temperature', None) is not None else None,
+                # proton_resistance=self.membrane.proton_resistance(
+                #     self.membrane.temperature, water_saturation=self.ca.cl.liquid_saturation
+                # ) if getattr(self.membrane, 'temperature', None) is not None else None,
             ),
             current_density=self.current_density,
             temperature=self.temperature,
@@ -728,63 +696,54 @@ class FuelCell:
             for conditions in (cathode_conditions, anode_conditions)
         )
 
-        self.current_density = current_density
-        self.o2_consumption = current_density / (4 * ct.faraday)
-        self.h2_consumption = 2 * self.o2_consumption
-        self.ca.reactant_consumption = self.o2_consumption
-        self.an.reactant_consumption = self.h2_consumption
-        self.h2o_production = self.h2_consumption
-        self.temperature = stack_temperature
+        self.state.current_density = current_density
+        self.state.o2_consumption = current_density / (4 * ct.faraday)
+        self.state.h2_consumption = 2 * self.state.o2_consumption
+        self.state.ca.reactant_consumption = self.state.o2_consumption
+        self.state.an.reactant_consumption = self.state.h2_consumption
+        self.state.h2o_production = self.state.h2_consumption
+        self.state.ca.h2o_production = self.state.h2o_production
+        self.state.an.h2o_production = np.zeros_like(self.state.h2o_production)
+
+        self.state.temperature = stack_temperature
         self.membrane.temperature = stack_temperature
-        self.ca.h2o_production = self.h2o_production
-        self.an.h2o_production = np.zeros_like(self.h2o_production)
 
-        for side in (self.ca, self.an): 
-            for layer in side.components: 
-                layer.non_wetting_saturation = 0 
-                layer.liquid_saturation = 0
-                layer.temperature = stack_temperature
-            side.cl.set_water_film_thickness(0)
-            side.is_liquid_equilibrated = False
-
-        for cell_side, conditions in zip((self.ca, self.an), (cathode_conditions, anode_conditions)): 
-            cell_side.cl.ionomer_water_content = 10
-            cell_side.cl.set_ionomer_wet_properties(cell_side.cl.ionomer_water_content, self.temperature)
-            cell_side.electrolyte = conditions.inlet_liquid
-            cell_side.electrolyte.set_temperature(self.membrane.temperature)
-            for component in cell_side.components: 
-   
-                component.gas.__init__()
-                try: 
-                    component.gas.X = np.zeros_like(self.current_density[...,np.newaxis]) * np.array([1,0,0,0])
-                except TypeError: 
-                    component.gas.X = self.current_density * np.array([1,0,0,0])
-                component.set_gas_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
-                component.set_gas_composition(conditions.dry_o2_mole_fraction, 
-                                              conditions.dry_h2_mole_fraction,
-                                              conditions.inlet_relative_humidity)
-                component.set_gas_temperature_and_pressure(conditions.inlet_temperature, conditions.inlet_pressure)
-                # component.set_gas_composition(conditions.dry_o2_mole_fraction, 
-                #                               conditions.dry_h2_mole_fraction,
-                #                               conditions.inlet_relative_humidity)
-                component.set_gas_temperature_and_pressure(stack_temperature, conditions.inlet_pressure)
+        for layer in self.state.side_layers: 
+            layer.non_wetting_saturation = 0 
+            layer.liquid_saturation = 0
+            layer.temperature = stack_temperature
             
-            cell_side.ch.set_fixed_inlet_liquid_flow_rate(conditions.inlet_liquid_flow_rate)
+        for side, conditions in zip(self.state.sides, (cathode_conditions, anode_conditions)): 
+            side.is_liquid_equilibrated = False
+            side.cl.set_water_film_thickness(0)
+            side.cl.ionomer_water_content = 10
+            side.cl.set_ionomer_wet_properties(side.cl.ionomer_water_content, self.temperature)
+
+        for side in (self.ca, self.an):  
+            side.electrolyte = conditions.inlet_liquid
+            side.electrolyte.set_temperature(self.membrane.temperature)
+
+        
+        for side, conditions in zip(self.state.sides, (cathode_conditions, anode_conditions)): 
+            for layer in side.layers: 
+                layer.set_gas_from_inlet_conditions(conditions)
+                
+            side.ch.set_fixed_inlet_liquid_flow_rate(conditions.inlet_liquid_flow_rate)
 
             if conditions.stoichiometry == 0:
                 # Fixed inlet gas flow rate only (e.g. conditions converted via
                 # OperatingConditions.from_components): clear any stoichiometry
                 # left over from a previous call, which would otherwise still
                 # contribute to calculate_inlet_gas_flow_rate below.
-                cell_side.ch.inlet_stoichiometry = 0
+                side.ch.inlet_stoichiometry = 0
 
-            cell_side.ch.set_inlet_gas_flow_rate_from_stoichiometry(
-                (self.o2_consumption if cell_side == self.ca else self.h2_consumption) * self.cell_area, conditions.stoichiometry, 
+            side.ch.set_inlet_gas_flow_rate_from_stoichiometry(
+                (self.o2_consumption if side == self.ca else self.h2_consumption) * self.cell_area, conditions.stoichiometry, 
                 fixed_inlet_gas_flow_rate=conditions.inlet_gas_flow_rate
             )
-            for component in cell_side.components: 
-                component.electrolyte = cell_side.electrolyte
-                component.non_wetting_saturation = cell_side.ch.inlet_liquid_saturation
+            for component in side.components: 
+                component.electrolyte = side.electrolyte
+                component.non_wetting_saturation = side.ch.inlet_liquid_saturation
             
 
 from .electrolyte import ElectrolyteSolution
