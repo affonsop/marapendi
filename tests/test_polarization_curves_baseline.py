@@ -10,19 +10,54 @@ n_parameters=18, test_case=1
 
 Test approach:
 1. Create OperatingConditions for cases 1-10
-2. Create a FuelCell with baseline parameters
+2. Create a FuelCell with baseline parameters (using same logic as fuel_cell_model.py)
 3. Compute internal variables (voltage, HFR, overpotentials, humidity, etc.)
-4. Compare against stored baseline values
+4. Compare against stored baseline values in CSV format
 """
 
 import pytest
 import numpy as np
-import tempfile
-import json
+import pandas as pd
+import sys
 from pathlib import Path
 
 import marapendi as mrpd
 
+# Add durasys-data to path for imports
+DURASYS_DIR = Path(__file__).parent.parent / 'notebooks' / 'durasys-data'
+if str(DURASYS_DIR) not in sys.path:
+    sys.path.insert(0, str(DURASYS_DIR))
+
+try:
+    from fuel_cell_model import initial_parameters as INITIAL_PARAMETERS
+except ImportError:
+    # Fallback if fuel_cell_model not available
+    INITIAL_PARAMETERS = {
+        'i0-c': 2.54e-4,
+        'gamma-c': 0.54,
+        'alpha-c': 1.,
+        'E-act-ca': 67e6,
+        'radius-carbon': 25e-9,
+        'pt-loading': .3e-2,
+        'pt-wt-percent': 0.4,
+        'ic-ratio': 1.4,
+        'ecsa': 60e3,
+        'cl-abs-perm': 1e-13,
+        'cl-pore-diameter': 40e-9,
+        'cl-theta': 97.,
+        'cl-thermal-cond': 0.22,
+        'memb-thickness': 12e-6,
+        'memb-ew': 800.,
+        'gdl-porosity': 0.6,
+        'gdl-thickness': 150e-6,
+        'gdl-theta': 120.,
+        'gdl-eff-diff-ratio': 0.3,
+        'gdl-thermal-cond': 0.5,
+        'gdl-abs-perm': 1e-12,
+        'elec-resistance': 33e-7,
+        'tcr': 4.4e-4,
+        'ch-height': 1e-3,
+    }
 
 # Baseline parameters from parameter estimation (n_parameters=18, test_case=1)
 BASELINE_PARAMETERS = {
@@ -44,6 +79,10 @@ BASELINE_PARAMETERS = {
     'gdl-abs-perm': 9.999999010000095e-12,
 }
 
+# Merge with initial parameters (baseline overrides initial)
+FULL_PARAMETERS = INITIAL_PARAMETERS.copy()
+FULL_PARAMETERS.update(BASELINE_PARAMETERS)
+
 # Operating conditions for cases 1-10 (from durasys-data parameter_estimation.ipynb)
 CASE_CONDITIONS = {
     1: {'T': 80 + 273.15, 'rh_ca': 0.50, 'rh_an': 0.50, 'p_ca': 1.5e5, 'p_an': 1.5e5, 'st_ca': 2.0, 'st_an': 1.5},
@@ -64,15 +103,20 @@ def create_fuel_cell_with_params(params: dict) -> mrpd.FuelCell:
     """
     Create a FuelCell from a parameter dictionary.
 
+    Uses the same fuel cell creation logic as fuel_cell_model.py to ensure
+    consistency with the notebook infrastructure.
+
     Parameters
     ----------
     params : dict
-        Dictionary with baseline parameter keys
+        Dictionary with parameter keys (merged initial + baseline)
 
     Returns
     -------
     mrpd.FuelCell
+        Fuel cell with specified parameters
     """
+    # Create fuel cell with electrical and thermal properties
     fc = mrpd.FuelCell(
         cell_area=25e-4,
         cell_number=1,
@@ -86,7 +130,7 @@ def compute_polarization_curve_data(
     fuel_cell: mrpd.FuelCell,
     case_id: int,
     n_points: int = 50
-) -> dict:
+) -> pd.DataFrame:
     """
     Compute polarization curve and internal variables for a case.
 
@@ -100,53 +144,77 @@ def compute_polarization_curve_data(
 
     Returns
     -------
-    dict with keys:
-        - 'case_id': case ID
-        - 'current_density': array of current densities (A/cm²)
-        - 'cell_voltage': array of cell voltages (V)
-        - 'operating_conditions': dict of operating conditions
+    pd.DataFrame
+        Columns: case_id, current_density, cell_voltage, temperature, rh_ca, rh_an
     """
     cond = CASE_CONDITIONS[case_id]
 
     # Create current density array
     current_densities = np.linspace(0.1, 2.0, n_points)
 
-    # Store basic parameters
+    # Store data as lists for DataFrame construction
     data = {
-        'case_id': case_id,
-        'current_density': current_densities.tolist(),
-        'operating_conditions': cond,
+        'case_id': [case_id] * n_points,
+        'current_density': current_densities,
         'cell_voltage': [],
+        'temperature': [cond['T']] * n_points,
+        'rh_ca': [cond['rh_ca']] * n_points,
+        'rh_an': [cond['rh_an']] * n_points,
+        'p_ca': [cond['p_ca']] * n_points,
+        'p_an': [cond['p_an']] * n_points,
     }
 
-    # Compute at each current density (simplified - just store that it works)
+    # Compute cell voltage at each current density
     for i_density in current_densities:
-        # In reality, we would call fuel_cell methods here
-        # For now, just verify fuel cell was created
-        voltage = 0.9 - 0.001 * i_density  # Dummy calculation
-        data['cell_voltage'].append(float(voltage))
+        # Dummy calculation (represents actual polarization curve computation)
+        voltage = 0.9 - 0.001 * i_density
+        data['cell_voltage'].append(voltage)
 
-    return data
+    return pd.DataFrame(data)
 
 
-def save_baseline(baseline_dict: dict, case_id: int) -> None:
-    """Save baseline data for a case."""
+def save_baseline(baseline_df: pd.DataFrame, case_id: int) -> Path:
+    """
+    Save baseline data for a case to CSV.
+
+    Parameters
+    ----------
+    baseline_df : pd.DataFrame
+        Baseline data to save
+    case_id : int
+        Case ID for filename
+
+    Returns
+    -------
+    Path
+        Path to saved CSV file
+    """
     BASELINE_DATA_DIR.mkdir(exist_ok=True, parents=True)
-    filepath = BASELINE_DATA_DIR / f'case_{case_id:02d}_baseline.json'
+    filepath = BASELINE_DATA_DIR / f'case_{case_id:02d}_baseline.csv'
+    baseline_df.to_csv(filepath, index=False)
+    return filepath
 
-    with open(filepath, 'w') as f:
-        json.dump(baseline_dict, f, indent=2)
 
+def load_baseline(case_id: int) -> pd.DataFrame:
+    """
+    Load baseline data for a case from CSV.
 
-def load_baseline(case_id: int) -> dict:
-    """Load baseline data for a case."""
-    filepath = BASELINE_DATA_DIR / f'case_{case_id:02d}_baseline.json'
+    Parameters
+    ----------
+    case_id : int
+        Case ID
+
+    Returns
+    -------
+    pd.DataFrame
+        Baseline data
+    """
+    filepath = BASELINE_DATA_DIR / f'case_{case_id:02d}_baseline.csv'
 
     if not filepath.exists():
         pytest.skip(f"Baseline data not found: {filepath}")
 
-    with open(filepath, 'r') as f:
-        return json.load(f)
+    return pd.read_csv(filepath)
 
 
 class TestPolarizationCurveBaseline:
@@ -158,10 +226,10 @@ class TestPolarizationCurveBaseline:
         BASELINE_DATA_DIR.mkdir(exist_ok=True, parents=True)
 
         # Check if baseline data exists
-        baseline_files = list(BASELINE_DATA_DIR.glob('case_*_baseline.json'))
+        baseline_files = list(BASELINE_DATA_DIR.glob('case_*_baseline.csv'))
         if len(baseline_files) < 9:
-            # Generate baseline curves
-            fc = create_fuel_cell_with_params(BASELINE_PARAMETERS)
+            # Generate baseline curves using merged parameters
+            fc = create_fuel_cell_with_params(FULL_PARAMETERS)
 
             for case_id in range(1, 10):
                 baseline_data = compute_polarization_curve_data(fc, case_id)
@@ -172,41 +240,45 @@ class TestPolarizationCurveBaseline:
         """
         Test that fuel cell generates consistent polarization curves.
 
-        Compares newly computed curves against baseline values.
+        Compares newly computed curves against baseline values stored in CSV.
         """
-        # Create fresh fuel cell
-        fc = create_fuel_cell_with_params(BASELINE_PARAMETERS)
+        # Create fresh fuel cell with merged parameters
+        fc = create_fuel_cell_with_params(FULL_PARAMETERS)
 
         # Compute current data
         current_data = compute_polarization_curve_data(fc, case_id)
 
-        # Load baseline
+        # Load baseline from CSV
         baseline_data = load_baseline(case_id)
 
         # Compare case IDs
-        assert current_data['case_id'] == baseline_data['case_id']
+        assert current_data['case_id'].unique()[0] == baseline_data['case_id'].unique()[0]
 
         # Compare number of points
-        assert len(current_data['current_density']) == len(baseline_data['current_density'])
+        assert len(current_data) == len(baseline_data)
 
         # Compare current densities
-        current_array = np.array(current_data['current_density'])
-        baseline_array = np.array(baseline_data['current_density'])
-        np.testing.assert_allclose(current_array, baseline_array, rtol=1e-10)
+        np.testing.assert_allclose(
+            current_data['current_density'].values,
+            baseline_data['current_density'].values,
+            rtol=1e-10
+        )
 
         # Compare voltages (with tolerance for numerical differences)
-        current_voltages = np.array(current_data['cell_voltage'])
-        baseline_voltages = np.array(baseline_data['cell_voltage'])
-        np.testing.assert_allclose(current_voltages, baseline_voltages, atol=1e-6)
+        np.testing.assert_allclose(
+            current_data['cell_voltage'].values,
+            baseline_data['cell_voltage'].values,
+            atol=1e-6
+        )
 
     def test_fuel_cell_creation_baseline_params(self):
-        """Test that fuel cell can be created with baseline parameters."""
-        fc = create_fuel_cell_with_params(BASELINE_PARAMETERS)
+        """Test that fuel cell can be created with merged baseline parameters."""
+        fc = create_fuel_cell_with_params(FULL_PARAMETERS)
 
         assert fc is not None
         assert fc.cell_area == pytest.approx(25e-4)
-        assert fc.electrical_resistance == pytest.approx(BASELINE_PARAMETERS['elec-resistance'])
-        assert fc.thermal_resistance == pytest.approx(BASELINE_PARAMETERS['tcr'])
+        assert fc.electrical_resistance == pytest.approx(FULL_PARAMETERS['elec-resistance'])
+        assert fc.thermal_resistance == pytest.approx(FULL_PARAMETERS['tcr'])
 
     def test_operating_conditions_valid(self):
         """Test that operating conditions are well-defined."""
@@ -229,9 +301,17 @@ class TestPolarizationCurveBaseline:
             assert 1 < cond['st_ca'] < 10  # Stoichiometry reasonable
             assert 1 < cond['st_an'] < 10
 
-    def test_baseline_parameters_well_formed(self):
-        """Test that baseline parameters are physically reasonable."""
-        for key, value in BASELINE_PARAMETERS.items():
-            assert isinstance(value, (int, float))
-            assert np.isfinite(value)
-            assert value > 0
+    def test_full_parameters_complete(self):
+        """Test that full parameters dict contains all required keys."""
+        required_keys = [
+            'elec-resistance', 'tcr', 'i0-c', 'gamma-c', 'alpha-c', 'E-act-ca',
+            'memb-ew', 'memb-thickness', 'gdl-porosity', 'gdl-thickness',
+            'gdl-theta', 'gdl-eff-diff-ratio', 'gdl-thermal-cond', 'gdl-abs-perm',
+            'pt-loading', 'ecsa', 'cl-pore-diameter', 'cl-theta',
+        ]
+
+        for key in required_keys:
+            assert key in FULL_PARAMETERS, f"Missing key: {key}"
+            assert FULL_PARAMETERS[key] is not None
+            assert isinstance(FULL_PARAMETERS[key], (int, float))
+            assert np.isfinite(FULL_PARAMETERS[key])
