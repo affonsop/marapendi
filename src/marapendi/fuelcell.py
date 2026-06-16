@@ -12,9 +12,9 @@ from .catalyst_layers import PtCCatalystLayer
 from .flow_channels import FlowChannel
 from .membrane import Membrane
 from .gas_composition import species_indexes
-from .water import water_molar_volume
 from .cell import Cell
 from .voltage import VoltageModel
+from .thermal import ThermalModel
 from .model import ExplicitSteadyStateModel
 
 @dataclass
@@ -261,7 +261,8 @@ class FuelCell(Cell):
     def __post_init__(self):
         super().__post_init__()   # builds porous_layers, layers, sides from Cell
         self._voltage_model = VoltageModel()
-        self._model = ExplicitSteadyStateModel(self._voltage_model)
+        self._thermal_model = ThermalModel()
+        self._model = ExplicitSteadyStateModel(self._voltage_model, self._thermal_model)
 
     # ------------------------------------------------------------------
     # Voltage methods — delegate to VoltageModel
@@ -288,35 +289,9 @@ class FuelCell(Cell):
     def calculate_cell_voltage(self):
         return self._voltage_model.compute_cell_voltage(self)
     
-    def set_mea_temperature(self, mea_temperature): 
-        """
-        Set the membrane electrode assembly (MEA) temperature and update associated components.
-        The underlying hypotheses is that the membrane and the CLs are at the
-        same temperature.
-
-        Parameters
-        ----------
-        mea_temperature : float
-            The new temperature of the MEA in Kelvin.
-
-        Notes
-        -----
-        This method updates the temperature of various fuel cell components, including:
-        - Cathode catalyst layer (CL)
-        - Anode catalyst layer (CL)
-        - Membrane
-
-        It also calculates the temperature increase of the MEA relative to the initial temperature.
-        """
-        self.mea_temperature = mea_temperature
-        self.mea_temperature_increase = mea_temperature - self.temperature
-        self.ca.cl.set_gas_temperature(mea_temperature)
-        self.an.cl.set_gas_temperature(mea_temperature)
-
-        # self.ca.gdl.gas.set_temperature(mea_temperature)
-        self.membrane.temperature = mea_temperature
-        self.mea_temperature_increase = self.mea_temperature - self.temperature
-        self.mea_water_molar_volume = water_molar_volume(self.mea_temperature)
+    def set_mea_temperature(self, mea_temperature):
+        """Delegate to :class:`~marapendi.thermal.ThermalModel`."""
+        self._thermal_model.set_mea_temperature(mea_temperature, self)
 
     def calculate_water_transport(self, dynamic=False): 
         """
@@ -395,17 +370,9 @@ class FuelCell(Cell):
                                                         side.cl.gas.X[...,species_indexes['h2o']] -
                                                         side.cl.gas.X[...,species_indexes['h2']])
     
-    def calculate_heat_transfer_resistance(self): 
-        """
-        Calculate the overall heat transfer resistance of the membrane electrode assembly (MEA).
-
-        Notes
-        -----
-        The heat transfer resistance is determined as the inverse of the sum of the 
-        reciprocals of the individual heat transfer resistances of the cathode and anode sides.
-        This calculation assumes a thermal resistance network in parallel.
-        """
-        self.thermal_resistance = 1/sum(1./side.heat_transfer_resistance() for side in (self.ca, self.an))
+    def calculate_heat_transfer_resistance(self):
+        """Delegate to :class:`~marapendi.thermal.ThermalModel`."""
+        self.thermal_resistance = self._thermal_model.heat_transfer_resistance(self)
     
     def calculate_heat_transport(self, dynamic=False): 
         """

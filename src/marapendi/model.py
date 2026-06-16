@@ -4,15 +4,14 @@ Cell model: explicit steady-state PEMFC performance model.
 :class:`ExplicitSteadyStateModel` orchestrates the solve sequence:
 heat-transfer resistance → MEA temperature → water transport →
 gas concentrations → cell voltage. The voltage sub-calculations are
-delegated to :class:`~marapendi.voltage.VoltageModel`.
+delegated to :class:`~marapendi.voltage.VoltageModel`; the thermal
+sub-calculations are delegated to :class:`~marapendi.thermal.ThermalModel`.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-import cantera as ct
-
-from .electrochemistry import h2_lhv
+from .thermal import ThermalModel
 from .voltage import VoltageModel
 
 
@@ -30,6 +29,7 @@ class ExplicitSteadyStateModel:
     """
 
     voltage_model: VoltageModel = field(default_factory=VoltageModel)
+    thermal_model: ThermalModel = field(default_factory=ThermalModel)
 
     def solve(self, fc, mea_temperature_estimation: bool = False) -> float:
         """
@@ -49,20 +49,15 @@ class ExplicitSteadyStateModel:
         float or ndarray
             Cell voltage (V). The value is also stored on ``fc.cell_voltage``.
         """
-        fc.calculate_heat_transfer_resistance()
+        fc.thermal_resistance = self.thermal_model.heat_transfer_resistance(fc)
         if mea_temperature_estimation:
-            fc.set_mea_temperature(fc.temperature)
+            self.thermal_model.set_mea_temperature(fc.temperature, fc)
             fc.calculate_water_transport()
             fc.calculate_gas_concentrations_at_cl()
-            v0 = self.voltage_model.compute_cell_voltage(fc)
-            mea_temperature = fc.temperature + (
-                fc.current_density * (-h2_lhv(fc.temperature) / (2 * ct.faraday) - v0)
-                * fc.thermal_resistance
-            )
-        else:
-            mea_temperature = fc.temperature + (fc.current_density * 0.7) * fc.thermal_resistance
+            self.voltage_model.compute_cell_voltage(fc)
 
-        fc.set_mea_temperature(mea_temperature)
+        mea_temperature = self.thermal_model.mea_temperature(fc, mea_temperature_estimation)
+        self.thermal_model.set_mea_temperature(mea_temperature, fc)
         fc.calculate_water_transport()
         fc.calculate_gas_concentrations_at_cl()
         self.voltage_model.compute_cell_voltage(fc)
