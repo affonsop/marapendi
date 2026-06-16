@@ -1,54 +1,46 @@
 """
-Module providing classes to model flow channels and their operating conditions 
-in a PEM fuel cell. This includes representations for channel dimensions, 
-flow rates, stoichiometries, and methods to compute gas transport resistances.
+Flow channel components: static geometry and runtime state.
 
-Classes
--------
-ChannelConditions
-    Encapsulates the conditions (temperature, RH, pressure, gas composition) 
-    for a flow channel.
-
-FlowChannel
-    Represents a flow channel geometry and state in a PEM fuel cell, 
-    providing methods to calculate flow rates and gas transport resistances.
+:class:`FlowChannel` holds the static geometry of a fuel-cell flow channel
+(dimensions, number of parallel channels) together with the runtime state
+that must live on the component for the current explicit-state architecture
+(inlet flow rates, stoichiometry, gas composition).  Pure computations that
+derive quantities from that state are collected in :class:`FlowChannelModel`
+so they can be reused independently of the component.
 """
+from __future__ import annotations
 
 from dataclasses import dataclass, field
-import numpy as np 
+import numpy as np
 import cantera as ct
 
-from .gas_composition import species_indexes
+from .gas_composition import GasComposition, species_indexes
 from .gas import GasModel
 from .porous_layers import PorousLayer
 from .transport_models import ChannelGasResistanceModel
 from .water import water_kinematic_viscosity, water_molar_volume
 
-@dataclass 
-class ChannelConditions:  
-    """
-    Class to encapsulate the operating conditions of the gas in a flow channels.
+
+@dataclass
+class ChannelConditions:
+    """Operating conditions for a flow channel.
 
     Attributes
     ----------
     temperature : float
-        Temperature in Kelvin.
+        Temperature (K).
     rh : float
-        Relative humidity (0-1).
+        Relative humidity (0–1).
     pressure : float
-        Total pressure in Pa.
+        Total pressure (Pa).
     dry_o2_mole_fraction : float
-        Mole fraction of O2 in the dry gas mixture.
+        O2 mole fraction in the dry gas.
     dry_h2_mole_fraction : float
-        Mole fraction of H2 in the dry gas mixture.
+        H2 mole fraction in the dry gas.
     stoichiometry : float
         Stoichiometric ratio (actual flow / required flow).
-
-    Methods
-    -------
-    set_conditions(...)
-        Update one or more of the channel operating conditions.
     """
+
     temperature: float
     rh: float
     pressure: float
@@ -62,28 +54,7 @@ class ChannelConditions:
     def set_conditions(self, temperature=None, rh=None, pressure=None,
                        dry_o2_mole_fraction=None, dry_h2_mole_fraction=None,
                        stoichiometry=None):
-        """
-        Update the channel conditions.
-
-        Parameters
-        ----------
-        temperature : float, optional
-            New temperature in K.
-        rh : float, optional
-            New relative humidity (0-1).
-        pressure : float, optional
-            New total pressure in Pa.
-        dry_o2_mole_fraction : float, optional
-            New dry O2 mole fraction.
-        dry_h2_mole_fraction : float, optional
-            New dry H2 mole fraction.
-        stoichiometry : float, optional
-            New stoichiometry value.
-
-        Notes
-        -----
-        Only the provided arguments will update; others remain unchanged.
-        """
+        """Update one or more channel operating conditions."""
         if temperature is not None:
             self.temperature = temperature
         if rh is not None:
@@ -101,68 +72,35 @@ class ChannelConditions:
 
 @dataclass
 class FlowChannel(PorousLayer):
-    """
-    Class to represent a fuel cell flow channels, inheriting from PorousLayer 
-    to allow similar interface for transport calculations. Corresponds to channels of
-    a single cell. 
+    """Flow channel geometry and state of a single fuel-cell side.
+
+    Inherits porous-layer geometry from :class:`~marapendi.porous_layers.PorousLayer`
+    so that it can be used in the same gas-transport pipeline.
 
     Attributes
     ----------
     reactant : str
-        The primary reactant species ('o2' or 'h2').
+        Primary reactant species ('o2' or 'h2').
     inlet_stoichiometry : float
-        Inlet stoichiometric ratio.
+        Inlet stoichiometric ratio (actual / required flow).
     inlet_gas_flow_rate : float
-        Gas flow rate entering the channel (m3/s).
+        Volumetric gas flow rate at the channel inlet (m³/s).
     inlet_liquid_flow_rate : float
-        Liquid flow rate entering the channel (m3/s).
+        Liquid flow rate at the channel inlet (m³/s).
     inlet_liquid_saturation : float
-        Saturation fraction of the inlet stream.
-    width : float
-        Channel width (m).
-    height : float
-        Channel height (m).
-    length : float
-        Channel length (m).
+        Liquid saturation fraction at the inlet.
+    width, height, length : float
+        Channel cross-section width, height, and length (m).
     channel_land_ratio : float
         Ratio of channel width to land width.
     n_parallel : int
         Number of parallel channels.
     transport_resistance_model : ChannelGasResistanceModel
-        Model to calculate total gas transport resistance.
-
-    Derived Attributes
-    ------------------
-    hydraulic_diameter : float
-        Hydraulic diameter of the channel (m).
-    channel_flow_section : float
-        Cross-sectional area of a single channel (m2).
-    total_flow_section : float
-        Total flow area accounting for all channels (m2).
-    RT : float
-        Product of universal gas constant and temperature (J/kmolK).
-
-    Methods
-    -------
-    set_inlet_stoichiometry(stoichiometry)
-        Set the inlet stoichiometry.
-    reactant_mole_fraction()
-        Return the mole fraction of the primary reactant.
-    set_fixed_inlet_gas_flow_rate(inlet_gas_flow_rate)
-        Fix the inlet gas flow rate and update liquid saturation.
-    set_fixed_inlet_liquid_flow_rate(inlet_liquid_flow_rate)
-        Fix the inlet liquid flow rate and update liquid saturation.
-    set_inlet_gas_flow_rate_from_stoichiometry(reactant_consumption, stoichiometry, fixed_inlet_gas_flow_rate)
-        Compute inlet gas flow from stoichiometry and consumption.
-    calculate_inlet_gas_flow_rate(reactant_consumption)
-        Calculate gas flow rate based on stoichiometry and reactant consumption.
-    calculate_inlet_stochiometry(reactant_consumption)
-        Compute effective stoichiometry from flow rate and consumption.
-    gas_transport_resistance(species, volume_flow_rate=None)
-        Compute gas transport resistance in the channel.
+        Correlation for the channel gas transport resistance.
     """
+
     reactant: str = 'o2'
-    inlet_stoichiometry: float = 0 
+    inlet_stoichiometry: float = 0
     inlet_gas_flow_rate: float = 1e-12
     inlet_liquid_flow_rate: float = 0
     inlet_liquid_saturation: float = 0
@@ -173,12 +111,9 @@ class FlowChannel(PorousLayer):
     n_parallel: int = 14
     transport_resistance_model: ChannelGasResistanceModel = field(default_factory=ChannelGasResistanceModel)
 
-    def __post_init__(self): 
-        """
-        Initialize geometric and thermodynamic properties after instantiation.
-        """
-        self.temperature = self.gas.temperature 
-        self.pressure = self.gas.pressure 
+    def __post_init__(self):
+        self.temperature = self.gas.temperature
+        self.pressure = self.gas.pressure
         self.RT = ct.gas_constant * self.temperature
         self.hydraulic_diameter = 2 * self.width * self.height / (self.width + self.height)
         self.channel_flow_section = self.width * self.height
@@ -187,197 +122,152 @@ class FlowChannel(PorousLayer):
         PorousLayer.__post_init__(self)
 
     def set_inlet_stoichiometry(self, stoichiometry):
-        """
-        Set the inlet stoichiometric ratio.
-
-        Parameters
-        ----------
-        stoichiometry : float
-            New stoichiometric value.
-        """
+        """Set the inlet stoichiometric ratio."""
         self.inlet_stoichiometry = stoichiometry
 
-    def reactant_mole_fraction(self): 
-        """
-        Return the mole fraction of the primary reactant in the gas.
-
-        Returns
-        -------
-        float
-            Mole fraction of self.reactant.
-        """
-        return self.gas.X[..., species_indexes[self.reactant]]
-    
-    def set_fixed_inlet_gas_flow_rate(self, inlet_gas_flow_rate): 
-        """
-        Fix the inlet gas flow rate and update liquid saturation.
-
-        Parameters
-        ----------
-        inlet_gas_flow_rate : float
-            New gas flow rate (mol/s).
-        """
-        self.inlet_gas_flow_rate = inlet_gas_flow_rate 
+    def set_fixed_inlet_gas_flow_rate(self, inlet_gas_flow_rate):
+        """Fix the inlet gas flow rate and update the inlet liquid saturation."""
+        self.inlet_gas_flow_rate = inlet_gas_flow_rate
         self.inlet_liquid_saturation = self.inlet_liquid_flow_rate / np.maximum(
             self.inlet_liquid_flow_rate + self.inlet_gas_flow_rate, 1e-12)
-        
-    def set_fixed_inlet_liquid_flow_rate(self, inlet_liquid_flow_rate): 
-        """
-        Fix the inlet liquid flow rate and update liquid saturation.
 
-        Parameters
-        ----------
-        inlet_liquid_flow_rate : float
-            New liquid flow rate (mol/s).
-        """
+    def set_fixed_inlet_liquid_flow_rate(self, inlet_liquid_flow_rate):
+        """Fix the inlet liquid flow rate and update the inlet liquid saturation."""
         self.inlet_liquid_flow_rate = inlet_liquid_flow_rate
         self.inlet_liquid_saturation = self.inlet_liquid_flow_rate / np.maximum(
             self.inlet_liquid_flow_rate + self.inlet_gas_flow_rate, 1e-12)
 
-    def set_inlet_gas_flow_rate_from_stoichiometry(self, reactant_consumption, stoichiometry=0, fixed_inlet_gas_flow_rate=0):
-        """
-        Set the inlet gas flow rate from stoichiometry and reactant consumption.
+    def set_inlet_gas_flow_rate_from_stoichiometry(self, reactant_consumption, stoichiometry=0,
+                                                    fixed_inlet_gas_flow_rate=0):
+        """Set the inlet gas flow rate from stoichiometry and reactant consumption.
 
         Parameters
         ----------
         reactant_consumption : float
-            Consumption rate of the reactant (kmol/s).
+            Reactant consumption rate (kmol/s).
         stoichiometry : float, optional
-            Stoichiometric ratio to override (default 0, uses existing).
+            Stoichiometric ratio; if > 0 overrides the current value.
         fixed_inlet_gas_flow_rate : float, optional
-            Additional fixed flow rate to add (default 0).
+            Additional fixed flow rate to add to the stoichiometric flow (m³/s).
         """
-        try: 
-            if stoichiometry > 0: 
-                self.inlet_stoichiometry = stoichiometry 
-        except ValueError: 
-            self.inlet_stoichiometry = stoichiometry 
-        inlet_gas_flow_rate = self.calculate_inlet_gas_flow_rate(reactant_consumption) + fixed_inlet_gas_flow_rate
+        try:
+            if stoichiometry > 0:
+                self.inlet_stoichiometry = stoichiometry
+        except ValueError:
+            self.inlet_stoichiometry = stoichiometry
+        reactant_mole_fraction = self.gas.X[..., species_indexes[self.reactant]]
+        inlet_gas_flow_rate = (
+            self.inlet_stoichiometry * reactant_consumption
+            / (reactant_mole_fraction * self.gas.concentration())
+            + fixed_inlet_gas_flow_rate
+        )
         self.set_fixed_inlet_gas_flow_rate(inlet_gas_flow_rate)
 
-    def calculate_inlet_gas_flow_rate(self, reactant_consumption): 
-        """
-        Calculate gas flow rate required by stoichiometry.
-
-        Parameters
-        ----------
-        reactant_consumption : float
-            Reactant consumption rate (kmol/s).
-
-        Returns
-        -------
-        float
-            Required inlet gas flow rate (m3/s).
-        """
-        return self.inlet_stoichiometry * reactant_consumption / \
-            self.reactant_mole_fraction() / self.gas.concentration()
-    
-    def calculate_inlet_stochiometry(self, reactant_consumption): 
-        """
-        Compute stoichiometry from known flow rate and consumption.
-
-        Parameters
-        ----------
-        reactant_consumption : float
-            Reactant consumption rate (kmol/s).
-
-        Returns
-        -------
-        float
-            Effective stoichiometric ratio.
-        """
-        return self.inlet_gas_flow_rate * self.reactant_mole_fraction() * \
-            self.gas.concentration() / reactant_consumption
-
     def gas_transport_resistance(self, state, species=None, volume_flow_rate=None):
-        """
-        Calculate total gas transport resistance for a species.
+        """Gas transport resistance for ``species`` in the channel (s/m).
 
         Parameters
         ----------
         state : object
-            State object exposing ``temperature``, ``pressure``, and ``gas.X``.
+            State object with ``temperature``, ``pressure``, and ``gas.X``.
             Pass the channel itself when no separate state is available.
         species : str, optional
-            Species name (e.g., 'o2', 'h2o').
+            Species identifier ('o2', 'h2', 'h2o').
         volume_flow_rate : float, optional
-            Specific volume flow rate (m3/s), overrides default inlet gas flow.
-
-        Returns
-        -------
-        float
-            Total transport resistance (s/m).
+            Volumetric flow rate (m³/s); overrides the channel's inlet flow rate.
         """
         diffusion_coeff = GasModel.species_diffusion_coefficient(state, species)
         return self.transport_resistance_model.total_resistance(
             self, diffusion_coeff, volume_flow_rate if volume_flow_rate else self.inlet_gas_flow_rate)
 
-    def inlet_molar_flow_rates(self) -> np.ndarray: 
+
+@dataclass
+class FlowChannelModel:
+    """Pure computations on a :class:`FlowChannel` and its state.
+
+    All methods take the channel (or a compatible state object) as their first
+    argument so they can be called independently of the component class.
+    """
+
+    def reactant_mole_fraction(self, ch) -> float:
+        """Mole fraction of the primary reactant in ``ch``."""
+        return ch.gas.X[..., species_indexes[ch.reactant]]
+
+    def calculate_inlet_gas_flow_rate(self, ch, reactant_consumption: float) -> float:
+        """Volumetric inlet gas flow rate required to meet the stoichiometry (m³/s).
+
+        Parameters
+        ----------
+        ch : FlowChannel
+            Channel whose ``inlet_stoichiometry`` and gas state are used.
+        reactant_consumption : float
+            Reactant consumption rate (kmol/s).
         """
-        Calculate the molar flow rates at the inlet of the channels for all species.
+        return (
+            ch.inlet_stoichiometry * reactant_consumption
+            / (self.reactant_mole_fraction(ch) * ch.gas.concentration())
+        )
+
+    def calculate_inlet_stoichiometry(self, ch, reactant_consumption: float) -> float:
+        """Effective stoichiometry computed from the current inlet flow rate.
+
+        Parameters
+        ----------
+        ch : FlowChannel
+            Channel whose ``inlet_gas_flow_rate`` and gas state are used.
+        reactant_consumption : float
+            Reactant consumption rate (kmol/s).
+        """
+        return (
+            ch.inlet_gas_flow_rate * self.reactant_mole_fraction(ch)
+            * ch.gas.concentration() / reactant_consumption
+        )
+
+    def inlet_molar_flow_rates(self, ch) -> np.ndarray:
+        """Molar flow rates for all species at the channel inlet (kmol/s).
 
         Returns
         -------
         np.ndarray
-            Vector of molar flow rates at the outlet for all species (O₂, H₂, H₂O, N₂).
-            Units: kmol/s.
+            One value per species (O₂, H₂, H₂O, N₂).
         """
+        total_inlet_molar_flow = ch.inlet_gas_flow_rate * ch.gas.concentration()
+        return total_inlet_molar_flow * ch.gas.X
 
-        # Total inlet molar flow rate (kmol/s)
-        total_inlet_molar_flow = self.inlet_gas_flow_rate * self.gas.concentration()
-
-        # Inlet molar flow rates for all species (kmol/s)
-        inlet_molar_flow_rates = total_inlet_molar_flow * self.gas.X
-        return inlet_molar_flow_rates 
-    
-    def gas_superficial_speed(self, volumetric_flow_rate: float = None) -> float:
-        """
-        Calculate the gas superficial speed in the channel.
+    def gas_superficial_speed(self, ch, volumetric_flow_rate: float = None) -> float:
+        """Gas superficial speed in the channel (m/s).
 
         Parameters
         ----------
+        ch : FlowChannel
         volumetric_flow_rate : float, optional
-            Volumetric flow rate of the gas (m³/s). If None, uses the inlet gas flow rate.
-
-        Returns
-        -------
-        float
-            Gas superficial speed in the channel (m/s).
+            If given, overrides ``ch.inlet_gas_flow_rate``.
         """
-        # Use inlet gas flow rate if no volumetric flow rate is provided
-        vol_flow = volumetric_flow_rate if volumetric_flow_rate is not None else self.inlet_gas_flow_rate
+        vol_flow = volumetric_flow_rate if volumetric_flow_rate is not None else ch.inlet_gas_flow_rate
+        return vol_flow / ch.total_flow_section
 
-        # Calculate gas speed (m/s)
-        superficial_speed = vol_flow / self.total_flow_section
+    def liquid_to_gas_velocity_ratio(self, ch) -> float:
+        """Liquid-to-gas velocity ratio in the channel (dimensionless).
 
-        return superficial_speed
-    
-    def liquid_to_gas_velocity_ratio(self): 
+        References
+        ----------
+        Zhang et al. Energy Environ. Sci. 2026.
+        https://doi.org/10.1039/d5ee04599a
         """
-        Calculate the liquid-to-gas velocity ratio in the channel. Uses the eq. 10 of Zhang et al. (2026).
+        liquid_saturation = ch.non_wetting_saturation if ch.wetting_phase == 'gas' else (1 - ch.non_wetting_saturation)
+        return (
+            (liquid_saturation / (1 - liquid_saturation)) ** 3
+            * (ch.gas.mixture_kinematic_viscosity / water_kinematic_viscosity(ch.gas.temperature))
+        )
 
-        Note: Supposes kinematic viscosity of water for the inlet liquid.
+    def outlet_liquid_speed(self, ch) -> float:
+        """Liquid superficial speed at the channel outlet (m/s)."""
+        return self.liquid_to_gas_velocity_ratio(ch) * self.gas_superficial_speed(ch)
 
-        Returns
-        -------
-        float
-            Ratio between liquid and gas velocity in the channel (n.d.).
+    def outlet_liquid_flow_rate(self, ch) -> float:
+        """Liquid volumetric flow rate at the channel outlet (m³/s)."""
+        return self.outlet_liquid_speed(ch) * ch.total_flow_section
 
-        Reference
-        ---------
-        Zhang et al. Advancing Next-Generation Proton Exchange Membrane Fuel Cell Design through Multi-Physics and AI Modeling. 
-        Energy Environ. Sci. 2026. https://doi.org/10.1039/d5ee04599a.
-
-        """
-        liquid_saturation = self.non_wetting_saturation if self.wetting_phase == 'gas' else (1-self.non_wetting_saturation)
-    
-        return (liquid_saturation / (1-liquid_saturation)) ** 3 * (self.gas.mixture_kinematic_viscosity / water_kinematic_viscosity(self.gas.temperature))
-    
-    def outlet_liquid_speed(self): 
-        return self.liquid_to_gas_velocity_ratio() * self.gas_superficial_speed()
-    
-    def outlet_liquid_flow_rate(self): 
-        return self.outlet_liquid_speed() * self.total_flow_section
-    
-    def outlet_liquid_molar_flow_rate(self): 
-        return self.outlet_liquid_flow_rate() /  water_molar_volume(self.gas.temperature)
+    def outlet_liquid_molar_flow_rate(self, ch) -> float:
+        """Liquid molar flow rate at the channel outlet (kmol/s)."""
+        return self.outlet_liquid_flow_rate(ch) / water_molar_volume(ch.gas.temperature)
