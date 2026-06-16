@@ -6,7 +6,7 @@ import numpy as np
 import cantera as ct
 
 from .electrochemistry import ElectrochemicalReaction 
-from .ionomer import CatalystLayerIonomer
+from .ionomer import Ionomer, PFSAIonomer
 from .porous_layers import PorousLayer
 from .water import o2_water_diffusivity 
 
@@ -18,7 +18,7 @@ class CatalystLayer(PorousLayer):
 
     Attributes
     ----------
-    ionomer : CatalystLayerIonomer
+    ionomer : Ionomer
         Ionomer model associated with the catalyst layer.
     reaction : ElectrochemicalReaction
         Electrochemical reaction model.
@@ -39,7 +39,7 @@ class CatalystLayer(PorousLayer):
     theta_catalyst : float
         Catalyst surface coverage (dimensionless).
     """
-    ionomer: CatalystLayerIonomer = field(default_factory=CatalystLayerIonomer)
+    ionomer: Ionomer = field(default_factory=PFSAIonomer)
     reaction: ElectrochemicalReaction = field(default_factory=ElectrochemicalReaction)
     catalyst_loading: float = 0.2e-6 * 1e4
     ionomer_to_catalyst_ratio: float = 0.75

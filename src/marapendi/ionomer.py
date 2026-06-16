@@ -8,9 +8,11 @@ with ``water_content``/``temperature``.
 :class:`~marapendi.membrane.Membrane` inherits from it and adds
 membrane-specific geometry (thickness, hydrogen permeation, ...).
 
-:class:`CatalystLayerIonomer` and its specializations (:class:`PFSAIonomer`,
-:class:`PAPIonomer`) extend :class:`Ionomer` with the charge-transport
-correlations needed by a catalyst layer's ionomer phase.
+:class:`PFSAIonomer` and :class:`PAPIonomer` are concrete
+:class:`Ionomer` specializations with charge-transport correlations
+used by catalyst layers.  A :class:`~marapendi.catalyst_layers.CatalystLayer`
+holds an ``ionomer: Ionomer`` field directly — no separate
+``CatalystLayerIonomer`` subclass is required.
 """
 from __future__ import annotations
 
@@ -100,34 +102,25 @@ class Ionomer:
     def tortuosity(self, volume_fraction: float) -> float:
         return volume_fraction ** (-0.5)
 
-
-@dataclass
-class CatalystLayerIonomer(Ionomer):
-    """Base class for the ionomer phase of a catalyst layer.
-
-    Attributes
-    ----------
-    dry_density : float
-        Dry density of the ionomer (kg/m^3).
-    equivalent_weight : float
-        Equivalent weight of the ionomer (kg/kmol).
-    """
-
-    dry_density: float = 2004.
-    equivalent_weight: float = 952.
-
     def charge_conductivity(self, water_content: float, temperature: float, charge: str = 'proton') -> float:
-        """Charge conductivity (proton or hydroxide), in S/m."""
+        """Charge conductivity (proton or hydroxide), in S/m.
+
+        Dispatches to :meth:`proton_conductivity` or :meth:`hydroxide_conductivity`,
+        which must be implemented by concrete subclasses.
+        """
         if charge == 'proton':
             return self.proton_conductivity(water_content, temperature)
         elif charge == 'hydroxide':
             return self.hydroxide_conductivity(water_content, temperature)
+        raise ValueError(f"Unknown charge carrier: {charge!r}")
 
 
 @dataclass
-class PFSAIonomer(CatalystLayerIonomer):
+class PFSAIonomer(Ionomer):
     """PFSA ionomer (e.g. Nafion) with empirical fits for proton conductivity and O2 transport."""
 
+    dry_density: float = 2004.
+    equivalent_weight: float = 952.
     conductivity_correction: float = 1
     conductivity_exp: float = 1.5
     hydrated_proton_conductivity: float = 11
@@ -187,7 +180,7 @@ NafionD2020 = PFSAIonomer(dry_density=2004., equivalent_weight=952.)
 
 
 @dataclass
-class PAPIonomer(CatalystLayerIonomer):
+class PAPIonomer(Ionomer):
     """Poly(aryl piperidinium) (PAP) ionomer.
 
     References
