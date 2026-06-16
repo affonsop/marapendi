@@ -417,5 +417,27 @@ class PorousLayer():
     def set_ionomer_wet_properties(self, ionomer_water_content, temperature):
         pass
 
-    def set_water_film_thickness(self, water_saturation): 
+    def set_water_film_thickness(self, water_saturation):
         pass
+
+
+@dataclass
+class GasDiffusionLayer(PorousLayer):
+    """Gas diffusion layer: a :class:`PorousLayer` with typical GDL defaults."""
+
+    thickness: float = 200e-6
+    porosity: float = 0.6
+    contact_angle: float = 120.
+    absolute_permeability: float = 1e-12
+    thermal_conductivity: float = 0.5
+
+
+@dataclass
+class MicroPorousLayer(PorousLayer):
+    """Microporous layer (MPL): a :class:`PorousLayer` with typical MPL defaults."""
+
+    thickness: float = 30e-6
+    porosity: float = 0.4
+    contact_angle: float = 130.
+    absolute_permeability: float = 1e-13
+    thermal_conductivity: float = 0.3

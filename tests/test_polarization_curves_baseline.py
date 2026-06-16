@@ -223,8 +223,7 @@ def create_fuel_cell(params: dict) -> mrpd.FuelCell:
 
     return mrpd.FuelCell(
         electrical_resistance=params['elec-resistance'],
-        cell_area=CELL_AREA,
-        cell_number=1,
+        area=CELL_AREA,
         ca=mrpd.FuelCellSide(
             cl=mrpd.PtCCatalystLayer(
                 ecsa=params['ecsa'],
