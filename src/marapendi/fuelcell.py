@@ -139,8 +139,8 @@ class FuelCellSide:
             The total gas transport resistance, including porous layers,
             channel, and O2 ionomer film resistance if applicable.
         """
-        return (sum(layer.gas_transport_resistance(species) for layer in self.porous_layers) +
-                self.ch.gas_transport_resistance(species) + 
+        return (sum(layer.gas_transport_resistance(layer, species) for layer in self.porous_layers) +
+                self.ch.gas_transport_resistance(self.ch, species) +
                 (self.cl.o2_ionomer_film_resistance(ionomer_water_content, self.cl.temperature) if species == 'o2' else 0))
 
     def heat_transfer_resistance(self): 

@@ -19,6 +19,7 @@ import numpy as np
 import cantera as ct
 
 from .gas_composition import species_indexes
+from .gas import GasModel
 from .porous_layers import PorousLayer
 from .transport_models import ChannelGasResistanceModel
 from .water import water_kinematic_viscosity, water_molar_volume
@@ -288,13 +289,16 @@ class FlowChannel(PorousLayer):
         return self.inlet_gas_flow_rate * self.reactant_mole_fraction() * \
             self.gas.concentration() / reactant_consumption
 
-    def gas_transport_resistance(self, species, volume_flow_rate=None): 
+    def gas_transport_resistance(self, state, species=None, volume_flow_rate=None):
         """
         Calculate total gas transport resistance for a species.
 
         Parameters
         ----------
-        species : str
+        state : object
+            State object exposing ``temperature``, ``pressure``, and ``gas.X``.
+            Pass the channel itself when no separate state is available.
+        species : str, optional
             Species name (e.g., 'o2', 'h2o').
         volume_flow_rate : float, optional
             Specific volume flow rate (m3/s), overrides default inlet gas flow.
@@ -304,7 +308,7 @@ class FlowChannel(PorousLayer):
         float
             Total transport resistance (s/m).
         """
-        diffusion_coeff = self.species_diffusion_coefficient(species)
+        diffusion_coeff = GasModel.species_diffusion_coefficient(state, species)
         return self.transport_resistance_model.total_resistance(
             self, diffusion_coeff, volume_flow_rate if volume_flow_rate else self.inlet_gas_flow_rate)
 

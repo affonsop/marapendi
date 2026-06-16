@@ -6,6 +6,7 @@ import numpy as np
 import cantera as ct
 
 from .gas_composition import GasComposition, index_h2, index_o2, index_h2ov, species_indexes
+from .gas import GasModel
 from .transport_models import PorousGasResistanceModel, DarcyTransportModel
 from .water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight
 
@@ -311,14 +312,18 @@ class PorousLayer():
         """
         return self.vapor_pressure() / self.RT
     
-    def gas_transport_resistance(self, species='o2'):
+    def gas_transport_resistance(self, state, species='o2'):
         """
         Computes the gas transport resistance for a given species.
 
         Parameters
         ----------
+        state : object
+            State object exposing ``temperature``, ``pressure``,
+            ``non_wetting_saturation``, and ``gas.X``. Pass the layer
+            itself when no separate state is available.
         species : str, optional
-            The gas species for which the transport resistance is computed 
+            The gas species for which the transport resistance is computed
             (default is 'o2').
 
         Returns
@@ -327,11 +332,11 @@ class PorousLayer():
             Gas transport resistance in s/m.
         """
         return self.transport_resistance_model.total_diffusion_resistance(
-            self, 
-            self.temperature, 
-            self.species_diffusion_coefficient(species), 
-            self.species_molecular_weight(species), 
-            self.non_wetting_saturation
+            self,
+            state.temperature,
+            GasModel.species_diffusion_coefficient(state, species),
+            self.species_molecular_weight(species),
+            state.non_wetting_saturation,
         )
 
     def thermal_resistance(self):
