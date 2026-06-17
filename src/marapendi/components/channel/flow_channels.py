@@ -19,56 +19,6 @@ from ..porous.porous_layers import PorousLayer
 from ...models.channel.channel import ChannelGasResistanceModel
 from ...models.water import water_kinematic_viscosity, water_molar_volume
 
-
-@dataclass
-class ChannelConditions:
-    """Operating conditions for a flow channel.
-
-    Attributes
-    ----------
-    temperature : float
-        Temperature (K).
-    rh : float
-        Relative humidity (0–1).
-    pressure : float
-        Total pressure (Pa).
-    dry_o2_mole_fraction : float
-        O2 mole fraction in the dry gas.
-    dry_h2_mole_fraction : float
-        H2 mole fraction in the dry gas.
-    stoichiometry : float
-        Stoichiometric ratio (actual flow / required flow).
-    """
-
-    temperature: float
-    rh: float
-    pressure: float
-    dry_o2_mole_fraction: float
-    dry_h2_mole_fraction: float
-    stoichiometry: float
-
-    def __post_init__(self):
-        pass
-
-    def set_conditions(self, temperature=None, rh=None, pressure=None,
-                       dry_o2_mole_fraction=None, dry_h2_mole_fraction=None,
-                       stoichiometry=None):
-        """Update one or more channel operating conditions."""
-        if temperature is not None:
-            self.temperature = temperature
-        if rh is not None:
-            self.rh = rh
-        if pressure is not None:
-            self.pressure = pressure
-        if dry_o2_mole_fraction is not None:
-            self.dry_o2_mole_fraction = dry_o2_mole_fraction
-        if dry_h2_mole_fraction is not None:
-            self.dry_h2_mole_fraction = dry_h2_mole_fraction
-        if stoichiometry is not None:
-            self.stoichiometry = stoichiometry
-        self.__post_init__()
-
-
 @dataclass
 class FlowChannel(PorousLayer):
     """Flow channel geometry and state of a single fuel-cell side.
