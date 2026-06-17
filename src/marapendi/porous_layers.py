@@ -5,8 +5,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from .constants import GAS_CONSTANT
 
-from .gas_composition import GasComposition, index_h2, index_o2, index_h2ov, species_indexes
-from .gas import GasModel
+from .gas import GasModel, GasState, molecular_weights, species_indexes
 from .transport_models import PorousGasResistanceModel, DarcyTransportModel
 from .water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight
 
@@ -52,7 +51,9 @@ class PorousLayer():
     """
 
     thickness: float = 1e-3
-    gas: GasComposition = field(default_factory=GasComposition)
+    gas: GasState = field(default_factory=GasState)
+    temperature: float = 300.
+    pressure: float = 1e5
     porosity: float = 1
     effective_gas_diffusion_ratio: float = 1
     pore_diameter: float=1e12
@@ -66,252 +67,35 @@ class PorousLayer():
     non_wetting_phase: str = 'water'
     wetting_phase: str = 'gas'
 
-    def __post_init__(self): 
+    def __post_init__(self):
         self.sqrt_abs_permeability_porosity = np.sqrt(self.absolute_permeability * self.porosity)
         self.cosinus_contact_angle = np.abs(np.cos(np.pi / 180 * self.contact_angle))
-        self.capillary_pressure_J_ratio = 1
-        self.saturation_flow_resistance = 1
-        if self.contact_angle < 90: 
+        if self.contact_angle < 90:
             self.non_wetting_phase = 'gas'
             self.wetting_phase = 'water'
-        self.set_gas_temperature_and_pressure(self.gas.temperature, self.gas.pressure)
-
-    def o2_mole_fraction(self):
-        """
-        Returns the mole fraction of oxygen (O₂) in the gas phase.
-
-        Returns
-        -------
-        float
-            Oxygen mole fraction.
-        """
-        return self.gas.X[..., index_o2]
-
-    def h2_mole_fraction(self):
-        """
-        Returns the mole fraction of hydrogen (H₂) in the gas phase.
-
-        Returns
-        -------
-        float
-            Hydrogen mole fraction.
-        """
-        return self.gas.X[..., index_h2]
-
-    def species_mole_fraction(self, species):
-        """
-        Returns the mole fraction of a given species in the gas phase.
-
-        Parameters
-        ----------
-        species : str
-            The chemical species (e.g., 'o2', 'h2', 'h2o', 'n2').
-
-        Returns
-        -------
-        float
-            Mole fraction of the specified species.
-        """
-        return self.gas.X[..., species_indexes[species]]
-
-    def species_diffusion_coefficient(self, species):
-        """
-        Returns the diffusion coefficient of a given species in the gas phase.
-
-        Parameters
-        ----------
-        species : str
-            The chemical species for which the diffusion coefficient is needed.
-
-        Returns
-        -------
-        float
-            Diffusion coefficient of the specified species (m²/s).
-        """
-        return self.gas.calculate_species_diffusion_coefficient(species)
-
-    def species_molecular_weight(self, species):
-        """
-        Returns the molecular weight of a given species.
-
-        Parameters
-        ----------
-        species : str
-            The chemical species for which the molecular weight is needed.
-
-        Returns
-        -------
-        float
-            Molecular weight of the specified species (g/mol).
-        """
-        return self.gas.molecular_weights[species_indexes[species]]
-
-    def gas_temperature(self):
-        """
-        Returns the temperature of the gas phase.
-
-        Returns
-        -------
-        float
-            Gas temperature in Kelvin (K).
-        """
-        return self.temperature
-
-    def gas_pressure(self):
-        """
-        Returns the pressure of the gas phase.
-
-        Returns
-        -------
-        float
-            Gas pressure in Pascals (Pa).
-        """
-        return self.pressure
-    
-    def set_gas_composition(self, dry_o2_mole_fraction, dry_h2_mole_fraction, relative_humidity):
-        """
-        Sets the gas composition in terms of oxygen, hydrogen, and humidity.
-
-        Parameters
-        ----------
-        dry_o2_mole_fraction : float
-            Mole fraction of oxygen in dry gas.
-        dry_h2_mole_fraction : float
-            Mole fraction of hydrogen in dry gas.
-        relative_humidity : float
-            Relative humidity (0 to 1).
-        """
-        self.gas.set_composition(dry_o2_mole_fraction, dry_h2_mole_fraction, relative_humidity)
-
-    def set_gas_pressure(self, pressure):
-        """
-        Sets the gas pressure.
-
-        Parameters
-        ----------
-        pressure : float
-            Gas pressure in Pascals (Pa).
-        """
-        self.pressure = pressure
-        self.gas.set_pressure(pressure)
-
-    def set_gas_temperature(self, temperature):
-        """
-        Sets the gas temperature.
-
-        Parameters
-        ----------
-        temperature : float
-            Gas temperature in Kelvin (K).
-        """
-        self.temperature = temperature
         self.RT = GAS_CONSTANT * self.temperature
-        self.gas.set_temperature(temperature)
-        self.capillary_pressure_J_ratio = (water_surface_tension(self.temperature) * self.cosinus_contact_angle) / np.sqrt(self.absolute_permeability / self.porosity)
-        self.saturation_flow_resistance = self.calculate_saturation_flow_resistance()
+        self.saturation_pressure = None
 
-    def set_gas_temperature_and_pressure(self, temperature, pressure):
-        """
-        Sets both the gas temperature and pressure.
+    def set_temperature(self, temperature: float) -> None:
+        self.temperature = temperature
+        self.RT = GAS_CONSTANT * temperature
+        self.saturation_pressure = None  # invalidated; recomputed by GasModel on demand
 
-        Parameters
-        ----------
-        temperature : float
-            Gas temperature in Kelvin (K).
-        pressure : float
-            Gas pressure in Pascals (Pa).
-        """
-        self.set_gas_temperature(temperature)
+    def set_temperature_and_pressure(self, temperature: float, pressure: float) -> None:
+        self.set_temperature(temperature)
         self.pressure = pressure
-        self.gas.set_temperature_and_pressure(temperature, pressure)
 
-    def species_concentration(self, species):
-        """
-        Computes the concentration of a given species.
+    @property
+    def capillary_pressure_J_ratio(self) -> float:
+        return (
+            water_surface_tension(self.temperature) * self.cosinus_contact_angle
+            / np.sqrt(self.absolute_permeability / self.porosity)
+        )
 
-        Parameters
-        ----------
-        species : str
-            The chemical species (e.g., 'o2', 'h2', 'h2o', 'n2').
+    @property
+    def saturation_flow_resistance(self) -> float:
+        return self.calculate_saturation_flow_resistance()
 
-        Returns
-        -------
-        float
-            Species concentration in mol/m³.
-        """
-        return self.gas.X[..., species_indexes[species]] * self.gas.pressure / self.RT
-
-    def species_partial_pressure(self, species):
-        """
-        Computes the partial pressure of a given species.
-
-        Parameters
-        ----------
-        species : str
-            The chemical species (e.g., 'o2', 'h2', 'h2o', 'n2').
-
-        Returns
-        -------
-        float
-            Partial pressure in Pascals (Pa).
-        """
-        return self.gas.X[..., species_indexes[species]] * self.pressure
-
-    def vapor_pressure(self):
-        """
-        Computes the vapor pressure of water in the gas mixture.
-
-        Returns
-        -------
-        float
-            Vapor pressure in Pascals (Pa).
-        """
-        return self.gas.X[..., index_h2ov] * self.pressure
-
-    def relative_humidity(self):
-        """
-        Returns the relative humidity of the gas mixture.
-
-        Returns
-        -------
-        float
-            Relative humidity (0 to 1).
-        """
-        return self.gas.relative_humidity
-
-    def saturation_pressure(self):
-        """
-        Returns the saturation pressure of water in the gas mixture.
-
-        Returns
-        -------
-        float
-            Saturation pressure in Pascals (Pa).
-        """
-        return self.gas.saturation_pressure
-
-    def saturation_concentration(self):
-        """
-        Computes the saturation concentration of water vapor.
-
-        Returns
-        -------
-        float
-            Saturation concentration in kmol/m³.
-        """
-        return self.saturation_pressure() / self.RT
-
-    def vapor_concentration(self):
-        """
-        Computes the water vapor concentration.
-
-        Returns
-        -------
-        float
-            Vapor concentration in kmol/m³.
-        """
-        return self.vapor_pressure() / self.RT
-    
     def gas_transport_resistance(self, state, species='o2'):
         """
         Computes the gas transport resistance for a given species.
@@ -335,7 +119,7 @@ class PorousLayer():
             self,
             state.temperature,
             GasModel.species_diffusion_coefficient(state, species),
-            self.species_molecular_weight(species),
+            molecular_weights[species_indexes[species]],
             state.non_wetting_saturation,
         )
 
@@ -350,14 +134,14 @@ class PorousLayer():
         """
         return self.thickness / self.thermal_conductivity
 
-    def calculate_darcy_flow_resistance(self): 
+    def calculate_darcy_flow_resistance(self):
         self.darcy_flow_resistance = {
             'water': (
-                (self.thickness * water_kinematic_viscosity(self.temperature) * water_molecular_weight) / 
+                (self.thickness * water_kinematic_viscosity(self.temperature) * water_molecular_weight) /
                 self.absolute_permeability
             ),
             'gas': (
-                (self.thickness * self.gas.mixture_kinematic_viscosity * self.gas.mixture_molecular_weight) / 
+                (self.thickness * GasModel.mixture_kinematic_viscosity(self) * GasModel.mixture_molecular_weight(self)) /
                 self.absolute_permeability
             )
         }
@@ -376,9 +160,9 @@ class PorousLayer():
             non_wetting_kinematic_viscosity = water_kinematic_viscosity(self.temperature)
             non_wetting_molecular_weight = water_molecular_weight
             non_wetting_surface_tension = water_surface_tension(self.temperature)
-        elif self.non_wetting_phase == 'gas': 
-            non_wetting_kinematic_viscosity = self.gas.mixture_kinematic_viscosity 
-            non_wetting_molecular_weight = self.gas.mixture_molecular_weight
+        elif self.non_wetting_phase == 'gas':
+            non_wetting_kinematic_viscosity = GasModel.mixture_kinematic_viscosity(self)
+            non_wetting_molecular_weight = GasModel.mixture_molecular_weight(self)
             non_wetting_surface_tension = water_surface_tension(self.temperature) if self.wetting_phase == 'water' else electrolyte.surface_tension
             
         return ((self.thickness * non_wetting_kinematic_viscosity * non_wetting_molecular_weight) / 

@@ -9,8 +9,9 @@ from .constants import FARADAY_CONSTANT
 
 from .fuelcell import FuelCell, FuelCellSide
 from .electrochemistry import calculate_reversible_cell_voltage, STD_PRESSURE
+from .gas import GasModel
 from .water import water_molar_volume
-from .gas_composition import species_indexes
+from .gas import species_indexes
 
 @dataclass
 class ElectrolyzerCellSide(FuelCellSide):
@@ -41,7 +42,7 @@ class ElectrolyzerCellSide(FuelCellSide):
         solution_saturation_pressure = self.electrolyte.solution_sat_pressure
         return np.where(self.cl.non_wetting_saturation > 0,
                         self.cl.pressure - solution_saturation_pressure,
-                        self.cl.pressure - self.cl.vapor_pressure())
+                        self.cl.pressure - GasModel.vapor_pressure(self.cl))
 
 @dataclass
 class ElectrolyzerCell(FuelCell):
@@ -71,7 +72,7 @@ class ElectrolyzerCell(FuelCell):
         """
         h2_activity = self.ca.calculate_dry_gas_pressure() / STD_PRESSURE
         o2_activity = self.an.calculate_dry_gas_pressure() / STD_PRESSURE
-        h2o_activity = self.ca.electrolyte.solution_sat_pressure / self.ca.cl.saturation_pressure()
+        h2o_activity = self.ca.electrolyte.solution_sat_pressure / GasModel.saturation_pressure(self.ca.cl)
         activities_ratio = h2o_activity / (h2_activity * o2_activity ** 0.5)
 
         return calculate_reversible_cell_voltage(
@@ -139,7 +140,7 @@ class ElectrolyzerCell(FuelCell):
             Activation overpotential in volts.
         """
         self.h2_permeation_flux = self.membrane.hydrogen_permeation_flux(
-            self.an.cl.species_partial_pressure('h2'),
+            GasModel.species_partial_pressure(self.an.cl, 'h2'),
             self.membrane.temperature,
             self.an.cl.pressure - self.ca.cl.pressure,
             self.membrane.water_vol_fraction(
@@ -212,18 +213,19 @@ class ElectrolyzerCell(FuelCell):
                         + side.h2o_production[i]
                     )
 
-                    max_vapor_flux = (side.gas_production ) / (side.cl.gas.concentration() / side.cl.saturation_concentration()-1)
+                    max_vapor_flux = (side.gas_production) / (GasModel.concentration(side.cl) / GasModel.saturation_concentration(side.cl) - 1)
                     side.liquid_flux = np.maximum(water_flux - max_vapor_flux, 0)
                     side.vapor_flux = water_flux - side.liquid_flux
-                  
-                    if not side.is_wet: 
-                        rh = side.vapor_flux / (side.gas_production + side.vapor_flux) * side.cl.gas.concentration() / side.cl.saturation_concentration()
+
+                    if not side.is_wet:
+                        rh = side.vapor_flux / (side.gas_production + side.vapor_flux) * GasModel.concentration(side.cl) / GasModel.saturation_concentration(side.cl)
                         side.calculate_water_saturation()
-                        side.cl.gas.set_composition(0,1, rh[i] * np.ones_like(self.current_density))
-                     
-                    else: 
+                        GasModel.set_composition(side.cl, 0, 1, rh[i] * np.ones_like(self.current_density),
+                                                 side.cl.pressure, side.cl.temperature)
+
+                    else:
                         # Gas leaving the cell is at 100% RH
-                        side.gas_flux = side.gas_production / (1 - side.cl.saturation_concentration()/side.cl.gas.concentration()) 
+                        side.gas_flux = side.gas_production / (1 - GasModel.saturation_concentration(side.cl) / GasModel.concentration(side.cl))
                         side.calculate_water_saturation()
                         
                 self.membrane.water_balance_model.solve_water_balance(cell=self)

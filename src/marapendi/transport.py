@@ -51,7 +51,10 @@ class GasTransportModel:
             for layer, ls in named_layers
             if layer is not None and ls is not None
         )
-        resistance += cell_side.ch.gas_transport_resistance(side_state.ch, species)
+        resistance += cell_side.ch.gas_transport_resistance(
+            side_state.ch, species,
+            volume_flow_rate=side_state.ch.inlet_gas_flow_rate,
+        )
         if species == 'o2':
             resistance += cell_side.cl.o2_ionomer_film_resistance(
                 side_state.cl.ionomer_water_content, side_state.cl.temperature,
@@ -111,5 +114,4 @@ class GasTransportModel:
 
             # Sync to component object so legacy code reading cell_side.cl.gas.X still works.
             cell_side.cl.gas.X = side_state.cl.gas.X
-            cell_side.cl.gas.calculate_relative_humidity()
             cell_side.reactant_transport_resistance = side_state.reactant_transport_resistance

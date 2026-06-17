@@ -67,6 +67,9 @@ class MembraneState:
     proton_resistance: float = None
 
     peclet_number: float = None
+    ePe: object = None
+    ePexi: object = None
+    xi: object = None
     water_diffusion_resistance: float = None
     water_content_profile: float = None
     water_content_derivative_profile: float = None
@@ -113,6 +116,12 @@ class CellSideState:
     estimated_water_content_derivative: float = None
     liquid_eq_water_content: float = None
     vapor_eq_water_content: float = None
+
+    # Non-dimensional water transport parameters (set by update_non_dimensional_parameters)
+    is_liquid_equilibrated: bool = False
+    alpha: float = None
+    peclet_over_modified_biot: float = None
+    biot_number: float = None
 
     @property
     def porous_layers(self) -> list[LayerState]:

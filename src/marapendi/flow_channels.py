@@ -14,8 +14,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from .constants import GAS_CONSTANT
 
-from .gas_composition import GasComposition, species_indexes
-from .gas import GasModel
+from .gas import GasModel, species_indexes
 from .porous_layers import PorousLayer
 from .transport_models import ChannelGasResistanceModel
 from .water import water_kinematic_viscosity, water_molar_volume
@@ -112,8 +111,6 @@ class FlowChannel(PorousLayer):
     transport_resistance_model: ChannelGasResistanceModel = field(default_factory=ChannelGasResistanceModel)
 
     def __post_init__(self):
-        self.temperature = self.gas.temperature
-        self.pressure = self.gas.pressure
         self.RT = GAS_CONSTANT * self.temperature
         self.hydraulic_diameter = 2 * self.width * self.height / (self.width + self.height)
         self.channel_flow_section = self.width * self.height
@@ -158,7 +155,7 @@ class FlowChannel(PorousLayer):
         reactant_mole_fraction = self.gas.X[..., species_indexes[self.reactant]]
         inlet_gas_flow_rate = (
             self.inlet_stoichiometry * reactant_consumption
-            / (reactant_mole_fraction * self.gas.concentration())
+            / (reactant_mole_fraction * GasModel.concentration(self))
             + fixed_inlet_gas_flow_rate
         )
         self.set_fixed_inlet_gas_flow_rate(inlet_gas_flow_rate)
