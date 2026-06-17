@@ -1,5 +1,20 @@
 """
-Module providing a fuel cell class intended to be the base class for different fuel cell models.
+PEM fuel cell component: :class:`FuelCell` and :class:`FuelCellSide`.
+
+:class:`FuelCell` is the top-level object a user constructs to run simulations.
+It owns the complete component tree (catalyst layers, GDL/MPL, flow channels,
+membrane) and exposes a simple ``compute_ui_curve`` API that delegates physics
+to :class:`~marapendi.models.cell.explicit_steady_state.ExplicitSteadyStateModel`.
+
+Typical usage::
+
+    cell = FuelCell(
+        area=25e-4,
+        ca=FuelCellSide(cl=PtCCatalystLayer(...), gdl=GasDiffusionLayer(...), ch=FlowChannel(...)),
+        an=FuelCellSide(...),
+        membrane=PFSA(...),
+    )
+    voltages = cell.compute_ui_curve(current_density_array, T, ca_conditions, an_conditions)
 """
 from dataclasses import dataclass, field
 from scipy.optimize import root, least_squares

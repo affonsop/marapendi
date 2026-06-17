@@ -2,12 +2,28 @@
 
 Examples
 ========
-Usage examples can be provided as Ipython Notebooks. To view the results of a notebook, click on the link below. To
-run the notebook, open a command line tool, activate the conda environment, go to the folder containing the
-notebooks and run the command :code:`jupyter notebook`
 
+The ``notebooks/`` directory contains Jupyter notebooks that demonstrate the
+main use cases:
 
-.. toctree::
-   :glob:
+.. list-table::
+   :header-rows: 1
+   :widths: 30 70
 
-   notebooks/*
+   * - Notebook
+     - Description
+   * - ``01_polarization_curve.ipynb``
+     - Build a PEMFC, sweep current density, plot polarization curve and HFR.
+       Includes a sensitivity study on inlet relative humidity.
+   * - ``02_parameter_estimation.ipynb``
+     - Fit kinetic parameters (exchange current density, charge-transfer
+       coefficient) to synthetic polarization-curve data using
+       ``SteadyStateModel`` and differential evolution.
+
+Running the notebooks
+---------------------
+
+Activate the marapendi conda environment and launch Jupyter::
+
+    conda activate marapendi
+    jupyter notebook notebooks/

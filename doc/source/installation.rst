@@ -3,93 +3,47 @@
 Installation
 ============
 
-Pre-requisites
---------------
+Prerequisites
+-------------
 
-* `Anaconda 3.8 distribution <https://www.anaconda.com/distribution/>`_ or `Miniconda3 distribution <https://docs.conda.io/en/latest/miniconda.html>`_
-* To clone py_sci_template's Gitlab repository, `Git <https://git-scm.com/downloads>`_ (On Windows, `Git for Windows <https://git-for-windows.github.io/>`_ is preferred)
-* If you wish to install from source, the cpp compiler corresponding to coulomb's python version is needed. On linux,
-  ``sudo apt-get install -y gcc make g++``. On windows, follow the instructions at `WindowsCompiler https://wiki.python.org/moin/WindowsCompilers`
-* A working docker installation. Detailed installation instructions for each platform available at `Docker install https://docs.docker.com/install/`
-* A Gitlab account with at least guest level to install from source or at least reporter level to pull docker image
+* Python 3.10 or later
+* Conda (Anaconda or Miniconda) **or** a standard Python virtual environment
 
-Installing from source
-----------------------
+From source (recommended)
+--------------------------
 
-Obtaining the source code
-~~~~~~~~~~~~~~~~~~~~~~~~~
+Clone the repository::
 
-You can either :
-    - directly download the source in a compressed folder from py_sci_template's main gitlab page : `https://git.persee.mines-paristech.fr/energy-alternatives/py_sci_template`
-    - clone py_sci_template's repository using git either with SSH
-      ``git clone git@git.persee.mines-paristech.fr:pedro.affonso_nobrega/coulomb.git`` or with HTTPS
-      ``git clone https://git.persee.mines-paristech.fr/pedro.affonso_nobrega/coulomb.git`` after having set up the corresponding
-      authentication.
+    git clone <repository-url>
+    cd marapendi
 
+Create and activate the conda environment::
 
-Creating the conda environment
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    conda env create -f ci/conda_env.yml
+    conda activate marapendi
 
-Open a command line tool in the coulomb root folder, enter the ``ci`` folder, and then run the following :
+Install in editable (developer) mode::
 
-.. code-block:: shell
-
-    conda env create -f conda_env.yml
-
-
-For more information on conda environments, please visit https://conda.io/docs/using/envs.html .
-
-.. warning::
-    On Windows, if the environment installation fails for one the pip installed package, please make sure that the cpp
-    compiler was properly installed and that the folder containing the executables is on the PATH.
-
-.. note::
-    If a conda environment with the name coulomb already exists, this will fail. In this case, it is possible to
-    either remove the existing environment with ``conda remove --name coulomb --all`` or to change the name of
-    the environment to be created by editing it directly in the .yml file.
-
-Installing coulomb
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-Activate the environment we have just created :
-
-.. code-block:: shell
-
-    conda activate coulomb
-
-Then, from the root folder of py_sci_template, run :
-
-.. code-block:: shell
-
-    pip install .
+    pip install -e .
 
 Running the test suite
-~~~~~~~~~~~~~~~~~~~~~~
+----------------------
 
-From the root folder of py_sci_template, run :
-
-.. code-block:: shell
+From the repository root::
 
     pytest
 
+All tests should pass.  The baseline polarization-curve tests
+(``tests/test_polarization_curves_baseline.py``) are the reference for
+numerical correctness and must not be modified.
 
+Building the documentation
+--------------------------
 
+Additional dependencies: ``sphinx``, ``sphinx-napoleon``.
 
-Compiling a local version of the documentation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Additional dependencies are needed to compile the documentation :
-    - pandoc and graphviz. Can be installed on linux with ``sudo apt-get install pandoc graphviz graphviz-dev``. On
-      windows, see installation instructions on their respective websites.
-    - python packages listed in doc/requirements.txt
-
-When the dependencies are installed, cd into the ``doc`` folder, and then run the following :
-
-.. code-block:: shell
+From the ``doc/`` folder::
 
     make html
 
-The resulting documentation can be accessed by opening the file ``doc\_build\html\index.html``
-
-
-
+Open ``doc/_build/html/index.html`` in a browser.

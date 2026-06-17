@@ -1,3 +1,17 @@
+"""
+Membrane water balance model.
+
+:class:`MembraneWaterBalanceModel` solves for the membrane water-content profile,
+electroosmotic drag, and net water flux across the membrane.
+
+The model is based on Ferrara et al. (2018), using a 1D finite-difference
+discretization of the water-diffusion equation with electroosmotic drag and
+non-equilibrium sorption boundary conditions.
+
+References
+----------
+Ferrara, A. et al. J. Power Sources 390, 197–207 (2018).
+"""
 import numpy as np
 from scipy.linalg import solve
 from dataclasses import dataclass, field

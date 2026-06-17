@@ -1,37 +1,31 @@
 # Configuration file for the Sphinx documentation builder.
 #
-# For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
-# -- Project information -----------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
-
-project = 'coulomb'
-copyright = '2024, AFFONSO NOBREGA'
-author = 'Pedro AFFONSO NOBREGA'
-release = '0.1.0'
-
-# -- General configuration ---------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
-
+project = 'marapendi'
+copyright = '2024–2026, Pedro Affonso Nobrega'
+author = 'Pedro Affonso Nobrega'
+release = '0.2.0'
 
 extensions = [
-    'autoapi.extension',
+    'sphinx.ext.autodoc',
     'sphinx.ext.napoleon',
-    'nbsphinx',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.intersphinx',
 ]
 
-templates_path = ['_templates']
-exclude_patterns = []
-
-# AutoAPI settings
-autoapi_dirs = ['../../coulomb/src']
-
-# Napoleon settings
+# Napoleon: read both NumPy-style and Google-style docstrings
+napoleon_numpy_docstring = True
 napoleon_google_docstring = True
 
-# -- Options for HTML output -------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
+templates_path = ['_templates']
+exclude_patterns = ['_build']
 
 html_theme = 'alabaster'
 html_static_path = ['_static']
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'numpy': ('https://numpy.org/doc/stable/', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy/', None),
+}

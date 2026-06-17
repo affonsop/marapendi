@@ -1,5 +1,11 @@
 """
-Module providing electrochemistry functions.
+Electrochemistry correlations: reversible voltage, Butler-Volmer kinetics.
+
+:func:`calculate_reversible_cell_voltage` computes the Nernst equilibrium
+cell voltage. :class:`ElectrochemicalReaction` encapsulates Butler-Volmer
+kinetics for a single reaction step (ORR or HOR) parameterized by exchange
+current density, activation energy, reaction order and charge-transfer
+coefficient.
 """
 from dataclasses import dataclass
 import numpy as np
