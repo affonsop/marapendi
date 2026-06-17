@@ -3,8 +3,8 @@ Thermal model: heat transfer resistance and MEA temperature.
 
 :class:`ThermalModel` computes the MEA heat transfer resistance and estimates
 the MEA operating temperature from the current density and stack temperature.
-It writes temperatures back onto the fuel-cell component instances so that
-subsequent transport and voltage calculations see the correct values.
+It writes temperatures back onto the state object so that subsequent transport
+and voltage calculations see the correct values.
 """
 from __future__ import annotations
 
@@ -32,31 +32,36 @@ class ThermalModel:
         """
         return 1. / sum(1. / self.side_heat_transfer_resistance(side) for side in cell.sides)
 
-    def mea_temperature(self, fc, mea_temperature_estimation: bool = False) -> float:
+    def mea_temperature(self, cell, state, mea_temperature_estimation: bool = False) -> float:
         """Estimate the MEA temperature.
 
         When *mea_temperature_estimation* is ``False`` (default), assumes a
-        constant 0.7 V HHV efficiency approximation.  When ``True``, uses a
-        first-pass cell voltage already stored on *fc* as ``fc.cell_voltage``.
+        constant 0.7 V efficiency approximation.  When ``True``, uses a
+        first-pass cell voltage already stored on *state* as ``state.cell_voltage``.
         """
         from .electrochemistry import h2_lhv
         from .constants import FARADAY_CONSTANT
 
-        thermal_resistance = self.heat_transfer_resistance(fc)
+        thermal_resistance = self.heat_transfer_resistance(cell)
         if mea_temperature_estimation:
-            v0 = fc.cell_voltage
-            return fc.temperature + (
-                fc.current_density
-                * (-h2_lhv(fc.temperature) / (2 * FARADAY_CONSTANT) - v0)
+            v0 = state.cell_voltage
+            return state.temperature + (
+                state.current_density
+                * (-h2_lhv(state.temperature) / (2 * FARADAY_CONSTANT) - v0)
                 * thermal_resistance
             )
-        return fc.temperature + (fc.current_density * 0.7) * thermal_resistance
+        return state.temperature + (state.current_density * 0.7) * thermal_resistance
 
-    def set_mea_temperature(self, mea_temperature: float, fc) -> None:
-        """Write the MEA temperature onto the membrane and catalyst layers of *fc*."""
-        fc.mea_temperature = mea_temperature
-        fc.mea_temperature_increase = mea_temperature - fc.temperature
-        fc.ca.cl.set_gas_temperature(mea_temperature)
-        fc.an.cl.set_gas_temperature(mea_temperature)
-        fc.membrane.temperature = mea_temperature
-        fc.mea_water_molar_volume = water_molar_volume(mea_temperature)
+    def set_mea_temperature(self, mea_temperature: float, cell, state) -> None:
+        """Write the MEA temperature onto *state* and the catalyst-layer components of *cell*."""
+        state.mea_temperature = mea_temperature
+        state.mea_temperature_increase = mea_temperature - state.temperature
+        state.membrane.temperature = mea_temperature
+        state.mea_water_molar_volume = water_molar_volume(mea_temperature)
+        state.ca.cl.temperature = mea_temperature
+        state.an.cl.temperature = mea_temperature
+        # Keep component objects in sync so methods called on them see the right temperature.
+        cell.ca.cl.set_gas_temperature(mea_temperature)
+        cell.an.cl.set_gas_temperature(mea_temperature)
+        cell.membrane.temperature = mea_temperature
+        cell.mea_water_molar_volume = water_molar_volume(mea_temperature)

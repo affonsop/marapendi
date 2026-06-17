@@ -4,76 +4,112 @@ Gas transport resistance and concentration model.
 :class:`GasTransportModel` computes the total gas-phase transport resistance
 from the flow channel to the catalyst layer for a given cell side, and updates
 the catalyst-layer gas composition from the computed transport resistances.
+
+Static layer parameters (tortuosity, thickness, ionomer properties) are read
+from the component tree (``cell``); runtime values (temperature, pressure,
+gas composition, saturation) come from the :class:`~marapendi.state.CellState`.
 """
 from __future__ import annotations
 
 import numpy as np
 from dataclasses import dataclass
 
-from .gas_composition import species_indexes
+from .gas import GasModel, species_indexes
 
 
 @dataclass
 class GasTransportModel:
     """Gas transport resistance and CL gas concentration calculations."""
 
-    def gas_transport_resistance(self, side, species: str = 'o2') -> float:
-        """Total gas transport resistance for ``species`` on ``side`` (s/m).
+    def gas_transport_resistance(self, cell_side, side_state, species: str = 'o2') -> float:
+        """Total gas transport resistance for ``species`` on one cell side (s/m).
 
         Parameters
         ----------
-        side : FuelCellSide
-            Cell side holding porous layers, flow channel, and catalyst layer.
+        cell_side : FuelCellSide
+            Component side — provides static layer physics (tortuosity, thickness,
+            ionomer properties).
+        side_state : CellSideState
+            Runtime state for this side — provides gas composition, temperature,
+            pressure and saturation for each layer.
         species : str
             Gas species identifier ('o2', 'h2', 'h2o').
 
         Returns
         -------
         float
-            Sum of porous-layer, channel, and ionomer-film resistances.
+            Sum of porous-layer, channel, and (for O₂) ionomer-film resistances.
         """
-        return (
-            sum(layer.gas_transport_resistance(layer, species) for layer in side.porous_layers)
-            + side.ch.gas_transport_resistance(side.ch, species)
-            + (side.cl.o2_ionomer_film_resistance(side.cl.ionomer_water_content, side.cl.temperature) if species == 'o2' else 0)
+        # Pair each component layer with its matching state object by name.
+        named_layers = [
+            (cell_side.cl, side_state.cl),
+            (cell_side.mpl if cell_side.has_mpl else None, side_state.mpl),
+            (cell_side.gdl if cell_side.has_gdl else None, side_state.gdl),
+        ]
+        resistance = sum(
+            layer.gas_transport_resistance(ls, species)
+            for layer, ls in named_layers
+            if layer is not None and ls is not None
         )
+        resistance += cell_side.ch.gas_transport_resistance(side_state.ch, species)
+        if species == 'o2':
+            resistance += cell_side.cl.o2_ionomer_film_resistance(
+                side_state.cl.ionomer_water_content, side_state.cl.temperature,
+            )
+        return resistance
 
-    def calculate_gas_concentrations(self, fc) -> None:
+    def calculate_gas_concentrations(self, cell, state) -> None:
         """Update catalyst-layer gas composition for both cell sides.
 
-        Derives reactant (O2/H2) and water vapor mole fractions at the CL
-        from channel concentrations, reactant consumption, and the vapor flux
-        already set by the water balance. Requires ``side.h2ov_transport_resistance``
-        and ``side.vapor_flux`` to be set before calling.
+        Derives reactant (O2/H2) and water-vapor mole fractions at the CL from
+        channel concentrations, reactant consumption, and the vapor flux already
+        set by the water balance.  Reads from ``state``; writes back to
+        ``state.ca.cl.gas.X`` / ``state.an.cl.gas.X`` and also syncs the
+        results to the component gas objects so that legacy code keeps working.
 
         Parameters
         ----------
-        fc : FuelCell
+        cell : FuelCell
+            Component tree (static physics parameters).
+        state : CellState
+            Runtime state to read from and write to.
         """
-        for side, reactant in [(fc.ca, 'o2'), (fc.an, 'h2')]:
-            side.reactant_transport_resistance = self.gas_transport_resistance(side, reactant)
-            gas_concentration = side.cl.gas.concentration()
+        for cell_side, side_state, reactant in [
+            (cell.ca, state.ca, 'o2'),
+            (cell.an, state.an, 'h2'),
+        ]:
+            side_state.reactant_transport_resistance = self.gas_transport_resistance(
+                cell_side, side_state, reactant,
+            )
+            gas_concentration = GasModel.concentration(side_state.cl)
 
-            side.cl.gas.X[..., species_indexes[reactant]] = np.maximum(
+            side_state.cl.gas.X[..., species_indexes[reactant]] = np.maximum(
                 1e-12,
-                side.ch.species_concentration(reactant)
-                - side.reactant_consumption * side.reactant_transport_resistance,
+                GasModel.species_concentration(side_state.ch, reactant)
+                - side_state.reactant_consumption * side_state.reactant_transport_resistance,
             ) / gas_concentration
 
-            side.cl.gas.X[..., species_indexes['h2o']] = np.where(
-                side.cl.liquid_saturation > 0,
-                side.cl.saturation_concentration() / gas_concentration,
+            side_state.cl.gas.X[..., species_indexes['h2o']] = np.where(
+                side_state.cl.liquid_saturation > 0,
+                GasModel.saturation_concentration(side_state.cl) / gas_concentration,
                 np.maximum(
                     1e-12,
-                    side.ch.species_concentration('h2o')
-                    + side.vapor_flux * side.h2ov_transport_resistance,
+                    GasModel.species_concentration(side_state.ch, 'h2o')
+                    + side_state.vapor_flux * side_state.h2ov_transport_resistance,
                 ) / gas_concentration,
             )
-            side.cl.gas.calculate_relative_humidity()
+            # Invalidate cached saturation_pressure after temperature may have changed.
+            side_state.cl.saturation_pressure = None
+            GasModel.saturation_pressure(side_state.cl)  # recompute and cache
 
-            side.cl.gas.X[..., species_indexes['n2']] = (
+            side_state.cl.gas.X[..., species_indexes['n2']] = (
                 1
-                - side.cl.gas.X[..., species_indexes['o2']]
-                - side.cl.gas.X[..., species_indexes['h2o']]
-                - side.cl.gas.X[..., species_indexes['h2']]
+                - side_state.cl.gas.X[..., species_indexes['o2']]
+                - side_state.cl.gas.X[..., species_indexes['h2o']]
+                - side_state.cl.gas.X[..., species_indexes['h2']]
             )
+
+            # Sync to component object so legacy code reading cell_side.cl.gas.X still works.
+            cell_side.cl.gas.X = side_state.cl.gas.X
+            cell_side.cl.gas.calculate_relative_humidity()
+            cell_side.reactant_transport_resistance = side_state.reactant_transport_resistance

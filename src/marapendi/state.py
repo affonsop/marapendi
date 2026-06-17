@@ -32,6 +32,12 @@ class LayerState:
     liquid_saturation: float = 0.
     non_wetting_saturation: float = 0.
     capillary_pressure: float = None
+    # Two-phase transport state (set by water saturation model)
+    non_wetting_flux: float = None
+    downstream_saturation: float = None
+    upstream_saturation: float = None
+    downstream_capillary_pressure: float = None
+    electrolyte_saturation: float = None
 
 
 @dataclass
@@ -40,7 +46,6 @@ class CatalystLayerState(LayerState):
 
     ionomer_water_content: float = None
     overpotential: float = None
-    crossover_current: float = None
     water_film_thickness: float = None
     proton_resistance: float = None
     theta_catalyst: float = None
@@ -92,6 +97,7 @@ class CellSideState:
 
     h2ov_transport_resistance: float = None
     reactant_transport_resistance: float = None
+    reactant_consumption: float = None
 
     h2o_production: float = 0.
     s_relax: float | None = None
@@ -99,6 +105,14 @@ class CellSideState:
     water_flux: float = None
     liquid_flux: float = None
     vapor_flux: float = None
+    gas_flux: float = None
+
+    # Water balance intermediate state
+    rh_at_cl_without_crossover: float = None
+    estimated_water_content: float = None
+    estimated_water_content_derivative: float = None
+    liquid_eq_water_content: float = None
+    vapor_eq_water_content: float = None
 
     @property
     def porous_layers(self) -> list[LayerState]:
@@ -125,6 +139,15 @@ class CellState:
     E_rev: float = None
     eta_act: float = None
     eta_ohm: float = None
+
+    # Thermal state
+    thermal_resistance: float = None
+    mea_temperature: float = None
+    mea_temperature_increase: float = None
+    mea_water_molar_volume: float = None
+
+    # Crossover
+    crossover_current: float = None
 
     @property
     def sides(self) -> tuple[CellSideState, CellSideState]:

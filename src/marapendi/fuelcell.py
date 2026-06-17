@@ -251,37 +251,37 @@ class FuelCell(Cell):
     # ------------------------------------------------------------------
 
     def reversible_cell_voltage(self):
-        return self._voltage_model.reversible_cell_voltage(self)
+        return self._voltage_model.reversible_cell_voltage(self, self.state)
 
     def reversible_voltage_vs_RHE(self):
-        return self._voltage_model.reversible_voltage_vs_RHE(self)
+        return self._voltage_model.reversible_voltage_vs_RHE(self, self.state)
 
     def activation_overpotential(self, theta_PtO=0):
-        return self._voltage_model.activation_overpotential(self, theta_PtO)
+        return self._voltage_model.activation_overpotential(self, self.state, theta_PtO)
 
     def high_frequency_resistance(self):
-        return self._voltage_model.high_frequency_resistance(self)
+        return self._voltage_model.high_frequency_resistance(self, self.state)
 
     def ohmic_overpotential(self):
-        return self._voltage_model.ohmic_overpotential(self)
+        return self._voltage_model.ohmic_overpotential(self, self.state)
 
     def calculate_theta_PtO(self):
-        return self._voltage_model.calculate_theta_PtO(self)
+        return self._voltage_model.calculate_theta_PtO(self, self.state)
 
     def calculate_cell_voltage(self):
-        return self._voltage_model.compute_cell_voltage(self)
-    
+        return self._voltage_model.compute_cell_voltage(self, self.state)
+
     def set_mea_temperature(self, mea_temperature):
         """Delegate to :class:`~marapendi.thermal.ThermalModel`."""
-        self._thermal_model.set_mea_temperature(mea_temperature, self)
+        self._thermal_model.set_mea_temperature(mea_temperature, self, self.state)
 
     def calculate_water_transport(self, dynamic=False):
         """Delegate to :class:`~marapendi.water_balance_models.MembraneWaterBalanceModel`."""
-        self._model.water_balance_model.calculate_water_transport(self, dynamic)
+        self._model.water_balance_model.calculate_water_transport(self, self.state, dynamic)
 
     def calculate_gas_concentrations_at_cl(self):
         """Delegate to :class:`~marapendi.transport.GasTransportModel`."""
-        self._gas_transport_model.calculate_gas_concentrations(self)
+        self._gas_transport_model.calculate_gas_concentrations(self, self.state)
     
     def calculate_heat_transfer_resistance(self):
         """Delegate to :class:`~marapendi.thermal.ThermalModel`."""
@@ -358,7 +358,24 @@ class FuelCell(Cell):
 
         Delegates to :class:`~marapendi.model.ExplicitSteadyStateModel`.
         """
-        return self._model.solve(self, mea_temperature_estimation=mea_tempearture_estimation)
+        voltage = self._model.solve(self, self.state, mea_temperature_estimation=mea_tempearture_estimation)
+        self._sync_state_to_fc()
+        return voltage
+
+    def _sync_state_to_fc(self):
+        """Copy key values from ``self.state`` back to legacy ``FuelCell`` attributes.
+
+        Keeps backward compatibility for callers that read ``fc.cell_voltage``,
+        ``fc.mea_temperature``, etc. directly.
+        """
+        s = self.state
+        self.cell_voltage = s.cell_voltage
+        self.mea_temperature = s.mea_temperature if s.mea_temperature is not None else self.temperature
+        self.mea_temperature_increase = s.mea_temperature_increase if s.mea_temperature_increase is not None else 0.
+        self.thermal_resistance = s.thermal_resistance if s.thermal_resistance is not None else self.thermal_resistance
+        self.crossover_current = s.crossover_current if s.crossover_current is not None else 0.
+        if s.membrane.h2_permeation_flux is not None:
+            self.h2_permeation_flux = s.membrane.h2_permeation_flux
 
     def temperature_rate_of_change(self):
         self.calculate_heat_transport(dynamic=True) 
@@ -524,6 +541,7 @@ class FuelCell(Cell):
                 mpl=_layer(fc_side.mpl) if fc_side.has_mpl else None,
                 ch=_ch(fc_side.ch),
                 h2o_production=fc_side.h2o_production,
+                reactant_consumption=fc_side.reactant_consumption,
             )
 
         self.state = CellState(
