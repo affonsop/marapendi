@@ -187,7 +187,7 @@ class FuelCellSide:
         total_equivalent_flow_resistance = 0.0
         for k, layer in enumerate(self.porous_layers):
             layer.equivalent_flow_resistance = layer.saturation_flow_resistance
-            total_equivalent_flow_resistance += layer.equivalent_flow_resistance
+            total_equivalent_flow_resistance = total_equivalent_flow_resistance + layer.equivalent_flow_resistance
         return total_equivalent_flow_resistance
 
     def max_water_vapor_removal(self):
@@ -554,8 +554,9 @@ class FuelCell(Cell):
             side.electrolyte = conditions.inlet_liquid
             side.electrolyte.set_temperature(stack_temperature)
 
-            for component in side_state.layers: 
+            for component in side_state.layers:
                 component.pressure = 0.5 * (conditions.inlet_pressure + conditions.outlet_pressure)
+                component.gas.X = np.zeros((np.atleast_1d(current_density).size, 4))
 
                 GasModel.set_composition(component, conditions.dry_o2_mole_fraction,
                                          conditions.dry_h2_mole_fraction,

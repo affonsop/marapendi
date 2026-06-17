@@ -175,7 +175,7 @@ class FlowChannel(PorousLayer):
         """
         diffusion_coeff = GasModel.species_diffusion_coefficient(state, species)
         return self.transport_resistance_model.total_resistance(
-            self, diffusion_coeff, volume_flow_rate if volume_flow_rate else self.inlet_gas_flow_rate)
+            self, diffusion_coeff, volume_flow_rate)
 
 
 @dataclass
