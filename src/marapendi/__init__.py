@@ -3,7 +3,7 @@ from .models.water import *
 from .tools import *
 from .components.cell.fuelcell import *
 from .components.cell.aem_electrolyzer import *
-from .components.membrane.membrane import *
+from .components.membrane.membrane.membrane import *
 from .components.channel.flow_channels import *
 from .components.porous.porous_layers import *
 from .models.porous.darcy import *

@@ -18,7 +18,7 @@ from marapendi.models.constants import GAS_CONSTANT
 from marapendi.models.water import water_molar_volume, water_molecular_weight, water_density
 from marapendi.models.cell.water_balance import MembraneWaterBalanceModel
 from marapendi.models.membrane.membrane_permeation_models import HydrogenPermeationModel
-from .ionomer import Ionomer
+from ..ionomer import Ionomer
 
 
 @dataclass

@@ -41,11 +41,11 @@ class GasTransportModel:
             Sum of porous-layer, channel, and (for O₂) ionomer-film resistances.
         """
         resistance = sum(
-            layer.gas_transport_resistance(layer_state, species)
+            layer.transport_resistance_model.gas_transport_resistance(layer, layer_state, species)
             for layer, layer_state in zip(cell_side.porous_layers, side_state.porous_layers)
         )
-        resistance += cell_side.ch.gas_transport_resistance(
-            side_state.ch, species,
+        resistance += cell_side.ch.transport_resistance_model.gas_transport_resistance(
+            cell_side.ch, side_state.ch, species,
             volume_flow_rate=side_state.ch.inlet_gas_flow_rate,
         )
         if species == 'o2':

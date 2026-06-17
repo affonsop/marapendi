@@ -5,6 +5,7 @@ Module providing a model for gas diffusion in porous layers.
 from dataclasses import dataclass
 import numpy as np
 from ..constants import GAS_CONSTANT
+from ..gas import GasModel, species_indexes, molecular_weights
     
 @dataclass
 class PorousGasResistanceModel:
@@ -116,3 +117,13 @@ class PorousGasResistanceModel:
         """
         return self.molecular_diffusion_effective_length(layer, water_saturation) * (
             1/diffusion_coefficient + 1/self.knudsen_diffusivity(layer, temperature, molecular_weight))
+
+    def gas_transport_resistance(self, layer, state, species: str = 'o2') -> float:
+        """Total diffusion resistance for *species* through *layer* given *state* (s/m)."""
+        return self.total_diffusion_resistance(
+            layer,
+            state.temperature,
+            GasModel.species_diffusion_coefficient(state, species),
+            molecular_weights[species_indexes[species]],
+            state.non_wetting_saturation,
+        )

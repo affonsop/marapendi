@@ -7,7 +7,7 @@ import numpy as np
 from ..porous.porous_layers import PorousLayer
 from ..porous.cl.catalyst_layers import PtCCatalystLayer
 from ..channel.flow_channels import FlowChannel
-from ..membrane.membrane import Membrane
+from ..membrane.membrane.membrane import Membrane
 from .cell import Cell, CellSide
 from ...models.cell.voltage import VoltageModel
 from ...models.cell.thermal import ThermalModel
@@ -234,8 +234,8 @@ class FuelCell(Cell):
             for layer in side.porous_layers:
                 layer.non_wetting_saturation = saturation_profile[k,...]
                 k+=1
-        for side in (self.an,self.ca): 
-            side.h2ov_transport_resistance = side.gas_transport_resistance('h2o')
+        for side in (self.an, self.ca):
+            side.h2ov_transport_resistance = self._gas_transport_model.gas_transport_resistance(side, side, 'h2o')
             side.cl.set_water_film_thickness(side.cl.non_wetting_saturation)
         
         

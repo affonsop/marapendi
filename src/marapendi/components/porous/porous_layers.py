@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from ...models.constants import GAS_CONSTANT
 
-from ...models.gas import GasModel, GasState, molecular_weights, species_indexes
+from ...models.gas import GasModel, GasState
 from ...models.porous.diffusion import PorousGasResistanceModel
 from ...models.porous.darcy import DarcyTransportModel
 from ...models.water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight
@@ -97,33 +97,7 @@ class PorousLayer():
     def saturation_flow_resistance(self) -> float:
         return self.calculate_saturation_flow_resistance()
 
-    def gas_transport_resistance(self, state, species='o2'):
-        """
-        Computes the gas transport resistance for a given species.
-
-        Parameters
-        ----------
-        state : object
-            State object exposing ``temperature``, ``pressure``,
-            ``non_wetting_saturation``, and ``gas.X``. Pass the layer
-            itself when no separate state is available.
-        species : str, optional
-            The gas species for which the transport resistance is computed
-            (default is 'o2').
-
-        Returns
-        -------
-        float
-            Gas transport resistance in s/m.
-        """
-        return self.transport_resistance_model.total_diffusion_resistance(
-            self,
-            state.temperature,
-            GasModel.species_diffusion_coefficient(state, species),
-            molecular_weights[species_indexes[species]],
-            state.non_wetting_saturation,
-        )
-    @property 
+    @property
     def thermal_resistance(self):
         """
         Computes the thermal resistance of the layer.

@@ -16,8 +16,46 @@ from ...models.constants import GAS_CONSTANT
 
 from ...models.gas import GasModel, species_indexes
 from ..porous.porous_layers import PorousLayer
-from ...models.channel.channel import ChannelGasResistanceModel
 from ...models.water import water_kinematic_viscosity, water_molar_volume
+
+
+@dataclass
+class ChannelGasResistanceModel:
+    """Channel gas transport resistance using a Sherwood-number approach.
+
+    References
+    ----------
+    Kim, H. et al. Int. J. Heat Mass Transf. 183, 122106 (2022).
+    """
+
+    sherwood: float = 4.0
+    B_ch: float = 1.0
+
+    def molecular_diffusion_resistance(self, channel, diffusion_coefficient):
+        """Diffusion resistance via Sherwood number (s/m)."""
+        return channel.hydraulic_diameter / (self.sherwood * diffusion_coefficient)
+
+    def convection_resistance(self, channel, volume_flow_rate):
+        """Convection resistance assuming average inlet/outlet concentration (s/m)."""
+        return (
+            self.B_ch * channel.length * channel.width
+            * (1 + 1 / channel.channel_land_ratio) / 2
+            * channel.n_parallel / (volume_flow_rate + 1e-12)
+        )
+
+    def total_resistance(self, channel, diffusion_coefficient, volume_flow_rate):
+        """Total channel resistance: diffusion + convection (s/m)."""
+        return (
+            self.molecular_diffusion_resistance(channel, diffusion_coefficient)
+            + self.convection_resistance(channel, volume_flow_rate)
+        )
+
+    def gas_transport_resistance(self, channel, state, species, volume_flow_rate=None):
+        """Total gas transport resistance for *species* in *channel* (s/m)."""
+        diffusion_coeff = GasModel.species_diffusion_coefficient(state, species)
+        flow_rate = volume_flow_rate if volume_flow_rate is not None else state.inlet_gas_flow_rate
+        return self.total_resistance(channel, diffusion_coeff, flow_rate)
+
 
 @dataclass
 class FlowChannel(PorousLayer):
@@ -68,19 +106,3 @@ class FlowChannel(PorousLayer):
         self.total_flow_section = self.n_parallel * self.channel_flow_section
         PorousLayer.__post_init__(self)
 
-    def gas_transport_resistance(self, state, species=None, volume_flow_rate=None):
-        """Gas transport resistance for ``species`` in the channel (s/m).
-
-        Parameters
-        ----------
-        state : object
-            State object with ``temperature``, ``pressure``, and ``gas.X``.
-            Pass the channel itself when no separate state is available.
-        species : str, optional
-            Species identifier ('o2', 'h2', 'h2o').
-        volume_flow_rate : float, optional
-            Volumetric flow rate (m³/s); overrides the channel's inlet flow rate.
-        """
-        diffusion_coeff = GasModel.species_diffusion_coefficient(state, species)
-        return self.transport_resistance_model.total_resistance(
-            self, diffusion_coeff, volume_flow_rate)
