@@ -300,64 +300,6 @@ class FuelCell(Cell):
             ) for side in ('ca','an')]
         self.set_conditions(stack_temperature, current_density, cathode_conditions, anode_conditions)
 
-
-    def populate_state(self):
-        """Populate ``self.state`` from the component tree after ``set_conditions``.
-
-        Called at the end of :meth:`set_conditions` so that the pure-data
-        :class:`~marapendi.state.CellState` always mirrors the current
-        operating point, ready for model code that consumes state objects
-        rather than component instances.
-        """
-        def _layer(component):
-            return LayerState(
-                gas=GasState(X=component.gas.X.copy()),
-                temperature=component.temperature,
-                pressure=component.pressure,
-                liquid_saturation=np.asarray(component.liquid_saturation).copy(),
-                non_wetting_saturation=np.asarray(component.non_wetting_saturation).copy(),
-            )
-
-        def _cl(cl):
-            return CatalystLayerState(
-                gas=GasState(X=cl.gas.X.copy()),
-                temperature=cl.temperature,
-                pressure=cl.pressure,
-                liquid_saturation=np.asarray(cl.liquid_saturation).copy(),
-                non_wetting_saturation=np.asarray(cl.non_wetting_saturation).copy(),
-                ionomer_water_content=cl.ionomer_water_content,
-            )
-
-        def _ch(ch):
-            return FlowChannelState(
-                gas=GasState(X=ch.gas.X.copy()),
-                temperature=ch.temperature,
-                pressure=ch.pressure,
-                inlet_gas_flow_rate=ch.inlet_gas_flow_rate,
-                inlet_liquid_flow_rate=ch.inlet_liquid_flow_rate,
-                inlet_liquid_saturation=ch.inlet_liquid_saturation,
-                inlet_stoichiometry=ch.inlet_stoichiometry,
-            )
-
-        def _side(fc_side):
-            return CellSideState(
-                cl=_cl(fc_side.cl),
-                gdl=_layer(fc_side.gdl) if fc_side.has_gdl else None,
-                mpl=_layer(fc_side.mpl) if fc_side.has_mpl else None,
-                ch=_ch(fc_side.ch),
-                h2o_production=fc_side.h2o_production,
-                reactant_consumption=fc_side.reactant_consumption,
-                s_relax=fc_side.s_relax,
-            )
-
-        self.state = CellState(
-            ca=_side(self.ca),
-            an=_side(self.an),
-            membrane=MembraneState(temperature=self.membrane.temperature),
-            current_density=self.current_density,
-            temperature=self.temperature,
-        )
-
     def set_conditions(self, stack_temperature, current_density, cathode_conditions, anode_conditions):
         """Delegate to :meth:`~marapendi.model.ExplicitSteadyStateModel.set_initial_state`."""
         self._model.set_initial_state(
