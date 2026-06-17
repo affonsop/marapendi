@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 
 from .thermal import ThermalModel
 from .voltage import VoltageModel
+from .water_balance_models import MembraneWaterBalanceModel
 
 
 @dataclass
@@ -30,6 +31,7 @@ class ExplicitSteadyStateModel:
 
     voltage_model: VoltageModel = field(default_factory=VoltageModel)
     thermal_model: ThermalModel = field(default_factory=ThermalModel)
+    water_balance_model: MembraneWaterBalanceModel = field(default_factory=MembraneWaterBalanceModel)
 
     def solve(self, fc, mea_temperature_estimation: bool = False) -> float:
         """
@@ -52,13 +54,13 @@ class ExplicitSteadyStateModel:
         fc.thermal_resistance = self.thermal_model.heat_transfer_resistance(fc)
         if mea_temperature_estimation:
             self.thermal_model.set_mea_temperature(fc.temperature, fc)
-            fc.calculate_water_transport()
+            self.water_balance_model.calculate_water_transport(fc)
             fc.calculate_gas_concentrations_at_cl()
             self.voltage_model.compute_cell_voltage(fc)
 
         mea_temperature = self.thermal_model.mea_temperature(fc, mea_temperature_estimation)
         self.thermal_model.set_mea_temperature(mea_temperature, fc)
-        fc.calculate_water_transport()
+        self.water_balance_model.calculate_water_transport(fc)
         fc.calculate_gas_concentrations_at_cl()
         self.voltage_model.compute_cell_voltage(fc)
         return fc.cell_voltage

@@ -327,6 +327,76 @@ class MembraneWaterBalanceModel:
             self.membrane_water_net_flux[0,...] -= cell.an.membrane_water_flux
             self.membrane_water_net_flux[-1,...] -= cell.ca.membrane_water_flux
     
+    def calculate_water_saturation(self, side) -> None:
+        """Compute and update water saturation in each porous layer of ``side``.
+
+        Parameters
+        ----------
+        side : FuelCellSide
+            Cell side whose ``liquid_flux`` and ``gas_flux`` are already set.
+        """
+        for layer in side.porous_layers:
+            layer.non_wetting_flux = side.liquid_flux if layer.contact_angle > 90 else side.gas_flux
+            layer.downstream_saturation = np.zeros_like(layer.non_wetting_flux)
+            layer.upstream_saturation = np.zeros_like(layer.non_wetting_flux)
+            layer.non_wetting_saturation = np.zeros_like(layer.non_wetting_flux)
+            layer.downstream_capillary_pressure = np.zeros_like(layer.non_wetting_flux)
+        if side.has_gdl:
+            side.gdl.two_phase_transport_model.calculate_non_wetting_saturation(
+                side.gdl, side.gdl.non_wetting_flux,
+                upstream_capillary_pressure=np.zeros_like(side.cl.non_wetting_flux))
+            if side.has_mpl:
+                side.mpl.two_phase_transport_model.calculate_non_wetting_saturation(
+                    side.mpl, side.mpl.non_wetting_flux,
+                    upstream_capillary_pressure=side.gdl.downstream_capillary_pressure)
+                side.cl.two_phase_transport_model.calculate_non_wetting_saturation(
+                    side.cl, side.liquid_flux,
+                    upstream_capillary_pressure=side.mpl.downstream_capillary_pressure)
+            else:
+                side.cl.two_phase_transport_model.calculate_non_wetting_saturation(
+                    side.cl, side.liquid_flux,
+                    upstream_capillary_pressure=side.gdl.downstream_capillary_pressure)
+        else:
+            side.cl.two_phase_transport_model.calculate_non_wetting_saturation(
+                side.cl, side.cl.non_wetting_flux,
+                upstream_capillary_pressure=np.zeros_like(side.cl.non_wetting_flux))
+        for layer in side.porous_layers:
+            layer.liquid_saturation = (
+                layer.non_wetting_saturation if layer.contact_angle > 90.
+                else (1 - layer.non_wetting_saturation)
+            )
+            layer.electrolyte_saturation = layer.liquid_saturation
+
+    def calculate_water_transport(self, fc, dynamic: bool = False) -> None:
+        """Calculate the water balance across the fuel cell.
+
+        Updates vapor transport resistances, solves the membrane water balance,
+        and (when ``dynamic=False``) recalculates liquid saturation in the cathode.
+
+        Parameters
+        ----------
+        fc : FuelCell
+        dynamic : bool
+            When ``True``, skips the liquid saturation update (used by transient models).
+        """
+        fc.ca.h2ov_transport_resistance = fc.ca.gas_transport_resistance('h2o')
+        fc.an.h2ov_transport_resistance = fc.an.gas_transport_resistance('h2o')
+        self.solve_water_balance(fc)
+
+        if not dynamic:
+            fc.ca.calculate_equivalent_flow_resistance()
+            self.calculate_water_saturation(fc.ca)
+            fc.ca.cl.set_water_film_thickness(fc.ca.cl.non_wetting_saturation)
+            fc.ca.h2ov_transport_resistance = fc.ca.gas_transport_resistance('h2o')
+            fc.an.h2ov_transport_resistance = fc.an.gas_transport_resistance('h2o')
+
+        for cl in (fc.ca.cl, fc.an.cl):
+            if fc.use_eq_water_content_for_ionomer:
+                cl.ionomer_water_content = cl.eq_water_content
+            else:
+                cl.ionomer_water_content = cl.memb_interface_water_content
+            cl.set_ionomer_wet_properties(cl.ionomer_water_content, cl.temperature)
+
     def solve_water_balance(self, cell, water_profile=None, dynamic=False):
         """
         Calculate and update the water balance properties in the cell.

@@ -159,34 +159,6 @@ class FuelCellSide:
             (layer.thermal_resistance() for layer in self.porous_layers)
             ) + self.thermal_contact_resistance
                 
-    def calculate_water_saturation(self): 
-        """
-        Compute and update the water saturation in each porous layer.
-
-        Notes
-        -----
-        This method updates each layer's `water_saturation` attribute based on 
-        the liquid flux and upstream capillary pressures. It assumes that 
-        `self.liquid_flux` has been set externally.
-        """
-        for i, layer in enumerate(self.porous_layers): 
-            layer.non_wetting_flux = self.liquid_flux if layer.contact_angle > 90 else self.gas_flux
-            layer.downstream_saturation = np.zeros_like(layer.non_wetting_flux)
-            layer.upstream_saturation = np.zeros_like(layer.non_wetting_flux)
-            layer.non_wetting_saturation = np.zeros_like(layer.non_wetting_flux)
-            layer.downstream_capillary_pressure = np.zeros_like(layer.non_wetting_flux)
-        if self.has_gdl: 
-            self.gdl.two_phase_transport_model.calculate_non_wetting_saturation(self.gdl, self.gdl.non_wetting_flux, upstream_capillary_pressure=np.zeros_like(self.cl.non_wetting_flux))
-            if self.has_mpl: 
-                self.mpl.two_phase_transport_model.calculate_non_wetting_saturation(self.mpl, self.mpl.non_wetting_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
-                self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.mpl.downstream_capillary_pressure)
-            else:
-                self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.liquid_flux, upstream_capillary_pressure=self.gdl.downstream_capillary_pressure)
-        else: 
-            self.cl.two_phase_transport_model.calculate_non_wetting_saturation(self.cl, self.cl.non_wetting_flux, upstream_capillary_pressure=np.zeros_like(self.cl.non_wetting_flux))
-        for layer in self.porous_layers: 
-            layer.liquid_saturation = layer.non_wetting_saturation if layer.contact_angle > 90. else (1-layer.non_wetting_saturation)
-            layer.electrolyte_saturation = layer.liquid_saturation
 
     def calculate_equivalent_flow_resistance(self): 
         """
@@ -262,7 +234,11 @@ class FuelCell(Cell):
         super().__post_init__()   # builds porous_layers, layers, sides from Cell
         self._voltage_model = VoltageModel()
         self._thermal_model = ThermalModel()
-        self._model = ExplicitSteadyStateModel(self._voltage_model, self._thermal_model)
+        self._model = ExplicitSteadyStateModel(
+            self._voltage_model,
+            self._thermal_model,
+            self.membrane.water_balance_model,
+        )
 
     # ------------------------------------------------------------------
     # Voltage methods — delegate to VoltageModel
@@ -293,40 +269,9 @@ class FuelCell(Cell):
         """Delegate to :class:`~marapendi.thermal.ThermalModel`."""
         self._thermal_model.set_mea_temperature(mea_temperature, self)
 
-    def calculate_water_transport(self, dynamic=False): 
-        """
-        Calculate the water balance across the fuel cell components.
-
-        This method updates water vapor transport resistance for both the cathode 
-        and anode, computes the membrane water balance, and recalculates the 
-        equivalent flow resistance and water saturation in the cathode.
-
-        Notes
-        -----
-        - The water transport resistance for water vapor (`h2o`) is computed for both 
-        the cathode (`ca`) and anode (`an`).
-        - The membrane water balance is updated using the defined water balance model.
-        - The equivalent flow resistance and water saturation in the cathode are recalculated.
-        - Finally, the water vapor transport resistance values are updated again for consistency.
-        """
-            
-        self.ca.h2ov_transport_resistance = self.ca.gas_transport_resistance('h2o')
-        self.an.h2ov_transport_resistance = self.an.gas_transport_resistance('h2o')
-        self.membrane.water_balance_model.solve_water_balance(self)
-       
-        if not dynamic: 
-            self.ca.calculate_equivalent_flow_resistance()
-            self.ca.calculate_water_saturation()
-            self.ca.cl.set_water_film_thickness(self.ca.cl.non_wetting_saturation)
-            self.ca.h2ov_transport_resistance = self.ca.gas_transport_resistance('h2o')
-            self.an.h2ov_transport_resistance = self.an.gas_transport_resistance('h2o')
-    
-        for cl in (self.ca.cl, self.an.cl): 
-            if self.use_eq_water_content_for_ionomer: 
-                cl.ionomer_water_content = cl.eq_water_content
-            else: 
-                cl.ionomer_water_content = cl.memb_interface_water_content
-            cl.set_ionomer_wet_properties(cl.ionomer_water_content, cl.temperature)
+    def calculate_water_transport(self, dynamic=False):
+        """Delegate to :class:`~marapendi.water_balance_models.MembraneWaterBalanceModel`."""
+        self._model.water_balance_model.calculate_water_transport(self, dynamic)
 
     def calculate_gas_concentrations_at_cl(self): 
         """
@@ -452,8 +397,8 @@ class FuelCell(Cell):
         return (self.heat_release_rate -  
                 (self.mea_temperature_increase / self.thermal_resistance)) / self.mea_surface_heat_capacity
     
-    def membrane_water_rate_of_change(self, water_profile, n_membrane_mesh):        
-        return (self.membrane.water_balance_model.membrane_water_net_flux /
+    def membrane_water_rate_of_change(self, water_profile, n_membrane_mesh):
+        return (self._model.water_balance_model.membrane_water_net_flux /
                    (self.membrane.surface_concentration / n_membrane_mesh))
     
     def saturation_rate_of_change(self): 
@@ -517,7 +462,7 @@ class FuelCell(Cell):
         # Set conditions
         self.set_mea_temperature(x[0,...])
         self.set_water_saturation_in_porous_layers(saturation_profile)
-        self.membrane.water_balance_model.solve_water_balance(self,water_profile,True)
+        self._model.water_balance_model.solve_water_balance(self, water_profile, True)
         self.calculate_gas_concentrations_at_cl()
         self.calculate_cell_voltage()
 
