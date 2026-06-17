@@ -118,48 +118,6 @@ class FlowChannel(PorousLayer):
         self.total_flow_section = self.n_parallel * self.channel_flow_section
         PorousLayer.__post_init__(self)
 
-    def set_inlet_stoichiometry(self, stoichiometry):
-        """Set the inlet stoichiometric ratio."""
-        self.inlet_stoichiometry = stoichiometry
-
-    def set_fixed_inlet_gas_flow_rate(self, inlet_gas_flow_rate):
-        """Fix the inlet gas flow rate and update the inlet liquid saturation."""
-        self.inlet_gas_flow_rate = inlet_gas_flow_rate
-        self.inlet_liquid_saturation = self.inlet_liquid_flow_rate / np.maximum(
-            self.inlet_liquid_flow_rate + self.inlet_gas_flow_rate, 1e-12)
-
-    def set_fixed_inlet_liquid_flow_rate(self, inlet_liquid_flow_rate):
-        """Fix the inlet liquid flow rate and update the inlet liquid saturation."""
-        self.inlet_liquid_flow_rate = inlet_liquid_flow_rate
-        self.inlet_liquid_saturation = self.inlet_liquid_flow_rate / np.maximum(
-            self.inlet_liquid_flow_rate + self.inlet_gas_flow_rate, 1e-12)
-
-    def set_inlet_gas_flow_rate_from_stoichiometry(self, reactant_consumption, stoichiometry=0,
-                                                    fixed_inlet_gas_flow_rate=0):
-        """Set the inlet gas flow rate from stoichiometry and reactant consumption.
-
-        Parameters
-        ----------
-        reactant_consumption : float
-            Reactant consumption rate (kmol/s).
-        stoichiometry : float, optional
-            Stoichiometric ratio; if > 0 overrides the current value.
-        fixed_inlet_gas_flow_rate : float, optional
-            Additional fixed flow rate to add to the stoichiometric flow (m³/s).
-        """
-        try:
-            if stoichiometry > 0:
-                self.inlet_stoichiometry = stoichiometry
-        except ValueError:
-            self.inlet_stoichiometry = stoichiometry
-        reactant_mole_fraction = self.gas.X[..., species_indexes[self.reactant]]
-        inlet_gas_flow_rate = (
-            self.inlet_stoichiometry * reactant_consumption
-            / (reactant_mole_fraction * GasModel.concentration(self))
-            + fixed_inlet_gas_flow_rate
-        )
-        self.set_fixed_inlet_gas_flow_rate(inlet_gas_flow_rate)
-
     def gas_transport_resistance(self, state, species=None, volume_flow_rate=None):
         """Gas transport resistance for ``species`` in the channel (s/m).
 
