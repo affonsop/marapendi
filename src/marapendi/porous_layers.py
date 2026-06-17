@@ -2,8 +2,8 @@
 Module providing classes to model porous layers in electrochemical cells.
 """
 from dataclasses import dataclass, field
-import numpy as np 
-import cantera as ct
+import numpy as np
+from .constants import GAS_CONSTANT
 
 from .gas_composition import GasComposition, index_h2, index_o2, index_h2ov, species_indexes
 from .gas import GasModel
@@ -205,7 +205,7 @@ class PorousLayer():
             Gas temperature in Kelvin (K).
         """
         self.temperature = temperature
-        self.RT = ct.gas_constant * self.temperature
+        self.RT = GAS_CONSTANT * self.temperature
         self.gas.set_temperature(temperature)
         self.capillary_pressure_J_ratio = (water_surface_tension(self.temperature) * self.cosinus_contact_angle) / np.sqrt(self.absolute_permeability / self.porosity)
         self.saturation_flow_resistance = self.calculate_saturation_flow_resistance()

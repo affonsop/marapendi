@@ -4,8 +4,8 @@ Module providing an AEM water electrolyzer class.
 
 from dataclasses import dataclass, field
 from scipy.optimize import root_scalar
-import numpy as np 
-import cantera as ct
+import numpy as np
+from .constants import FARADAY_CONSTANT
 
 from .fuelcell import FuelCell, FuelCellSide
 from .electrochemistry import calculate_reversible_cell_voltage, STD_PRESSURE
@@ -146,7 +146,7 @@ class ElectrolyzerCell(FuelCell):
                 self.membrane.water_content,
                 water_molar_volume(self.membrane.temperature)))
 
-        self.crossover_current = self.h2_permeation_flux * (2 * ct.faraday)
+        self.crossover_current = self.h2_permeation_flux * (2 * FARADAY_CONSTANT)
 
         unity_activity = 1.0
         tafel_overpotential_ca = self.ca.cl.activation_overpotential(self.current_density / self.ca.cl.electrolyte_saturation ** self.electrolyte_saturation_exponent, self.ca.cl.electrolyte.molarity)
@@ -160,7 +160,7 @@ class ElectrolyzerCell(FuelCell):
             side.cl.electrolyte_saturation = 1#(1 - side.cl.non_wetting_saturation) if side.cl.contact_angle < 90 else side.cl.non_wetting_saturation
 
     def set_consumption_production(self, current_density): 
-        self.o2_production = current_density / (4 * ct.faraday)
+        self.o2_production = current_density / (4 * FARADAY_CONSTANT)
         self.h2_production = 2 * self.o2_production
         self.o2_consumption = 0
         self.h2_consumption = 0

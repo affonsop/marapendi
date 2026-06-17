@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import numpy as np
-import cantera as ct
+from .constants import GAS_CONSTANT
 
 from .gas_composition import GasComposition, species_indexes
 from .gas import GasModel
@@ -114,7 +114,7 @@ class FlowChannel(PorousLayer):
     def __post_init__(self):
         self.temperature = self.gas.temperature
         self.pressure = self.gas.pressure
-        self.RT = ct.gas_constant * self.temperature
+        self.RT = GAS_CONSTANT * self.temperature
         self.hydraulic_diameter = 2 * self.width * self.height / (self.width + self.height)
         self.channel_flow_section = self.width * self.height
         self.half_width = 0.5 * self.width

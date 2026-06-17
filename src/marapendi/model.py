@@ -63,6 +63,6 @@ class ExplicitSteadyStateModel:
         mea_temperature = self.thermal_model.mea_temperature(fc, mea_temperature_estimation)
         self.thermal_model.set_mea_temperature(mea_temperature, fc)
         self.water_balance_model.calculate_water_transport(fc)
-        fc.calculate_gas_concentrations_at_cl()
+        self.gas_transport_model.calculate_gas_concentrations(fc)
         self.voltage_model.compute_cell_voltage(fc)
         return fc.cell_voltage

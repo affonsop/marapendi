@@ -1,24 +1,24 @@
 """
-Module providing some useful auxiliary functions. 
+Module providing some useful auxiliary functions.
 """
 
-import cantera as ct
 import numpy as np
+from marapendi.constants import GAS_CONSTANT, FARADAY_CONSTANT
 
 def arrhenius_term(
         activation_energy,
         temperature,
         reference_temperature
 ):
-    
-    return np.exp(activation_energy / ct.gas_constant * (1/reference_temperature - 1/temperature)) 
+
+    return np.exp(activation_energy / GAS_CONSTANT * (1/reference_temperature - 1/temperature))
 
 def potential_activation(
-        transfer_coefficient, 
-        electron_number, 
-        temperature, 
-        potential_difference): 
-    return np.exp(transfer_coefficient * electron_number * potential_difference * ct.faraday / (ct.gas_constant * temperature))
+        transfer_coefficient,
+        electron_number,
+        temperature,
+        potential_difference):
+    return np.exp(transfer_coefficient * electron_number * potential_difference * FARADAY_CONSTANT / (GAS_CONSTANT * temperature))
 
 
 def sigmoid(x, x_inflection, slope_parameter):

@@ -2,8 +2,8 @@
 Module providing classes to model catalyst layers in electrochemical cells.
 """
 from dataclasses import dataclass, field
-import numpy as np 
-import cantera as ct
+import numpy as np
+from .constants import GAS_CONSTANT
 
 from .electrochemistry import ElectrochemicalReaction 
 from .ionomer import Ionomer, PFSAIonomer
@@ -316,7 +316,7 @@ class PtCCatalystLayer(CatalystLayer):
             Oxygen film resistance [s/m].
         """
         return (self.ionomer_film_thickness /
-                (ct.gas_constant * temperature * self.ionomer.o2_permeability(ionomer_water_content, temperature)))
+                (GAS_CONSTANT * temperature * self.ionomer.o2_permeability(ionomer_water_content, temperature)))
 
     def o2_ionomer_film_resistance(self, ionomer_water_content, temperature):
         """

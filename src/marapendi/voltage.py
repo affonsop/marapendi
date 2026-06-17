@@ -11,8 +11,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
-import cantera as ct
 
+from .constants import FARADAY_CONSTANT
 from .electrochemistry import calculate_reversible_cell_voltage, STD_PRESSURE
 from .water import water_molar_volume
 
@@ -41,10 +41,10 @@ class VoltageModel:
             fc.an.cl.pressure - fc.ca.cl.pressure,
             fc.membrane.water_vol_fraction(fc.membrane.water_content, fc.mea_water_molar_volume),
         )
-        fc.crossover_current = fc.h2_permeation_flux * (2 * ct.faraday)
+        fc.crossover_current = fc.h2_permeation_flux * (2 * FARADAY_CONSTANT)
         omega_PtO_voltage_drop = (
             fc.ca.cl.omega_PtO * theta_PtO
-            / (fc.ca.cl.reaction.number_of_electrons * fc.ca.cl.reaction.charge_transfer_coeff * ct.faraday)
+            / (fc.ca.cl.reaction.number_of_electrons * fc.ca.cl.reaction.charge_transfer_coeff * FARADAY_CONSTANT)
         )
         fc.orr_overpotential = fc.ca.cl.reaction.tafel_overpotential(
             (fc.current_density + fc.crossover_current)

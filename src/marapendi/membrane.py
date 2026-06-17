@@ -11,10 +11,10 @@ sorption isotherms, proton conductivity).
 from __future__ import annotations
 
 import numpy as np
-import cantera as ct
 from dataclasses import dataclass, field
 
 from marapendi.tools import arrhenius_term
+from marapendi.constants import GAS_CONSTANT
 from marapendi.water import water_molar_volume, water_molecular_weight, water_density
 from marapendi.water_balance_models import MembraneWaterBalanceModel
 from marapendi.membrane_permeation_models import HydrogenPermeationModel
@@ -87,16 +87,16 @@ class Membrane(Ionomer):
         Grimaldi et al. J. Power Sources (2023).
         """
         rh = np.clip(rh, .01, .99)
-        A = -ct.gas_constant * temperature * np.log(rh)
+        A = -GAS_CONSTANT * temperature * np.log(rh)
         return np.exp(-(A / self.characteristic_adsorption_energy) ** self.eta_adsorption) * self.reference_water_content
 
     def equilibrium_water_content_derivative(self, rh, temperature, s_relax=None):
         rh = np.clip(rh, .01, .99)
-        A = -ct.gas_constant * temperature * np.log(rh)
+        A = -GAS_CONSTANT * temperature * np.log(rh)
         K = (
             self.eta_adsorption
             * (A / self.characteristic_adsorption_energy) ** (self.eta_adsorption - 1)
-            * (ct.gas_constant * temperature / rh / self.characteristic_adsorption_energy)
+            * (GAS_CONSTANT * temperature / rh / self.characteristic_adsorption_energy)
         )
         return K * np.exp(-(A / self.characteristic_adsorption_energy) ** self.eta_adsorption) * self.reference_water_content
 

@@ -17,11 +17,10 @@ holds an ``ionomer: Ionomer`` field directly — no separate
 from __future__ import annotations
 
 import numpy as np
-import cantera as ct
 from dataclasses import dataclass
 
 from .tools import arrhenius_term
-from .constants import FARADAY_CONSTANT
+from .constants import FARADAY_CONSTANT, GAS_CONSTANT
 from .water import water_density, water_molar_volume, water_molecular_weight
 
 
@@ -144,7 +143,7 @@ class PFSAIonomer(Ionomer):
         Goshtasbi, A. et al. J. Electrochem. Soc. 167, 024518 (2020).
         """
         fv = self.water_vol_fraction(water_content, water_molar_volume(temperature))
-        RT = ct.gas_constant * temperature
+        RT = GAS_CONSTANT * temperature
         return (6.74e-12 * np.exp(-21280e3 / RT) + fv * 50.5e-12 * np.exp(-20470e3 / RT)) * 1e-3
 
     def proton_conductivity(self, water_content: float, temperature: float) -> float:

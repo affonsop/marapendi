@@ -3,12 +3,8 @@ Module providing gas and liquid transport models.
 """
 from dataclasses import dataclass
 import numpy as np
-import cantera as ct
+from .constants import GAS_CONSTANT
 from .water import water_surface_tension
-
-from dataclasses import dataclass
-import numpy as np
-import cantera as ct
 
 @dataclass 
 class BakerChannelGasResistanceModel:
@@ -250,7 +246,7 @@ class PorousGasResistanceModel:
         float
             Knudsen diffusivity [m2/s].
         """
-        return layer.pore_diameter / 3 * np.sqrt(8 * ct.gas_constant * temperature / molecular_weight / np.pi)
+        return layer.pore_diameter / 3 * np.sqrt(8 * GAS_CONSTANT * temperature / molecular_weight / np.pi)
     
     def total_diffusion_resistance(self, layer, temperature, diffusion_coefficient, molecular_weight, water_saturation):
         """

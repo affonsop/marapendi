@@ -1,20 +1,17 @@
 """
-Module providing a class to handle gas composition and properties. 
+Module providing a class to handle gas composition and properties.
 """
 import numpy as np
-import cantera as ct
 from marapendi.water import water_saturation_pressure
+from marapendi.constants import GAS_CONSTANT
+from marapendi.gas import _viscosity_polynomials as _visc_poly_lower
 
-gas = ct.Solution("gri30.yaml")
 species_list = ("O2", "N2", "H2", "H2O")
-selected_species_dict = {sp.name: sp for sp in gas.species() if sp.name in species_list}
-selected_species = [selected_species_dict[sp] for sp in species_list]
 species_names = [sp.lower() for sp in species_list]
 species_indexes = dict(zip(species_names, (0,1,2,3)))
 index_o2, index_n2, index_h2, index_h2ov = 0, 1, 2, 3
-gas = ct.Solution("gri30.yaml", selected_species=selected_species)
 
-viscosity_polynomials = {sp: gas.get_viscosity_polynomial(gas.species_index(sp))[::-1] for sp in species_list}
+viscosity_polynomials = {sp: _visc_poly_lower[sp.lower()] for sp in species_list}
 
 class GasComposition:
     """
@@ -25,8 +22,6 @@ class GasComposition:
 
     Attributes:
     -----------
-    gas : ct.Solution
-        Cantera `Solution` object for the gas mixture with selected species.
     relative_humidity : float
         The relative humidity of the gas mixture.
     saturation_pressure : float
@@ -163,8 +158,8 @@ class GasComposition:
         self.relative_humidity = self.vapor_pressure() / self.saturation_pressure
         return self.relative_humidity
     
-    def concentration(self): 
-        return self.pressure / (ct.gas_constant * self.temperature)
+    def concentration(self):
+        return self.pressure / (GAS_CONSTANT * self.temperature)
     
     def density(self): 
         return self.concentration() * self.mixture_molecular_weight

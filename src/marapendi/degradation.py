@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from numpy.typing import NDArray
 
-import cantera as ct
+from .constants import GAS_CONSTANT, FARADAY_CONSTANT
 from .tools import potential_activation
 from .catalyst_layers import CatalystLayer
 from scipy.stats import lognorm, norm
@@ -314,7 +314,7 @@ class PlatinumDissolution:
             self.reference_potential -
             platinum.surface_tension_potential_shift(
                 particle_radius
-            ) / (2 * ct.faraday)
+            ) / (2 * FARADAY_CONSTANT)
         )
 
     def rate_of_reaction(
@@ -419,7 +419,7 @@ class PlatinumOxideFormation:
                     particle_radius
                 )
             )
-            / (2 * ct.faraday)
+            / (2 * FARADAY_CONSTANT)
         )
 
     def rate_of_reaction(
@@ -448,7 +448,7 @@ class PlatinumOxideFormation:
         potential_correction = (
             self.omega_platinum_oxide_formation
             * platinum_oxide_coverage
-            / (2 * ct.faraday * self.transfer_coeff_an)
+            / (2 * FARADAY_CONSTANT * self.transfer_coeff_an)
         )
 
         return self.rate_constant * (
@@ -508,7 +508,7 @@ class OxidePlaceExchange:
                 + (
                     self.omega_forward
                     * platinum_oxide_coverage
-                    / (ct.faraday * self.transfer_coeff)
+                    / (FARADAY_CONSTANT * self.transfer_coeff)
                 )
             )
         )
@@ -522,7 +522,7 @@ class OxidePlaceExchange:
         """
         Net place-exchanged oxide formation rate [kmol/m²/s].
         """
-        RT = ct.gas_constant * temperature
+        RT = GAS_CONSTANT * temperature
 
         forward_rate = self.forward_rate(
             potential, 
@@ -539,7 +539,7 @@ class OxidePlaceExchange:
                 + (
                     self.omega_backward
                     * place_exchanged_oxide_coverage
-                    / (ct.faraday * self.transfer_coeff)
+                    / (FARADAY_CONSTANT * self.transfer_coeff)
                 )
             )
         )
@@ -552,7 +552,7 @@ class OxidePlaceExchange:
         platinum_oxide_coverage, 
         temperature
     ): 
-        RT = ct.gas_constant * temperature 
+        RT = GAS_CONSTANT * temperature 
         forward_rate = self.forward_rate(
             potential, 
             platinum_oxide_coverage, 

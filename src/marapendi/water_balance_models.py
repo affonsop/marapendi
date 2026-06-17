@@ -1,5 +1,4 @@
 import numpy as np
-import cantera as ct 
 from scipy.linalg import solve
 from dataclasses import dataclass, field
 from marapendi.tools import arrhenius_term

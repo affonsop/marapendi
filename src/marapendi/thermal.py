@@ -39,15 +39,15 @@ class ThermalModel:
         constant 0.7 V HHV efficiency approximation.  When ``True``, uses a
         first-pass cell voltage already stored on *fc* as ``fc.cell_voltage``.
         """
-        import cantera as ct
         from .electrochemistry import h2_lhv
+        from .constants import FARADAY_CONSTANT
 
         thermal_resistance = self.heat_transfer_resistance(fc)
         if mea_temperature_estimation:
             v0 = fc.cell_voltage
             return fc.temperature + (
                 fc.current_density
-                * (-h2_lhv(fc.temperature) / (2 * ct.faraday) - v0)
+                * (-h2_lhv(fc.temperature) / (2 * FARADAY_CONSTANT) - v0)
                 * thermal_resistance
             )
         return fc.temperature + (fc.current_density * 0.7) * thermal_resistance

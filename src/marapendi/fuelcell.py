@@ -4,8 +4,7 @@ Module providing a fuel cell class intended to be the base class for different f
 from dataclasses import dataclass, field
 from scipy.optimize import root, least_squares
 import numpy as np
-import cantera as ct
-
+from .constants import GAS_CONSTANT, FARADAY_CONSTANT
 from .electrochemistry import calculate_reversible_cell_voltage, h2_lhv, STD_PRESSURE
 from .porous_layers import PorousLayer
 from .catalyst_layers import PtCCatalystLayer
@@ -297,7 +296,7 @@ class FuelCell(Cell):
         and the cell voltage, considering the electrochemical reaction energy balance.
         """ 
         self.calculate_heat_transfer_resistance()
-        self.heat_release_rate = (-h2_lhv(self.temperature) / (2 * ct.faraday) - self.cell_voltage) * self.current_density
+        self.heat_release_rate = (-h2_lhv(self.temperature) / (2 * FARADAY_CONSTANT) - self.cell_voltage) * self.current_density
         if not dynamic: 
             self.mea_temperature_increase = self.heat_release_rate * self.thermal_resistance
 
@@ -397,7 +396,7 @@ class FuelCell(Cell):
         dxdt = []
         for side in (self.ca, self.an):
             side.t_relax = (self.membrane.relaxation_time_constant * 
-                            np.exp((self.membrane.relaxation_time_activation_energy/ct.gas_constant)/self.mea_temperature) / 
+                            np.exp((self.membrane.relaxation_time_activation_energy/GAS_CONSTANT)/self.mea_temperature) / 
                             np.where(side.membrane_water_flux < 0,1.,2.))
             dxdt += [-(side.s_relax - self.membrane.uptake_relaxed_fraction_constant * side.est_water_content)/side.t_relax]
         return np.array(dxdt)
@@ -475,7 +474,7 @@ class FuelCell(Cell):
 
 
     def set_consumption_production(self, current_density): 
-        self.o2_consumption = current_density / (4 * ct.faraday)
+        self.o2_consumption = current_density / (4 * FARADAY_CONSTANT)
         self.h2_consumption = 2 * self.o2_consumption
         self.ca.reactant_consumption = self.o2_consumption
         self.an.reactant_consumption = self.h2_consumption

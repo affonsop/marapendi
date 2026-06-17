@@ -1,39 +1,23 @@
 """
-Module providing electrochemistry functions. 
+Module providing electrochemistry functions.
 """
 from dataclasses import dataclass
 import numpy as np
-import cantera as ct
 from marapendi.tools import arrhenius_term
-
-h2o2 = ct.Solution('gri30.yaml')
-h2 = h2o2.species('H2').thermo
-o2 = h2o2.species('O2').thermo
-h2ov = h2o2.species('H2O').thermo
-h2ol = ct.Solution('water.yaml', name='liquid_water').species(0).thermo
-h2os = ct.Solution('water.yaml', name='ice').species(0).thermo
+from marapendi.constants import (
+    GAS_CONSTANT,
+    FARADAY_CONSTANT,
+    STD_TEMPERATURE,
+    STD_FORMATION_GIBBS_H2OL,
+    STD_FORMATION_ENTROPY_H2OL,
+    H2_LHV_COEFFS,
+    H2_HHV_COEFFS,
+)
 
 STD_PRESSURE = 1e5
-STD_TEMPERATURE = 298.15
 
-std_formation_enthalpy_h2ov = (h2ov.h(STD_TEMPERATURE) -
-                               (h2.h(STD_TEMPERATURE) +
-                                0.5 * o2.h(STD_TEMPERATURE)))
-std_formation_entropy_h2ov = (h2ov.s(STD_TEMPERATURE) -
-                               (h2.s(STD_TEMPERATURE) +
-                                0.5 * o2.s(STD_TEMPERATURE)))
-
-std_formation_gibbs_h2ov = (std_formation_enthalpy_h2ov -
-                            STD_TEMPERATURE * std_formation_entropy_h2ov)
-
-std_formation_enthalpy_h2ol = (h2ol.h(STD_TEMPERATURE) -
-                               (h2.h(STD_TEMPERATURE) +
-                                0.5 * o2.h(STD_TEMPERATURE)))
-std_formation_entropy_h2ol = (h2ol.s(STD_TEMPERATURE) -
-                               (h2.s(STD_TEMPERATURE) +
-                                0.5 * o2.s(STD_TEMPERATURE)))
-std_formation_gibbs_h2ol = (std_formation_enthalpy_h2ol -
-                            STD_TEMPERATURE * std_formation_entropy_h2ol)
+std_formation_gibbs_h2ol = STD_FORMATION_GIBBS_H2OL
+std_formation_entropy_h2ol = STD_FORMATION_ENTROPY_H2OL
 
 
 def h2_hhv(temperature):
@@ -44,15 +28,14 @@ def h2_hhv(temperature):
     -----------
     temperature : float
         Temperature of the cell in Kelvin (K).
-    
+
     Returns:
     --------
     float
         Hydrogen higher heating value voltage in Volts (V).
     """
-    return h2ol.h(temperature) - 0.5 * o2.h(temperature) - h2.h(temperature)
+    return np.polyval(H2_HHV_COEFFS, temperature)
 
-h2_hhv = np.vectorize(h2_hhv)
 
 def h2_lhv(temperature):
     """
@@ -62,20 +45,20 @@ def h2_lhv(temperature):
     -----------
     temperature : float
         Temperature of the cell in Kelvin (K).
-    
+
     Returns:
     --------
     float
         Hydrogen lower heating value voltage in Volts (V).
     """
-    return h2ov.h(temperature) - 0.5 * o2.h(temperature) - h2.h(temperature)
-h2_lhv = np.vectorize(h2_lhv)
+    return np.polyval(H2_LHV_COEFFS, temperature)
+
 
 def calculate_reversible_cell_voltage(
     temperature,
     activities_ratio):
     """
-    Calculate the reversible cell voltage of a hydrogen fuel cell or electrolyser, 
+    Calculate the reversible cell voltage of a hydrogen fuel cell or electrolyser,
     using Nernst equation.
 
     Parameters:
@@ -86,7 +69,7 @@ def calculate_reversible_cell_voltage(
         Partial pressure of oxygen (O₂) in Pascals (Pa).
     partial_pressure_h2 : float
         Partial pressure of hydrogen (H₂) in Pascals (Pa).
- 
+
     Returns:
     --------
     float
@@ -112,8 +95,8 @@ def calculate_reversible_cell_voltage(
                              std_formation_entropy_h2ol * (temperature - STD_TEMPERATURE))
 
     reversible_cell_voltage = (gibbs_formation_h2ol +
-                               ct.gas_constant * temperature *
-                               np.log(activities_ratio)) / (2 * ct.faraday)
+                               GAS_CONSTANT * temperature *
+                               np.log(activities_ratio)) / (2 * FARADAY_CONSTANT)
 
     return reversible_cell_voltage
 
@@ -139,8 +122,8 @@ def calculate_tafel_slope(
     float
         The Tafel slope in Volts (V/decade).
     """
-    return 2.303 * (ct.gas_constant * temperature /
-            (number_of_electrons * charge_transfer_coeff * ct.faraday))
+    return 2.303 * (GAS_CONSTANT * temperature /
+            (number_of_electrons * charge_transfer_coeff * FARADAY_CONSTANT))
 
 def calculate_tafel_overpotential(
         current_density,
@@ -150,8 +133,8 @@ def calculate_tafel_overpotential(
         charge_transfer_coeff):
     """
     Calculate the Tafel overpotential for an electrochemical reaction.
-    This is an approximation of the Butler-Volmer is valid for high 
-    overpotentials (> 0.1 V). 
+    This is an approximation of the Butler-Volmer is valid for high
+    overpotentials (> 0.1 V).
 
     Parameters:
     -----------
@@ -174,17 +157,17 @@ def calculate_tafel_overpotential(
     Example:
     --------
     >>> calculate_tafel_overpotential(
-    ...     current_density=1e4, 
-    ...     exchange_current_density=1e-3, 
-    ...     temperature=298.15, 
-    ...     number_of_electrons=2, 
+    ...     current_density=1e4,
+    ...     exchange_current_density=1e-3,
+    ...     temperature=298.15,
+    ...     number_of_electrons=2,
     ...     charge_transfer_coeff=0.5
     ... )
     0.17985
     """
-    
-    tafel_slope = (ct.gas_constant * temperature / 
-                   (number_of_electrons * charge_transfer_coeff * ct.faraday))
+
+    tafel_slope = (GAS_CONSTANT * temperature /
+                   (number_of_electrons * charge_transfer_coeff * FARADAY_CONSTANT))
     return tafel_slope * (np.asinh(current_density / exchange_current_density / 2) if charge_transfer_coeff == 0.5
                           else np.log(np.maximum(current_density / exchange_current_density,1)))
 
@@ -196,8 +179,8 @@ def calculate_linear_overpotential(
         charge_transfer_coeff):
     """
     Calculate the linear overpotential for an electrochemical reaction.
-    This is an approximation of the Butler-Volmer is valid for low 
-    overpotentials (< 0.1 V). 
+    This is an approximation of the Butler-Volmer is valid for low
+    overpotentials (< 0.1 V).
 
     Parameters:
     -----------
@@ -220,17 +203,17 @@ def calculate_linear_overpotential(
     Example:
     --------
     >>> calculate_tafel_overpotential(
-    ...     current_density=1e4, 
-    ...     exchange_current_density=1e-3, 
-    ...     temperature=298.15, 
-    ...     number_of_electrons=2, 
+    ...     current_density=1e4,
+    ...     exchange_current_density=1e-3,
+    ...     temperature=298.15,
+    ...     number_of_electrons=2,
     ...     charge_transfer_coeff=0.5
     ... )
     0.17985
     """
-    
-    tafel_slope = (ct.gas_constant * temperature / 
-                   (number_of_electrons * charge_transfer_coeff * ct.faraday))
+
+    tafel_slope = (GAS_CONSTANT * temperature /
+                   (number_of_electrons * charge_transfer_coeff * FARADAY_CONSTANT))
     return tafel_slope * current_density / exchange_current_density
 
 @dataclass
