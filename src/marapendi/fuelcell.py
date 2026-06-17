@@ -239,6 +239,7 @@ class FuelCell(Cell):
             self._thermal_model,
             self.membrane.water_balance_model,
         )
+        self._gas_transport_model = self._model.gas_transport_model
 
     # ------------------------------------------------------------------
     # Voltage methods — delegate to VoltageModel
@@ -273,47 +274,9 @@ class FuelCell(Cell):
         """Delegate to :class:`~marapendi.water_balance_models.MembraneWaterBalanceModel`."""
         self._model.water_balance_model.calculate_water_transport(self, dynamic)
 
-    def calculate_gas_concentrations_at_cl(self): 
-        """
-        Calculate gas concentrations at the catalyst layer (CL) for both cathode and anode.
-
-        This method updates the gas concentrations of reactants (O2, H2), water (H2O), 
-        and nitrogen (N2) in the catalyst layer based on transport resistances and consumption.
-
-        The calculation is performed for both the cathode (ca) and anode (an) sides.
-
-        Updates:
-            - Reactant concentrations (O2, H2) considering gas transport resistance.
-            - Water concentration using vapor flux and transport resistance.
-            - Nitrogen concentration from species balance.
-            - Computes the relative humidity at the catalyst layer.
-
-        Notes:
-            - Uses `side.gas_transport_resistance()` to compute reactant transport resistance.
-            - Ensures gas mole fractions remain non-negative using `np.maximum(1e-12, value)`.
-            - `species_indexes` is assumed to be a predefined mapping of species names to indices.
-        """
-        
-        for side, reactant in [(self.ca, 'o2'), (self.an, 'h2')]:
-            # reactant concentration
-            side.reactant_transport_resistance = side.gas_transport_resistance(reactant, self.ca.cl.ionomer_water_content)
-            gas_concentration = side.cl.gas.concentration()
-            side.cl.gas.X[...,species_indexes[reactant]] = np.maximum(1e-12, 
-                side.ch.species_concentration(reactant) - 
-                side.reactant_consumption * side.reactant_transport_resistance) / gas_concentration
-            
-            # water concentration
-            side.cl.gas.X[...,species_indexes['h2o']] = np.where(side.cl.liquid_saturation > 0, 
-                side.cl.saturation_concentration()  / gas_concentration,                                    
-                np.maximum(1e-12,
-                side.ch.species_concentration('h2o') +
-                side.vapor_flux * side.h2ov_transport_resistance) / gas_concentration)
-            side.cl.gas.calculate_relative_humidity()
-
-            # n2 concentration (from species balance)
-            side.cl.gas.X[...,species_indexes['n2']] = (1 - side.cl.gas.X[...,species_indexes['o2']] -
-                                                        side.cl.gas.X[...,species_indexes['h2o']] -
-                                                        side.cl.gas.X[...,species_indexes['h2']])
+    def calculate_gas_concentrations_at_cl(self):
+        """Delegate to :class:`~marapendi.transport.GasTransportModel`."""
+        self._gas_transport_model.calculate_gas_concentrations(self)
     
     def calculate_heat_transfer_resistance(self):
         """Delegate to :class:`~marapendi.thermal.ThermalModel`."""
