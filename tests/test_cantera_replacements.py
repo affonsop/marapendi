@@ -11,9 +11,9 @@ Tolerances reflect the stated accuracy of each correlation:
 import numpy as np
 import pytest
 
-from marapendi.electrochemistry import h2_lhv, h2_hhv, calculate_reversible_cell_voltage
-from marapendi.water import water_dynamic_viscosity
-from marapendi.constants import GAS_CONSTANT, FARADAY_CONSTANT
+from marapendi.models.electrochemistry import h2_lhv, h2_hhv, calculate_reversible_cell_voltage
+from marapendi.models.water import water_dynamic_viscosity
+from marapendi.models.constants import GAS_CONSTANT, FARADAY_CONSTANT
 
 
 # ---------------------------------------------------------------------------
