@@ -178,13 +178,13 @@ class ExplicitSteadyStateModel:
 
         if mea_temperature_estimation:
             self.thermal_model.set_mea_temperature(state.temperature, cell, state)
-            self.water_balance_model.calculate_water_transport(cell, state)
+            self.water_balance_model.calculate_water_transport(cell, state, gas_transport_model=self.gas_transport_model)
             self.gas_transport_model.calculate_gas_concentrations(cell, state)
             self.voltage_model.compute_cell_voltage(cell, state)
 
         mea_temperature = self.thermal_model.mea_temperature(cell, state, mea_temperature_estimation)
         self.thermal_model.set_mea_temperature(mea_temperature, cell, state)
-        self.water_balance_model.calculate_water_transport(cell, state)
+        self.water_balance_model.calculate_water_transport(cell, state, gas_transport_model=self.gas_transport_model)
         self.gas_transport_model.calculate_gas_concentrations(cell, state)
         self.voltage_model.compute_cell_voltage(cell, state)
         return state.cell_voltage

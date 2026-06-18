@@ -179,7 +179,9 @@ class FuelCell(Cell):
 
     def calculate_water_transport(self, dynamic=False):
         """Delegate to :class:`~marapendi.water_balance_models.MembraneWaterBalanceModel`."""
-        self._model.water_balance_model.calculate_water_transport(self, self.state, dynamic)
+        self._model.water_balance_model.calculate_water_transport(
+            self, self.state, dynamic, gas_transport_model=self._gas_transport_model
+        )
 
     def calculate_gas_concentrations_at_cl(self):
         """Delegate to :class:`~marapendi.transport.GasTransportModel`."""

@@ -329,7 +329,8 @@ class MembraneWaterBalanceModel:
         """Yield ``(component_layer, layer_state)`` pairs in the same order."""
         return zip(cell_side.porous_layers, side_state.porous_layers)
 
-    def calculate_water_transport(self, cell, state, dynamic: bool = False) -> None:
+    def calculate_water_transport(self, cell, state, dynamic: bool = False,
+                                   gas_transport_model=None) -> None:
         """Calculate the water balance across the fuel cell.
 
         Updates vapor transport resistances, solves the membrane water balance,
@@ -346,10 +347,12 @@ class MembraneWaterBalanceModel:
         dynamic : bool
             When ``True``, skips the liquid saturation update (used by transient
             models).
+        gas_transport_model : GasTransportModel, optional
+            Shared instance for computing H₂O vapor transport resistances.
+            A temporary instance is created if not provided.
         """
-        # Compute H2O vapor transport resistances from state gas data.
         from .gas_transport import GasTransportModel
-        _gtr = GasTransportModel()
+        _gtr = gas_transport_model if gas_transport_model is not None else GasTransportModel()
         htr_ca = _gtr.gas_transport_resistance(cell.ca, state.ca, 'h2o')
         htr_an = _gtr.gas_transport_resistance(cell.an, state.an, 'h2o')
         state.ca.h2ov_transport_resistance = htr_ca
