@@ -293,10 +293,6 @@ class MembraneWaterBalanceModel:
         for layer, ls in zip(cell_side.porous_layers,side_state.porous_layers):
             if layer is not cell_side.cl or calculate_cl_saturation: 
                 ls.non_wetting_flux = side_state.liquid_flux if layer.contact_angle > 90 else side_state.gas_flux
-                ls.downstream_saturation = np.zeros_like(ls.non_wetting_flux)
-                ls.upstream_saturation = np.zeros_like(ls.non_wetting_flux)
-                ls.non_wetting_saturation = np.zeros_like(ls.non_wetting_flux)
-                ls.downstream_capillary_pressure = np.zeros_like(ls.non_wetting_flux)
                     
         if cell_side.has_gdl:
             cell_side.gdl.two_phase_transport_model.calculate_non_wetting_saturation(
