@@ -367,7 +367,6 @@ class MembraneWaterBalanceModel:
             side_state.vapor_eq_water_content  = getattr(cell_side, 'vapor_eq_water_content', None)
 
         if not dynamic:
-            cell.ca.cl.two_phase_transport_model.calculate_equivalent_flow_resistance(cell.ca)
             self.calculate_water_saturation(cell.ca, state.ca)
             cell.ca.cl.set_water_film_thickness(state.ca.cl.non_wetting_saturation)
             htr_ca = _gtr.gas_transport_resistance(cell.ca, state.ca, 'h2o')
