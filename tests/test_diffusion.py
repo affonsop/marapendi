@@ -8,8 +8,8 @@ Covers:
 import numpy as np
 import pytest
 import marapendi as mrpd
-from marapendi.simulation.state import LayerState, CellSideState, FlowChannelState
-from marapendi.models.cell.gas_transport import GasTransportModel
+from marapendi.cell.state import LayerState, CellSideState, FlowChannelState
+from marapendi.cell.gas_transport import GasTransportModel
 
 
 # ---------------------------------------------------------------------------
@@ -150,7 +150,7 @@ class TestGasTransportModel:
         gdl_state = _make_layer_state(sat=0.1)
         cl_state = _make_layer_state(sat=0.0)
 
-        from marapendi.simulation.state import CatalystLayerState
+        from marapendi.cell.state import CatalystLayerState
         cl_state_full = CatalystLayerState(
             temperature=353.15, pressure=1e5,
             non_wetting_saturation=0.0, ionomer_water_content=8.0,
@@ -173,7 +173,7 @@ class TestGasTransportModel:
         assert R > 0
 
     def test_resistance_increases_with_saturation(self):
-        from marapendi.simulation.state import CatalystLayerState
+        from marapendi.cell.state import CatalystLayerState
         model = GasTransportModel()
         gdl_dry = _make_layer_state(sat=0.)
         gdl_wet = _make_layer_state(sat=0.5)

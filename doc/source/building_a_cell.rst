@@ -187,7 +187,7 @@ the ``cell`` object (and on ``cell.state`` for the last operating point):
 Internal solve sequence
 -----------------------
 
-``compute_ui_curve`` calls :class:`~marapendi.models.cell.explicit_steady_state.ExplicitSteadyStateModel`
+``compute_ui_curve`` calls :class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel`
 which runs the following steps in order:
 
 1. **Set initial state** — temperatures, inlet gas compositions, flow rates.

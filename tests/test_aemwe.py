@@ -2,7 +2,7 @@
 import pytest
 import numpy as np
 import marapendi as mrpd
-from marapendi.components.electrolyte.koh import KOH_solution
+from marapendi.electrolyte.koh import KOH_solution
 
 
 # Pre-defined KOH instances for electrolyte tests

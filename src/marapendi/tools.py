@@ -3,7 +3,7 @@ Module providing some useful auxiliary functions.
 """
 
 import numpy as np
-from marapendi.models.constants import GAS_CONSTANT, FARADAY_CONSTANT
+from marapendi.thermo.constants import GAS_CONSTANT, FARADAY_CONSTANT
 
 def arrhenius_term(
         activation_energy,

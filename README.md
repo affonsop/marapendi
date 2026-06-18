@@ -105,26 +105,28 @@ V = cell.compute_ui_curve(i, T, ca_cond, an_cond)
 
 ```
 src/marapendi/
-├── components/        # Cell components (static parameters only)
-│   ├── cell/          # FuelCell, FuelCellSide, ElectrolyzerCell
-│   ├── channel/       # FlowChannel
-│   ├── membrane/      # PFSA, PAP85, PFSAIonomer, PAPIonomer
-│   └── porous/        # GasDiffusionLayer, MicroPorousLayer, PtCCatalystLayer
-├── models/            # Physics (stateless, take component + state arguments)
-│   ├── cell/          # ExplicitSteadyStateModel, VoltageModel, ThermalModel, ...
-│   ├── porous/        # PorousGasResistanceModel, DarcyTransportModel
-│   ├── channel/       # ChannelGasResistanceModel
-│   ├── gas.py         # GasState, GasModel
-│   ├── water.py       # Water property correlations
-│   └── electrochemistry.py  # ElectrochemicalReaction, reversible voltage
-├── simulation/        # State containers (runtime values)
-│   └── state.py       # CellState, CellSideState, LayerState, ...
-└── estimation/        # Parameter estimation
-    └── estimation.py  # SteadyStateModel, DynamicModel
+├── cell/          # FuelCell, ElectrolyzerCell, and all physics models
+│   ├── fuelcell.py             # FuelCell, FuelCellSide
+│   ├── aem_electrolyzer.py     # ElectrolyzerCell, ElectrolyzerCellSide
+│   ├── state.py                # CellState, CellSideState, LayerState, …
+│   ├── explicit_steady_state.py # ExplicitSteadyStateModel
+│   ├── voltage.py              # VoltageModel
+│   ├── thermal.py              # ThermalModel
+│   ├── gas_transport.py        # GasTransportModel
+│   └── water_balance.py        # MembraneWaterBalanceModel
+├── membrane/      # Membrane and ionomer materials
+│   ├── ionomer.py              # Ionomer (base class)
+│   ├── pem.py                  # PFSAIonomer, NafionD2020
+│   ├── aem.py                  # PAPIonomer
+│   └── membrane.py             # Membrane, PFSA, AEM, PAP85, …
+├── porous_layers/ # GasDiffusionLayer, MicroPorousLayer, CatalystLayer, …
+├── channel/       # FlowChannel
+├── thermo/        # GasState, GasModel, water properties, constants
+├── electrolyte/   # ElectrolyteSolution, KOHSolution
+├── degradation/   # PtDissolution, PlatinumOxideFormation
+├── simulation/    # LoadCycle
+└── estimation/    # SteadyStateModel, DynamicModel
 ```
-
-Key design principle: **components** hold static parameters; **state** holds runtime
-values; **models** contain the physics and always take `(component, state)` arguments.
 
 ## Example notebooks
 

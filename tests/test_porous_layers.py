@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 import marapendi as mrpd
-from marapendi.simulation.state import LayerState
+from marapendi.cell.state import LayerState
 
 
 @pytest.fixture

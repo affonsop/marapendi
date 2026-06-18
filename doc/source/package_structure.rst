@@ -3,80 +3,71 @@
 Package structure
 =================
 
-marapendi is organized into four subpackages under ``src/marapendi/``:
+marapendi is organized into subpackages under ``src/marapendi/``:
 
 .. code-block:: text
 
     src/marapendi/
-    ├── components/        # Cell components (static parameters)
-    │   ├── cell/          # FuelCell, FuelCellSide, ElectrolyzerCell
-    │   ├── channel/       # FlowChannel (geometry, gas-transport model)
-    │   ├── membrane/      # PFSA, PAP85, Ionomer, PFSAIonomer, PAPIonomer
-    │   └── porous/        # PorousLayer, GasDiffusionLayer, MicroPorousLayer,
-    │       └── cl/        # CatalystLayer, PtCCatalystLayer, PorousTransferLayer
-    ├── models/            # Physics models (stateless or own internal state)
-    │   ├── cell/          # ExplicitSteadyStateModel, VoltageModel, ThermalModel,
-    │   │                  # GasTransportModel, MembraneWaterBalanceModel
-    │   ├── porous/        # PorousGasResistanceModel, DarcyTransportModel
-    │   ├── channel/       # ChannelGasResistanceModel, BakerChannelGasResistanceModel
-    │   ├── membrane/      # HydrogenPermeationModel
-    │   ├── degradation/   # PtDissolution, PlatinumOxideFormation
-    │   ├── gas.py         # GasState, GasModel
-    │   ├── water.py       # Water property correlations
-    │   ├── electrochemistry.py  # ElectrochemicalReaction, calculate_reversible_cell_voltage
-    │   └── constants.py   # Physical constants
-    ├── simulation/        # State containers and load cycles
-    │   ├── state.py       # CellState, CellSideState, LayerState, ...
-    │   └── load_cycles.py # LoadCycle
-    └── estimation/        # Parameter estimation
-        ├── estimation.py  # DynamicModel, SteadyStateModel
-        └── cross_validation.py
+    ├── cell/              # Top-level cell objects and physics models
+    │   ├── fuelcell.py             # FuelCell, FuelCellSide
+    │   ├── aem_electrolyzer.py     # ElectrolyzerCell, ElectrolyzerCellSide
+    │   ├── cell.py                 # PEMFuelCell, AEMElectrolyzer (assembled)
+    │   ├── state.py                # CellState, CellSideState, LayerState, …
+    │   ├── explicit_steady_state.py # ExplicitSteadyStateModel
+    │   ├── voltage.py              # VoltageModel
+    │   ├── thermal.py              # ThermalModel
+    │   ├── gas_transport.py        # GasTransportModel
+    │   └── water_balance.py        # MembraneWaterBalanceModel
+    ├── membrane/          # Membrane and ionomer materials
+    │   ├── ionomer.py              # Ionomer (base class)
+    │   ├── pem.py                  # PFSAIonomer, NafionD2020
+    │   ├── aem.py                  # PAPIonomer
+    │   ├── membrane.py             # Membrane, PFSA, AEM, FAA3, PAP85, …
+    │   └── membrane_permeation_models.py  # HydrogenPermeationModel
+    ├── porous_layers/     # Porous transport layers and catalyst layers
+    │   ├── porous_layers.py        # PorousLayer, GasDiffusionLayer, MicroPorousLayer
+    │   ├── catalyst_layers.py      # CatalystLayer, PtCCatalystLayer, PorousTransferLayer
+    │   ├── darcy.py                # DarcyTransportModel
+    │   └── diffusion.py            # PorousGasResistanceModel
+    ├── channel/           # Flow channels
+    │   └── flow_channels.py        # FlowChannel
+    │   └── baker.py                # BakerChannelGasResistanceModel
+    ├── thermo/            # Thermodynamic properties and constants
+    │   ├── constants.py            # Physical constants (FARADAY_CONSTANT, …)
+    │   ├── electrochemistry.py     # ElectrochemicalReaction, calculate_reversible_cell_voltage
+    │   ├── gas.py                  # GasState, GasModel
+    │   └── water.py                # Water property correlations
+    ├── electrolyte/       # Electrolyte solutions (AEM/alkaline systems)
+    │   ├── electrolyte.py          # ElectrolyteSolution
+    │   └── koh.py                  # KOHSolution
+    ├── degradation/       # Degradation models
+    │   └── degradation.py          # PtDissolution, PlatinumOxideFormation
+    ├── simulation/        # Load cycle helpers
+    │   └── load_cycles.py          # LoadCycle
+    ├── estimation/        # Parameter estimation
+    │   ├── estimation.py           # DynamicModel, SteadyStateModel
+    │   └── cross_validation.py
+    └── tools.py           # Shared utilities (arrhenius_term, …)
 
 Design philosophy
 -----------------
 
-**Separation of static parameters and runtime state**
+**Cell objects own the component tree**
 
-marapendi follows a strict separation:
-
-* **Components** (``components/``) hold *static* parameters: geometry, material
-  constants, transport-model objects.  They are dataclass instances that do not
-  change during a simulation.
-* **State** (``simulation/state.py``) holds *runtime* values: temperatures, gas
-  compositions, water contents, fluxes, overpotentials.  State objects are plain
-  dataclasses with no physics methods.
-* **Models** (``models/``) contain the physics.  Every model method takes
-  ``(component, state)`` as its first two arguments — it reads static data from
-  the component and reads/writes runtime values on the state.
-
-The entry point for a simulation is :class:`~marapendi.components.cell.fuelcell.FuelCell`,
-which owns the component tree and a :class:`~marapendi.simulation.state.CellState`.
-The ``compute_ui_curve`` method delegates the full solve to
-:class:`~marapendi.models.cell.explicit_steady_state.ExplicitSteadyStateModel`.
-
-**No delegate pattern**
-
-Physics methods on model objects must be called with explicit ``(component, state)``
-arguments:
-
-.. code-block:: python
-
-    # correct
-    resistance = layer.transport_resistance_model.gas_transport_resistance(layer, state, 'o2')
-
-    # never do this (removed)
-    resistance = layer.gas_transport_resistance(state, 'o2')
-
-This keeps components as passive data containers and makes the data flow explicit.
+:class:`~marapendi.cell.fuelcell.FuelCell` is the top-level object a user
+constructs.  It owns the complete component tree (catalyst layers, GDL/MPL,
+flow channels, membrane) and exposes a simple ``compute_ui_curve`` API that
+delegates the full solve to
+:class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel`.
 
 **GasState / GasModel**
 
-:class:`~marapendi.models.gas.GasState` stores only the mole-fraction array ``X``
+:class:`~marapendi.thermo.gas.GasState` stores only the mole-fraction array ``X``
 for the four species (O₂, N₂, H₂, H₂O).  Temperature and pressure live on the
-surrounding :class:`~marapendi.simulation.state.LayerState` or
-:class:`~marapendi.simulation.state.FlowChannelState`.
+surrounding :class:`~marapendi.cell.state.LayerState` or
+:class:`~marapendi.cell.state.FlowChannelState`.
 
-:class:`~marapendi.models.gas.GasModel` provides pure static methods that take a
+:class:`~marapendi.thermo.gas.GasModel` provides pure static methods that take a
 ``state`` object (anything with ``.gas``, ``.temperature``, ``.pressure``):
 
 .. code-block:: python
@@ -88,33 +79,37 @@ surrounding :class:`~marapendi.simulation.state.LayerState` or
 Subpackage responsibilities
 ---------------------------
 
-components/
-~~~~~~~~~~~
+cell/
+~~~~~
 
-Contains only dataclass definitions.  Each class stores the material and
-geometry parameters that are fixed once the cell has been assembled.  No
-physics calculations live here.
+Top-level cell assembly classes (:class:`~marapendi.cell.fuelcell.FuelCell`,
+:class:`~marapendi.cell.aem_electrolyzer.ElectrolyzerCell`) plus all physics
+models:
 
-models/
-~~~~~~~
+* ``explicit_steady_state.py`` — full polarization-curve solve.
+* ``voltage.py`` — reversible voltage, activation, ohmic and concentration
+  overpotentials.
+* ``thermal.py`` — MEA heat-transfer and temperature model.
+* ``gas_transport.py`` — CL and GDL gas-transport resistances.
+* ``water_balance.py`` — membrane water-content profile and net water flux.
+* ``state.py`` — runtime state dataclasses (``CellState``, ``CellSideState``,
+  ``LayerState``, ``MembraneState``, ``FlowChannelState``).
 
-All physics is here.  Sub-namespaces:
+membrane/
+~~~~~~~~~
 
-* ``cell/`` — top-level orchestration (``ExplicitSteadyStateModel``), voltage,
-  thermal, gas-transport and water-balance models.
-* ``porous/`` — Bruggeman/Knudsen gas diffusion (``PorousGasResistanceModel``),
-  capillary two-phase transport (``DarcyTransportModel``).
-* ``channel/`` — Sherwood-number channel gas-transport model.
-* ``membrane/`` — hydrogen permeation correlation.
-* ``degradation/`` — Pt dissolution kinetics.
+Ionomer and membrane material models.  ``ionomer.py`` defines the abstract
+:class:`~marapendi.membrane.ionomer.Ionomer` base; ``pem.py`` provides
+:class:`~marapendi.membrane.pem.PFSAIonomer` (Nafion-family); ``aem.py``
+provides :class:`~marapendi.membrane.aem.PAPIonomer`.  ``membrane.py`` adds
+geometry (thickness, area) and permeation models on top of the ionomer.
 
-simulation/
-~~~~~~~~~~~
+porous_layers/
+~~~~~~~~~~~~~~
 
-:class:`~marapendi.simulation.state.CellState` mirrors the component tree
-(``ca``/``an`` sides, each with a catalyst layer, GDL/MPL, and flow channel,
-plus a membrane).  Iteration helpers such as ``.sides``, ``.porous_layers``,
-and ``.layers`` let model code loop over all layers without hardcoding names.
+Porous transport layers: GDL, MPL, and catalyst layers.
+``darcy.py`` implements the capillary two-phase transport model;
+``diffusion.py`` implements Bruggeman/Knudsen gas diffusion.
 
 estimation/
 ~~~~~~~~~~~
