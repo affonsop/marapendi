@@ -20,15 +20,9 @@ from dataclasses import dataclass, field
 import numpy as np
 from numpy.typing import NDArray
 
-<<<<<<<< HEAD:src/marapendi/dynamic/models/degradation.py
-import cantera as ct
-from marapendi.tools.tools import potential_activation
-from marapendi.dynamic.components.catalyst_layers import CatalystLayer
-========
 from ..thermo.constants import GAS_CONSTANT, FARADAY_CONSTANT
 from ..tools import potential_activation
 from ..porous_layers.catalyst_layers import CatalystLayer
->>>>>>>> refactor-with-baseline:src/marapendi/degradation/degradation.py
 from scipy.stats import lognorm, norm
 from scipy.interpolate import interp1d 
 from scipy.special import lambertw

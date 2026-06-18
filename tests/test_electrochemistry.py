@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-import marapendi.dynamic as mrpd
+import marapendi as mrpd
 
 @pytest.fixture
 def reaction_params():
