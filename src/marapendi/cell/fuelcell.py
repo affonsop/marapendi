@@ -166,21 +166,6 @@ class FuelCell(Cell):
     def calculate_cell_voltage(self):
         return self._voltage_model.compute_cell_voltage(self, self.state)
 
-    def set_mea_temperature(self, mea_temperature):
-        """Delegate to :class:`~marapendi.thermal.ThermalModel`."""
-        self._thermal_model.set_mea_temperature(mea_temperature, self, self.state)
-
-    def calculate_water_transport(self, dynamic=False):
-        """Delegate to :class:`~marapendi.water_balance_models.MembraneWaterBalanceModel`."""
-        self._model.water_balance_model.calculate_water_transport(self, self.state, dynamic)
-
-    def calculate_gas_concentrations_at_cl(self):
-        """Delegate to :class:`~marapendi.transport.GasTransportModel`."""
-        self._gas_transport_model.calculate_gas_concentrations(self, self.state)
-    
-    def calculate_heat_transfer_resistance(self):
-        """Delegate to :class:`~marapendi.thermal.ThermalModel`."""
-        self.thermal_resistance = self._thermal_model.heat_transfer_resistance(self)
     
     def compute_ui_curve(self, current_density, stack_temperature, cathode_conditions, anode_conditions, model='explicit_steady_state'):
         """
