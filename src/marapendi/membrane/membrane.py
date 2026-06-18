@@ -139,12 +139,12 @@ class PFSA(Membrane):
         Goshtasbi et al. J. Electrochem. Soc. 2019, 166 (7), F3154.
         """
         rh = np.clip(rh, 0, 1)
-        lmbd_eq_relaxed = np.polyval([36, -39.85, 17.18, 0.043], rh)
+        lmbd_eq_relaxed = ((36 * rh - 39.85) * rh + 17.18) * rh + 0.043
         return ((1 - self.phi) * lmbd_eq_relaxed + s_relax) if s_relax is not None else lmbd_eq_relaxed
 
     def equilibrium_water_content_derivative(self, rh, temperature, s_relax=None):
         rh = np.clip(rh, 0, 1)
-        d_lmbd_eq_relaxed = np.polyval([108, -79.70, 17.18], rh)
+        d_lmbd_eq_relaxed = (108 * rh - 79.70) * rh + 17.18
         return ((1 - self.phi) * d_lmbd_eq_relaxed + s_relax) if s_relax is not None else d_lmbd_eq_relaxed
 
     def liquid_equilibrium_water_content(self, temperature):
@@ -231,7 +231,7 @@ class PAP85(AEM):
     water_absorption_activation_energy: float = 20e6 * 2.37
 
     def equilibrium_water_content(self, rh, temperature, s_relax=None):
-        return np.polyval([14.41, -14.81, 13.13, 0], rh)
+        return ((14.41 * rh - 14.81) * rh + 13.13) * rh
 
     def hydroxide_conductivity(self, water_content, temperature):
         return 5.8 * arrhenius_term(

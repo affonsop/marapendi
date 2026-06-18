@@ -316,8 +316,8 @@ class FuelCell(Cell):
 
     def set_conditions(self, stack_temperature, current_density, cathode_conditions, anode_conditions):
         """Delegate to :meth:`~marapendi.model.ExplicitSteadyStateModel.set_initial_state`."""
-        self._model.set_initial_state(
-            self, self.state, stack_temperature, current_density,
+        self.state = self._model.set_initial_state(
+            self, stack_temperature, current_density,
             cathode_conditions, anode_conditions,
         )
             

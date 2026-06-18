@@ -115,7 +115,9 @@ class PorousGasDiffusionModel:
         float
             Total resistance [s/m].
         """
-        return self.molecular_diffusion_effective_length(layer, water_saturation) * (
+        correction = np.clip(1 - water_saturation, 1e-6, 1) ** self.water_saturation_exponent
+        effective_length = layer.thickness / layer.effective_gas_diffusion_ratio / correction
+        return effective_length * (
             1/diffusion_coefficient + 1/self.knudsen_diffusivity(layer, temperature, molecular_weight))
 
     def gas_transport_resistance(self, layer, state, species: str = 'o2') -> float:

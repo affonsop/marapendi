@@ -2,6 +2,7 @@
 Module providing some useful auxiliary functions.
 """
 
+import math
 import numpy as np
 from marapendi.thermo.constants import GAS_CONSTANT, FARADAY_CONSTANT
 
@@ -10,8 +11,10 @@ def arrhenius_term(
         temperature,
         reference_temperature
 ):
-
-    return np.exp(activation_energy / GAS_CONSTANT * (1/reference_temperature - 1/temperature))
+    exponent = activation_energy / GAS_CONSTANT * (1/reference_temperature - 1/temperature)
+    if np.ndim(exponent) == 0:
+        return math.exp(float(exponent))
+    return np.exp(exponent)
 
 def potential_activation(
         transfer_coefficient,

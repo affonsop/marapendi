@@ -35,8 +35,8 @@ def water_dew_point(vapor_pressure):
     Cubic polynomial in ln(P) fitted to Cantera values over 700–101 325 Pa.
     Accuracy: < 0.05 K vs. Cantera over that range.
     """
-    _COEFFS = (1.01005617e-01, -1.37637000e+00, 1.92195992e+01, 1.79796275e+02)
-    return np.polyval(_COEFFS, np.log(vapor_pressure))
+    x = np.log(vapor_pressure)
+    return ((1.01005617e-01 * x - 1.37637000e+00) * x + 1.92195992e+01) * x + 1.79796275e+02
 
 
 def water_dynamic_viscosity(temperature=300):
@@ -65,7 +65,7 @@ def water_density(temperature=300):
     Accuracy: < 0.05 % vs. Cantera over 274–373 K.
     """
     T_Celsius = temperature - 273.15
-    return np.polyval([-2.658e-3, -0.155, 1001.3], T_Celsius)
+    return (-2.658e-3 * T_Celsius - 0.155) * T_Celsius + 1001.3
 
 
 def water_molar_volume(temperature=300):

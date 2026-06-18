@@ -21,6 +21,7 @@ from .thermal import ThermalModel
 from .gas_transport import GasTransportModel
 from .voltage import VoltageModel
 from .water_balance import MembraneWaterBalanceModel
+from .state import CellState, LayerState, CatalystLayerState
 
 
 @dataclass
@@ -41,21 +42,17 @@ class ExplicitSteadyStateModel:
     water_balance_model: MembraneWaterBalanceModel = field(default_factory=MembraneWaterBalanceModel)
     gas_transport_model: GasTransportModel = field(default_factory=GasTransportModel)
 
-    def set_initial_state(self, cell, state, stack_temperature, current_density,
-                          cathode_conditions, anode_conditions) -> None:
-        """Initialise *state* for one operating point before calling :meth:`solve`.
+    def set_initial_state(self, cell, stack_temperature, current_density,
+                          cathode_conditions, anode_conditions) -> CellState:
+        """Create and initialise a fresh :class:`CellState` for one operating point.
 
-        Writes the current density, temperatures, gas compositions, flow rates,
-        and initial saturation values into *state* and syncs the minimum subset
-        of static cell attributes that physics methods still read from the
-        component tree (electrolyte reference, temperature on each layer).
+        Returns a new state each call so that array shapes always match
+        *current_density* without manually zeroing pre-existing arrays.
 
         Parameters
         ----------
         cell : FuelCell
             Component tree — provides geometry and static physics objects.
-        state : CellState
-            Runtime state object — all runtime fields are written here.
         stack_temperature : float or ndarray
             Operating temperature of the fuel-cell stack (K).
         current_density : float or ndarray
@@ -64,7 +61,17 @@ class ExplicitSteadyStateModel:
             Inlet conditions for the cathode side.
         anode_conditions : OperatingConditions
             Inlet conditions for the anode side.
+
+        Returns
+        -------
+        CellState
+            Fully initialised state ready for :meth:`solve`.
         """
+        state = CellState()
+        for side, side_state in zip(cell.sides, state.sides):
+            if side.has_mpl:
+                side_state.mpl = LayerState()
+
         state.current_density = current_density
         self._set_consumption_production(state, current_density)
 
@@ -73,8 +80,6 @@ class ExplicitSteadyStateModel:
 
         for side, side_state in zip(cell.sides, state.sides):
             for layer_state in side_state.layers:
-                layer_state.non_wetting_saturation = np.zeros_like(current_density)
-                layer_state.liquid_saturation = np.zeros_like(current_density)
                 layer_state.temperature = stack_temperature
 
             side.cl.set_water_film_thickness(0)
@@ -88,9 +93,10 @@ class ExplicitSteadyStateModel:
             side.electrolyte = conditions.inlet_liquid
             side.electrolyte.set_temperature(stack_temperature)
 
+            n = np.atleast_1d(current_density).size
             for layer_state in side_state.layers:
                 layer_state.pressure = 0.5 * (conditions.inlet_pressure + conditions.outlet_pressure)
-                layer_state.gas.X = np.zeros((np.atleast_1d(current_density).size, 4))
+                layer_state.gas.X = np.zeros((n, 4))
                 GasModel.set_composition(
                     layer_state,
                     conditions.dry_o2_mole_fraction,
@@ -114,6 +120,8 @@ class ExplicitSteadyStateModel:
                     component_state.non_wetting_saturation = (
                         side.ch.inlet_liquid_saturation * np.ones_like(current_density)
                     )
+
+        return state
 
     def _set_consumption_production(self, state, current_density) -> None:
         """Write O₂/H₂ consumption and H₂O production rates into *state*."""
@@ -153,10 +161,9 @@ class ExplicitSteadyStateModel:
         Parameters
         ----------
         cell : FuelCell
-            Fully configured fuel-cell object (conditions already set via
-            :meth:`set_initial_state`).  Provides static physics parameters.
+            Fully configured fuel-cell object.  Provides static physics parameters.
         state : CellState
-            Runtime state populated by :meth:`set_initial_state`.  All computed
+            Runtime state returned by :meth:`set_initial_state`.  All computed
             quantities are written here.
         mea_temperature_estimation : bool
             When ``True``, estimate the MEA temperature from a first-pass

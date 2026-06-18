@@ -29,18 +29,24 @@ index_o2, index_n2, index_h2, index_h2ov = (species_indexes[s] for s in species_
 molecular_weights = np.array([32., 28., 2., 18.])
 """Molecular weights of (O2, N2, H2, H2O), in kg/kmol."""
 
-# Polynomials (highest degree first) for ``sqrt(kinematic_viscosity) = poly(log(T))``,
+# Polynomial coefficients (highest degree first) for ``sqrt(kinematic_viscosity) = poly(log(T))``,
 # fitted from the Cantera "gri30" transport data for O2, N2, H2 and H2O.
+# Stored as plain Python tuples so Horner evaluation avoids numpy indexing overhead.
 _viscosity_polynomials = {
-    'o2': np.array([-1.951788060142541e-06, 6.0422679225074004e-05, -0.000698915553749822,
-                     0.003675525810527708, -0.006280860305804308]),
-    'n2': np.array([-1.7418174930566134e-06, 5.344876287161394e-05, -0.0006125055865647582,
-                     0.0031950685178810598, -0.005349912337402537]),
-    'h2': np.array([-3.323040125663745e-07, 9.673877158687006e-06, -0.00010356810956997187,
-                     0.0005414323063318191, -0.00044135740261495426]),
-    'h2o': np.array([4.616673944844547e-07, -3.274425664644034e-05, 0.0005317488930314697,
-                      -0.003007552407888745, 0.00621446598971834]),
+    'o2':  (-1.951788060142541e-06,  6.0422679225074004e-05, -0.000698915553749822,
+             0.003675525810527708,  -0.006280860305804308),
+    'n2':  (-1.7418174930566134e-06, 5.344876287161394e-05,  -0.0006125055865647582,
+             0.0031950685178810598, -0.005349912337402537),
+    'h2':  (-3.323040125663745e-07,  9.673877158687006e-06,  -0.00010356810956997187,
+             0.0005414323063318191, -0.00044135740261495426),
+    'h2o': ( 4.616673944844547e-07, -3.274425664644034e-05,   0.0005317488930314697,
+            -0.003007552407888745,   0.00621446598971834),
 }
+
+
+def _horner5(c, x):
+    """Evaluate a degree-4 polynomial via Horner's method."""
+    return ((((c[0] * x + c[1]) * x + c[2]) * x + c[3]) * x + c[4])
 
 
 class GasModel:
@@ -141,7 +147,8 @@ class GasModel:
     def species_kinematic_viscosity(state, species: str) -> float:
         """Kinematic viscosity of pure ``species`` at ``state.temperature`` (m^2/s)."""
         log_temperature = np.log(state.temperature)
-        return np.polyval(_viscosity_polynomials[species], log_temperature) ** 2 * np.sqrt(state.temperature)
+        v = _horner5(_viscosity_polynomials[species], log_temperature)
+        return v * v * np.sqrt(state.temperature)
 
     @staticmethod
     def mixture_kinematic_viscosity(state) -> float:
