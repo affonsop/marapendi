@@ -12,7 +12,7 @@ marapendi is organized into subpackages under ``src/marapendi/``:
     │   ├── fuelcell.py             # FuelCell, FuelCellSide
     │   ├── aem_electrolyzer.py     # ElectrolyzerCell, ElectrolyzerCellSide
     │   ├── cell.py                 # PEMFuelCell, AEMElectrolyzer (assembled)
-    │   ├── state.py                # CellState, CellSideState, LayerState, …
+    │   ├── state.py                # GasState, CellState, CellSideState, LayerState, …
     │   ├── explicit_steady_state.py # ExplicitSteadyStateModel
     │   ├── voltage.py              # VoltageModel
     │   ├── thermal.py              # ThermalModel
@@ -35,7 +35,7 @@ marapendi is organized into subpackages under ``src/marapendi/``:
     ├── thermo/            # Thermodynamic properties and constants
     │   ├── constants.py            # Physical constants (FARADAY_CONSTANT, …)
     │   ├── electrochemistry.py     # ElectrochemicalReaction, calculate_reversible_cell_voltage
-    │   ├── gas.py                  # GasState, GasModel
+    │   ├── gas.py                  # GasModel, species_indexes
     │   └── water.py                # Water property correlations
     ├── electrolyte/       # Electrolyte solutions (AEM/alkaline systems)
     │   ├── electrolyte.py          # ElectrolyteSolution

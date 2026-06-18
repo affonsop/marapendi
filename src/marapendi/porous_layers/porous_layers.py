@@ -5,7 +5,8 @@ from dataclasses import dataclass, field
 import numpy as np
 from ..thermo.constants import GAS_CONSTANT
 
-from ..thermo.gas import GasModel, GasState
+from ..thermo.gas import GasModel
+from ..cell.state import GasState
 from .diffusion import PorousGasResistanceModel
 from .darcy import DarcyTransportModel
 from ..thermo.water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight

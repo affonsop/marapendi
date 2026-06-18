@@ -14,7 +14,21 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from ..thermo.gas import GasState
+import numpy as np
+
+
+@dataclass
+class GasState:
+    """Composition of the gas mixture.
+
+    Attributes
+    ----------
+    X : np.ndarray
+        Mole fractions of (O2, N2, H2, H2O), in the order given by
+        :data:`~marapendi.thermo.gas.species_indexes`.
+    """
+
+    X: np.ndarray = field(default_factory=lambda: np.array([1., 0., 0., 0.]))
 
 
 @dataclass

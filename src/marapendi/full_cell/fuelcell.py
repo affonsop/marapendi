@@ -29,9 +29,8 @@ from ..cell.thermal import ThermalModel
 from ..cell.explicit_steady_state import ExplicitSteadyStateModel
 from ..cell.state import (
     CellState, CellSideState, LayerState, CatalystLayerState,
-    FlowChannelState, MembraneState,
+    FlowChannelState, MembraneState, GasState,
 )
-from ..thermo.gas import GasState
 
 @dataclass
 class FuelCellSide(CellSide):

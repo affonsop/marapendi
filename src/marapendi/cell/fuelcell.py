@@ -31,7 +31,7 @@ from .state import (
     CellState, CellSideState, LayerState, CatalystLayerState,
     FlowChannelState, MembraneState,
 )
-from ..thermo.gas import GasState
+from .state import GasState
 
 @dataclass
 class FuelCellSide(CellSide):

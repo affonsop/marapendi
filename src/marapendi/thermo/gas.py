@@ -16,12 +16,11 @@ a single place.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-
 import numpy as np
 
 from .constants import GAS_CONSTANT
 from .water import water_saturation_pressure
+from ..cell.state import GasState  # noqa: F401  defined there, re-exported for convenience
 
 species_list = ('o2', 'n2', 'h2', 'h2o')
 species_indexes = dict(zip(species_list, range(4)))
@@ -42,19 +41,6 @@ _viscosity_polynomials = {
     'h2o': np.array([4.616673944844547e-07, -3.274425664644034e-05, 0.0005317488930314697,
                       -0.003007552407888745, 0.00621446598971834]),
 }
-
-
-@dataclass
-class GasState:
-    """Composition of the gas mixture.
-
-    Attributes
-    ----------
-    X : np.ndarray
-        Mole fractions of (O2, N2, H2, H2O), in the order given by :data:`species_indexes`.
-    """
-
-    X: np.ndarray = field(default_factory=lambda: np.array([1., 0., 0., 0.]))
 
 
 class GasModel:
