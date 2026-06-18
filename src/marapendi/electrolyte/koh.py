@@ -83,10 +83,13 @@ class KOH_solution(ElectrolyteSolution):
         """
         m_mol_per_kg = self.molality * 1000.
         log_p_sat = np.log10(self.water_sat_pressure / 1e5)
-        return 10 ** (5 + log_p_sat - m_mol_per_kg * (
+        # Balej (1985) polynomial, valid for 0–18 mol/kg; clip exponent so the
+        # result stays within [0, water_sat_pressure] outside the validity range.
+        exponent = 5 + log_p_sat - m_mol_per_kg * (
             (0.01508 + 0.0012062 * log_p_sat) +
             (0.0016788 - 5.6024e-4 * log_p_sat) * m_mol_per_kg -
-            (2.25887e-5 - 7.8228e-6 * log_p_sat) * m_mol_per_kg ** 2))
+            (2.25887e-5 - 7.8228e-6 * log_p_sat) * m_mol_per_kg ** 2)
+        return float(np.power(10.0, np.clip(exponent, -300, 5 + log_p_sat)))
 
     def calculate_surface_tension(self) -> float:
         """
