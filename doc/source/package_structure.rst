@@ -112,10 +112,18 @@ porous_layers/
 ~~~~~~~~~~~~~~
 
 Porous transport layers: GDL, MPL, and catalyst layers.
-``darcy.py`` implements the capillary two-phase transport model using
+``porous_layers.py`` defines :class:`~marapendi.porous_layers.PorousLayer` and its
+GDL/MPL subclasses; ``darcy.py`` implements capillary two-phase transport using
 ``breakthrough_pressure`` (σ·cos θ / √(K/ε)) and ``saturation_flow_resistance``
-from the layer state;
-``diffusion.py`` implements Bruggeman/Knudsen gas diffusion.
+from the layer state; ``diffusion.py`` implements Bruggeman/Knudsen gas diffusion.
+
+:class:`~marapendi.porous_layers.PtCCatalystLayer` in ``catalyst_layers.py``
+adds an explicit Pt/C agglomerate geometry (Hao et al., 2015): volume fractions
+are derived from catalyst composition, the wet ionomer film thickness is updated
+at each operating point, and local O₂ transport resistance across the ionomer film
+is evaluated via
+:meth:`~marapendi.porous_layers.PtCCatalystLayer.o2_ionomer_film_resistance`
+(bulk diffusion + gas/ionomer and ionomer/Pt interface terms).
 
 estimation/
 ~~~~~~~~~~~

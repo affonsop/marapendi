@@ -1,6 +1,18 @@
 
 """
-Module providing classes to model catalyst layers in electrochemical cells.
+Catalyst layer models for electrochemical cells.
+
+:class:`CatalystLayer` is the base class, providing ionomer charge resistance,
+effective charge resistance (Neyerlin / Goshtasbi distribution model), and a
+Bruggeman electrolyte resistance for alkaline layers.
+
+:class:`PtCCatalystLayer` extends it with an explicit Pt/C agglomerate geometry
+following Hao et al. (2015): volume fractions are computed from platinum and
+carbon loadings, the wet ionomer film thickness is updated at each operating
+point, and local O₂ transport resistance across the ionomer film (bulk + gas/Pt
+interface terms) is evaluated via :meth:`~PtCCatalystLayer.o2_ionomer_film_resistance`.
+
+:class:`PorousTransferLayer` adapts the geometry to a fibrous PTL structure.
 """
 from dataclasses import dataclass, field
 import numpy as np
@@ -14,32 +26,33 @@ from ..thermo.water import o2_water_diffusivity
 
 @dataclass
 class CatalystLayer(PorousLayer):
-    """
-    Represents a generic catalyst layer in a fuel cell or electrolyser, which includes
-    an ionomer phase, catalyst particles, and electrochemical reaction sites.
+    """Base class for catalyst layers in fuel cells and electrolysers.
+
+    Combines a porous electrode structure with an ionomer phase and an
+    electrochemical reaction model.  Provides ionomer/electrolyte charge
+    resistance and activation overpotential; subclasses add geometry-specific
+    transport models.
 
     Attributes
     ----------
     ionomer : Ionomer
-        Ionomer model associated with the catalyst layer.
+        Ionomer transport model (proton/hydroxide conductivity, O₂ permeability).
     reaction : ElectrochemicalReaction
-        Electrochemical reaction model.
+        Electrochemical reaction parameters (exchange current density, Tafel slope).
     catalyst_loading : float
-        Catalyst loading in g/cm² (default: 0.2 mg/cm²).
+        Total catalyst loading (kg/m²).
     ionomer_to_catalyst_ratio : float
-        Ratio of ionomer mass to catalyst mass.
+        Ionomer/catalyst mass ratio (–).
     catalyst_density : float
-        Density of catalyst particles (kg/m³).
+        Catalyst particle density (kg/m³).
     ecsa : float
-        Electrochemically active surface area (m²/g).
+        Electrochemically active surface area (m²/kg).
     ionomer_vol_fraction : float
-        Volume fraction of ionomer in the layer.
+        Volume fraction of ionomer (–).
     ionomer_film_thickness : float
-        Thickness of the ionomer film around catalyst particles (m).
+        Ionomer film thickness around catalyst particles (m).
     contact_angle : float
-        Contact angle (degrees).
-    theta_catalyst : float
-        Catalyst surface coverage (dimensionless).
+        Contact angle between liquid water and the solid phase (°).
     """
     ionomer: Ionomer = field(default_factory=PFSAIonomer)
     reaction: ElectrochemicalReaction = field(default_factory=ElectrochemicalReaction)
@@ -111,7 +124,7 @@ class CatalystLayer(PorousLayer):
         self.xi_neyerlin = nu * (-8.287e-3 * nu + 0.7184) - 2.072e-3
         return self.sheet_resistance / (3 + self.xi_neyerlin)
 
-    def electrolyte_sheet_resistance(self, temperature, electrolyte_saturation=1.e-12):
+    def electrolyte_sheet_resistance(self, temperature, electrolyte_saturation=0):
         """
         Calculate electrolyte sheet resistance in the porous electrolyte phase.
         Uses Bruggeman correlation for electrolyte. 
@@ -127,30 +140,10 @@ class CatalystLayer(PorousLayer):
         float
             Electrolyte sheet resistance [Ohm.m²].
         """
+        electrolyte_saturation = np.maximum(electrolyte_saturation, 1e-12)
         electrolyte_conductivity = self.electrolyte.calculate_ionic_conductivity(temperature)
         return self.thickness / ((electrolyte_saturation * self.porosity) ** 1.5 * electrolyte_conductivity) 
-    
-    def activation_overpotential(self, current_density, activity):
-        """
-        Compute activation overpotential based on current density.
 
-        Parameters
-        ----------
-        current_density : float
-            Current density [A/m²].
-        activity : float
-            Effective activity of reactant.
-
-        Returns
-        -------
-        float
-            Activation overpotential [V].
-        """
-        return self.reaction.tafel_overpotential(
-            (current_density) / (self.ecsa * self.catalyst_loading),
-            self.temperature,
-            activity
-        )
     
 @dataclass
 class PorousTransferLayer(CatalystLayer):
@@ -196,21 +189,38 @@ class PorousTransferLayer(CatalystLayer):
 
 @dataclass
 class PtCCatalystLayer(CatalystLayer):
-    """
-    Catalyst layer model with explicit platinum/carbon and ionomer structure.
+    """Catalyst layer with explicit Pt/C agglomerate geometry and ionomer film.
+
+    Volume fractions (carbon, platinum, ionomer, pore) are derived from the
+    catalyst composition at construction time.  The wet ionomer film thickness
+    is updated at each operating point via :meth:`set_ionomer_wet_properties`.
+
+    Local O₂ transport resistance across the ionomer film is modelled following
+    Hao et al. (2015): bulk diffusion through the film plus gas/ionomer and
+    ionomer/Pt interface resistances weighted by empirical factors ``ionomer_k1``
+    (gas-side) and ``ionomer_k2`` (Pt-side).  A water-film correction term
+    (``ionomer_k3``) accounts for flooding at the ionomer surface.
 
     Attributes
     ----------
     platinum_loading : float
-        Pt loading [g/cm²].
+        Pt loading (kg/m²).
     catalyst_platinum_weight_percent : float
-        Pt weight percent in catalyst.
+        Pt weight fraction in the catalyst powder (–).
     ionomer_to_carbon_ratio : float
-        Ionomer/carbon mass ratio.
+        Ionomer/carbon mass ratio (–).
     platinum_density, carbon_density : float
-        Densities [kg/m³].
+        Material densities (kg/m³).
     carbon_agglomerate_radius : float
-        Radius of carbon agglomerates [m].
+        Radius of carbon agglomerates (m).
+    ionomer_k1, ionomer_k2, ionomer_k3 : float
+        Interface resistance pre-factors from Hao et al. (2015).
+    omega_PtO : float
+        Molar volume of platinum oxide (m³/kmol), used by the PtO coverage model.
+
+    References
+    ----------
+    Hao, L. et al. J. Electrochem. Soc. 162, F854 (2015).
     """
     porosity: float = None
     platinum_loading: float = 0.2e-6 * 1e4
@@ -260,9 +270,12 @@ class PtCCatalystLayer(CatalystLayer):
         PorousLayer.__post_init__(self)
 
     def set_ionomer_wet_properties(self, ionomer_water_content, temperature):
-        """
-        Update ionomer volume fraction, film thickness, and porosity for
-        given water content and temperature.
+        """Update ionomer volume fraction, film thickness, and pore volume for given water content.
+
+        Computes the wet ionomer expansion factor from the ionomer model, then
+        recalculates ``ionomer_vol_fraction``, ``porosity``, ``ionomer_film_thickness``,
+        ``ionomer_vol_surface_area``, and ``effective_gas_diffusion_ratio``.
+        Called at construction and at every MEA temperature update.
         """
         self.ionomer_expansion_factor = self.ionomer.wet_expansion_factor(np.clip(ionomer_water_content, 3, 20), temperature)
         self.ionomer_vol_fraction = self.dry_ionomer_vol_fraction * self.ionomer_expansion_factor
@@ -273,9 +286,19 @@ class PtCCatalystLayer(CatalystLayer):
         self.ionomer_to_carbon_vol_ratio = (1 + self.ionomer_film_thickness / self.carbon_agglomerate_radius)**3 - 1
         self.effective_gas_diffusion_ratio = self.porosity ** 1.5
     
-    def set_water_film_thickness(self, water_saturation): 
-        ionomer_radius = self.carbon_agglomerate_radius + self.ionomer_film_thickness 
-        self.water_film_thickness = (water_saturation * self.porosity * self.carbon_agglomerate_radius ** 3 / self.carbon_vol_fraction + ionomer_radius ** 3 ) ** (1./3) - ionomer_radius
+    def set_water_film_thickness(self, water_saturation):
+        """Compute and store the liquid water film thickness around agglomerates.
+
+        Parameters
+        ----------
+        water_saturation : float
+            Non-wetting (liquid water) saturation in the pore space (–).
+        """
+        ionomer_radius = self.carbon_agglomerate_radius + self.ionomer_film_thickness
+        self.water_film_thickness = (
+            water_saturation * self.porosity * self.carbon_agglomerate_radius ** 3
+            / self.carbon_vol_fraction + ionomer_radius ** 3
+        ) ** (1. / 3) - ionomer_radius
 
     def o2_ionomer_film_bulk_resistance(self, ionomer_water_content, temperature):
         """
