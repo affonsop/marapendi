@@ -1,7 +1,7 @@
 """Tests for porous and channel gas-transport resistance models.
 
 Covers:
-  - PorousGasResistanceModel (models/porous/diffusion.py)
+  - PorousGasDiffusionModel (models/porous/diffusion.py)
   - DarcyTransportModel       (models/porous/darcy.py)
   - GasTransportModel         (models/cell/gas_transport.py)
 """
@@ -24,13 +24,13 @@ def _make_layer_state(temperature=353.15, pressure=1e5, o2=0.21, rh=0., sat=0.):
 
 
 # ---------------------------------------------------------------------------
-# PorousGasResistanceModel
+# PorousGasDiffusionModel
 # ---------------------------------------------------------------------------
 
-class TestPorousGasResistanceModel:
+class TestPorousGasDiffusionModel:
     @pytest.fixture
     def model(self):
-        return mrpd.PorousGasResistanceModel(water_saturation_exponent=3.0)
+        return mrpd.PorousGasDiffusionModel(water_saturation_exponent=3.0)
 
     @pytest.fixture
     def gdl(self):
@@ -132,7 +132,7 @@ class TestGasTransportModel:
         gdl = mrpd.GasDiffusionLayer(
             thickness=200e-6,
             effective_gas_diffusion_ratio=0.3,
-            transport_resistance_model=mrpd.PorousGasResistanceModel(),
+            transport_resistance_model=mrpd.PorousGasDiffusionModel(),
         )
         ch = mrpd.FlowChannel(
             width=1e-3, height=1e-3, length=0.1, n_parallel=10, reactant='o2',

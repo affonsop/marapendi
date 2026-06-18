@@ -7,7 +7,7 @@ from ..thermo.constants import GAS_CONSTANT
 
 from ..thermo.gas import GasModel
 from ..cell.state import GasState
-from .diffusion import PorousGasResistanceModel
+from .diffusion import PorousGasDiffusionModel
 from .darcy import DarcyTransportModel
 from ..thermo.water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight
 
@@ -29,7 +29,7 @@ class PorousLayer():
         Ratio accounting for effective gas diffusion through the porous medium (default is 1).
     pore_diameter : float
         Average pore diameter in meters (default is large, so Knudsen diffusion negligible).
-    transport_resistance_model : PorousGasResistanceModel
+    transport_resistance_model : PorousGasDiffusionModel
         Model used to calculate gas transport resistance.
     two_phase_transport_model : DarcyTransportModel
         Model used to compute liquid water flow and capillarity.
@@ -59,7 +59,7 @@ class PorousLayer():
     porosity: float = 1
     effective_gas_diffusion_ratio: float = 1
     pore_diameter: float=1e12
-    transport_resistance_model: PorousGasResistanceModel = field(default_factory=PorousGasResistanceModel)
+    transport_resistance_model: PorousGasDiffusionModel = field(default_factory=PorousGasDiffusionModel)
     two_phase_transport_model: DarcyTransportModel = field(default_factory=DarcyTransportModel)
     non_wetting_saturation: float = 0
     thermal_conductivity: float = 1e12 

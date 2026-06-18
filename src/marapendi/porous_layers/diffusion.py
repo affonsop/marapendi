@@ -8,7 +8,7 @@ from ..thermo.constants import GAS_CONSTANT
 from ..thermo.gas import GasModel, species_indexes, molecular_weights
     
 @dataclass
-class PorousGasResistanceModel:
+class PorousGasDiffusionModel:
     """
     Porous media gas transport model with water saturation and Knudsen corrections.
 

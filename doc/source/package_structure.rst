@@ -28,7 +28,7 @@ marapendi is organized into subpackages under ``src/marapendi/``:
     │   ├── porous_layers.py        # PorousLayer, GasDiffusionLayer, MicroPorousLayer
     │   ├── catalyst_layers.py      # CatalystLayer, PtCCatalystLayer, PorousTransferLayer
     │   ├── darcy.py                # DarcyTransportModel
-    │   └── diffusion.py            # PorousGasResistanceModel
+    │   └── diffusion.py            # PorousGasDiffusionModel
     ├── channel/           # Flow channels and channel transport models
     │   ├── flow_channels.py        # FlowChannel
     │   └── gas_transport_resistance.py  # ChannelGasResistanceModel, BakerChannelGasResistanceModel

@@ -196,7 +196,7 @@ def create_fuel_cell(params: dict) -> mrpd.FuelCell:
             porosity=params['gdl-porosity'],
             thermal_conductivity=params['gdl-thermal-cond'],
             two_phase_transport_model=liq_model,
-            transport_resistance_model=mrpd.PorousGasResistanceModel(
+            transport_resistance_model=mrpd.PorousGasDiffusionModel(
                 water_saturation_exponent=params['n_s'],
             ),
         ) for side in ['ca', 'an']
@@ -243,7 +243,7 @@ def create_fuel_cell(params: dict) -> mrpd.FuelCell:
                 thermal_conductivity=params['cl-thermal-cond'],
                 reaction=orr_kinetics,
                 two_phase_transport_model=liq_model,
-                transport_resistance_model=mrpd.PorousGasResistanceModel(
+                transport_resistance_model=mrpd.PorousGasDiffusionModel(
                     water_saturation_exponent=1.5,
                 ),
             ),
@@ -266,7 +266,7 @@ def create_fuel_cell(params: dict) -> mrpd.FuelCell:
                 contact_angle=params['cl-theta'],
                 thermal_conductivity=params['cl-thermal-cond'],
                 two_phase_transport_model=liq_model,
-                transport_resistance_model=mrpd.PorousGasResistanceModel(
+                transport_resistance_model=mrpd.PorousGasDiffusionModel(
                     water_saturation_exponent=1.5,
                 ),
             ),

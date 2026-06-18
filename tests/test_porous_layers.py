@@ -69,7 +69,7 @@ class TestPorousLayerCapillarity:
         assert pc_high > pc_low
 
 
-class TestPorousGasResistanceModel:
+class TestPorousGasDiffusionModel:
     def test_gas_resistance_positive(self, gdl, layer_state):
         R = gdl.transport_resistance_model.gas_transport_resistance(gdl, layer_state, 'o2')
         assert R > 0
