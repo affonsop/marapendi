@@ -59,7 +59,7 @@ class VoltageModel:
 
     def high_frequency_resistance(self, cell, state) -> float:
         return (
-            cell.membrane.proton_resistance(state.membrane.temperature, water_saturation=state.ca.cl.liquid_saturation)
+            cell.membrane.proton_resistance(state.membrane, water_saturation=state.ca.cl.liquid_saturation)
             + cell.electrical_resistance
         )
 

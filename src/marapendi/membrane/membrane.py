@@ -167,13 +167,13 @@ class PFSA(Membrane):
             axis=0,
         )
 
-    def proton_resistance(self, temperature, water_saturation=0):
+    def proton_resistance(self, state, water_saturation=0):
         """Through-plane proton resistance (Ω·m²).
 
         Weights liquid- and vapor-equilibrated conductivities by water saturation.
         """
-        liquid_conductivity = self.proton_conductivity(self.liquid_eq_sat_water_profile, temperature)
-        vapor_conductivity = self.proton_conductivity(self.vapor_eq_sat_water_profile, temperature)
+        liquid_conductivity = self.proton_conductivity(state.liquid_eq_sat_water_profile, state.temperature)
+        vapor_conductivity = self.proton_conductivity(state.vapor_eq_sat_water_profile, state.temperature)
         average_conductivity = (
             (1 - water_saturation) * vapor_conductivity + water_saturation * liquid_conductivity
         )

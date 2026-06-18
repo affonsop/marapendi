@@ -189,12 +189,6 @@ class MembraneWaterBalanceModel:
         state.membrane.ePexi = np.exp(state.membrane.xi * state.membrane.peclet_number)
         state.membrane.ePe = np.exp(state.membrane.peclet_number)
 
-        # Sync to cell.membrane for methods that still read from the component.
-        cell.membrane.peclet_number = state.membrane.peclet_number
-        cell.membrane.xi = state.membrane.xi
-        cell.membrane.ePexi = state.membrane.ePexi
-        cell.membrane.ePe = state.membrane.ePe
-
         for side, side_state in ((cell.ca, state.ca), (cell.an, state.an)):
             side_state.biot_number = self.calculate_biot_number(
                 self.absorption_coefficient /
@@ -209,14 +203,6 @@ class MembraneWaterBalanceModel:
             R_eq_star = R_v_star + 1 / side_state.biot_number
             side_state.peclet_over_modified_biot = state.membrane.peclet_number / (1 / R_eq_star)
             side_state.alpha = 1 - (1 if self.eod_parallel_to_sorption else 0) / side_state.biot_number / R_eq_star
-
-            # Sync to cell side for methods that still read from the component.
-            side.biot_number = side_state.biot_number
-            side.peclet_over_modified_biot = side_state.peclet_over_modified_biot
-            side.alpha = side_state.alpha
-            side.h2ov_transport_resistance = side_state.h2ov_transport_resistance
-            side.estimated_water_content_derivative = side_state.estimated_water_content_derivative
-            side.estimated_water_content = side_state.estimated_water_content
 
     def calculate_cathode_membrane_flux(self, state):
         """Water flux at the cathode/membrane interface (kmol/m²/s)."""
@@ -234,7 +220,7 @@ class MembraneWaterBalanceModel:
         )
         return nd_flux / state.membrane.water_diffusion_resistance
 
-    def update_cell_side_water_fluxes(self, cell_side, side_state):
+    def update_cell_side_water_fluxes(self, side_state):
         """Compute liquid and vapor fluxes for one cell side from state gas data."""
         max_vapor_removal_flux = (
             (GasModel.saturation_concentration(side_state.cl) - GasModel.vapor_concentration(side_state.ch))
@@ -242,9 +228,6 @@ class MembraneWaterBalanceModel:
         )
         side_state.liquid_flux = np.maximum(side_state.water_flux - max_vapor_removal_flux, 0)
         side_state.vapor_flux = side_state.water_flux - side_state.liquid_flux
-        # Sync to cell side for backward-compatible readers.
-        cell_side.liquid_flux = side_state.liquid_flux
-        cell_side.vapor_flux = side_state.vapor_flux
 
     def update_water_fluxes(self, cell, state, dynamic=False):
         """Calculate water fluxes for both sides. Reads/writes state; syncs to cell."""
@@ -253,13 +236,9 @@ class MembraneWaterBalanceModel:
         state.ca.water_flux = state.ca.h2o_production + state.ca.membrane_water_flux
         state.an.water_flux = state.an.h2o_production + state.an.membrane_water_flux
 
-        cell.ca.membrane_water_flux = state.ca.membrane_water_flux
-        cell.an.membrane_water_flux = state.an.membrane_water_flux
-        cell.ca.water_flux = state.ca.water_flux
-        cell.an.water_flux = state.an.water_flux
 
-        self.update_cell_side_water_fluxes(cell.ca, state.ca)
-        self.update_cell_side_water_fluxes(cell.an, state.an)
+        self.update_cell_side_water_fluxes(state.ca)
+        self.update_cell_side_water_fluxes(state.an)
 
         if dynamic:
             self.membrane_diffusion_flux = (
@@ -359,11 +338,6 @@ class MembraneWaterBalanceModel:
         state.an.h2ov_transport_resistance = htr_an
 
         self.solve_water_balance(cell, state=state)
-
-        # Propagate eq water contents to state for ohmic overpotential.
-        for side_state, cell_side in [(state.ca, cell.ca), (state.an, cell.an)]:
-            side_state.liquid_eq_water_content = getattr(cell_side, 'liquid_eq_water_content', None)
-            side_state.vapor_eq_water_content  = getattr(cell_side, 'vapor_eq_water_content', None)
 
         if not dynamic:
             self.calculate_water_saturation(cell.ca, state.ca)
@@ -471,22 +445,21 @@ class MembraneWaterBalanceModel:
         )
         cell.ca.cl.non_wetting_saturation = state.ca.cl.non_wetting_saturation
 
-        self._blend_equilibrium_profiles(cell, state)
-        self._update_blended_fluxes(cell, state)
+        self._blend_equilibrium_profiles(state)
+        self._update_blended_fluxes(state)
 
-        self.update_cell_side_water_fluxes(cell.ca, state.ca)
-        self.update_cell_side_water_fluxes(cell.an, state.an)
+        self.update_cell_side_water_fluxes(state.ca)
+        self.update_cell_side_water_fluxes(state.an)
 
 
     def _store_vapor_equilibrium_state(self, cell, state):
         """Store water fluxes and profiles after applying the vapor-equilibrium condition."""
-        cell.ca.vapor_eq_sat_membrane_water_flux = state.ca.membrane_water_flux.copy()
-        cell.ca.vapor_eq_sat_water_flux          = state.ca.water_flux.copy()
-        cell.ca.vapor_eq_sat_liquid_flux         = state.ca.liquid_flux.copy()
-        cell.ca.vapor_eq_water_content           = state.ca.cl.eq_water_content.copy()
-        state.ca.vapor_eq_water_content          = cell.ca.vapor_eq_water_content
-        cell.membrane.vapor_eq_sat_water_profile = self.water_content_profile.copy()
-        cell.membrane.vapor_eq_sat_water_derivative_profile = self.water_content_derivative_profile.copy()
+        state.ca.vapor_eq_sat_membrane_water_flux = state.ca.membrane_water_flux.copy()
+        state.ca.vapor_eq_sat_water_flux          = state.ca.water_flux.copy()
+        state.ca.vapor_eq_sat_liquid_flux         = state.ca.liquid_flux.copy()
+        state.ca.vapor_eq_water_content           = state.ca.cl.eq_water_content.copy()
+        state.membrane.vapor_eq_sat_water_profile = self.water_content_profile.copy()
+        state.membrane.vapor_eq_sat_water_derivative_profile = self.water_content_derivative_profile.copy()
 
     def _apply_liquid_equilibrium_condition(self, cell, state):
         """Impose liquid-equilibrium water content at liquid-equilibrated cathode locations."""
@@ -496,26 +469,25 @@ class MembraneWaterBalanceModel:
             state.membrane.peclet_number / state.ca.biot_number / 100,
             state.ca.peclet_over_modified_biot,
         )
-        cell.ca.peclet_over_modified_biot = state.ca.peclet_over_modified_biot
+        
         state.ca.estimated_water_content = np.where(
             mask,
             self.liquid_equilibrium_saturation_water_content,
             state.ca.estimated_water_content,
         )
-        cell.ca.estimated_water_content = state.ca.estimated_water_content
+
         self.update_water_profile(state)
         self.update_water_fluxes(cell, state, dynamic=False)
         self.update_water_contents(cell, state)
 
     def _store_liquid_equilibrium_state(self, cell, state):
         """Store water fluxes and profiles after applying the liquid-equilibrium condition."""
-        cell.ca.liquid_eq_sat_membrane_water_flux = state.ca.membrane_water_flux.copy()
-        cell.ca.liquid_eq_sat_water_flux          = state.ca.water_flux.copy()
-        cell.ca.liquid_eq_sat_liquid_flux         = state.ca.liquid_flux.copy()
-        cell.ca.liquid_eq_water_content           = state.ca.cl.eq_water_content.copy()
-        state.ca.liquid_eq_water_content          = cell.ca.liquid_eq_water_content
-        cell.membrane.liquid_eq_sat_water_profile = self.water_content_profile.copy()
-        cell.membrane.liquid_eq_sat_water_derivative_profile = self.water_content_derivative_profile.copy()
+        state.ca.liquid_eq_sat_membrane_water_flux = state.ca.membrane_water_flux.copy()
+        state.ca.liquid_eq_sat_water_flux          = state.ca.water_flux.copy()
+        state.ca.liquid_eq_sat_liquid_flux         = state.ca.liquid_flux.copy()
+        state.ca.liquid_eq_water_content           = state.ca.cl.eq_water_content.copy()
+        state.membrane.liquid_eq_sat_water_profile = self.water_content_profile.copy()
+        state.membrane.liquid_eq_sat_water_derivative_profile = self.water_content_derivative_profile.copy()
 
     def _compute_non_wetting_saturation(self, cell, state, n_iter=5):
         """Estimate non-wetting saturation at liquid-equilibrated cathode locations."""
@@ -545,9 +517,9 @@ class MembraneWaterBalanceModel:
         )[liquid_equilibrated_mask]
 
         membrane_flux_difference = (
-            cathode.vapor_eq_sat_membrane_water_flux - cathode.liquid_eq_sat_membrane_water_flux
+            state.ca.vapor_eq_sat_membrane_water_flux - state.ca.liquid_eq_sat_membrane_water_flux
         )[liquid_equilibrated_mask]
-        vapor_eq_liquid_flux = cathode.vapor_eq_sat_liquid_flux[liquid_equilibrated_mask]
+        vapor_eq_liquid_flux = state.ca.vapor_eq_sat_liquid_flux[liquid_equilibrated_mask]
 
         return modified_abs_permeability, membrane_flux_difference, vapor_eq_liquid_flux, combined_flux_exponent
 
@@ -673,40 +645,34 @@ class MembraneWaterBalanceModel:
                 )
         return np.array(dsdt)
 
-    def _blend_equilibrium_profiles(self, cell, state):
+    def _blend_equilibrium_profiles(self, state):
         """Linearly interpolate water content profiles between vapor- and liquid-equilibrium states."""
         liquid_saturation = state.ca.cl.liquid_saturation
         self.water_content_profile = (
-            cell.membrane.vapor_eq_sat_water_profile * (1 - liquid_saturation)
-            + cell.membrane.liquid_eq_sat_water_profile * liquid_saturation
+            state.membrane.vapor_eq_sat_water_profile * (1 - liquid_saturation)
+            + state.membrane.liquid_eq_sat_water_profile * liquid_saturation
         )
         self.water_content_derivative_profile = (
-            cell.membrane.vapor_eq_sat_water_derivative_profile * (1 - liquid_saturation)
-            + cell.membrane.liquid_eq_sat_water_derivative_profile * liquid_saturation
+            state.membrane.vapor_eq_sat_water_derivative_profile * (1 - liquid_saturation)
+            + state.membrane.liquid_eq_sat_water_derivative_profile * liquid_saturation
         )
         state.ca.cl.eq_water_content = (
             state.ca.vapor_eq_water_content * (1 - liquid_saturation)
             + state.ca.liquid_eq_water_content * liquid_saturation
         )
-        cell.ca.cl.eq_water_content = state.ca.cl.eq_water_content
         state.membrane.water_content = np.mean(self.water_content_profile, axis=0)
-        cell.membrane.water_content = state.membrane.water_content
 
-    def _update_blended_fluxes(self, cell, state):
+    def _update_blended_fluxes(self, state):
         """Update membrane and total water fluxes using the blended non-wetting saturation."""
         membrane_flux_difference = (
-            cell.ca.vapor_eq_sat_membrane_water_flux - cell.ca.liquid_eq_sat_membrane_water_flux
+            state.ca.vapor_eq_sat_membrane_water_flux - state.ca.liquid_eq_sat_membrane_water_flux
         )
-        non_wetting_saturation = state.ca.cl.non_wetting_saturation
 
         state.ca.membrane_water_flux = (
-            cell.ca.vapor_eq_sat_membrane_water_flux
-            - membrane_flux_difference * non_wetting_saturation
+            state.ca.vapor_eq_sat_membrane_water_flux
+            - membrane_flux_difference * state.ca.cl.non_wetting_saturation
         )
         state.an.membrane_water_flux = -state.ca.membrane_water_flux
         state.ca.water_flux = state.ca.h2o_production + state.ca.membrane_water_flux
         state.an.water_flux = state.an.h2o_production + state.an.membrane_water_flux
-        cell.ca.membrane_water_flux = state.ca.membrane_water_flux
-        cell.an.membrane_water_flux = state.an.membrane_water_flux
-        cell.ca.water_flux = state.ca.water_flux
-        cell.an.water_flux = state.an.water_flux
+     
