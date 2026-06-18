@@ -19,6 +19,11 @@ main use cases:
      - Fit kinetic parameters (exchange current density, charge-transfer
        coefficient) to synthetic polarization-curve data using
        ``SteadyStateModel`` and differential evolution.
+   * - ``03_quasi_steady_simulation_monocell.ipynb``
+     - Load a real test-bench time-series log, replay each sample through the
+       steady-state model using the logged temperatures, pressures, relative
+       humidities and stoichiometries, and compare simulated vs. measured cell
+       voltage over time.
 
 Running the notebooks
 ---------------------

@@ -19,11 +19,11 @@ marapendi is organized into subpackages under ``src/marapendi/``:
     │   ├── gas_transport.py        # GasTransportModel
     │   └── water_balance.py        # MembraneWaterBalanceModel
     ├── membrane/          # Membrane and ionomer materials
-    │   ├── ionomer.py              # Ionomer (base class)
+    │   ├── ionomer_base.py         # Ionomer (abstract base class)
     │   ├── pem.py                  # PFSAIonomer, PFSA, NafionD2020
     │   ├── aem.py                  # PAPIonomer, AEM, PAP85
-    │   ├── membrane.py             # Membrane (base, composes Ionomer)
-    │   └── membrane_permeation_models.py  # HydrogenPermeationModel
+    │   ├── membrane_base.py        # Membrane (composes an Ionomer instance)
+    │   └── permeation.py           # HydrogenPermeationModel
     ├── porous_layers/     # Porous transport layers and catalyst layers
     │   ├── porous_layers.py        # PorousLayer, GasDiffusionLayer, MicroPorousLayer
     │   ├── catalyst_layers.py      # CatalystLayer, PtCCatalystLayer, PorousTransferLayer
@@ -104,7 +104,7 @@ membrane/
 
 Ionomer and membrane material models.
 
-``ionomer.py`` defines the abstract :class:`~marapendi.membrane.ionomer.Ionomer`
+``ionomer_base.py`` defines the abstract :class:`~marapendi.membrane.ionomer_base.Ionomer`
 base class with water-transport correlations (diffusivity, absorption,
 electroosmotic drag) and charge-conductivity dispatch.  ``pem.py`` provides
 :class:`~marapendi.membrane.pem.PFSAIonomer` (Nafion-family ionomer) and
@@ -112,15 +112,16 @@ electroosmotic drag) and charge-conductivity dispatch.  ``pem.py`` provides
 :class:`~marapendi.membrane.aem.PAPIonomer`, :class:`~marapendi.membrane.aem.AEM`,
 and :class:`~marapendi.membrane.aem.PAP85`.
 
-``membrane.py`` defines :class:`~marapendi.membrane.Membrane`, which **composes**
-an :class:`~marapendi.membrane.ionomer.Ionomer` instance (``membrane.ionomer``)
-rather than inheriting from it.  Geometry (dry thickness) and optional permeation
-models are fields on :class:`~marapendi.membrane.Membrane`; ionomer transport
-correlations are delegated — ``membrane.calculate_water_diffusivity(T)`` forwards
-to ``membrane.ionomer.calculate_water_diffusivity(T)``, and so on.  The
-water-balance model (:class:`~marapendi.cell.water_balance.MembraneWaterBalanceModel`)
-lives on :class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel`,
-not on the membrane itself.
+``membrane_base.py`` defines :class:`~marapendi.membrane.membrane_base.Membrane`,
+which **composes** an :class:`~marapendi.membrane.ionomer_base.Ionomer` instance
+(``membrane.ionomer``) rather than inheriting from it.  Geometry (dry thickness)
+and optional permeation models are fields on
+:class:`~marapendi.membrane.membrane_base.Membrane`; ionomer transport correlations
+are delegated — ``membrane.calculate_water_diffusivity(T)`` forwards to
+``membrane.ionomer.calculate_water_diffusivity(T)``, and so on.  The water-balance
+model (:class:`~marapendi.cell.water_balance.MembraneWaterBalanceModel`) lives on
+:class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel`, not on
+the membrane itself.
 
 porous_layers/
 ~~~~~~~~~~~~~~

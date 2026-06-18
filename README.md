@@ -115,11 +115,11 @@ src/marapendi/
 │   ├── gas_transport.py        # GasTransportModel
 │   └── water_balance.py        # MembraneWaterBalanceModel
 ├── membrane/      # Membrane and ionomer materials
-│   ├── ionomer.py              # Ionomer (base class)
+│   ├── ionomer_base.py         # Ionomer (abstract base class)
 │   ├── pem.py                  # PFSAIonomer, PFSA, NafionD2020
 │   ├── aem.py                  # PAPIonomer, AEM, PAP85
-│   ├── membrane.py             # Membrane (composes Ionomer)
-│   └── membrane_permeation_models.py  # HydrogenPermeationModel
+│   ├── membrane_base.py        # Membrane (composes an Ionomer instance)
+│   └── permeation.py           # HydrogenPermeationModel
 ├── porous_layers/ # GasDiffusionLayer, MicroPorousLayer, CatalystLayer, …
 ├── channel/       # FlowChannel, ChannelGasResistanceModel, BakerChannelGasResistanceModel
 ├── thermo/        # GasState, GasModel, water properties, constants
@@ -135,6 +135,7 @@ src/marapendi/
 |---|---|
 | `notebooks/01_polarization_curve.ipynb` | Simulate a polarization curve, plot V–i and HFR |
 | `notebooks/02_parameter_estimation.ipynb` | Fit kinetic parameters to data |
+| `notebooks/03_quasi_steady_simulation_monocell.ipynb` | Replay a test-bench log sample-by-sample; compare simulated and measured cell voltage over time |
 
 ## Running the tests
 
