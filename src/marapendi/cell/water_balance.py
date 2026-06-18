@@ -536,11 +536,11 @@ class MembraneWaterBalanceModel:
             + cl_J_function_exponent
         )
         cl_to_gdl_capillary_pressure_ratio = (
-            cathode.cl.capillary_pressure_J_ratio / cathode.gdl.capillary_pressure_J_ratio
+            state.ca.cl.breakthrough_pressure / state.ca.gdl.breakthrough_pressure
         )
         modified_abs_permeability = (
             np.ones_like(state.current_density)
-            * 1. / cathode.gdl.saturation_flow_resistance
+            * 1. / state.ca.gdl.saturation_flow_resistance
             * gdl_J_function_exponent / (gdl_permeability_exponent + gdl_J_function_exponent)
             * cl_to_gdl_capillary_pressure_ratio ** (gdl_permeability_exponent / gdl_J_function_exponent + 1)
         )[liquid_equilibrated_mask]
@@ -632,7 +632,7 @@ class MembraneWaterBalanceModel:
             for layer in side.porous_layers:
                 layer.flow_resistance_with_rel_permeability = (
                     layer.saturation_flow_resistance
-                    * layer.capillary_pressure_J_ratio
+                    * layer.breakthrough_pressure
                     / np.maximum(layer.non_wetting_saturation, 1e-1)
                     ** (layer.relative_permeability_exponent + 2)
                 )

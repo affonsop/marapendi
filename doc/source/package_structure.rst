@@ -63,10 +63,13 @@ delegates the full solve to
 
 **GasState / GasModel**
 
-:class:`~marapendi.thermo.gas.GasState` stores only the mole-fraction array ``X``
-for the four species (O₂, N₂, H₂, H₂O).  Temperature and pressure live on the
-surrounding :class:`~marapendi.cell.state.LayerState` or
-:class:`~marapendi.cell.state.FlowChannelState`.
+:class:`~marapendi.cell.state.GasState` stores only the mole-fraction array ``X``
+for the four species (O₂, N₂, H₂, H₂O).  Temperature, pressure, and
+capillary quantities (``RT``, ``breakthrough_pressure``,
+``saturation_flow_resistance``) live on the surrounding
+:class:`~marapendi.cell.state.LayerState` or
+:class:`~marapendi.cell.state.FlowChannelState`, and are populated by
+:meth:`~marapendi.porous_layers.PorousLayer.update_state_at_temperature`.
 
 :class:`~marapendi.thermo.gas.GasModel` provides pure static methods that take a
 ``state`` object (anything with ``.gas``, ``.temperature``, ``.pressure``):
@@ -109,7 +112,9 @@ porous_layers/
 ~~~~~~~~~~~~~~
 
 Porous transport layers: GDL, MPL, and catalyst layers.
-``darcy.py`` implements the capillary two-phase transport model;
+``darcy.py`` implements the capillary two-phase transport model using
+``breakthrough_pressure`` (σ·cos θ / √(K/ε)) and ``saturation_flow_resistance``
+from the layer state;
 ``diffusion.py`` implements Bruggeman/Knudsen gas diffusion.
 
 estimation/

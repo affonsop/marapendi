@@ -46,6 +46,10 @@ class LayerState:
     liquid_saturation: float = 0.
     non_wetting_saturation: float = 0.
     capillary_pressure: float = None
+    # Temperature-derived capillary quantities (set by PorousLayer.update_state_at_temperature)
+    RT: float = None
+    breakthrough_pressure: float = None
+    saturation_flow_resistance: float = None
     # Two-phase transport state (set by water saturation model)
     non_wetting_flux: float = None
     downstream_saturation: float = None

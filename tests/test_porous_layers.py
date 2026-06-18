@@ -48,8 +48,8 @@ class TestPorousLayerGeometry:
         expected = gdl.thickness / gdl.thermal_conductivity
         assert np.isclose(gdl.thermal_resistance, expected)
 
-    def test_capillary_pressure_j_ratio_positive(self, gdl):
-        assert gdl.capillary_pressure_J_ratio > 0
+    def test_breakthrough_pressure_positive(self, gdl):
+        assert gdl.breakthrough_pressure > 0
 
     def test_saturation_flow_resistance_positive(self, gdl):
         assert gdl.saturation_flow_resistance > 0

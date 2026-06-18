@@ -80,19 +80,25 @@ class ThermalModel:
         ) / cell.mea_surface_heat_capacity
 
     def set_mea_temperature(self, mea_temperature: float, cell, state) -> None:
-        """Write the MEA temperature onto *state* and the catalyst-layer components of *cell*."""
+        """Write the MEA temperature onto *state* and the catalyst-layer components of *cell*.
+
+        Also recomputes ``RT``, ``breakthrough_pressure``, and
+        ``saturation_flow_resistance`` on the CL layer states at the MEA
+        temperature via :meth:`~marapendi.porous_layers.PorousLayer.update_state_at_temperature`.
+        """
         state.mea_temperature = mea_temperature
         state.mea_temperature_increase = mea_temperature - state.temperature
         state.mea_water_molar_volume = water_molar_volume(mea_temperature)
-        # Compute saturation pressure once and store on each state layer.
         mea_saturation_pressure = water_saturation_pressure(mea_temperature)
-        for layer in (state.membrane, state.ca.cl, state.an.cl):
-            layer.temperature = mea_temperature
-            layer.saturation_pressure = mea_saturation_pressure
-        # Sync temperature and the precomputed saturation pressure to component CLs
-        # so legacy water-balance code reading from the component tree is correct.
-        for cl in (cell.ca.cl, cell.an.cl):
-            cl.temperature = mea_temperature
-            cl.saturation_pressure = mea_saturation_pressure
+
+        state.membrane.temperature = mea_temperature
+        state.membrane.saturation_pressure = mea_saturation_pressure
         cell.membrane.temperature = mea_temperature
+
+        for cl_comp, cl_state in zip((cell.ca.cl, cell.an.cl), (state.ca.cl, state.an.cl)):
+            cl_comp.temperature = mea_temperature
+            cl_comp.saturation_pressure = mea_saturation_pressure
+            cl_comp.update_state_at_temperature(cl_state, mea_temperature)
+            cl_state.saturation_pressure = mea_saturation_pressure
+
         cell.mea_water_molar_volume = water_molar_volume(mea_temperature)

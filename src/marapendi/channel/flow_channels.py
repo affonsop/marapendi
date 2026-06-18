@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from ..thermo.constants import GAS_CONSTANT
 from ..porous_layers.porous_layers import PorousLayer
 from .gas_transport_resistance import ChannelGasResistanceModel  # noqa: F401
 
@@ -49,7 +48,6 @@ class FlowChannel(PorousLayer):
     transport_resistance_model: ChannelGasResistanceModel = field(default_factory=ChannelGasResistanceModel)
 
     def __post_init__(self):
-        self.RT = GAS_CONSTANT * self.temperature
         self.hydraulic_diameter = 2 * self.width * self.height / (self.width + self.height)
         self.channel_flow_section = self.width * self.height
         self.half_width = 0.5 * self.width

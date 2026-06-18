@@ -105,7 +105,7 @@ class ExplicitSteadyStateModel:
         for side, side_state in zip(cell.sides, state.sides):
             for component, component_state in zip(side.layers, side_state.layers):
                 component.electrolyte = side.electrolyte
-                component.set_temperature(stack_temperature)
+                component.update_state_at_temperature(component_state, stack_temperature)
                 if component.contact_angle < 90:
                     component_state.non_wetting_saturation = (
                         1 - side.ch.inlet_liquid_saturation * np.ones_like(current_density)
