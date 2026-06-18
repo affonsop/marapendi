@@ -36,12 +36,10 @@ class VoltageModel:
         )
 
     def activation_overpotential(self, cell, state, theta_PtO: float = 0) -> float:
-        h2_pp = GasModel.species_partial_pressure(state.an.cl, 'h2')
         state.membrane.h2_permeation_flux = cell.membrane.hydrogen_permeation_flux(
-            h2_pp,
+            GasModel.species_partial_pressure(state.an.cl, 'h2'),
             state.membrane.temperature,
-            state.an.cl.pressure - state.ca.cl.pressure,
-            cell.membrane.water_vol_fraction(state.membrane.water_content, state.mea_water_molar_volume),
+            state.membrane.water_content,
         )
         state.crossover_current = state.membrane.h2_permeation_flux * (2 * FARADAY_CONSTANT)
         omega_PtO_voltage_drop = (

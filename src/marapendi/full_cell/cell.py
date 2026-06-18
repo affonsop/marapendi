@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 
 from ..porous_layers.catalyst_layers import CatalystLayer, PtCCatalystLayer
 from ..channel.flow_channels import FlowChannel
-from ..membrane.membrane import Membrane, PFSA
+from ..membrane.membrane_base import Membrane, PFSA
 from ..porous_layers.porous_layers import GasDiffusionLayer, MicroPorousLayer
 
 

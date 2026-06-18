@@ -3,7 +3,7 @@ from .thermo.water import *
 from .tools import *
 from .cell.fuelcell import *
 from .cell.aem_electrolyzer import *
-from .membrane.membrane import *
+from .membrane.membrane_base import *
 from .channel.flow_channels import *
 from .channel.gas_transport_resistance import *
 from .porous_layers.porous_layers import *
@@ -11,11 +11,11 @@ from .porous_layers.darcy import *
 from .porous_layers.diffusion import *
 from .estimation.estimation import *
 from .electrolyte.electrolyte import *
-from .membrane.ionomer import *
+from .membrane.ionomer_base import *
 from .membrane.pem import *
 from .membrane.aem import *
 from .cell.water_balance import *
-from .membrane.membrane_permeation_models import *
+from .membrane.permeation import *
 from .porous_layers.catalyst_layers import *
 from .degradation.degradation import *
 from .simulation.load_cycles import *

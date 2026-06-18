@@ -79,8 +79,8 @@ cell = mrpd.FuelCell(
         has_mpl=False, thermal_contact_resistance=4e-4,
     ),
     membrane=mrpd.PFSA(
-        equivalent_weight=1100, dry_density=1980, dry_thickness=25e-6,
-        water_balance_model=mrpd.MembraneWaterBalanceModel(),
+        ionomer=mrpd.PFSAIonomer(equivalent_weight=1100, dry_density=1980),
+        dry_thickness=25e-6,
     ),
     use_eq_water_content_for_ionomer=True,
 )
@@ -116,9 +116,10 @@ src/marapendi/
 │   └── water_balance.py        # MembraneWaterBalanceModel
 ├── membrane/      # Membrane and ionomer materials
 │   ├── ionomer.py              # Ionomer (base class)
-│   ├── pem.py                  # PFSAIonomer, NafionD2020
-│   ├── aem.py                  # PAPIonomer
-│   └── membrane.py             # Membrane, PFSA, AEM, PAP85, …
+│   ├── pem.py                  # PFSAIonomer, PFSA, NafionD2020
+│   ├── aem.py                  # PAPIonomer, AEM, PAP85
+│   ├── membrane.py             # Membrane (composes Ionomer)
+│   └── membrane_permeation_models.py  # HydrogenPermeationModel
 ├── porous_layers/ # GasDiffusionLayer, MicroPorousLayer, CatalystLayer, …
 ├── channel/       # FlowChannel, ChannelGasResistanceModel, BakerChannelGasResistanceModel
 ├── thermo/        # GasState, GasModel, water properties, constants

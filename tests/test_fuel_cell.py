@@ -75,10 +75,8 @@ def _make_cell():
             thermal_contact_resistance=4e-4,
         ),
         membrane=mrpd.PFSA(
-            equivalent_weight=1100,
-            dry_density=1980,
+            ionomer=mrpd.PFSAIonomer(equivalent_weight=1100, dry_density=1980),
             dry_thickness=25e-6,
-            water_balance_model=mrpd.MembraneWaterBalanceModel(),
         ),
         use_eq_water_content_for_ionomer=True,
     )

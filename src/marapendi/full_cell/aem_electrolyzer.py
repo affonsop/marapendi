@@ -228,7 +228,7 @@ class ElectrolyzerCell(FuelCell):
                         side.gas_flux = side.gas_production / (1 - GasModel.saturation_concentration(side.cl) / GasModel.concentration(side.cl))
                         side.calculate_water_saturation()
                         
-                self.membrane.water_balance_model.solve_water_balance(cell=self)
+                self._model.water_balance_model.solve_water_balance(cell=self)
                 print('xxxx', self.an.water_flux[i])
                 return self.ca.membrane_water_flux[i] - cathode_membrane_water_flux
           

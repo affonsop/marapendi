@@ -19,7 +19,7 @@ import numpy as np
 from ..thermo.constants import GAS_CONSTANT
 
 from ..thermo.electrochemistry import ElectrochemicalReaction 
-from ..membrane.ionomer import Ionomer
+from ..membrane.ionomer_base import Ionomer
 from ..membrane.pem import PFSAIonomer
 from .porous_layers import PorousLayer
 from ..thermo.water import o2_water_diffusivity 

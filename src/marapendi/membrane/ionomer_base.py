@@ -1,18 +1,24 @@
 """
 Ionomer material properties and correlations.
 
-:class:`Ionomer` holds the dry material properties of an ion-exchange
-polymer (equivalent weight, density, water-transport correlations) and
-the correlation methods that depend only on those properties together
-with ``water_content``/``temperature``.
-:class:`~marapendi.membrane.Membrane` inherits from it and adds
-membrane-specific geometry (thickness, hydrogen permeation, ...).
+:class:`Ionomer` is the base class for ion-exchange polymer models.  It
+holds dry material properties (equivalent weight, density) and Arrhenius
+correlations for water diffusivity, water absorption, and electroosmotic
+drag.
 
-:class:`PFSAIonomer` and :class:`PAPIonomer` are concrete
-:class:`Ionomer` specializations with charge-transport correlations
-used by catalyst layers.  A :class:`~marapendi.catalyst_layers.CatalystLayer`
-holds an ``ionomer: Ionomer`` field directly — no separate
-``CatalystLayerIonomer`` subclass is required.
+:class:`~marapendi.membrane.Membrane` *composes* an ``ionomer`` instance
+rather than inheriting from :class:`Ionomer`.  Membrane-level geometry
+(dry thickness, H₂ permeation) and water-balance models sit on
+:class:`~marapendi.membrane.Membrane`; ionomer correlations are accessed
+via ``membrane.ionomer.<method>``, or through thin delegation helpers
+defined on :class:`~marapendi.membrane.Membrane`.
+
+:class:`~marapendi.membrane.pem.PFSAIonomer` and
+:class:`~marapendi.membrane.aem.PAPIonomer` are concrete subclasses with
+charge-transport correlations used by both membranes and catalyst layers.
+A :class:`~marapendi.porous_layers.CatalystLayer` holds an
+``ionomer: Ionomer`` field directly — no separate ``CatalystLayerIonomer``
+subclass is required.
 """
 from __future__ import annotations
 
@@ -44,14 +50,22 @@ class Ionomer:
         Activation energies for water diffusivity / absorption (J/kmol).
     """
 
-    equivalent_weight: float = 1.1e3
-    dry_density: float = 1980.
-
-    reference_water_diffusivity: float = 4.3e-10
-    reference_absorption_coefficient: float = 1e-5
-    reference_temperature: float = 353.15
-    water_diffusivity_activation_energy: float = 20e6
-    water_absorption_activation_energy: float = 20e6
+    equivalent_weight: float 
+    dry_density: float
+    vapor_equilibrium_polynomial: np.ndarray
+    reference_conductivity: float
+    reference_water_diffusivity: float
+    reference_water_absorption_coefficient: float  
+    conductivity_exp: float
+    conductivity_fv_threshold: float
+    hydrated_proton_conductivity: float
+    conductivity_activation_energy: float
+    water_diffusivity_activation_energy: float
+    water_absorption_activation_energy: float
+    reference_conductivity_temperature: float
+    reference_water_absorption_temperature: float
+    reference_water_diffusivity_temperature: float
+    
 
     def __post_init__(self):
         self.dry_concentration = self.dry_density / self.equivalent_weight  # kmol/m^3
@@ -78,18 +92,18 @@ class Ionomer:
     def calculate_water_diffusivity(self, temperature: float) -> float:
         """Adsorbed water diffusivity (m^2/s) at ``temperature``."""
         return self.reference_water_diffusivity * arrhenius_term(
-            self.water_diffusivity_activation_energy, temperature, self.reference_temperature,
+            self.water_diffusivity_activation_energy, temperature, self.reference_water_diffusivity_temperature,
         )
 
     def calculate_water_absorption_coefficient(self, temperature: float) -> float:
         """Water absorption coefficient (m/s) at ``temperature``."""
-        return self.reference_absorption_coefficient * arrhenius_term(
-            self.water_absorption_activation_energy, temperature, self.reference_temperature,
+        return self.reference_water_absorption_coefficient * arrhenius_term(
+            self.water_absorption_activation_energy, temperature, self.reference_water_absorption_temperature,
         )
 
     def calculate_electroosmotic_drag_coefficient(self, temperature: float, water_content: float) -> float:
         """Electroosmotic drag coefficient (n.d.) for a given ``water_content``."""
-        return (0.02 * temperature - 3.86) / 22.5 * water_content
+        return 1.
 
     def calculate_electroosmotic_drag_speed(self, temperature: float, current_density: float) -> float:
         """Electroosmotic drag speed (m/s) for a given ``current_density`` (A/m^2)."""
@@ -97,9 +111,6 @@ class Ionomer:
             self.calculate_electroosmotic_drag_coefficient(temperature, 1)
             * current_density / FARADAY_CONSTANT / self.dry_concentration
         )
-
-    def tortuosity(self, volume_fraction: float) -> float:
-        return volume_fraction ** (-0.5)
 
     def charge_conductivity(self, water_content: float, temperature: float, charge: str = 'proton') -> float:
         """Charge conductivity (proton or hydroxide), in S/m.

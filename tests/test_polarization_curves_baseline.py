@@ -155,22 +155,20 @@ def create_fuel_cell(params: dict) -> mrpd.FuelCell:
             ) / 1000 * 100 / 1e5 * partial_pressure_h2 / membrane_thickness
 
     memb = mrpd.PFSA(
-        equivalent_weight=params['memb-equiv-weight'],
-        dry_density=2000.,
+        ionomer=mrpd.PFSAIonomer(
+            equivalent_weight=params['memb-equiv-weight'],
+            dry_density=2000.,
+            conductivity_exp=params['memb-cond-exp'],
+            conductivity_activation_energy=params['memb-E-act-cond'],
+            conductivity_correction=params['memb-cond-correction'],
+            reference_water_diffusivity=params['memb-water-diff'],
+            reference_water_absorption_coefficient=params['memb-abs-constant'],
+            water_diffusivity_activation_energy=params['E-act-memb-diff'],
+            water_absorption_activation_energy=params['E-act-memb-abs'],
+        ),
         dry_thickness=params['memb-thickness'],
-        conductivity_exp=params['memb-cond-exp'],
-        conductivity_activation_energy=params['memb-E-act-cond'],
-        conductivity_correction=params['memb-cond-correction'],
-        reference_water_diffusivity=params['memb-water-diff'],
-        reference_absorption_coefficient=params['memb-abs-constant'],
-        water_diffusivity_activation_energy=params['E-act-memb-diff'],
-        water_absorption_activation_energy=params['E-act-memb-abs'],
         h2_permeation_model=NewPermModel(
             permeability_correction_factor=params['ix-corr']),
-        water_balance_model=mrpd.MembraneWaterBalanceModel(
-            eod_parallel_to_sorption=params['eod-parallel'],
-            sorption_activity_driving_force=params['sorption-driving-force'],
-        ),
     )
 
     orr_kinetics = mrpd.ElectrochemicalReaction(

@@ -22,7 +22,7 @@ import numpy as np
 from ..porous_layers.porous_layers import PorousLayer
 from ..porous_layers.catalyst_layers import PtCCatalystLayer
 from ..channel.flow_channels import FlowChannel
-from ..membrane.membrane import Membrane
+from ..membrane.membrane_base import Membrane
 from .cell import Cell, CellSide
 from ..cell.voltage import VoltageModel
 from ..cell.thermal import ThermalModel
@@ -143,7 +143,6 @@ class FuelCell(Cell):
         self._model = ExplicitSteadyStateModel(
             self._voltage_model,
             self._thermal_model,
-            self.membrane.water_balance_model,
         )
         self._gas_transport_model = self._model.gas_transport_model
         self.state = CellState()

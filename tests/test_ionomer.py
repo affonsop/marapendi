@@ -37,8 +37,8 @@ class TestIonomerBase:
 
 class TestPFSAIonomer:
     def test_equilibrium_water_content_increases_with_rh(self, pfsa):
-        wc_low = pfsa.equilibrium_water_content(0.3)
-        wc_high = pfsa.equilibrium_water_content(0.9)
+        wc_low = pfsa.vapor_equilibrium_water_content(0.3, 353.15)
+        wc_high = pfsa.vapor_equilibrium_water_content(0.9, 353.15)
         assert wc_high > wc_low
 
     def test_proton_conductivity_positive(self, pfsa):

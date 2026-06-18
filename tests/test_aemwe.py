@@ -68,7 +68,6 @@ def anode():
 def membrane():
     return mrpd.PAP85(
         dry_thickness=80e-6,
-        water_balance_model=mrpd.MembraneWaterBalanceModel(),
     )
 
 

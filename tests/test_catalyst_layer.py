@@ -12,8 +12,9 @@ def cl():
                             ionomer_to_carbon_ratio=0.75, 
                             catalyst_platinum_weight_percent=0.3,
                             carbon_agglomerate_radius=25e-9, 
-                            ionomer=mrpd.PFSAIonomer(dry_density=2004, equivalent_weight=952, 
-                                                                 conductivity_correction=1.3, conductivity_exp=1.5),
+                            ionomer=mrpd.PFSAIonomer(dry_density=2004, equivalent_weight=952,
+                                                                 conductivity_correction=1.3, conductivity_exp=1.5,
+                                                                 vapor_equilibrium_polynomial=[21.669, -27.692, 17.624, 0.688]),
                             reaction = mrpd.ElectrochemicalReaction(reference_exchange_current_density=2.47e-8 * 3e11 * 10e-6,
                                                                 activation_energy=67e6,
                                                                 reaction_order=0.54,
@@ -73,9 +74,9 @@ def test_ionomer_proton_conductivity(cl):
         plt.plot(relative_humidity[k], cl.ionomer_sheet_charge_resistance(ionomer_water_content[k], temperature=298.15),'C0o')
         plt.semilogy(relative_humidity[k], proton_resistance[k],'C0s')
     #plt.show()
-    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.equilibrium_water_content(0.97), temperature=298.15),  5.6, 30e-2)
-    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.equilibrium_water_content(0.81), temperature=298.15),  3.7, 30e-2)
-    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.equilibrium_water_content(0.60), temperature=298.15),  1.91, 30e-2)
+    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.vapor_equilibrium_water_content(0.97, 298.15), temperature=298.15),  5.6, 30e-2)
+    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.vapor_equilibrium_water_content(0.81, 298.15), temperature=298.15),  3.7, 30e-2)
+    assert np.isclose(cl.ionomer.proton_conductivity(cl.ionomer.vapor_equilibrium_water_content(0.60, 298.15), temperature=298.15),  1.91, 30e-2)
     
 # ## RH vs sigma_p ionomer at 298.15 K, Jinnouchi et al. (2021), sup materialx
 # 0,9662698412698414; 5,633142670601358
