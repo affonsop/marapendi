@@ -58,15 +58,7 @@ class FuelCellSide(CellSide):
     thermal_contact_resistance : float
         Additional thermal contact resistance at interfaces.
     """
-
-    cl: PorousLayer = field(default_factory=PtCCatalystLayer)
-    gdl: PorousLayer = field(default_factory=PorousLayer)
-    mpl: PorousLayer = field(default_factory=PorousLayer)
-    ch: FlowChannel = field(default_factory=FlowChannel)
-    has_mpl: bool = False
-    has_gdl: bool = True
     is_wet: bool = False
-    thermal_contact_resistance: float = 0
 
     def __post_init__(self):
         pass
