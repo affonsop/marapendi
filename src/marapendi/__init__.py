@@ -5,6 +5,7 @@ from .cell.fuelcell import *
 from .cell.aem_electrolyzer import *
 from .membrane.membrane import *
 from .channel.flow_channels import *
+from .channel.gas_transport_resistance import *
 from .porous_layers.porous_layers import *
 from .porous_layers.darcy import *
 from .porous_layers.diffusion import *

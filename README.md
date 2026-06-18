@@ -120,7 +120,7 @@ src/marapendi/
 │   ├── aem.py                  # PAPIonomer
 │   └── membrane.py             # Membrane, PFSA, AEM, PAP85, …
 ├── porous_layers/ # GasDiffusionLayer, MicroPorousLayer, CatalystLayer, …
-├── channel/       # FlowChannel
+├── channel/       # FlowChannel, ChannelGasResistanceModel, BakerChannelGasResistanceModel
 ├── thermo/        # GasState, GasModel, water properties, constants
 ├── electrolyte/   # ElectrolyteSolution, KOHSolution
 ├── degradation/   # PtDissolution, PlatinumOxideFormation

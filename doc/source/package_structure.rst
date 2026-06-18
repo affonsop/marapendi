@@ -29,9 +29,9 @@ marapendi is organized into subpackages under ``src/marapendi/``:
     │   ├── catalyst_layers.py      # CatalystLayer, PtCCatalystLayer, PorousTransferLayer
     │   ├── darcy.py                # DarcyTransportModel
     │   └── diffusion.py            # PorousGasResistanceModel
-    ├── channel/           # Flow channels
-    │   └── flow_channels.py        # FlowChannel
-    │   └── baker.py                # BakerChannelGasResistanceModel
+    ├── channel/           # Flow channels and channel transport models
+    │   ├── flow_channels.py        # FlowChannel
+    │   └── gas_transport_resistance.py  # ChannelGasResistanceModel, BakerChannelGasResistanceModel
     ├── thermo/            # Thermodynamic properties and constants
     │   ├── constants.py            # Physical constants (FARADAY_CONSTANT, …)
     │   ├── electrochemistry.py     # ElectrochemicalReaction, calculate_reversible_cell_voltage
