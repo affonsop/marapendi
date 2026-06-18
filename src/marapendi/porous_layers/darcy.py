@@ -54,33 +54,26 @@ class DarcyTransportModel:
         """
         return (non_wetting_saturation ** self.J_function_exponent) * layer.capillary_pressure_J_ratio
 
-    def calculate_non_wetting_saturation(self, layer, non_wetting_flux, upstream_capillary_pressure=0, mask=None): 
+    def calculate_non_wetting_saturation(self, layer, layer_state, upstream_capillary_pressure=0, mask=None):
         """
-        Calculate the non-wetting saturation distribution across the porous layer due to non-wetting phase flux.
+        Calculate the non-wetting saturation distribution across the porous layer.
 
         Parameters
         ----------
         layer : PorousLayer
-            Porous layer being analyzed.
-        non_wetting_flux : float
-            Non-wetting phase molar flux (kmol/m²/s).
-        upstream_capillary_pressure : float, optional
-            Capillary pressure at the upstream boundary (default is 0).
-
-        Updates
-        -------
-        layer.upstream_saturation : float
-            Saturation at upstream side of the layer.
-        layer.downstream_saturation : float
-            Saturation at downstream side of the layer.
-        layer.non_wetting_saturation : float
-            Average or effective saturation in the layer.
-        layer.downstream_capillary_pressure : float
-            Capillary pressure at the downstream side of the layer.
+            Porous layer being analyzed (provides static geometry and permeability).
+        layer_state : LayerState
+            Runtime state for this layer; reads ``non_wetting_flux`` and writes
+            ``upstream_saturation``, ``downstream_saturation``, ``non_wetting_saturation``,
+            and ``downstream_capillary_pressure``.
+        upstream_capillary_pressure : array-like, optional
+            Capillary pressure at the upstream boundary (Pa, default is 0).
+        mask : array-like of bool, optional
+            Boolean mask selecting which elements to update; all elements updated when ``None``.
         """
         
         if mask is None:
-            mask = np.ones_like(non_wetting_flux, dtype=bool)
+            mask = np.ones_like(layer_state.non_wetting_flux, dtype=bool)
 
         q = layer.relative_permeability_exponent
         n = self.J_function_exponent
@@ -91,7 +84,7 @@ class DarcyTransportModel:
             layer, upstream_capillary_pressure[mask]
         )
 
-        flux = np.maximum(0.0, non_wetting_flux[mask])
+        flux = np.maximum(0.0, layer_state.non_wetting_flux[mask])
 
         # ---- downstream saturation ----
         ds = (layer.saturation_flow_resistance * flux * (q+n)/n) ** exponent
@@ -106,13 +99,24 @@ class DarcyTransportModel:
         cp_down = self.capillary_pressure_from_saturation(layer, s_down)
 
         # ---- write back once ----
-        layer.upstream_saturation[mask] = us
-        layer.downstream_saturation[mask] = s_down
-        layer.non_wetting_saturation[mask] = s_avg
-        layer.downstream_capillary_pressure[mask] = cp_down
+        layer_state.upstream_saturation[mask] = us
+        layer_state.downstream_saturation[mask] = s_down
+        layer_state.non_wetting_saturation[mask] = s_avg
+        layer_state.downstream_capillary_pressure[mask] = cp_down
 
     def calculate_equivalent_flow_resistance(self, cell_side):
-        """Compute saturation-dependent flow resistance for each porous layer; return total."""
+        """Compute flow resistance for each porous layer on *cell_side* and return the total.
+
+        Parameters
+        ----------
+        cell_side : FuelCellSide
+            Cell side whose ``porous_layers`` list is iterated.
+
+        Returns
+        -------
+        float
+            Sum of ``equivalent_flow_resistance`` across all porous layers.
+        """
         total = 0.0
         for layer in cell_side.porous_layers:
             layer.equivalent_flow_resistance = layer.saturation_flow_resistance

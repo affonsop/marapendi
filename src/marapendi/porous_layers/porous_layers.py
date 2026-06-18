@@ -110,18 +110,7 @@ class PorousLayer():
         """
         return self.thickness / self.thermal_conductivity
 
-    # def calculate_darcy_flow_resistance(self):
-    #     self.darcy_flow_resistance = {
-    #         'water': (
-    #             (self.thickness * water_kinematic_viscosity(self.temperature) * water_molecular_weight) /
-    #             self.absolute_permeability
-    #         ),
-    #         'gas': (
-    #             (self.thickness * GasModel.mixture_kinematic_viscosity(self) * GasModel.mixture_molecular_weight(self)) /
-    #             self.absolute_permeability
-    #         )
-    #     }
-        
+
     def calculate_saturation_flow_resistance(self, electrolyte=None):
         """
         Computes the resistance to non-wetting phase flow of the layer. 

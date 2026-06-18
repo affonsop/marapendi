@@ -4,7 +4,7 @@ PEM fuel cell component: :class:`FuelCell` and :class:`FuelCellSide`.
 :class:`FuelCell` is the top-level object a user constructs to run simulations.
 It owns the complete component tree (catalyst layers, GDL/MPL, flow channels,
 membrane) and exposes a simple ``compute_ui_curve`` API that delegates physics
-to :class:`~marapendi.models.cell.explicit_steady_state.ExplicitSteadyStateModel`.
+to :class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel`.
 
 Typical usage::
 

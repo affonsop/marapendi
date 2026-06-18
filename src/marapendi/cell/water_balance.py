@@ -274,7 +274,7 @@ class MembraneWaterBalanceModel:
             self.membrane_water_net_flux[0, ...] -= state.an.membrane_water_flux
             self.membrane_water_net_flux[-1, ...] -= state.ca.membrane_water_flux
     
-    def calculate_water_saturation(self, cell_side, side_state) -> None:
+    def calculate_water_saturation(self, cell_side, side_state, calculate_cl_saturation=True) -> None:
         """Compute and update water saturation in each porous layer.
 
         Parameters
@@ -284,51 +284,49 @@ class MembraneWaterBalanceModel:
             two-phase transport model, ``has_gdl``, ``has_mpl``).
         side_state : CellSideState
             Runtime state for this side — ``liquid_flux`` and ``gas_flux`` must
-            already be set; saturation fields are written here and also synced
-            back to the component objects for backward compatibility.
+            already be set; saturation fields are written to each layer state.
+        calculate_cl_saturation : bool, optional
+            When ``False``, the catalyst-layer saturation is not recomputed (used
+            when the CL saturation is prescribed externally, e.g. in transient
+            models). Default is ``True``.
         """
-        for layer, ls in self._layer_pairs(cell_side, side_state):
-            ls.non_wetting_flux = side_state.liquid_flux if layer.contact_angle > 90 else side_state.gas_flux
-            ls.downstream_saturation = np.zeros_like(ls.non_wetting_flux)
-            ls.upstream_saturation = np.zeros_like(ls.non_wetting_flux)
-            ls.non_wetting_saturation = np.zeros_like(ls.non_wetting_flux)
-            ls.downstream_capillary_pressure = np.zeros_like(ls.non_wetting_flux)
-            # Keep component in sync so two_phase_transport_model reads see right values.
-            layer.non_wetting_flux = ls.non_wetting_flux
-            layer.downstream_saturation = ls.downstream_saturation
-            layer.upstream_saturation = ls.upstream_saturation
-            layer.non_wetting_saturation = ls.non_wetting_saturation
-            layer.downstream_capillary_pressure = ls.downstream_capillary_pressure
-
+        for layer, ls in zip(cell_side.porous_layers,side_state.porous_layers):
+            if layer is not cell_side.cl or calculate_cl_saturation: 
+                ls.non_wetting_flux = side_state.liquid_flux if layer.contact_angle > 90 else side_state.gas_flux
+                ls.downstream_saturation = np.zeros_like(ls.non_wetting_flux)
+                ls.upstream_saturation = np.zeros_like(ls.non_wetting_flux)
+                ls.non_wetting_saturation = np.zeros_like(ls.non_wetting_flux)
+                ls.downstream_capillary_pressure = np.zeros_like(ls.non_wetting_flux)
+                    
         if cell_side.has_gdl:
             cell_side.gdl.two_phase_transport_model.calculate_non_wetting_saturation(
-                cell_side.gdl, cell_side.gdl.non_wetting_flux,
-                upstream_capillary_pressure=np.zeros_like(cell_side.cl.non_wetting_flux))
+                cell_side.gdl, side_state.gdl,
+                upstream_capillary_pressure=np.zeros_like(side_state.gdl.non_wetting_flux))
             if cell_side.has_mpl:
                 cell_side.mpl.two_phase_transport_model.calculate_non_wetting_saturation(
-                    cell_side.mpl, cell_side.mpl.non_wetting_flux,
-                    upstream_capillary_pressure=cell_side.gdl.downstream_capillary_pressure)
-                cell_side.cl.two_phase_transport_model.calculate_non_wetting_saturation(
-                    cell_side.cl, side_state.liquid_flux,
-                    upstream_capillary_pressure=cell_side.mpl.downstream_capillary_pressure)
+                    cell_side.mpl, side_state.mpl,
+                    upstream_capillary_pressure=side_state.gdl.downstream_capillary_pressure)
+                if calculate_cl_saturation: 
+                    cell_side.cl.two_phase_transport_model.calculate_non_wetting_saturation(
+                        cell_side.cl, side_state.cl,
+                        upstream_capillary_pressure=side_state.mpl.downstream_capillary_pressure)
             else:
-                cell_side.cl.two_phase_transport_model.calculate_non_wetting_saturation(
-                    cell_side.cl, side_state.liquid_flux,
-                    upstream_capillary_pressure=cell_side.gdl.downstream_capillary_pressure)
+                if calculate_cl_saturation: 
+                    cell_side.cl.two_phase_transport_model.calculate_non_wetting_saturation(
+                        cell_side.cl, side_state.cl,
+                        upstream_capillary_pressure=side_state.gdl.downstream_capillary_pressure)
         else:
-            cell_side.cl.two_phase_transport_model.calculate_non_wetting_saturation(
-                cell_side.cl, cell_side.cl.non_wetting_flux,
-                upstream_capillary_pressure=np.zeros_like(cell_side.cl.non_wetting_flux))
+            if calculate_cl_saturation: 
+                cell_side.cl.two_phase_transport_model.calculate_non_wetting_saturation(
+                    cell_side.cl, side_state.cl,
+                    upstream_capillary_pressure=np.zeros_like(side_state.cl.non_wetting_flux))
 
         for layer, ls in self._layer_pairs(cell_side, side_state):
             ls.liquid_saturation = (
-                layer.non_wetting_saturation if layer.contact_angle > 90.
-                else (1 - layer.non_wetting_saturation)
+                ls.non_wetting_saturation if layer.contact_angle > 90.
+                else (1 - ls.non_wetting_saturation)
             )
             ls.electrolyte_saturation = ls.liquid_saturation
-            # Sync back to component.
-            layer.liquid_saturation = ls.liquid_saturation
-            layer.electrolyte_saturation = ls.electrolyte_saturation
 
     @staticmethod
     def _layer_pairs(cell_side, side_state):
@@ -360,8 +358,6 @@ class MembraneWaterBalanceModel:
         htr_an = _gtr.gas_transport_resistance(cell.an, state.an, 'h2o')
         state.ca.h2ov_transport_resistance = htr_ca
         state.an.h2ov_transport_resistance = htr_an
-        cell.ca.h2ov_transport_resistance = htr_ca
-        cell.an.h2ov_transport_resistance = htr_an
 
         self.solve_water_balance(cell, state=state)
 
@@ -373,23 +369,18 @@ class MembraneWaterBalanceModel:
         if not dynamic:
             cell.ca.cl.two_phase_transport_model.calculate_equivalent_flow_resistance(cell.ca)
             self.calculate_water_saturation(cell.ca, state.ca)
-            cell.ca.cl.set_water_film_thickness(cell.ca.cl.non_wetting_saturation)
-            state.ca.cl.water_film_thickness = cell.ca.cl.non_wetting_saturation
-
+            cell.ca.cl.set_water_film_thickness(state.ca.cl.non_wetting_saturation)
             htr_ca = _gtr.gas_transport_resistance(cell.ca, state.ca, 'h2o')
             htr_an = _gtr.gas_transport_resistance(cell.an, state.an, 'h2o')
             state.ca.h2ov_transport_resistance = htr_ca
             state.an.h2ov_transport_resistance = htr_an
-            cell.ca.h2ov_transport_resistance = htr_ca
-            cell.an.h2ov_transport_resistance = htr_an
 
         for cl_comp, cl_state in [(cell.ca.cl, state.ca.cl), (cell.an.cl, state.an.cl)]:
             if cell.use_eq_water_content_for_ionomer:
                 cl_state.ionomer_water_content = cl_state.eq_water_content
             else:
                 cl_state.ionomer_water_content = cl_state.membrane_interface_water_content
-            cl_comp.ionomer_water_content = cl_state.ionomer_water_content
-            cl_comp.set_ionomer_wet_properties(cl_comp.ionomer_water_content, cl_comp.temperature)
+            cl_comp.set_ionomer_wet_properties(cl_state.ionomer_water_content, cl_comp.temperature)
 
     def solve_water_balance(self, cell, state=None, water_profile=None, dynamic=False):
         """
