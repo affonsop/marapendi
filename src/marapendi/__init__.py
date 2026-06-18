@@ -1,16 +1,23 @@
-"""
-marapendi: framework for modelling anion and proton exchange membrane
-electrochemical cell devices, such as water electrolyzers and fuel cells.
-
-The top-level package holds the reference cell model: static component
-dataclasses (:mod:`marapendi.cell`, :mod:`marapendi.catalyst_layers`,
-:mod:`marapendi.porous_layers`, :mod:`marapendi.membrane`, ...), their
-per-simulation state (:mod:`marapendi.state`), and the orchestration models
-(:mod:`marapendi.model`, :mod:`marapendi.water_balance`,
-:mod:`marapendi.transport`, :mod:`marapendi.voltage`,
-:mod:`marapendi.thermal`).
-
-:mod:`marapendi.dynamic` holds an independent, transient-capable cell model
-with a partially overlapping (and not yet unified) set of components and
-correlations.
-"""
+from .thermo.electrochemistry import *
+from .thermo.water import *
+from .tools import *
+from .cell.fuelcell import *
+from .cell.aem_electrolyzer import *
+from .membrane.membrane_base import *
+from .channel.flow_channels import *
+from .channel.gas_transport_resistance import *
+from .porous_layers.porous_layers import *
+from .porous_layers.darcy import *
+from .porous_layers.diffusion import *
+from .estimation.estimation import *
+from .electrolyte.electrolyte import *
+from .membrane.ionomer_base import *
+from .membrane.pem import *
+from .membrane.aem import *
+from .cell.water_balance import *
+from .membrane.permeation import *
+from .porous_layers.catalyst_layers import *
+from .degradation.degradation import *
+from .simulation.load_cycles import *
+from .simulation.conditions import *
+from .estimation.cross_validation import *
