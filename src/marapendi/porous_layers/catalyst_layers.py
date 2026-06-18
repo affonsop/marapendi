@@ -111,7 +111,7 @@ class CatalystLayer(PorousLayer):
         self.xi_neyerlin = nu * (-8.287e-3 * nu + 0.7184) - 2.072e-3
         return self.sheet_resistance / (3 + self.xi_neyerlin)
 
-    def electrolyte_sheet_resistance(self, temperature, electrolyte_saturation=0):
+    def electrolyte_sheet_resistance(self, temperature, electrolyte_saturation=1.e-12):
         """
         Calculate electrolyte sheet resistance in the porous electrolyte phase.
         Uses Bruggeman correlation for electrolyte. 
@@ -121,19 +121,14 @@ class CatalystLayer(PorousLayer):
         temperature : float
             Temperature in Kelvin.
         electrolyte_saturation : float
-            Electrolyte saturation. 
-
+            Electrolyte saturation.
         Returns
         -------
         float
             Electrolyte sheet resistance [Ohm.m²].
         """
         electrolyte_conductivity = self.electrolyte.calculate_ionic_conductivity(temperature)
-        denom = np.maximum(
-            (electrolyte_saturation * self.porosity) ** 1.5 * electrolyte_conductivity, 0.0
-        )
-        return np.where(denom > 0, self.thickness / np.where(denom > 0, denom, 1.0), np.inf)
-
+        return self.thickness / ((electrolyte_saturation * self.porosity) ** 1.5 * electrolyte_conductivity) 
     
     def activation_overpotential(self, current_density, activity):
         """
