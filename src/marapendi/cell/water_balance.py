@@ -13,7 +13,6 @@ References
 Ferrara, A. et al. J. Power Sources 390, 197–207 (2018).
 """
 import numpy as np
-from scipy.linalg import solve
 from dataclasses import dataclass, field
 from marapendi.thermo.constants import GAS_CONSTANT
 from marapendi.thermo.gas import GasModel

@@ -17,7 +17,6 @@ Typical usage::
     voltages = cell.compute_ui_curve(current_density_array, T, ca_conditions, an_conditions)
 """
 from dataclasses import dataclass, field
-from scipy.optimize import root, least_squares
 import numpy as np
 from ..porous_layers.porous_layers import PorousLayer
 from ..porous_layers.catalyst_layers import PtCCatalystLayer
@@ -26,6 +25,7 @@ from ..membrane.membrane import Membrane
 from .cell import Cell, CellSide
 from .voltage import VoltageModel
 from .thermal import ThermalModel
+from ..electrolyte.electrolyte import ElectrolyteSolution
 from .explicit_steady_state import ExplicitSteadyStateModel
 from .state import (
     CellState, CellSideState, LayerState, CatalystLayerState,
