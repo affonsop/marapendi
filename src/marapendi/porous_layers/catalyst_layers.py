@@ -88,7 +88,7 @@ class CatalystLayer(PorousLayer):
         """
         ionomer_charge_conductivity = self.ionomer.charge_conductivity(ionomer_water_content, temperature, charge)
         eps_ion = self.ionomer_vol_fraction
-        tort_ion = self.ionomer.tortuosity(self.ionomer_vol_fraction)
+        tort_ion = self.ionomer_tortuosity(self.ionomer_vol_fraction)
         return self.thickness / (eps_ion / tort_ion * ionomer_charge_conductivity)
 
 
@@ -144,6 +144,24 @@ class CatalystLayer(PorousLayer):
         electrolyte_conductivity = self.electrolyte.calculate_ionic_conductivity(temperature)
         return self.thickness / ((electrolyte_saturation * self.porosity) ** 1.5 * electrolyte_conductivity) 
 
+    def ionomer_tortuosity(self, volume_fraction: float) -> float:
+        """Bruggeman tortuosity factor for the ionomer phase.
+
+        Uses the inverse power law τ = ε⁻⁰·⁵, the standard Bruggeman
+        approximation for a randomly distributed phase.
+
+        Parameters
+        ----------
+        volume_fraction : float
+            Ionomer volume fraction (–).
+
+        Returns
+        -------
+        float
+            Tortuosity factor (–).
+        """
+        return volume_fraction ** -0.5
+    
     
 @dataclass
 class PorousTransferLayer(CatalystLayer):
@@ -347,4 +365,30 @@ class PtCCatalystLayer(CatalystLayer):
         ionomer_gas_interface_term = self.ionomer_k1 / (self.ionomer_vol_surface_area * self.thickness)
         water_term = (self.ionomer_k3 + 1) * self.water_film_thickness / o2_water_diffusivity(temperature) / (self.ionomer_vol_surface_area * self.thickness)
         return (ionomer_gas_interface_term + ionomer_pt_interface_term) * self.o2_ionomer_film_bulk_resistance(ionomer_water_content, temperature) + water_term
-      
+    
+    def ionomer_tortuosity(self, volume_fraction: float) -> float:
+        """Piecewise tortuosity factor for the ionomer film in a Pt/C agglomerate layer.
+
+        Above a threshold of 0.16 the ionomer network is well-connected and the
+        tortuosity approaches 1.  Below that threshold a fitted power law is used,
+        following the correlation from Hao et al. (2015).
+
+        Parameters
+        ----------
+        volume_fraction : float
+            Ionomer volume fraction (–).
+
+        Returns
+        -------
+        float
+            Tortuosity factor (–).
+
+        References
+        ----------
+        Hao, L. et al. J. Electrochem. Soc. 162, F854 (2015).
+        """
+        return np.where(
+            volume_fraction > 0.16,
+            1,
+            0.0845 * (np.maximum(0.1, volume_fraction) - 0.04) ** -1.17,
+        )
