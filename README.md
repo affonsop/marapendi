@@ -124,7 +124,7 @@ src/marapendi/
 ├── thermo/        # GasState, GasModel, water properties, constants
 ├── electrolyte/   # ElectrolyteSolution, KOHSolution
 ├── degradation/   # PtDissolution, PlatinumOxideFormation
-├── simulation/    # LoadCycle
+├── simulation/    # OperatingConditions, DynamicOperatingConditions, LoadCycle
 └── estimation/    # SteadyStateModel, DynamicModel
 ```
 

@@ -127,7 +127,7 @@ Assembling the cell
 Step 2 — Define operating conditions
 --------------------------------------
 
-:class:`~marapendi.simulation.state.OperatingConditions` groups all inlet
+:class:`~marapendi.simulation.conditions.OperatingConditions` groups all inlet
 boundary conditions for one side:
 
 .. code-block:: python

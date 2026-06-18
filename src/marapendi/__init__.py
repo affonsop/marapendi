@@ -19,4 +19,5 @@ from .membrane.membrane_permeation_models import *
 from .porous_layers.catalyst_layers import *
 from .degradation.degradation import *
 from .simulation.load_cycles import *
+from .simulation.conditions import *
 from .estimation.cross_validation import *

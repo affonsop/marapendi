@@ -42,7 +42,8 @@ marapendi is organized into subpackages under ``src/marapendi/``:
     │   └── koh.py                  # KOHSolution
     ├── degradation/       # Degradation models
     │   └── degradation.py          # PtDissolution, PlatinumOxideFormation
-    ├── simulation/        # Load cycle helpers
+    ├── simulation/        # Operating conditions and load cycle helpers
+    │   ├── conditions.py           # OperatingConditions, DynamicOperatingConditions
     │   └── load_cycles.py          # LoadCycle
     ├── estimation/        # Parameter estimation
     │   ├── estimation.py           # DynamicModel, SteadyStateModel
