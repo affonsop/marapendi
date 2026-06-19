@@ -5,7 +5,8 @@ Orchestration classes that combine a :class:`~marapendi.cell.Cell` and a
 :class:`~marapendi.state.CellState` to compute the cell's behaviour:
 membrane water balance, gas transport, voltage and thermal sub-models.
 
-Two top-level steady-state models are available:
+Two top-level steady-state models are available, differing in how MEA temperature
+is handled:
 
 - :class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel` —
   MEA temperature is estimated analytically (one forward pass).
@@ -13,9 +14,24 @@ Two top-level steady-state models are available:
   cell voltage and MEA temperature are solved self-consistently via a
   vectorised elementwise secant iteration (:func:`scipy.optimize.newton`).
 
-Both models share the same two-step API::
+The membrane water balance sub-model is independently swappable:
 
-    model = ExplicitSteadyStateModel()          # or ImplicitSteadyStateModel()
+- :class:`~marapendi.cell.water_balance.MembraneWaterBalanceModel` (default) —
+  sequential two-stage solve (vapor-equilibrated then liquid-equilibrated).
+- :class:`~marapendi.cell.water_balance.ImplicitWaterBalanceModel` —
+  Newton solve on the cathode membrane water flux so that the water-content
+  boundary condition is self-consistent with the actual flux.
+
+Use ``ImplicitWaterBalanceModel`` with ``ImplicitSteadyStateModel`` for a fully
+self-consistent solve::
+
+    model = ImplicitSteadyStateModel(
+        water_balance_model=ImplicitWaterBalanceModel()
+    )
+
+All models share the same two-step API::
+
+    model = ExplicitSteadyStateModel()          # or ImplicitSteadyStateModel(...)
     conditions = CellConditions(
         current_density=np.linspace(1e3, 2e4, 20),
         cell_temperature=353.15,

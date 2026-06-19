@@ -18,6 +18,7 @@ from marapendi.thermo.constants import GAS_CONSTANT
 from marapendi.thermo.gas import GasModel
 from marapendi.tools import arrhenius_term
 from marapendi.thermo.water import water_molar_volume, water_dynamic_viscosity
+from .gas_transport import GasTransportModel
 
 @dataclass
 class MembraneWaterBalanceModel:
@@ -219,14 +220,20 @@ class MembraneWaterBalanceModel:
         )
         return nd_flux / state.membrane.water_diffusion_resistance
 
-    def update_cell_side_water_fluxes(self, side_state):
-        """Compute liquid and vapor fluxes for one cell side from state gas data."""
+    
+    def update_cell_side_water_fluxes(self, side_state) -> None:
+        """Split total water flux into liquid and vapor components.
+
+        Liquid flux = excess above the maximum vapor removal capacity of the
+        channel (at the current saturation state of the CL).
+        """
         max_vapor_removal_flux = (
             (GasModel.saturation_concentration(side_state.cl) - GasModel.vapor_concentration(side_state.ch))
             / side_state.h2ov_transport_resistance
         )
         side_state.liquid_flux = np.maximum(side_state.water_flux - max_vapor_removal_flux, 0)
-        side_state.vapor_flux = side_state.water_flux - side_state.liquid_flux
+        side_state.vapor_flux  = side_state.water_flux - side_state.liquid_flux
+        side_state.gas_flux    = side_state.vapor_flux
 
     def update_water_fluxes(self, cell, state, dynamic=False):
         """Calculate water fluxes for both sides. Reads/writes state; syncs to cell."""
@@ -234,7 +241,6 @@ class MembraneWaterBalanceModel:
         state.an.membrane_water_flux = self.calculate_anode_membrane_flux(state)
         state.ca.water_flux = state.ca.h2o_production + state.ca.membrane_water_flux
         state.an.water_flux = state.an.h2o_production + state.an.membrane_water_flux
-
 
         self.update_cell_side_water_fluxes(state.ca)
         self.update_cell_side_water_fluxes(state.an)
@@ -329,7 +335,7 @@ class MembraneWaterBalanceModel:
             Shared instance for computing H₂O vapor transport resistances.
             A temporary instance is created if not provided.
         """
-        from .gas_transport import GasTransportModel
+        
         _gtr = gas_transport_model if gas_transport_model is not None else GasTransportModel()
         htr_ca = _gtr.gas_transport_resistance(cell.ca, state.ca, 'h2o')
         htr_an = _gtr.gas_transport_resistance(cell.an, state.an, 'h2o')
@@ -674,4 +680,219 @@ class MembraneWaterBalanceModel:
         state.an.membrane_water_flux = -state.ca.membrane_water_flux
         state.ca.water_flux = state.ca.h2o_production + state.ca.membrane_water_flux
         state.an.water_flux = state.an.h2o_production + state.an.membrane_water_flux
-     
+    
+
+@dataclass
+class ImplicitWaterBalanceModel(MembraneWaterBalanceModel):
+    """Membrane water balance that finds the membrane flux self-consistently.
+
+    The explicit model estimates the CL water activity from the electrochemical
+    production alone (ignoring the membrane crossover flux) and then solves the
+    membrane diffusion equation once.  This model instead solves:
+
+        J_mb = F(λ_eq(rh_cl(J_mb)))
+
+    where ``rh_cl`` depends on the total water flux arriving at the CL, which
+    includes ``J_mb``.  When the CL is supersaturated, the cathode liquid
+    saturation ``s`` is found simultaneously from
+
+        K · s^n + J_v_max · (1 − s)³ = J_ca
+
+    (Affonso Nobrega et al., 2026, eq. 37), using Halley's method.  The
+    boundary condition passed to the membrane diffusion equation is the
+    blended equilibrium water content
+
+        λ_eq = s · λ_liq + (1 − s) · λ_vap(rh_cl)
+
+    with ``R_v* = 0`` (vapor resistance already accounted for externally).
+
+    The Newton solve uses :func:`scipy.optimize.newton` on the scalar residual
+    per current-density point (diagonal Jacobian, vectorised).
+    """
+
+    def calculate_water_transport(self, cell, state, dynamic: bool = False,
+                                  gas_transport_model=None) -> None:
+        """Solve for the self-consistent membrane water flux and update state.
+
+        Parameters
+        ----------
+        cell : FuelCell
+        state : CellState
+        dynamic : bool
+            When ``True``, skips the liquid saturation and gas-transport
+            resistance update (used by transient solvers).
+        gas_transport_model : GasTransportModel, optional
+        """
+        from scipy.optimize import newton
+
+        _gtr = gas_transport_model if gas_transport_model is not None else GasTransportModel()
+
+        # --- Initial vapour transport resistances (at s = 0) ---
+        state.ca.h2ov_transport_resistance = _gtr.gas_transport_resistance(cell.ca, state.ca, 'h2o')
+        state.an.h2ov_transport_resistance = _gtr.gas_transport_resistance(cell.an, state.an, 'h2o')
+
+        # --- Membrane material properties (fixed during Newton iteration) ---
+        mem_temp = state.membrane.temperature
+        self._initialize_saturation_water_contents(cell, mem_temp)
+        self._initialize_interface_water_contents(cell, state, None, False)
+        self.absorption_coefficient = cell.membrane.calculate_water_absorption_coefficient(mem_temp)
+        self.water_diffusivity = cell.membrane.calculate_water_diffusivity(mem_temp)
+        state.membrane.water_diffusion_resistance = (
+            cell.membrane.dry_thickness
+            / (self.water_diffusivity * cell.membrane.dry_concentration)
+        )
+        cell.membrane_water_diffusion_resistance = state.membrane.water_diffusion_resistance
+
+        # --- Pre-compute channel/CL concentrations (fixed during iteration) ---
+        c_v_ca = GasModel.vapor_concentration(state.ca.ch)
+        c_v_an = GasModel.vapor_concentration(state.an.ch)
+        c_sat_ca = GasModel.saturation_concentration(state.ca.cl)
+        c_sat_an = GasModel.saturation_concentration(state.an.cl)
+        R_v_ca = state.ca.h2ov_transport_resistance
+        R_v_an = state.an.h2ov_transport_resistance
+        # Max vapour removal flux at the cathode CL (zero liquid saturation)
+        J_v_max_ca = (c_sat_ca - c_v_ca) / R_v_ca
+
+        # --- Saturation equation coefficients for the cathode (fixed) ---
+        K_ca, n_ca = self._cathode_saturation_flux_params(cell, state)
+
+        def _residual(J_mb_ca):
+            # Total water flux arriving at each CL
+            J_ca = state.ca.h2o_production + J_mb_ca
+            J_an = state.an.h2o_production - J_mb_ca  # flux conservation
+
+            for J_side, c_v_ch, R_v, c_sat, side_state, is_ca in (
+                (J_ca, c_v_ca, R_v_ca, c_sat_ca, state.ca, True),
+                (J_an, c_v_an, R_v_an, c_sat_an, state.an, False),
+            ):
+                c_v_cl = c_v_ch + R_v * J_side
+                supersaturated = c_v_cl > c_sat
+
+                if is_ca and np.any(supersaturated):
+                    s = self._halley_saturation_from_flux(
+                        J_side, J_v_max_ca, K_ca, n_ca, supersaturated
+                    )
+                    # Blended equilibrium: liquid fraction + vapour fraction at saturation
+                    λ_eq = (
+                        s * self.liquid_equilibrium_saturation_water_content
+                        + (1 - s) * cell.membrane.equilibrium_water_content(
+                            rh=1., temperature=mem_temp, s_relax=side_state.s_relax
+                        )
+                    )
+                else:
+                    rh_cl = np.minimum(c_v_cl / c_sat, 1.)
+                    λ_eq = cell.membrane.equilibrium_water_content(
+                        rh_cl, mem_temp, side_state.s_relax
+                    )
+
+                # Set BC: impose λ_eq directly, zero derivative → R_v* = 0
+                side_state.estimated_water_content = λ_eq
+                side_state.estimated_water_content_derivative = 0.
+
+            self.update_non_dimensional_parameters(cell, state)
+            self.update_water_profile(state)
+            self.update_water_fluxes(cell, state, dynamic=False)
+            self.update_water_contents(cell, state)
+
+            return J_mb_ca - state.ca.membrane_water_flux
+
+        # Initial guess: zero membrane flux (anode dry assumption)
+        x0 = np.zeros_like(np.atleast_1d(state.current_density), dtype=float)
+        try:
+            J_mb_ca = newton(_residual, x0=x0, disp=False, tol=1e-8, rtol=1e-8)
+        except RuntimeError:
+            # Inner Newton failed to converge (e.g. during outer voltage solve probe).
+            # Use the initial guess so the outer solver can still make progress.
+            J_mb_ca = x0
+        _residual(J_mb_ca)  # re-evaluate at converged point so state is fully consistent
+
+        # Set the explicit-model phase-separated profiles to the converged value
+        # so that membrane.proton_resistance (which weights them by saturation) works.
+        state.membrane.vapor_eq_sat_water_profile = self.water_content_profile.copy()
+        state.membrane.liquid_eq_sat_water_profile = self.water_content_profile.copy()
+        state.membrane.vapor_eq_sat_water_derivative_profile = self.water_content_derivative_profile.copy()
+        state.membrane.liquid_eq_sat_water_derivative_profile = self.water_content_derivative_profile.copy()
+
+        if not dynamic:
+            self.calculate_water_saturation(cell.ca, state.ca)
+            cell.ca.cl.set_water_film_thickness(state.ca.cl.non_wetting_saturation)
+            # Re-compute gas transport resistance with updated saturation
+            state.ca.h2ov_transport_resistance = _gtr.gas_transport_resistance(cell.ca, state.ca, 'h2o')
+            state.an.h2ov_transport_resistance = _gtr.gas_transport_resistance(cell.an, state.an, 'h2o')
+
+        # voltage.py uses vapor_eq_water_content / liquid_eq_water_content to
+        # compute the ionomer proton resistance; set both to the converged value.
+        state.ca.vapor_eq_water_content = state.ca.cl.eq_water_content.copy()
+        state.ca.liquid_eq_water_content = state.ca.cl.eq_water_content.copy()
+
+        for cl_comp, cl_state in ((cell.ca.cl, state.ca.cl), (cell.an.cl, state.an.cl)):
+            if cell.use_eq_water_content_for_ionomer:
+                cl_state.ionomer_water_content = cl_state.eq_water_content
+            else:
+                cl_state.ionomer_water_content = cl_state.membrane_interface_water_content
+            cl_comp.set_ionomer_wet_properties(cl_state.ionomer_water_content, cl_comp.temperature)
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _cathode_saturation_flux_params(cell, state):
+        """Return (K, n) coefficients for the cathode saturation flux equation.
+
+        The liquid flux at the cathode CL satisfies ``J_l = K · s^n`` where ``K``
+        and ``n`` are derived from the GDL and CL Darcy parameters (same algebra
+        as :meth:`MembraneWaterBalanceModel._assemble_saturation_equation_params`).
+        """
+        gdl = cell.ca.gdl
+        cl  = cell.ca.cl
+        q   = gdl.relative_permeability_exponent
+        n_J_gdl = gdl.two_phase_transport_model.J_function_exponent
+        n_J_cl  = cl.two_phase_transport_model.J_function_exponent
+
+        n = q * n_J_cl / n_J_gdl + n_J_cl  # combined flux exponent
+
+        cl_to_gdl_ratio = state.ca.cl.breakthrough_pressure / state.ca.gdl.breakthrough_pressure
+        K = (
+            1. / state.ca.gdl.saturation_flow_resistance
+            * n_J_gdl / (q + n_J_gdl)
+            * cl_to_gdl_ratio ** (q / n_J_gdl + 1)
+        )
+        return K, n
+
+    @staticmethod
+    def _halley_saturation_from_flux(J_side, J_v_max, K, n, mask, n_iter=6):
+        """Solve ``K·s^n + J_v_max·(1−s)³ = J_side`` for ``s`` via Halley's method.
+
+        Only entries where *mask* is ``True`` are solved; others are set to 0.
+
+        Parameters
+        ----------
+        J_side : ndarray
+            Total water flux at the CL (kmol/m²/s).
+        J_v_max : ndarray
+            Maximum vapour removal flux at zero saturation (kmol/m²/s).
+        K, n : float or ndarray
+            Darcy liquid-flux coefficient and exponent.
+        mask : ndarray of bool
+            Selects supersaturated entries.
+        n_iter : int
+            Number of Halley iterations (default 6).
+        """
+        J  = np.asarray(J_side)[mask]
+        Jv = np.asarray(J_v_max)[mask] if np.ndim(J_v_max) > 0 else J_v_max
+        K  = np.asarray(K)[mask] if np.ndim(K) > 0 else K
+        s  = np.full_like(J, 0.1)
+        for _ in range(n_iter):
+            one_minus_s   = 1. - s
+            f   = K * s**n  + Jv * one_minus_s**3 - J
+            fp  = K * n * s**(n - 1) - 3. * Jv * one_minus_s**2
+            fpp = K * n * (n - 1) * s**(n - 2) + 6. * Jv * one_minus_s
+            s   = np.clip(
+                s - f * fp / (fp**2 - 0.5 * f * fpp),
+                0., 0.9,
+            )
+        result = np.zeros_like(np.asarray(J_side), dtype=float)
+        result[mask] = s
+        return result
+

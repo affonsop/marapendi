@@ -17,7 +17,7 @@ from .electrolyte.electrolyte import *
 from .membrane.ionomer_base import *
 from .membrane.pem import *
 from .membrane.aem import *
-from .cell.water_balance import *
+from .cell.water_balance import MembraneWaterBalanceModel, ImplicitWaterBalanceModel
 from .membrane.permeation import *
 from .porous_layers.catalyst_layers import *
 from .degradation.degradation import *
