@@ -27,6 +27,7 @@ from .voltage import VoltageModel
 from .thermal import ThermalModel
 from ..electrolyte.electrolyte import ElectrolyteSolution
 from .explicit_steady_state import ExplicitSteadyStateModel
+from .implicit_steady_state import ImplicitSteadyStateModel
 from .state import (
     CellState, CellSideState, LayerState, CatalystLayerState,
     FlowChannelState, MembraneState,
@@ -137,6 +138,10 @@ class FuelCell(Cell):
             self._voltage_model,
             self._thermal_model,
         )
+        self._implicit_model = ImplicitSteadyStateModel(
+            self._voltage_model,
+            self._thermal_model,
+        )
         self._gas_transport_model = self._model.gas_transport_model
         self.state = CellState()
 
@@ -166,41 +171,65 @@ class FuelCell(Cell):
         return self._voltage_model.compute_cell_voltage(self, self.state)
 
     
-    def compute_ui_curve(self, current_density, stack_temperature, cathode_conditions, anode_conditions, model='explicit_steady_state'):
+    def compute_ui_curve(
+        self,
+        current_density,
+        stack_temperature,
+        cathode_conditions,
+        anode_conditions,
+        model: str = 'explicit_steady_state',
+    ):
         """
-        Calculation of polarization curve for given operating conditions.
+        Compute the polarization curve for given operating conditions.
 
         Parameters
         ----------
-        current_density : float
-            The current density of the cell in A/m².
+        current_density : float or ndarray
+            Current density (A/m²).
         stack_temperature : float
-            The operating temperature of the fuel cell stack in Kelvin.
+            Stack operating temperature (K).
         cathode_conditions : OperatingConditions
-            The inlet conditions at the cathode side, including temperature, 
-            pressure, oxygen mole fraction, and relative humidity.
+            Cathode inlet conditions.
         anode_conditions : OperatingConditions
-            The inlet conditions at the anode side, including temperature, 
-            pressure, hydrogen mole fraction, and relative humidity.
-        model : string
-            The model to be used. Only 'explicit_steady_state' supported for now.
+            Anode inlet conditions.
+        model : {'explicit_steady_state', 'implicit_steady_state'}
+            Physics model to use.
+
+            ``'explicit_steady_state'``
+                MEA temperature is estimated analytically, then cell physics
+                are evaluated in one forward pass.
+            ``'implicit_steady_state'``
+                MEA temperature is solved self-consistently via a nonlinear
+                root-find, yielding a thermally coupled solution.
 
         Returns
         -------
-        float
-            The fuel cell voltage in volts.
+        float or ndarray
+            Cell voltage (V).
         """
-        self.set_conditions(stack_temperature, current_density,cathode_conditions, anode_conditions)
-        if model == 'explicit_steady_state': 
-            return self.explicit_steady_state_model()
-        
+        self.set_conditions(stack_temperature, current_density, cathode_conditions, anode_conditions)
+        if model == 'implicit_steady_state':
+            return self.implicit_steady_state_model()
+        return self.explicit_steady_state_model()
+
     def explicit_steady_state_model(self, mea_tempearture_estimation=False):
         """
-        Simplified steady-state model where all calculations are explicit.
+        Explicit steady-state model: one forward pass with an analytic T_MEA estimate.
 
-        Delegates to :class:`~marapendi.model.ExplicitSteadyStateModel`.
+        Delegates to :class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel`.
         """
         voltage = self._model.solve(self, self.state, mea_temperature_estimation=mea_tempearture_estimation)
+        self._sync_state_to_fc()
+        return voltage
+
+    def implicit_steady_state_model(self):
+        """
+        Implicit steady-state model: solve for T_MEA self-consistently.
+
+        Delegates to :class:`~marapendi.cell.implicit_steady_state.ImplicitSteadyStateModel`.
+        Warm-start is preserved across successive calls on the same model instance.
+        """
+        voltage = self._implicit_model.solve(self, self.state)
         self._sync_state_to_fc()
         return voltage
 

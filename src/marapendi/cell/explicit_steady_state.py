@@ -188,3 +188,6 @@ class ExplicitSteadyStateModel:
         self.gas_transport_model.calculate_gas_concentrations(cell, state)
         self.voltage_model.compute_cell_voltage(cell, state)
         return state.cell_voltage
+
+# Re-exported for convenience — the canonical implementation lives in implicit_steady_state.py.
+from .implicit_steady_state import ImplicitSteadyStateModel  # noqa: F401

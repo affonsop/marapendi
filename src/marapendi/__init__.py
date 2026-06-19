@@ -2,6 +2,8 @@ from .thermo.electrochemistry import *
 from .thermo.water import *
 from .tools import *
 from .cell.fuelcell import *
+from .cell.implicit_steady_state import ImplicitSteadyStateModel
+from .cell.explicit_steady_state import ExplicitSteadyStateModel
 from .cell.aem_electrolyzer import *
 from .membrane.membrane_base import *
 from .channel.flow_channels import *
