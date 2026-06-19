@@ -2,36 +2,29 @@
 Cell model: implicit steady-state PEMFC performance model.
 
 :class:`ImplicitSteadyStateModel` extends :class:`ExplicitSteadyStateModel`
-by solving for the MEA temperature self-consistently: instead of estimating
-T_MEA from an explicit formula, it iterates until the heat released by the
-cell matches the heat conducted through the GDL/MPL stack.
+by solving for the cell voltage and MEA temperature self-consistently.
 
-The fixed-point equation is:
+The solve equation is:
 
-    T_MEA = T_stack + R_th * q(T_MEA)
+    V = f(T_MEA(V))
 
-where ``q`` is the volumetric heat release rate (W/m²), which depends on the
-cell voltage and therefore on T_MEA itself.  :func:`scipy.optimize.root` is
-used to solve the scalar (or vectorised) residual.
+where the MEA temperature is obtained from the heat balance:
 
-Warm start
-----------
-After each successful solve, the converged MEA temperature is stored in
-:attr:`_last_mea_temperature`.  On the next call, this value is reused as the
-initial guess, making sequential evaluations (e.g. time-series sweeps)
-significantly faster.
+    T_MEA = T_stack + R_th · (V_LHV − V) · i
+
+and V is recomputed from the full physics (water balance, gas transport,
+voltage model) at that T_MEA.  Because the problem is diagonal across
+current-density points (each entry of V only affects the corresponding
+entry of state), :func:`scipy.optimize.newton` (secant method) solves it
+elementwise without building a dense Jacobian.
 """
 from __future__ import annotations
 
 import numpy as np
-from dataclasses import dataclass, field
-from scipy.optimize import root
+from dataclasses import dataclass
+from scipy.optimize import newton
 
 from .explicit_steady_state import ExplicitSteadyStateModel
-from .voltage import VoltageModel
-from .thermal import ThermalModel
-from .water_balance import MembraneWaterBalanceModel
-from .gas_transport import GasTransportModel
 from .state import CellState
 
 
@@ -40,13 +33,11 @@ class ImplicitSteadyStateModel(ExplicitSteadyStateModel):
     """
     Implicit steady-state model for PEMFC polarization curves.
 
-    The MEA temperature is found by solving the fixed-point equation
-
-        T_MEA = T_stack + R_th · q(T_MEA, V(T_MEA))
-
-    self-consistently via a nonlinear root-find.  All other physics
-    (water balance, gas transport, voltage) are identical to
-    :class:`ExplicitSteadyStateModel`.
+    Unlike :class:`ExplicitSteadyStateModel`, which estimates T_MEA
+    analytically, this model iterates until the heat released by the cell
+    is consistent with the actual cell voltage.  The solve is fully
+    vectorised: pass an array of current densities (and optionally
+    array-valued condition fields) to evaluate all points in one call.
 
     Usage
     -----
@@ -61,31 +52,10 @@ class ImplicitSteadyStateModel(ExplicitSteadyStateModel):
         )
         state = model.set_initial_conditions(cell, conditions)
         state = model.solve(cell, conditions, state)
-
-    Parameters
-    ----------
-    root_kwargs : dict
-        Extra keyword arguments forwarded to :func:`scipy.optimize.root`
-        (e.g. ``{"method": "hybr", "tol": 1e-6}``).
-
-    Attributes
-    ----------
-    _last_mea_temperature : ndarray or None
-        Cached MEA temperature from the previous :meth:`solve` call, used
-        as warm-start initial guess.
     """
 
-    root_kwargs: dict = field(default_factory=dict)
-
-    def __post_init__(self):
-        self._last_mea_temperature = None
-
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
-
     def solve(self, cell, cell_conditions, initial_state: CellState) -> CellState:
-        """Solve for the self-consistent MEA temperature and return the state.
+        """Solve for the self-consistent cell voltage and return the state.
 
         Parameters
         ----------
@@ -93,6 +63,8 @@ class ImplicitSteadyStateModel(ExplicitSteadyStateModel):
             Fully configured fuel-cell object.
         cell_conditions : CellConditions
             Operating conditions (same object passed to :meth:`set_initial_conditions`).
+            All fields may be scalars or arrays of the same shape as
+            ``current_density``.
         initial_state : CellState
             State returned by :meth:`set_initial_conditions`.  Modified in place.
 
@@ -101,63 +73,28 @@ class ImplicitSteadyStateModel(ExplicitSteadyStateModel):
         CellState
             The same object as *initial_state*, populated with all solved
             quantities including the self-consistent ``mea_temperature``.
-
-        Raises
-        ------
-        RuntimeWarning
-            Emitted (but not raised) if the root-finder did not converge.
         """
         state = initial_state
         state.thermal_resistance = self.thermal_model.heat_transfer_resistance(cell)
-        x0 = self._initial_guess(cell, state)
 
-        def residual(T_mea):
-            self.thermal_model.set_mea_temperature(T_mea, cell, state)
+        def _f(cell_voltage):
+            mea_temperature = self.thermal_model.mea_temperature(cell, state, cell_voltage)
+            self.thermal_model.set_mea_temperature(mea_temperature, cell, state)
             self.water_balance_model.calculate_water_transport(
                 cell, state, gas_transport_model=self.gas_transport_model
             )
             self.gas_transport_model.calculate_gas_concentrations(cell, state)
             self.voltage_model.compute_cell_voltage(cell, state)
-            T_mea_estimated = self.thermal_model.mea_temperature(
-                cell, state, mea_temperature_estimation=True
-            )
-            return T_mea - T_mea_estimated
+            if cell_voltage is None:
+                return np.asarray(state.cell_voltage, dtype=float)
+            return cell_voltage - state.cell_voltage
 
-        result = root(residual, x0=x0, **self.root_kwargs)
+        # Warm start from the explicit 0.7 V estimate.
+        cell_voltage_0 = _f(None)
 
-        if not result.success:
-            import warnings
-            warnings.warn(
-                f"ImplicitSteadyStateModel: root-finder did not converge — {result.message}",
-                RuntimeWarning,
-                stacklevel=2,
-            )
-
-        # Re-evaluate at the converged point so that `state` is fully consistent.
-        residual(result.x)
-        self._last_mea_temperature = result.x
-
+        # Each entry of cell_voltage only affects the corresponding entry of
+        # state (no cross-point coupling), so the Jacobian is diagonal — a
+        # vectorised elementwise secant solve avoids a dense Jacobian.
+        cell_voltage = newton(_f, x0=cell_voltage_0, disp=False, tol=1e-3, rtol=1e-3)
+        _f(cell_voltage)
         return state
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    def _initial_guess(self, cell, state) -> np.ndarray:
-        """Return the initial guess for T_MEA.
-
-        Uses the cached warm-start value when the shape matches; otherwise
-        falls back to the explicit 0.7 V efficiency approximation.
-        """
-        T_explicit = self.thermal_model.mea_temperature(
-            cell, state, mea_temperature_estimation=False
-        )
-        T_explicit = np.atleast_1d(T_explicit)
-
-        if (
-            self._last_mea_temperature is not None
-            and np.atleast_1d(self._last_mea_temperature).shape == T_explicit.shape
-        ):
-            return self._last_mea_temperature
-
-        return T_explicit

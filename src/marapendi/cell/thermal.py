@@ -32,25 +32,24 @@ class ThermalModel:
         """
         return 1. / sum(1. / self.side_heat_transfer_resistance(side) for side in cell.sides)
 
-    def mea_temperature(self, cell, state, mea_temperature_estimation: bool = False) -> float:
+    def mea_temperature(self, cell, state, cell_voltage=None) -> float:
         """Estimate the MEA temperature.
 
-        When *mea_temperature_estimation* is ``False`` (default), assumes a
-        constant 0.7 V efficiency approximation.  When ``True``, uses a
-        first-pass cell voltage already stored on *state* as ``state.cell_voltage``.
+        If *cell_voltage* is given, the heat release is computed from the
+        difference between the LHV-equivalent voltage and *cell_voltage*
+        (all irreversible losses go to heat).  Otherwise the 0.7 V
+        efficiency approximation is used.
         """
         from ..thermo.electrochemistry import h2_lhv
         from ..thermo.constants import FARADAY_CONSTANT
 
         thermal_resistance = self.heat_transfer_resistance(cell)
-        if mea_temperature_estimation:
+        if cell_voltage is not None:
             heat_release = state.current_density * (
-                -h2_lhv(state.temperature) 
-                / (2 * FARADAY_CONSTANT) 
-                - state.cell_voltage
+                -h2_lhv(state.temperature) / (2 * FARADAY_CONSTANT) - cell_voltage
             )
-        else:  
-            heat_release = (state.current_density * 0.7)
+        else:
+            heat_release = state.current_density * 0.7
         return state.temperature + heat_release * thermal_resistance
 
     def calculate_heat_transport(self, cell, dynamic: bool = False) -> None:

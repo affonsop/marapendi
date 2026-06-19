@@ -64,7 +64,6 @@ class ExplicitSteadyStateModel:
     thermal_model: ThermalModel = field(default_factory=ThermalModel)
     water_balance_model: MembraneWaterBalanceModel = field(default_factory=MembraneWaterBalanceModel)
     gas_transport_model: GasTransportModel = field(default_factory=GasTransportModel)
-    mea_temperature_estimation: bool = False
 
     def set_initial_conditions(self, cell, cell_conditions) -> CellState:
         """Create and initialise a :class:`CellState` from *cell_conditions*.
@@ -115,16 +114,8 @@ class ExplicitSteadyStateModel:
         state = initial_state
         state.thermal_resistance = self.thermal_model.heat_transfer_resistance(cell)
 
-        if self.mea_temperature_estimation:
-            self.thermal_model.set_mea_temperature(state.temperature, cell, state)
-            self.water_balance_model.calculate_water_transport(
-                cell, state, gas_transport_model=self.gas_transport_model
-            )
-            self.gas_transport_model.calculate_gas_concentrations(cell, state)
-            self.voltage_model.compute_cell_voltage(cell, state)
-
         mea_temperature = self.thermal_model.mea_temperature(
-            cell, state, self.mea_temperature_estimation
+            cell, state, None
         )
         self.thermal_model.set_mea_temperature(mea_temperature, cell, state)
         self.water_balance_model.calculate_water_transport(

@@ -10,8 +10,8 @@ Two top-level steady-state models are available:
 - :class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel` —
   MEA temperature is estimated analytically (one forward pass).
 - :class:`~marapendi.cell.implicit_steady_state.ImplicitSteadyStateModel` —
-  MEA temperature is solved self-consistently with the heat balance via a
-  nonlinear root-find.  Warm-start across successive calls is built in.
+  cell voltage and MEA temperature are solved self-consistently via a
+  vectorised elementwise secant iteration (:func:`scipy.optimize.newton`).
 
 Both models share the same two-step API::
 

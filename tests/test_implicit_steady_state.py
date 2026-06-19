@@ -3,12 +3,9 @@
 Verifies that the implicit model:
 - produces physically plausible voltages and MEA temperatures,
 - agrees closely with the explicit model (same physics, better T_MEA self-consistency),
-- preserves warm-start state between successive calls,
 - handles scalar and vectorised current densities,
 - returns a fully populated CellState.
 """
-import time
-
 import numpy as np
 import pytest
 import marapendi as mrpd
@@ -199,33 +196,16 @@ class TestImplicitVsExplicit:
 
 
 # ---------------------------------------------------------------------------
-# Warm start
+# Sequential calls (stateless model — no warm-start bookkeeping)
 # ---------------------------------------------------------------------------
 
-class TestWarmStart:
-    def test_warm_start_stored_after_solve(self, cell, implicit_model):
+class TestSequentialCalls:
+    def test_repeated_calls_do_not_crash(self, cell, implicit_model):
         _solve(implicit_model, cell, _conditions(5e3))
-        assert implicit_model._last_mea_temperature is not None
-
-    def test_second_call_is_faster_than_first(self, cell):
-        model = ImplicitSteadyStateModel()
-        cond = _conditions(5e3)
-
-        t0 = time.perf_counter()
-        _solve(model, cell, cond)
-        t_cold = time.perf_counter() - t0
-
-        t0 = time.perf_counter()
-        _solve(model, cell, cond)
-        t_warm = time.perf_counter() - t0
-
-        assert t_warm < t_cold * 1.5, (
-            f"Warm call ({t_warm*1e3:.1f} ms) not faster than cold ({t_cold*1e3:.1f} ms)"
-        )
-
-    def test_warm_start_resets_on_shape_change(self, cell, implicit_model):
         _solve(implicit_model, cell, _conditions(5e3))
-        # Different shape — must not crash
+
+    def test_shape_change_does_not_crash(self, cell, implicit_model):
+        _solve(implicit_model, cell, _conditions(5e3))
         _solve(implicit_model, cell, _conditions(np.array([1e3, 5e3])))
 
 

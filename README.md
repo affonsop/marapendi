@@ -14,8 +14,8 @@ transport in the porous layers.
 - **PEM fuel cell** — polarization curves from first principles (Butler-Volmer kinetics,
   Nernst equation, membrane water transport, GDL/MPL liquid saturation)
 - **Two steady-state models** — `explicit_steady_state` (one forward pass, fast) and
-  `implicit_steady_state` (self-consistent MEA temperature via nonlinear root-find,
-  with warm-start for efficient sequential evaluation)
+  `implicit_steady_state` (self-consistent MEA temperature via vectorised secant
+  iteration; both accept full arrays in a single call)
 - **AEM electrolyzer** — analogous model with AEM membrane (PAP family) and KOH electrolyte
 - **Parameter estimation** — differential-evolution global optimizer wrapped in
   `SteadyStateModel` for fitting to experimental data
@@ -110,7 +110,7 @@ state = model.solve(cell, conditions, state)
 # state.cell_voltage — array of voltages (V)
 # state.mea_temperature — array of MEA temperatures (K)
 
-# --- Implicit model (self-consistent T_MEA, warm-start built in) ---
+# --- Implicit model (self-consistent T_MEA, fully vectorised) ---
 imp_model = mrpd.ImplicitSteadyStateModel()
 state = imp_model.set_initial_conditions(cell, conditions)
 state = imp_model.solve(cell, conditions, state)

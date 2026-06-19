@@ -205,7 +205,7 @@ class FuelCell(Cell):
         """Run the explicit steady-state physics on ``self.state`` and sync attributes."""
         state = self.state
         state.thermal_resistance = self._thermal_model.heat_transfer_resistance(self)
-        mea_temperature = self._thermal_model.mea_temperature(self, state, False)
+        mea_temperature = self._thermal_model.mea_temperature(self, state)
         self._thermal_model.set_mea_temperature(mea_temperature, self, state)
         self._model.water_balance_model.calculate_water_transport(
             self, state, gas_transport_model=self._gas_transport_model
