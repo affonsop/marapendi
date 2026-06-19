@@ -1,29 +1,38 @@
-"""Operating conditions for a single cell side (anode or cathode).
+"""Operating conditions for steady-state PEMFC simulations.
 
-:class:`OperatingConditions` holds the steady-state inlet boundary conditions
-passed to ``compute_ui_curve``.  :class:`DynamicOperatingConditions` wraps
-the same fields as callables of time and snapshots them via
-:meth:`~DynamicOperatingConditions.get_operating_conditions`.
+:class:`SideConditions` holds the steady-state inlet boundary conditions for
+one side of the cell (cathode or anode).
+
+:class:`CellConditions` bundles ``current_density``, ``cell_temperature``, and
+one :class:`SideConditions` per side into a single object that is passed to
+:meth:`~marapendi.cell.ExplicitSteadyStateModel.set_initial_conditions` and
+:meth:`~marapendi.cell.ExplicitSteadyStateModel.solve`.
+
+:class:`OperatingConditions` is a backward-compatible alias for
+:class:`SideConditions`.  :class:`DynamicOperatingConditions` wraps
+:class:`SideConditions` fields as callables of time.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+import numpy as np
+
 from ..electrolyte.electrolyte import ElectrolyteSolution
 
 
 @dataclass
-class OperatingConditions:
-    """Inlet boundary conditions for one side of the cell.
+class SideConditions:
+    """Inlet boundary conditions for one side of the cell (cathode or anode).
 
     Attributes
     ----------
     inlet_temperature : float
         Gas inlet temperature (K).
     inlet_pressure : float
-        Inlet pressure (Pa).  Defaults to ``outlet_pressure`` if omitted.
+        Inlet pressure (Pa).  Defaults to ``outlet_pressure`` when omitted.
     outlet_pressure : float
-        Outlet pressure (Pa).  Defaults to ``inlet_pressure`` if omitted.
+        Outlet pressure (Pa).  Defaults to ``inlet_pressure`` when omitted.
     dry_o2_mole_fraction : float
         O₂ mole fraction in the dry gas stream.
     dry_h2_mole_fraction : float
@@ -60,6 +69,39 @@ class OperatingConditions:
         if self.outlet_pressure is None:
             self.outlet_pressure = self.inlet_pressure
         self.average_pressure = 0.5 * (self.inlet_pressure + self.outlet_pressure)
+
+
+# Backward-compatible alias.
+OperatingConditions = SideConditions
+
+
+@dataclass
+class CellConditions:
+    """Full set of operating conditions for a steady-state cell simulation.
+
+    Bundles the current density, stack temperature, and one
+    :class:`SideConditions` per side into a single object for use with
+    :meth:`~marapendi.cell.ExplicitSteadyStateModel.set_initial_conditions`
+    and :meth:`~marapendi.cell.ExplicitSteadyStateModel.solve`.
+
+    Attributes
+    ----------
+    current_density : float or ndarray
+        Current density (A/m²).  Can be a scalar or a 1-D array to evaluate
+        the full polarization curve in one vectorised call.
+    cell_temperature : float or ndarray
+        Stack operating temperature (K).  Must be broadcastable with
+        ``current_density``.
+    ca : SideConditions
+        Cathode inlet conditions.
+    an : SideConditions
+        Anode inlet conditions.
+    """
+
+    current_density: float | np.ndarray
+    cell_temperature: float | np.ndarray
+    ca: SideConditions
+    an: SideConditions
 
 
 class DynamicOperatingConditions:

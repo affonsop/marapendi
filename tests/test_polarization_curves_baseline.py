@@ -280,43 +280,39 @@ def create_fuel_cell(params: dict) -> mrpd.FuelCell:
 
 # ---------------------------------------------------------------------------
 # Operating conditions  (adapted from fuel_cell_model_legacy.py)
-# Uses mrpd.OperatingConditions directly (the installed API at this commit).
 # ---------------------------------------------------------------------------
 
-def make_operating_conditions(case_id: int, current_densities_Am2: np.ndarray):
-    """
-    Return (T, cathode_cond, anode_cond) for *case_id*.
-
-    Stoichiometry is clipped to the minimum-flow constraint used in the notebook
-    (4 L/min at 0.21 O2 / 2 L/min H2 minimum supply).
-    """
+def make_cell_conditions(case_id: int, i_k: float):
+    """Return a :class:`CellConditions` for *case_id* at current density *i_k* (A/m²)."""
     c = CASE_CONDITIONS[case_id]
     T = c['T']
-    # +1 A/m² shift matches the notebook: current_density[case] = 1e4 * exp_current + 1
-    i_max = float(np.max(current_densities_Am2)) + 1.
+    i_max = float(i_k) + 1.
 
     min_st_ca = 4 / 24.5 / 3600 * 0.21 / (i_max * CELL_AREA / 4 / FARADAY)
     min_st_an = 2 / 24.5 / 3600 * 1.   / (i_max * CELL_AREA / 2 / FARADAY)
     st_ca = max(c['st_ca'], min_st_ca)
     st_an = max(c['st_an'], min_st_an)
 
-    ca_cond = mrpd.OperatingConditions(
-        inlet_temperature=T,
-        inlet_pressure=c['p_ca'],
-        outlet_pressure=c['p_ca'],
-        dry_o2_mole_fraction=0.21,
-        inlet_relative_humidity=c['rh_ca'],
-        stoichiometry=st_ca,
+    return mrpd.CellConditions(
+        current_density=np.array([float(i_k)]),
+        cell_temperature=T,
+        ca=mrpd.SideConditions(
+            inlet_temperature=T,
+            inlet_pressure=c['p_ca'],
+            outlet_pressure=c['p_ca'],
+            dry_o2_mole_fraction=0.21,
+            inlet_relative_humidity=c['rh_ca'],
+            stoichiometry=st_ca,
+        ),
+        an=mrpd.SideConditions(
+            inlet_temperature=T,
+            inlet_pressure=c['p_an'],
+            outlet_pressure=c['p_an'],
+            dry_h2_mole_fraction=1.0,
+            inlet_relative_humidity=c['rh_an'],
+            stoichiometry=st_an,
+        ),
     )
-    an_cond = mrpd.OperatingConditions(
-        inlet_temperature=T,
-        inlet_pressure=c['p_an'],
-        outlet_pressure=c['p_an'],
-        dry_h2_mole_fraction=1.0,
-        inlet_relative_humidity=c['rh_an'],
-        stoichiometry=st_an,
-    )
-    return T, ca_cond, an_cond
 
 
 # ---------------------------------------------------------------------------
@@ -328,11 +324,10 @@ def compute_polarization_curve(
     case_id: int,
     current_densities_Am2: np.ndarray,
 ) -> pd.DataFrame:
-    """
-    Build a FuelCell, sweep compute_ui_curve point-by-point, and return a DataFrame.
+    """Build a FuelCell, sweep point-by-point, and return a DataFrame.
 
-    Calling point-by-point gives HFR at every operating point (not just the last),
-    which produces a richer non-regression dataset.
+    Calling point-by-point gives HFR at every operating point (not just the
+    last), which produces a richer non-regression dataset.
 
     Columns
     -------
@@ -341,17 +336,18 @@ def compute_polarization_curve(
     hfr              [Ω·m²]
     """
     fuel_cell = create_fuel_cell(params)
-    T, ca_cond, an_cond = make_operating_conditions(case_id, current_densities_Am2)
+    model = mrpd.ExplicitSteadyStateModel()
 
     records = []
     for i_k in current_densities_Am2:
-        V = fuel_cell.compute_ui_curve(
-            np.array([float(i_k)]), T, ca_cond, an_cond,
-        )
+        cond = make_cell_conditions(case_id, float(i_k))
+        state = model.set_initial_conditions(fuel_cell, cond)
+        state = model.solve(fuel_cell, cond, state)
+        fuel_cell.state = state
         hfr = fuel_cell.high_frequency_resistance()
         records.append({
-            'current_density': float(i_k) * 1e-4,   # A/m² → A/cm²
-            'cell_voltage':    float(np.atleast_1d(V)[0]),
+            'current_density': float(i_k) * 1e-4,
+            'cell_voltage':    float(np.atleast_1d(state.cell_voltage)[0]),
             'hfr':             float(np.asarray(hfr).flat[0]),
         })
 

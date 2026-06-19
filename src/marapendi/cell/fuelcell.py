@@ -1,12 +1,12 @@
 """
 PEM fuel cell component: :class:`FuelCell` and :class:`FuelCellSide`.
 
-:class:`FuelCell` is the top-level object a user constructs to run simulations.
-It owns the complete component tree (catalyst layers, GDL/MPL, flow channels,
-membrane) and exposes a simple ``compute_ui_curve`` API that delegates physics
-to :class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel`.
+:class:`FuelCell` is the component tree a user builds to describe a cell's
+geometry and materials.  Physics are evaluated by creating a model object
+and calling its :meth:`~ExplicitSteadyStateModel.set_initial_conditions` /
+:meth:`~ExplicitSteadyStateModel.solve` pair:
 
-Typical usage::
+::
 
     cell = FuelCell(
         area=25e-4,
@@ -14,7 +14,17 @@ Typical usage::
         an=FuelCellSide(...),
         membrane=PFSA(...),
     )
-    voltages = cell.compute_ui_curve(current_density_array, T, ca_conditions, an_conditions)
+
+    model = ExplicitSteadyStateModel()
+    conditions = CellConditions(
+        current_density=np.linspace(1e3, 2e4, 20),
+        cell_temperature=353.15,
+        ca=SideConditions(outlet_pressure=1.5e5, dry_o2_mole_fraction=0.21, ...),
+        an=SideConditions(outlet_pressure=1.5e5, dry_h2_mole_fraction=1.0, ...),
+    )
+    state = model.set_initial_conditions(cell, conditions)
+    state = model.solve(cell, conditions, state)
+    # state.cell_voltage, state.mea_temperature, … are now populated
 """
 from dataclasses import dataclass, field
 import numpy as np
@@ -34,96 +44,74 @@ from .state import (
 )
 from .state import GasState
 
+
 @dataclass
 class FuelCellSide(CellSide):
     """
-    A class representing one side (anode or cathode) of a PEM fuel cell, 
-    composed of porous layers (catalyst layer, microporous layer, gas diffusion layer)
-    and flow channels. This class provides methods to calculate transport and 
-    thermal resistances, as well as water management parameters.
+    One side (anode or cathode) of a PEM fuel cell.
+
+    Owns the porous layers (catalyst layer, optional microporous layer, gas
+    diffusion layer) and flow channel for one electrode.
 
     Attributes
     ----------
     cl : CatalystLayer
-        Catalyst layer object (defaults to PtCCatalystLayer).
+        Catalyst layer (defaults to :class:`~marapendi.PtCCatalystLayer`).
     gdl : PorousLayer
-        Gas diffusion layer object.
+        Gas diffusion layer.
     mpl : PorousLayer, optional
-        Microporous layer object.
+        Microporous layer.
     ch : FlowChannel
-        Flow channel object for gas transport.
+        Flow channel.
     has_mpl : bool
         Whether this side includes a microporous layer.
-    is_wet: bool
-        Whether this side is flooded with water (used for water electrolysis).
+    is_wet : bool
+        Whether this side is flooded with liquid (used for water electrolysis).
     thermal_contact_resistance : float
-        Additional thermal contact resistance at interfaces.
+        Additional thermal contact resistance at the GDL/bipolar-plate interface (m²·K/W).
     """
+
     is_wet: bool = False
 
     def __post_init__(self):
         pass
 
-    def set_catalyst_layer(self, cl): 
-        """
-        Set a new catalyst layer and update internal component structure.
-
-        Parameters
-        ----------
-        cl : PorousLayer
-            The new catalyst layer object.
-        """
-        self.cl = cl 
+    def set_catalyst_layer(self, cl):
+        """Replace the catalyst layer."""
+        self.cl = cl
         self.__post_init__()
-    
-    def set_gas_diffusion_layer(self, gdl): 
-        """
-        Set a new gas diffusion layer and update internal component structure.
 
-        Parameters
-        ----------
-        gdl : PorousLayer
-            The new gas diffusion layer object.
-        """
+    def set_gas_diffusion_layer(self, gdl):
+        """Replace the gas diffusion layer."""
         self.gdl = gdl
         self.__post_init__()
-    
-    def set_channel(self, ch): 
-        """
-        Set a new flow channel and update internal component structure.
 
-        Parameters
-        ----------
-        ch : FlowChannel
-            The new flow channel object.
-        """
-        self.ch = ch 
+    def set_channel(self, ch):
+        """Replace the flow channel."""
+        self.ch = ch
         self.__post_init__()
 
 
 @dataclass
 class FuelCell(Cell):
     """
-    Proton exchange membrane fuel cell: a :class:`~marapendi.cell.Cell` with
-    the explicit-steady-state physics attached.
+    Proton exchange membrane fuel cell.
 
-    Static geometry (``ca``, ``an``, ``membrane``, ``area``,
-    ``electrical_resistance``) is inherited from :class:`~marapendi.cell.Cell`.
-    Runtime state (temperatures, fluxes, voltages) is stored directly on this
-    object and its component instances, to be migrated to
-    :class:`~marapendi.state.CellState` in a later refactoring step.
+    Inherits static geometry (``ca``, ``an``, ``membrane``, ``area``,
+    ``electrical_resistance``) from :class:`~marapendi.cell.Cell`.  The cell
+    object itself holds only component parameters; all physics are handled by
+    a separate :class:`~marapendi.cell.ExplicitSteadyStateModel` or
+    :class:`~marapendi.cell.ImplicitSteadyStateModel` instance.
 
-    Model orchestration is delegated to
-    :class:`~marapendi.model.ExplicitSteadyStateModel` and
-    :class:`~marapendi.voltage.VoltageModel`.
+    Convenience voltage accessors (e.g. :meth:`high_frequency_resistance`)
+    delegate to the ``VoltageModel`` using ``cell.state``, which is populated
+    after a :meth:`~ExplicitSteadyStateModel.solve` call.
     """
 
-    # Override parent field types to accept FuelCellSide
     ca: FuelCellSide = field(default_factory=FuelCellSide)
     an: FuelCellSide = field(default_factory=FuelCellSide)
     membrane: Membrane = field(default_factory=Membrane)
 
-    # FuelCell-specific fields (all optional so Cell fields keep their defaults)
     cell_number: int = 1
     mea_surface_heat_capacity: float = 10000.
     use_eq_water_content_for_ionomer: bool = True
@@ -131,14 +119,10 @@ class FuelCell(Cell):
     def __post_init__(self):
         self.ca.reactant = 'o2'
         self.an.reactant = 'h2'
-        super().__post_init__()   # builds porous_layers, layers, sides from Cell
+        super().__post_init__()
         self._voltage_model = VoltageModel()
         self._thermal_model = ThermalModel()
         self._model = ExplicitSteadyStateModel(
-            self._voltage_model,
-            self._thermal_model,
-        )
-        self._implicit_model = ImplicitSteadyStateModel(
             self._voltage_model,
             self._thermal_model,
         )
@@ -146,7 +130,7 @@ class FuelCell(Cell):
         self.state = CellState()
 
     # ------------------------------------------------------------------
-    # Voltage methods — delegate to VoltageModel
+    # Voltage accessors — require self.state to be populated by a solve call
     # ------------------------------------------------------------------
 
     def reversible_cell_voltage(self):
@@ -170,112 +154,36 @@ class FuelCell(Cell):
     def calculate_cell_voltage(self):
         return self._voltage_model.compute_cell_voltage(self, self.state)
 
-    
-    def compute_ui_curve(
-        self,
-        current_density,
-        stack_temperature,
-        cathode_conditions,
-        anode_conditions,
-        model: str = 'explicit_steady_state',
-    ):
-        """
-        Compute the polarization curve for given operating conditions.
+    # ------------------------------------------------------------------
+    # Transient solver support (internal — not part of steady-state API)
+    # ------------------------------------------------------------------
 
-        Parameters
-        ----------
-        current_density : float or ndarray
-            Current density (A/m²).
-        stack_temperature : float
-            Stack operating temperature (K).
-        cathode_conditions : OperatingConditions
-            Cathode inlet conditions.
-        anode_conditions : OperatingConditions
-            Anode inlet conditions.
-        model : {'explicit_steady_state', 'implicit_steady_state'}
-            Physics model to use.
-
-            ``'explicit_steady_state'``
-                MEA temperature is estimated analytically, then cell physics
-                are evaluated in one forward pass.
-            ``'implicit_steady_state'``
-                MEA temperature is solved self-consistently via a nonlinear
-                root-find, yielding a thermally coupled solution.
-
-        Returns
-        -------
-        float or ndarray
-            Cell voltage (V).
-        """
-        self.set_conditions(stack_temperature, current_density, cathode_conditions, anode_conditions)
-        if model == 'implicit_steady_state':
-            return self.implicit_steady_state_model()
-        return self.explicit_steady_state_model()
-
-    def explicit_steady_state_model(self, mea_tempearture_estimation=False):
-        """
-        Explicit steady-state model: one forward pass with an analytic T_MEA estimate.
-
-        Delegates to :class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel`.
-        """
-        voltage = self._model.solve(self, self.state, mea_temperature_estimation=mea_tempearture_estimation)
-        self._sync_state_to_fc()
-        return voltage
-
-    def implicit_steady_state_model(self):
-        """
-        Implicit steady-state model: solve for T_MEA self-consistently.
-
-        Delegates to :class:`~marapendi.cell.implicit_steady_state.ImplicitSteadyStateModel`.
-        Warm-start is preserved across successive calls on the same model instance.
-        """
-        voltage = self._implicit_model.solve(self, self.state)
-        self._sync_state_to_fc()
-        return voltage
-
-    def _sync_state_to_fc(self):
-        """Copy key values from ``self.state`` back to legacy ``FuelCell`` attributes.
-
-        Keeps backward compatibility for callers that read ``fc.cell_voltage``,
-        ``fc.mea_temperature``, etc. directly.
-        """
-        s = self.state
-        self.cell_voltage = s.cell_voltage
-        self.mea_temperature = s.mea_temperature if s.mea_temperature is not None else self.temperature
-        self.mea_temperature_increase = s.mea_temperature_increase if s.mea_temperature_increase is not None else 0.
-        self.thermal_resistance = s.thermal_resistance if s.thermal_resistance is not None else self.thermal_resistance
-        self.crossover_current = s.crossover_current if s.crossover_current is not None else 0.
-        if s.membrane.h2_permeation_flux is not None:
-            self.h2_permeation_flux = s.membrane.h2_permeation_flux
-
-    def set_water_saturation_in_porous_layers(self, saturation_profile): 
+    def set_water_saturation_in_porous_layers(self, saturation_profile):
         k = 0
-        for side in (self.an,self.ca): 
-            for layer in side.porous_layers:
-                layer.non_wetting_saturation = saturation_profile[k,...]
-                k+=1
         for side in (self.an, self.ca):
-            side.h2ov_transport_resistance = self._gas_transport_model.gas_transport_resistance(side, side, 'h2o')
+            for layer in side.porous_layers:
+                layer.non_wetting_saturation = saturation_profile[k, ...]
+                k += 1
+        for side in (self.an, self.ca):
+            side.h2ov_transport_resistance = self._gas_transport_model.gas_transport_resistance(
+                side, side, 'h2o'
+            )
             side.cl.set_water_film_thickness(side.cl.non_wetting_saturation)
-        
-        
-    def f_transient(self, t,x,u,p, n_memb_mesh=3): 
-        self.set_conditions_from_input_dict(u,t * np.ones_like(x[0,...]))
-        # Get variables 
+
+    def f_transient(self, t, x, u, p, n_memb_mesh=3):
+        self.set_conditions_from_input_dict(u, t * np.ones_like(x[0, ...]))
         k = 1 + n_memb_mesh
-        water_profile = x[1:k,...]
-        saturation_profile = np.clip(x[k:k+len(self.porous_layers),...],0,0.9)
-        self.ca.s_relax = x[-2,...]
-        self.an.s_relax = x[-1,...]
-        
-        # Set conditions
-        self.set_mea_temperature(x[0,...])
+        water_profile = x[1:k, ...]
+        saturation_profile = np.clip(x[k:k + len(self.porous_layers), ...], 0, 0.9)
+        self.ca.s_relax = x[-2, ...]
+        self.an.s_relax = x[-1, ...]
+
+        self.set_mea_temperature(x[0, ...])
         self.set_water_saturation_in_porous_layers(saturation_profile)
         self._model.water_balance_model.solve_water_balance(self, water_profile=water_profile, dynamic=True)
         self.calculate_gas_concentrations_at_cl()
         self.calculate_cell_voltage()
 
-        # Calculate rates of change
         wbm = self._model.water_balance_model
         dlmbddt = wbm.membrane_water_rate_of_change(self, n_memb_mesh)
         dTdt = self._thermal_model.temperature_rate_of_change(self)
@@ -283,50 +191,68 @@ class FuelCell(Cell):
         dsrlxdt = wbm.relaxation_rate_of_change(self)
         return [dTdt] + list(dlmbddt) + list(dsdt) + list(dsrlxdt)
 
-    def f_relax(self, t,x,u,p, n_memb_mesh=3): 
-        self.set_conditions_from_input_dict(u,t * np.ones_like(x[0,...]))
-        self.explicit_steady_state_model()
+    def f_relax(self, t, x, u, p, n_memb_mesh=3):
+        self.set_conditions_from_input_dict(u, t * np.ones_like(x[0, ...]))
+        self._run_explicit_solve()
 
-        self.ca.s_relax = x[-2,...]
-        self.an.s_relax = x[-1,...]
-        
+        self.ca.s_relax = x[-2, ...]
+        self.an.s_relax = x[-1, ...]
+
         dsrlxdt = self._model.water_balance_model.relaxation_rate_of_change(self)
         return list(dsrlxdt)
 
-    def set_conditions_from_input_functions(self, u, t): 
-        self.set_conditions_from_input_dict({key: u_function(t) for key, u_function in u.items()})
+    def _run_explicit_solve(self):
+        """Run the explicit steady-state physics on ``self.state`` and sync attributes."""
+        state = self.state
+        state.thermal_resistance = self._thermal_model.heat_transfer_resistance(self)
+        mea_temperature = self._thermal_model.mea_temperature(self, state, False)
+        self._thermal_model.set_mea_temperature(mea_temperature, self, state)
+        self._model.water_balance_model.calculate_water_transport(
+            self, state, gas_transport_model=self._gas_transport_model
+        )
+        self._gas_transport_model.calculate_gas_concentrations(self, state)
+        self._voltage_model.compute_cell_voltage(self, state)
+        self._sync_state_to_fc()
 
-    def set_conditions_from_input_dict(self, u): 
+    def _sync_state_to_fc(self):
+        """Copy solved quantities from ``self.state`` to legacy ``FuelCell`` attributes."""
+        s = self.state
+        self.cell_voltage = s.cell_voltage
+        self.mea_temperature = s.mea_temperature if s.mea_temperature is not None else self.temperature
+        self.mea_temperature_increase = (
+            s.mea_temperature_increase if s.mea_temperature_increase is not None else 0.
+        )
+        self.thermal_resistance = s.thermal_resistance if s.thermal_resistance is not None else self.thermal_resistance
+        self.crossover_current = s.crossover_current if s.crossover_current is not None else 0.
+        if s.membrane.h2_permeation_flux is not None:
+            self.h2_permeation_flux = s.membrane.h2_permeation_flux
+
+    def set_conditions_from_input_functions(self, u, t):
+        self.set_conditions_from_input_dict({key: fn(t) for key, fn in u.items()})
+
+    def set_conditions_from_input_dict(self, u):
         current_density = u['current-density']
         stack_temperature = u['cell-temperature']
-        # for side in ('ca','an'):
-        #     try: 
-        #         u[f'{side}-inlet-liquid']
-        #     except KeyError: 
-        #         u[f'{side}-inlet-liquid'] = lambda t: ElectrolyteSolution()
-
-        cathode_conditions, anode_conditions =  [OperatingConditions(
+        cathode_conditions, anode_conditions = [
+            SideConditions(
                 inlet_temperature=u[f'{side}-inlet-temperature'],
                 inlet_pressure=u[f'{side}-inlet-pressure'],
                 outlet_pressure=u[f'{side}-outlet-pressure'],
-                inlet_relative_humidity=u[f'{side}-inlet-rh'],      
+                inlet_relative_humidity=u[f'{side}-inlet-rh'],
                 stoichiometry=u[f'{side}-stoichiometry'],
                 dry_o2_mole_fraction=u[f'{side}-dry-o2-mole-fraction'],
                 dry_h2_mole_fraction=u[f'{side}-dry-h2-mole-fraction'],
                 inlet_liquid_saturation=u[f'{side}-inlet-liquid-saturation'],
                 inlet_gas_flow_rate=u[f'{side}-inlet-gas-flow-rate'],
                 inlet_liquid_flow_rate=u[f'{side}-inlet-liquid-flow-rate'],
-                inlet_liquid=u[f'{side}-inlet-liquid'] if f'{side}-inlet-liquid' in u.keys() else  ElectrolyteSolution(),
-            ) for side in ('ca','an')]
-        self.set_conditions(stack_temperature, current_density, cathode_conditions, anode_conditions)
-
-    def set_conditions(self, stack_temperature, current_density, cathode_conditions, anode_conditions):
-        """Delegate to :meth:`~marapendi.model.ExplicitSteadyStateModel.set_initial_state`."""
-        self.state = self._model.set_initial_state(
+                inlet_liquid=u.get(f'{side}-inlet-liquid', ElectrolyteSolution()),
+            )
+            for side in ('ca', 'an')
+        ]
+        self.state = self._model._init_state(
             self, stack_temperature, current_density,
             cathode_conditions, anode_conditions,
         )
-            
 
-from ..simulation.conditions import OperatingConditions, DynamicOperatingConditions  # noqa: F401
 
+from ..simulation.conditions import SideConditions, OperatingConditions, DynamicOperatingConditions  # noqa: F401

@@ -90,18 +90,30 @@ cell = mrpd.FuelCell(
 
 # --- Operating conditions ---
 T = 353.15
-ca_cond = mrpd.OperatingConditions(
-    inlet_temperature=T, inlet_pressure=1.5e5, outlet_pressure=1.5e5,
-    dry_o2_mole_fraction=0.21, inlet_relative_humidity=0.5, stoichiometry=2.0,
-)
-an_cond = mrpd.OperatingConditions(
-    inlet_temperature=T, inlet_pressure=1.5e5, outlet_pressure=1.5e5,
-    dry_h2_mole_fraction=1.0, inlet_relative_humidity=0.5, stoichiometry=1.5,
+conditions = mrpd.CellConditions(
+    current_density=np.linspace(1e3, 2e4, 20),   # A/m²
+    cell_temperature=T,
+    ca=mrpd.SideConditions(
+        inlet_temperature=T, outlet_pressure=1.5e5,
+        dry_o2_mole_fraction=0.21, inlet_relative_humidity=0.5, stoichiometry=2.0,
+    ),
+    an=mrpd.SideConditions(
+        inlet_temperature=T, outlet_pressure=1.5e5,
+        dry_h2_mole_fraction=1.0, inlet_relative_humidity=0.5, stoichiometry=1.5,
+    ),
 )
 
-# --- Polarization curve ---
-i = np.linspace(1e3, 2e4, 20)   # A/m²
-V = cell.compute_ui_curve(i, T, ca_cond, an_cond)
+# --- Polarization curve (explicit model, one vectorised call) ---
+model = mrpd.ExplicitSteadyStateModel()
+state = model.set_initial_conditions(cell, conditions)
+state = model.solve(cell, conditions, state)
+# state.cell_voltage — array of voltages (V)
+# state.mea_temperature — array of MEA temperatures (K)
+
+# --- Implicit model (self-consistent T_MEA, warm-start built in) ---
+imp_model = mrpd.ImplicitSteadyStateModel()
+state = imp_model.set_initial_conditions(cell, conditions)
+state = imp_model.solve(cell, conditions, state)
 ```
 
 ## Package structure

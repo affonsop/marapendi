@@ -32,6 +32,7 @@ from .voltage import VoltageModel
 from .thermal import ThermalModel
 from .water_balance import MembraneWaterBalanceModel
 from .gas_transport import GasTransportModel
+from .state import CellState
 
 
 @dataclass
@@ -47,13 +48,22 @@ class ImplicitSteadyStateModel(ExplicitSteadyStateModel):
     (water balance, gas transport, voltage) are identical to
     :class:`ExplicitSteadyStateModel`.
 
+    Usage
+    -----
+    ::
+
+        model = ImplicitSteadyStateModel()
+        conditions = CellConditions(
+            current_density=np.linspace(1e3, 2e4, 20),
+            cell_temperature=353.15,
+            ca=SideConditions(outlet_pressure=1.5e5, dry_o2_mole_fraction=0.21, ...),
+            an=SideConditions(outlet_pressure=1.5e5, dry_h2_mole_fraction=1.0, ...),
+        )
+        state = model.set_initial_conditions(cell, conditions)
+        state = model.solve(cell, conditions, state)
+
     Parameters
     ----------
-    voltage_model : VoltageModel
-    thermal_model : ThermalModel
-    water_balance_model : MembraneWaterBalanceModel
-    gas_transport_model : GasTransportModel
-        Sub-models shared with the parent class.
     root_kwargs : dict
         Extra keyword arguments forwarded to :func:`scipy.optimize.root`
         (e.g. ``{"method": "hybr", "tol": 1e-6}``).
@@ -74,28 +84,30 @@ class ImplicitSteadyStateModel(ExplicitSteadyStateModel):
     # Public API
     # ------------------------------------------------------------------
 
-    def solve(self, cell, state) -> float:
-        """
-        Solve for the self-consistent MEA temperature and return the cell voltage.
+    def solve(self, cell, cell_conditions, initial_state: CellState) -> CellState:
+        """Solve for the self-consistent MEA temperature and return the state.
 
         Parameters
         ----------
         cell : FuelCell
-            Fully configured fuel-cell object.  Provides static physics parameters.
-        state : CellState
-            Runtime state created by :meth:`~ExplicitSteadyStateModel.set_initial_state`.
-            All computed quantities are written here.
+            Fully configured fuel-cell object.
+        cell_conditions : CellConditions
+            Operating conditions (same object passed to :meth:`set_initial_conditions`).
+        initial_state : CellState
+            State returned by :meth:`set_initial_conditions`.  Modified in place.
 
         Returns
         -------
-        float or ndarray
-            Cell voltage (V).  Identical to ``state.cell_voltage`` after the call.
+        CellState
+            The same object as *initial_state*, populated with all solved
+            quantities including the self-consistent ``mea_temperature``.
 
         Raises
         ------
         RuntimeWarning
             Emitted (but not raised) if the root-finder did not converge.
         """
+        state = initial_state
         state.thermal_resistance = self.thermal_model.heat_transfer_resistance(cell)
         x0 = self._initial_guess(cell, state)
 
@@ -125,7 +137,7 @@ class ImplicitSteadyStateModel(ExplicitSteadyStateModel):
         residual(result.x)
         self._last_mea_temperature = result.x
 
-        return state.cell_voltage
+        return state
 
     # ------------------------------------------------------------------
     # Internal helpers

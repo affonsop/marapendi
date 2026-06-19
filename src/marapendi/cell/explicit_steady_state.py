@@ -29,44 +29,118 @@ class ExplicitSteadyStateModel:
     """
     Explicit steady-state model for PEMFC polarization curves.
 
+    Usage
+    -----
+    ::
+
+        model = ExplicitSteadyStateModel()
+        conditions = CellConditions(
+            current_density=np.linspace(1e3, 2e4, 20),
+            cell_temperature=353.15,
+            ca=SideConditions(outlet_pressure=1.5e5, dry_o2_mole_fraction=0.21, ...),
+            an=SideConditions(outlet_pressure=1.5e5, dry_h2_mole_fraction=1.0, ...),
+        )
+        state = model.set_initial_conditions(cell, conditions)
+        state = model.solve(cell, conditions, state)
+        # state.cell_voltage, state.mea_temperature, … are now populated
+
     Hypotheses
     ----------
-    - MEA temperature increases linearly with current density (or is estimated
-      from the first-pass cell voltage when ``mea_temperature_estimation=True``).
+    - MEA temperature is estimated analytically: either from the 0.7 V efficiency
+      approximation (``mea_temperature_estimation=False``) or from a first-pass
+      voltage calculation (``mea_temperature_estimation=True``).
     - Membrane water transport uses dry-condition gas-transport resistances.
     - Liquid water saturation follows the Darcy power-law from the net flux.
+
+    Parameters
+    ----------
+    mea_temperature_estimation : bool
+        When ``True``, perform a first-pass voltage calculation at the stack
+        temperature before estimating T_MEA, giving a better approximation
+        than the constant 0.7 V efficiency assumption.
     """
 
     voltage_model: VoltageModel = field(default_factory=VoltageModel)
     thermal_model: ThermalModel = field(default_factory=ThermalModel)
     water_balance_model: MembraneWaterBalanceModel = field(default_factory=MembraneWaterBalanceModel)
     gas_transport_model: GasTransportModel = field(default_factory=GasTransportModel)
+    mea_temperature_estimation: bool = False
 
-    def set_initial_state(self, cell, stack_temperature, current_density,
-                          cathode_conditions, anode_conditions) -> CellState:
-        """Create and initialise a fresh :class:`CellState` for one operating point.
+    def set_initial_conditions(self, cell, cell_conditions) -> CellState:
+        """Create and initialise a :class:`CellState` from *cell_conditions*.
 
-        Returns a new state each call so that array shapes always match
-        *current_density* without manually zeroing pre-existing arrays.
+        Returns a fresh state object with gas compositions, flow rates and
+        initial temperatures set from the conditions.  Pass the result to
+        :meth:`solve`.
 
         Parameters
         ----------
         cell : FuelCell
             Component tree — provides geometry and static physics objects.
-        stack_temperature : float or ndarray
-            Operating temperature of the fuel-cell stack (K).
-        current_density : float or ndarray
-            Current density (A/m²).
-        cathode_conditions : OperatingConditions
-            Inlet conditions for the cathode side.
-        anode_conditions : OperatingConditions
-            Inlet conditions for the anode side.
+        cell_conditions : CellConditions
+            Operating conditions: current density, stack temperature, and one
+            :class:`~marapendi.simulation.conditions.SideConditions` per side.
 
         Returns
         -------
         CellState
-            Fully initialised state ready for :meth:`solve`.
         """
+        return self._init_state(
+            cell,
+            cell_conditions.cell_temperature,
+            cell_conditions.current_density,
+            cell_conditions.ca,
+            cell_conditions.an,
+        )
+
+    def solve(self, cell, cell_conditions, initial_state: CellState) -> CellState:
+        """Run the explicit steady-state solve and return the populated state.
+
+        Parameters
+        ----------
+        cell : FuelCell
+            Fully configured fuel-cell object.
+        cell_conditions : CellConditions
+            Operating conditions (same object passed to :meth:`set_initial_conditions`).
+        initial_state : CellState
+            State returned by :meth:`set_initial_conditions`.  Modified in place.
+
+        Returns
+        -------
+        CellState
+            The same object as *initial_state*, now containing all solved
+            quantities (``cell_voltage``, ``mea_temperature``, transport
+            resistances, gas concentrations, …).
+        """
+        state = initial_state
+        state.thermal_resistance = self.thermal_model.heat_transfer_resistance(cell)
+
+        if self.mea_temperature_estimation:
+            self.thermal_model.set_mea_temperature(state.temperature, cell, state)
+            self.water_balance_model.calculate_water_transport(
+                cell, state, gas_transport_model=self.gas_transport_model
+            )
+            self.gas_transport_model.calculate_gas_concentrations(cell, state)
+            self.voltage_model.compute_cell_voltage(cell, state)
+
+        mea_temperature = self.thermal_model.mea_temperature(
+            cell, state, self.mea_temperature_estimation
+        )
+        self.thermal_model.set_mea_temperature(mea_temperature, cell, state)
+        self.water_balance_model.calculate_water_transport(
+            cell, state, gas_transport_model=self.gas_transport_model
+        )
+        self.gas_transport_model.calculate_gas_concentrations(cell, state)
+        self.voltage_model.compute_cell_voltage(cell, state)
+        return state
+
+    # ------------------------------------------------------------------
+    # Internal helpers (also called by FuelCell for legacy support)
+    # ------------------------------------------------------------------
+
+    def _init_state(self, cell, stack_temperature, current_density,
+                    cathode_conditions, anode_conditions) -> CellState:
+        """Low-level state initialiser used by :meth:`set_initial_conditions`."""
         state = CellState()
         for side, side_state in zip(cell.sides, state.sides):
             if side.has_mpl:
@@ -154,40 +228,6 @@ class ExplicitSteadyStateModel:
                 )
             )
 
-    def solve(self, cell, state, mea_temperature_estimation: bool = False) -> float:
-        """
-        Run the explicit steady-state solve on *cell* / *state* and return the cell voltage.
-
-        Parameters
-        ----------
-        cell : FuelCell
-            Fully configured fuel-cell object.  Provides static physics parameters.
-        state : CellState
-            Runtime state returned by :meth:`set_initial_state`.  All computed
-            quantities are written here.
-        mea_temperature_estimation : bool
-            When ``True``, estimate the MEA temperature from a first-pass
-            voltage calculation instead of the 0.7 V efficiency approximation.
-
-        Returns
-        -------
-        float or ndarray
-            Cell voltage (V). The value is stored on ``state.cell_voltage``.
-        """
-        state.thermal_resistance = self.thermal_model.heat_transfer_resistance(cell)
-
-        if mea_temperature_estimation:
-            self.thermal_model.set_mea_temperature(state.temperature, cell, state)
-            self.water_balance_model.calculate_water_transport(cell, state, gas_transport_model=self.gas_transport_model)
-            self.gas_transport_model.calculate_gas_concentrations(cell, state)
-            self.voltage_model.compute_cell_voltage(cell, state)
-
-        mea_temperature = self.thermal_model.mea_temperature(cell, state, mea_temperature_estimation)
-        self.thermal_model.set_mea_temperature(mea_temperature, cell, state)
-        self.water_balance_model.calculate_water_transport(cell, state, gas_transport_model=self.gas_transport_model)
-        self.gas_transport_model.calculate_gas_concentrations(cell, state)
-        self.voltage_model.compute_cell_voltage(cell, state)
-        return state.cell_voltage
 
 # Re-exported for convenience — the canonical implementation lives in implicit_steady_state.py.
 from .implicit_steady_state import ImplicitSteadyStateModel  # noqa: F401
