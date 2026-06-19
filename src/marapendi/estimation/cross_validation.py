@@ -523,7 +523,7 @@ def plot_rmse_vs_complexity(
             test_mean.values + test_std.values,
             color="dimgray",
             alpha=0.3,
-            label="$\pm$ 1$\sigma$ RMSE - test"
+            label=r"$\pm$ 1$\sigma$ RMSE - test"
         )
 
 
