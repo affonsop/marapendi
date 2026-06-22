@@ -14,20 +14,11 @@ is handled:
   cell voltage and MEA temperature are solved self-consistently via a
   vectorised elementwise secant iteration (:func:`scipy.optimize.newton`).
 
-The membrane water balance sub-model is independently swappable:
-
-- :class:`~marapendi.cell.water_balance.MembraneWaterBalanceModel` (default) —
-  sequential two-stage solve (vapor-equilibrated then liquid-equilibrated).
-- :class:`~marapendi.cell.water_balance.ImplicitWaterBalanceModel` —
-  Newton solve on the cathode membrane water flux so that the water-content
-  boundary condition is self-consistent with the actual flux.
-
-Use ``ImplicitWaterBalanceModel`` with ``ImplicitSteadyStateModel`` for a fully
-self-consistent solve::
-
-    model = ImplicitSteadyStateModel(
-        water_balance_model=ImplicitWaterBalanceModel()
-    )
+Both models use :class:`~marapendi.cell.water_balance.MembraneWaterBalanceModel`
+for the membrane water balance.  The model solves a 1-D water-content profile
+with vapor-equilibrium boundary conditions.  Liquid saturation in the cathode
+catalyst layer is computed for gas-transport resistance purposes but does **not**
+feed back into the membrane water-content boundary condition.
 
 All models share the same two-step API::
 
