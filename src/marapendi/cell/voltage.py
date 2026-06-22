@@ -64,12 +64,8 @@ class VoltageModel:
     def ohmic_overpotential(self, cell, state) -> float:
         side_state = state.ca
         side_cell = cell.ca
-        state.ca.cl.proton_resistance = 1. / (
-            side_state.cl.non_wetting_saturation / side_cell.cl.effective_charge_resistance(
-                state.current_density, side_state.liquid_eq_water_content, side_state.cl.temperature,
-            ) + (1 - side_state.cl.non_wetting_saturation) / side_cell.cl.effective_charge_resistance(
-                state.current_density, side_state.vapor_eq_water_content, side_state.cl.temperature,
-            )
+        state.ca.cl.proton_resistance = side_cell.cl.effective_charge_resistance(
+                state.current_density, side_state.cl.ionomer_water_content, side_state.cl.temperature,
         )
         return state.current_density * (state.ca.cl.proton_resistance + self.high_frequency_resistance(cell, state))
 

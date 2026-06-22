@@ -219,6 +219,3 @@ class ExplicitSteadyStateModel:
                 )
             )
 
-
-# Re-exported for convenience — the canonical implementation lives in implicit_steady_state.py.
-from .implicit_steady_state import ImplicitSteadyStateModel  # noqa: F401
