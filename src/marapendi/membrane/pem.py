@@ -170,7 +170,10 @@ class PFSA(Membrane):
 
         Weights liquid- and vapor-equilibrated conductivities by water saturation.
         """
-        average_conductivity = self.proton_conductivity(state.water_content_profile, state.temperature)
+        vapor_conductivity = self.proton_conductivity(state.water_content_profile, state.temperature)
+        state.liquid_equilibrium_water_content = self.liquid_equilibrium_water_content(state.temperature)
+        liquid_conductivity = self.proton_conductivity(state.liquid_equilibrium_water_content * np.ones_like(state.water_content_profile), state.temperature)
+        average_conductivity = water_saturation * liquid_conductivity + (1-water_saturation) * vapor_conductivity 
         return self.dry_thickness / average_conductivity
 
 NafionD2020 = PFSAIonomer(
