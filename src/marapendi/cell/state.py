@@ -84,13 +84,27 @@ class MembraneState:
     h2_permeation_flux: float = None
     proton_resistance: float = None
 
+    # Transport properties (set by MembraneWaterBalanceModel.calculate_membrane_transport_properties)
+    eod_speed: float = None
+    absorption_coefficient: float = None
+    water_diffusivity: float = None
+    water_diffusion_resistance: float = None
+    vapor_equilibrium_saturation_water_content: float = None
+
+    # Non-dimensional profile quantities (set by update_non_dimensional_parameters)
     peclet_number: float = None
     ePe: object = None
     ePexi: object = None
     xi: object = None
-    water_diffusion_resistance: float = None
-    water_content_profile: float = None
-    water_content_derivative_profile: float = None
+
+    # Profile (set by update_water_profile / _initialize_interface_water_contents)
+    water_content_profile: object = None
+    water_content_derivative_profile: object = None
+
+    # Internal flux diagnostics (set by update_internal_water_fluxes)
+    diffusion_flux: object = None
+    eod_flux: object = None
+    water_net_flux: object = None
 
 
 @dataclass

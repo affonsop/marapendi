@@ -4,6 +4,7 @@ from .tools import *
 from .cell.fuelcell import *
 from .cell.implicit_steady_state import *
 from .cell.explicit_steady_state import *
+from .cell.transient import *
 from .simulation.conditions import *
 from .cell.aem_electrolyzer import *
 from .membrane.membrane_base import *
@@ -17,7 +18,7 @@ from .electrolyte.electrolyte import *
 from .membrane.ionomer_base import *
 from .membrane.pem import *
 from .membrane.aem import *
-from .cell.water_balance import *
+from .water_balance.water_balance import *
 from .membrane.permeation import *
 from .porous_layers.catalyst_layers import *
 from .degradation.degradation import *

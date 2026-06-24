@@ -118,7 +118,7 @@ class WaterBalanceModel:
 
 
     def calculate_water_transport(self, cell, state, dynamic: bool = False,
-                                   gas_transport_model=None) -> None:
+                                   water_profile=None, gas_transport_model=None) -> None:
         """Calculate the water balance across the fuel cell.
 
         Updates vapor transport resistances, solves the membrane water balance,
@@ -134,22 +134,27 @@ class WaterBalanceModel:
             compatibility.
         dynamic : bool
             When ``True``, skips the liquid saturation update (used by transient
-            models).
+            models that prescribe the water profile externally).
+        water_profile : np.ndarray, optional
+            Prescribed membrane water-content profile (shape ``(n_mesh, ...)``).
+            Passed through to :meth:`MembraneWaterBalanceModel.solve_membrane_water_balance`;
+            when ``None`` the steady-state profile is computed internally.
         gas_transport_model : GasTransportModel, optional
             Shared instance for computing H₂O vapor transport resistances.
             A temporary instance is created if not provided.
         """
-        
         _gtr = gas_transport_model if gas_transport_model is not None else GasTransportModel()
         htr_ca = _gtr.gas_transport_resistance(cell.ca, state.ca, 'h2o')
         htr_an = _gtr.gas_transport_resistance(cell.an, state.an, 'h2o')
         state.ca.h2ov_transport_resistance = htr_ca
         state.an.h2ov_transport_resistance = htr_an
 
-        self.membrane_water_balance_model.solve_membrane_water_balance(cell, state)
+        self.membrane_water_balance_model.solve_membrane_water_balance(
+            cell, state, water_profile=water_profile
+        )
         self.update_cell_side_water_fluxes(state.ca)
         self.update_cell_side_water_fluxes(state.an)
-       
+
         if not dynamic:
             self.calculate_water_saturation(cell.ca, state.ca)
             cell.ca.cl.set_water_film_thickness(state.ca.cl.non_wetting_saturation)
@@ -164,3 +169,77 @@ class WaterBalanceModel:
             else:
                 side_state.cl.ionomer_water_content = side_state.membrane_interface_water_content
             cl.set_ionomer_wet_properties(side_state.cl.ionomer_water_content, side_state.cl.temperature)
+
+    def membrane_water_rate_of_change(self, cell, state, n_memb_mesh):
+        """Rate of change of water content at each membrane mesh node (mol/mol/s).
+
+        Uses a finite-volume discretisation of the combined diffusion + EOD
+        flux divergence, with boundary fluxes taken from the absorption/desorption
+        terms already stored in *state* by :meth:`calculate_water_transport`.
+
+        Parameters
+        ----------
+        cell : FuelCell
+        state : CellState
+            Must have ``membrane.water_content_profile``, ``membrane.peclet_number``,
+            ``membrane.water_diffusion_resistance``, ``an.membrane_water_flux``, and
+            ``ca.membrane_water_flux`` already populated.
+        n_memb_mesh : int
+            Number of membrane mesh nodes (must match ``len(state.membrane.water_content_profile)``).
+
+        Returns
+        -------
+        np.ndarray, shape (n_memb_mesh, ...)
+        """
+        lmbd = state.membrane.water_content_profile   # (n, ...)
+        R_D = state.membrane.water_diffusion_resistance
+        Pe = state.membrane.peclet_number
+        n = n_memb_mesh
+        sc = cell.membrane.surface_concentration       # kmol/m²
+
+        # Interior face fluxes J(k+1/2), positive toward cathode (anode→cathode), shape (n-1, ...)
+        J_int = (
+            -n * np.diff(lmbd, axis=0) + Pe * (lmbd[:-1] + lmbd[1:]) / 2
+        ) / R_D
+
+        # Boundary face fluxes (positive = in anode→cathode direction)
+        # J_{-1/2}: entering membrane from anode = –(flux leaving to anode)
+        # J_{n-1/2}: leaving membrane to cathode = +(flux leaving to cathode)
+        # Reshape boundary fluxes to match J_int's trailing shape (n_current, …)
+        trailing = lmbd.shape[1:]
+        J_left = np.reshape(-state.an.membrane_water_flux, (1,) + trailing)
+        J_right = np.reshape(state.ca.membrane_water_flux, (1,) + trailing)
+
+        J_faces = np.concatenate([J_left, J_int, J_right], axis=0)
+
+        # Accumulation: J_in – J_out at each node
+        return (J_faces[:-1] - J_faces[1:]) / (sc / n)
+
+    def relaxation_rate_of_change(self, cell, state):
+        """ds_relax/dt for ionomer sorption hysteresis on each side [mol/mol/s].
+
+        Returns a 2-element list ``[dsrelax_ca_dt, dsrelax_an_dt]``.
+        Requires ``state.*.s_relax`` and ``state.*.rh_at_cl_without_crossover`` to be set.
+        """
+        from ..tools import arrhenius_term
+        from ..thermo.constants import GAS_CONSTANT
+
+        result = []
+        membrane = cell.membrane
+        phi = getattr(membrane, 'phi', 0.)
+        tau0 = getattr(membrane, 'relaxation_time_constant', 1.)
+        Ea = getattr(membrane, 'relaxation_time_activation_energy', 0.)
+        T = state.membrane.temperature
+
+        for side_state in state.sides:
+            if side_state.s_relax is None:
+                result.append(np.zeros_like(state.current_density))
+                continue
+            lmbd_springer = membrane.ionomer.vapor_equilibrium_water_content(
+                side_state.rh_at_cl_without_crossover, T
+            )
+            s_target = phi * lmbd_springer
+            tau = tau0 * np.exp(Ea / (GAS_CONSTANT * T))
+            result.append((s_target - side_state.s_relax) / tau)
+
+        return result
