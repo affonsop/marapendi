@@ -202,6 +202,72 @@ class TestTransientPhysics:
         sol = model.solve(cell, _conditions(i=2e4), t_span=(0, 7200), x0=x0,
                           dense_output=True)
         assert sol.status == 0
-        T_t = sol.y[0]
         T_low = float(x0[0])
         assert sol.y[0, -1] > T_low, "T should rise after step to higher current"
+
+
+class TestTransientEvaluate:
+    def test_diagnostics_attached_to_sol(self):
+        """solve() attaches sol.diagnostics when compute_diagnostics=True."""
+        cell = _make_cell()
+        model = TransientModel(n_memb_mesh=3)
+        sol = model.solve(cell, _conditions(), t_span=(0, 600))
+        assert hasattr(sol, 'diagnostics')
+        diag = sol.diagnostics
+        assert 'cell_voltage' in diag
+        assert 'hfr' in diag
+        assert 'ca_cl_proton_resistance' in diag
+        assert 'membrane_water_content' in diag
+        assert 'ca_cl_water_content' in diag
+        assert 'an_cl_water_content' in diag
+        assert 'ca_cl_liquid_saturation' in diag
+
+    def test_diagnostics_shape(self):
+        """Diagnostic arrays match the number of ODE time steps."""
+        cell = _make_cell()
+        model = TransientModel(n_memb_mesh=3)
+        sol = model.solve(cell, _conditions(), t_span=(0, 600))
+        n_t = len(sol.t)
+        diag = sol.diagnostics
+        assert diag['cell_voltage'].shape == (n_t,)
+        assert diag['water_profile'].shape == (3, n_t)
+        assert diag['T_mea'].shape == (n_t,)
+
+    def test_diagnostics_physical_values(self):
+        """Diagnostic quantities are physically plausible at steady state."""
+        cell = _make_cell()
+        model = TransientModel(n_memb_mesh=3)
+        sol = model.solve(cell, _conditions(), t_span=(0, 7200))
+        diag = sol.diagnostics
+        # Voltage in (0, 1) V
+        assert np.all(diag['cell_voltage'] > 0)
+        assert np.all(diag['cell_voltage'] < 1.3)
+        # HFR positive
+        assert np.all(diag['hfr'] > 0)
+        # Water contents positive
+        assert np.all(diag['membrane_water_content'] > 0)
+        assert np.all(diag['ca_cl_water_content'] > 0)
+        assert np.all(diag['an_cl_water_content'] > 0)
+        # Saturation in [0, 1]
+        assert np.all(diag['ca_cl_liquid_saturation'] >= 0)
+        assert np.all(diag['ca_cl_liquid_saturation'] <= 1)
+
+    def test_no_diagnostics_when_disabled(self):
+        """compute_diagnostics=False skips post-processing."""
+        cell = _make_cell()
+        model = TransientModel(n_memb_mesh=3)
+        sol = model.solve(cell, _conditions(), t_span=(0, 600),
+                          compute_diagnostics=False)
+        assert not hasattr(sol, 'diagnostics')
+
+    def test_evaluate_at_custom_times(self):
+        """evaluate() returns correct shapes for custom t_eval from dense output."""
+        cell = _make_cell()
+        model = TransientModel(n_memb_mesh=3)
+        sol = model.solve(cell, _conditions(), t_span=(0, 1800),
+                          dense_output=True, compute_diagnostics=False)
+        t_custom = np.linspace(0, 1800, 10)
+        diag = model.evaluate(cell, _conditions(), t_custom,
+                              x_eval=sol.sol(t_custom))
+        assert diag['cell_voltage'].shape == (10,)
+        assert diag['water_profile'].shape == (3, 10)

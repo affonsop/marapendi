@@ -4,10 +4,13 @@
 membrane (PEM) and anion-exchange membrane (AEM) electrochemical cells, including
 PEM fuel cells and AEM water electrolyzers.
 
-The model is zero-dimensional (single operating point) and steady-state. It solves
-for cell voltage as a function of current density, accounting for activation,
-ohmic and mass-transport losses, membrane water balance, and two-phase liquid-water
-transport in the porous layers.
+The model is zero-dimensional (single operating point). Both steady-state and
+transient formulations are provided. The steady-state solver computes cell voltage
+as a function of current density, accounting for activation, ohmic and
+mass-transport losses, membrane water balance, and two-phase liquid-water transport
+in the porous layers. The transient solver integrates coupled ODEs for the MEA
+temperature and membrane water-content profile under time-varying operating
+conditions.
 
 ## Features
 
@@ -16,6 +19,11 @@ transport in the porous layers.
 - **Two steady-state model variants** — `ExplicitSteadyStateModel` (one forward pass, fast) and
   `ImplicitSteadyStateModel` (self-consistent MEA temperature via vectorised secant iteration);
   both accept full current-density arrays in a single call
+- **Transient model** — `TransientModel` integrates coupled MEA-temperature and membrane
+  water-content ODEs (Ferrara et al., 2018) under time-varying conditions via
+  `scipy.integrate.solve_ivp`; `solve()` auto-attaches a `diagnostics` dict (voltage,
+  HFR, water contents, saturation) at each internal time step, and `evaluate()` lets you
+  re-sample any dense-output trajectory at arbitrary times
 - **AEM electrolyzer** — analogous model with AEM membrane (PAP family) and KOH electrolyte
 - **Parameter estimation** — differential-evolution global optimizer wrapped in
   `SteadyStateModel` for fitting to experimental data
@@ -114,6 +122,34 @@ state = model.solve(cell, conditions, state)
 imp_model = mrpd.ImplicitSteadyStateModel()
 state = imp_model.set_initial_conditions(cell, conditions)
 state = imp_model.solve(cell, conditions, state)
+
+# --- Transient model (time-varying conditions) ---
+from marapendi.cell.transient import TransientModel
+
+cond_0 = mrpd.CellConditions(          # single operating point for initial conditions
+    current_density=np.atleast_1d(1e4),
+    cell_temperature=T,
+    ca=mrpd.SideConditions(inlet_temperature=T, outlet_pressure=1.5e5,
+                            dry_o2_mole_fraction=0.21, stoichiometry=2.0,
+                            inlet_relative_humidity=0.5),
+    an=mrpd.SideConditions(inlet_temperature=T, outlet_pressure=1.5e5,
+                            dry_h2_mole_fraction=1.0, stoichiometry=1.5,
+                            inlet_relative_humidity=0.5),
+)
+
+tr_model = TransientModel(n_memb_mesh=5)
+sol = tr_model.solve(cell, cond_0, t_span=(0, 3600))
+# sol.y[0]           → T_MEA(t)  [K]
+# sol.y[1:]          → λ(ξ, t)   [mol H2O / mol site]
+# sol.diagnostics    → dict with 'cell_voltage', 'hfr', 'membrane_water_content', …
+
+# Pass a callable for time-varying conditions:
+def conditions_t(t):
+    i = 5e3 if t < 1800 else 2e4   # step change at 30 min
+    return mrpd.CellConditions(current_density=np.atleast_1d(i), cell_temperature=T,
+                                ca=cond_0.ca, an=cond_0.an)
+
+sol = tr_model.solve(cell, conditions_t, t_span=(0, 3600))
 ```
 
 ## Package structure
@@ -126,6 +162,7 @@ src/marapendi/
 │   ├── state.py                # CellState, CellSideState, LayerState, …
 │   ├── explicit_steady_state.py # ExplicitSteadyStateModel
 │   ├── implicit_steady_state.py # ImplicitSteadyStateModel (self-consistent T_MEA)
+│   ├── transient.py             # TransientModel (ODE for T_MEA + membrane water profile)
 │   ├── voltage.py              # VoltageModel
 │   ├── thermal.py              # ThermalModel
 │   ├── gas_transport.py        # GasTransportModel
@@ -152,6 +189,7 @@ src/marapendi/
 | `notebooks/01_polarization_curve.ipynb` | Simulate a polarization curve, plot V–i and HFR |
 | `notebooks/02_parameter_estimation.ipynb` | Fit kinetic parameters to data |
 | `notebooks/03_quasi_steady_simulation_monocell.ipynb` | Replay a test-bench log sample-by-sample; compare simulated and measured cell voltage over time |
+| `notebooks/05_transient_vs_quasi_steady.ipynb` | Compare transient and vectorised QSS simulations: voltage, MEA temperature, membrane and CL water contents, liquid saturation, HFR, and CL proton resistance |
 
 ## Running the tests
 

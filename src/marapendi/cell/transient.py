@@ -28,8 +28,12 @@ Usage
     model = TransientModel(n_memb_mesh=5)
     state, x0 = model.set_initial_conditions(cell, conditions)
     sol = model.solve(cell, conditions, t_span=(0, 3600))
-    # sol.y[0]   → T_MEA(t)  [K]
-    # sol.y[1:]  → λ(ξ, t)   [mol H2O / mol site]
+    # sol.y[0]           → T_MEA(t)  [K]
+    # sol.y[1:]          → λ(ξ, t)   [mol H2O / mol site]
+    # sol.diagnostics    → dict of arrays (voltage, HFR, water contents, …)
+
+    # Or evaluate at custom time points from a dense-output solution:
+    diag = model.evaluate(cell, conditions, t_eval, x_eval=sol.sol(t_eval))
 
 References
 ----------
@@ -141,40 +145,7 @@ class TransientModel:
         water_profile = x[1:1 + n]
 
         cond = cell_conditions(t) if callable(cell_conditions) else cell_conditions
-
-        # Fresh state from current operating conditions
-        state = self._ss_model._init_state(
-            cell,
-            cond.cell_temperature,
-            cond.current_density,
-            cond.ca,
-            cond.an,
-        )
-
-        # Thermal quantities from ODE state
-        state.thermal_resistance = self.thermal_model.heat_transfer_resistance(cell)
-        self.thermal_model.set_mea_temperature(T_mea, cell, state)
-
-        # Water balance — membrane profile prescribed from ODE state
-        self.water_balance_model.calculate_water_transport(
-            cell, state,
-            dynamic=True,
-            water_profile=water_profile,
-            gas_transport_model=self.gas_transport_model,
-        )
-
-        # Cathode liquid saturation (quasi-static: computed from net water flux)
-        self.water_balance_model.calculate_water_saturation(cell.ca, state.ca)
-        cell.ca.cl.set_water_film_thickness(state.ca.cl.non_wetting_saturation)
-
-        # Update H2O vapour transport resistance with the new saturation
-        gtr = self.gas_transport_model
-        state.ca.h2ov_transport_resistance = gtr.gas_transport_resistance(cell.ca, state.ca, 'h2o')
-        state.an.h2ov_transport_resistance = gtr.gas_transport_resistance(cell.an, state.an, 'h2o')
-
-        # Gas concentrations and cell voltage
-        gtr.calculate_gas_concentrations(cell, state)
-        self.voltage_model.compute_cell_voltage(cell, state)
+        state = self._eval_state(cell, cond, T_mea, water_profile)
 
         # Rates of change
         dTdt = self.thermal_model.temperature_rate_of_change(cell, state)
@@ -184,7 +155,102 @@ class TransientModel:
 
         return np.concatenate([[float(dTdt)], np.asarray(dlambdadt).ravel()])
 
-    def solve(self, cell, cell_conditions, t_span, x0=None, **kwargs):
+    def evaluate(self, cell, cell_conditions, t_eval, x_eval) -> dict:
+        """Compute model diagnostics from ODE states at given time points.
+
+        Runs the full physics pipeline (water balance, gas transport, voltage)
+        for each time point and collects the output quantities.  Call this after
+        :meth:`solve` to obtain quantities that are not part of the ODE state
+        vector (voltage, HFR, water contents, …).
+
+        Parameters
+        ----------
+        cell : FuelCell
+        cell_conditions : CellConditions or callable(t) -> CellConditions
+        t_eval : array_like, shape (n_t,)
+            Time points at which to evaluate (s).
+        x_eval : array_like, shape (1 + n_memb_mesh, n_t)
+            ODE state ``[T_MEA; λ_profile]`` at each time.  When using
+            :meth:`solve` with ``dense_output=True`` this can be obtained via
+            ``sol.sol(t_eval)``; otherwise use ``sol.y`` to evaluate at the
+            solver's internal steps.
+
+        Returns
+        -------
+        dict
+            Dictionary of 1-D arrays of length *n_t* (or shape
+            ``(n_memb_mesh, n_t)`` for ``'water_profile'``):
+
+            ``'t'``
+                Time points (s).
+            ``'T_mea'``
+                MEA temperature (K).
+            ``'water_profile'``
+                Membrane water-content profile (mol H₂O / mol SO₃⁻),
+                shape ``(n_memb_mesh, n_t)``.
+            ``'cell_voltage'``
+                Cell voltage (V).
+            ``'hfr'``
+                High-frequency resistance (Ω·m²):
+                membrane protonic resistance + electrical resistance.
+            ``'ca_cl_proton_resistance'``
+                Cathode catalyst-layer proton resistance (Ω·m²).
+            ``'membrane_water_content'``
+                Mean membrane water content (mol H₂O / mol SO₃⁻).
+            ``'ca_cl_water_content'``
+                Cathode CL ionomer water content (mol H₂O / mol SO₃⁻).
+            ``'an_cl_water_content'``
+                Anode CL ionomer water content (mol H₂O / mol SO₃⁻).
+            ``'ca_cl_liquid_saturation'``
+                Cathode CL liquid water saturation (–).
+        """
+        t_eval = np.asarray(t_eval, dtype=float)
+        x_eval = np.asarray(x_eval, dtype=float)
+        n_t = len(t_eval)
+
+        result = {
+            't': t_eval,
+            'T_mea': x_eval[0],
+            'water_profile': x_eval[1:],
+            'cell_voltage': np.empty(n_t),
+            'hfr': np.empty(n_t),
+            'ca_cl_proton_resistance': np.empty(n_t),
+            'membrane_water_content': np.empty(n_t),
+            'ca_cl_water_content': np.empty(n_t),
+            'an_cl_water_content': np.empty(n_t),
+            'ca_cl_liquid_saturation': np.empty(n_t),
+        }
+
+        for k, t_k in enumerate(t_eval):
+            T_mea = float(x_eval[0, k])
+            lmbd = x_eval[1:, k]
+            cond = cell_conditions(t_k) if callable(cell_conditions) else cell_conditions
+            state = self._eval_state(cell, cond, T_mea, lmbd)
+
+            result['cell_voltage'][k] = float(np.atleast_1d(state.cell_voltage)[0])
+            result['hfr'][k] = float(np.atleast_1d(
+                self.voltage_model.high_frequency_resistance(cell, state)
+            )[0])
+            result['ca_cl_proton_resistance'][k] = float(
+                np.atleast_1d(state.ca.cl.proton_resistance)[0]
+            )
+            result['membrane_water_content'][k] = float(
+                np.atleast_1d(state.membrane.water_content)[0]
+            )
+            result['ca_cl_water_content'][k] = float(
+                np.atleast_1d(state.ca.cl.ionomer_water_content)[0]
+            )
+            result['an_cl_water_content'][k] = float(
+                np.atleast_1d(state.an.cl.ionomer_water_content)[0]
+            )
+            result['ca_cl_liquid_saturation'][k] = float(
+                np.atleast_1d(state.ca.cl.liquid_saturation)[0]
+            )
+
+        return result
+
+    def solve(self, cell, cell_conditions, t_span, x0=None,
+              compute_diagnostics=True, **kwargs):
         """Integrate the transient ODE over *t_span*.
 
         Parameters
@@ -196,19 +262,28 @@ class TransientModel:
             ``(t_start, t_end)`` in seconds.
         x0 : array_like, optional
             Initial state ``[T_MEA, λ_0, …, λ_{n-1}]``.  When omitted a
-            steady-state solve is run automatically.
+            steady-state solve is run automatically via
+            :meth:`set_initial_conditions`.
+        compute_diagnostics : bool, optional
+            When ``True`` (default), :meth:`evaluate` is called at the
+            solver's internal time steps after the ODE integration completes
+            and the result is stored as ``sol.diagnostics``.  Set to ``False``
+            to skip the post-processing step (e.g. when only ODE trajectories
+            are needed).
         **kwargs
-            Forwarded to :func:`scipy.integrate.solve_ivp`.  Defaults to
+            Forwarded to :func:`scipy.integrate.solve_ivp`.  Defaults:
             ``method='Radau'``, ``rtol=1e-4``, ``atol=1e-6``.
 
         Returns
         -------
         scipy.integrate.OdeResult
-            Standard result object.  Key attributes:
+            Standard result object extended with:
 
             * ``sol.t`` — time points (s)
             * ``sol.y[0]`` — T_MEA(t) [K]
             * ``sol.y[1:]`` — membrane water profile λ(ξ, t)
+            * ``sol.diagnostics`` — dict from :meth:`evaluate` at ``sol.t``
+              (only present when ``compute_diagnostics=True``).
         """
         from scipy.integrate import solve_ivp
 
@@ -216,13 +291,71 @@ class TransientModel:
             cond0 = cell_conditions(t_span[0]) if callable(cell_conditions) else cell_conditions
             _, x0 = self.set_initial_conditions(cell, cond0)
 
-        kwargs.setdefault('method', 'BDF')
+        kwargs.setdefault('method', 'Radau')
         kwargs.setdefault('rtol', 1e-4)
         kwargs.setdefault('atol', 1e-6)
 
-        return solve_ivp(
+        sol = solve_ivp(
             lambda t, x: self.f_transient(t, x, cell, cell_conditions),
             t_span,
             np.asarray(x0, dtype=float),
             **kwargs,
         )
+
+        if compute_diagnostics:
+            sol.diagnostics = self.evaluate(cell, cell_conditions, sol.t, x_eval=sol.y)
+
+        return sol
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _eval_state(self, cell, cond, T_mea: float, water_profile) -> CellState:
+        """Run the full physics pipeline for one time point.
+
+        Builds a fresh :class:`CellState`, prescribes the MEA temperature and
+        membrane water-content profile, and runs water balance → gas transport
+        → voltage.  Called by both :meth:`f_transient` and :meth:`evaluate`.
+
+        Parameters
+        ----------
+        cell : FuelCell
+        cond : CellConditions
+        T_mea : float
+            MEA temperature (K).
+        water_profile : array_like, shape (n_memb_mesh,)
+            Membrane water-content profile to prescribe.
+
+        Returns
+        -------
+        CellState
+            Populated state (``cell_voltage``, ``membrane.water_content``,
+            ``ca.cl.ionomer_water_content``, … are all set).
+        """
+        state = self._ss_model._init_state(
+            cell,
+            cond.cell_temperature,
+            cond.current_density,
+            cond.ca,
+            cond.an,
+        )
+        state.thermal_resistance = self.thermal_model.heat_transfer_resistance(cell)
+        self.thermal_model.set_mea_temperature(T_mea, cell, state)
+
+        self.water_balance_model.calculate_water_transport(
+            cell, state,
+            dynamic=True,
+            water_profile=water_profile,
+            gas_transport_model=self.gas_transport_model,
+        )
+        self.water_balance_model.calculate_water_saturation(cell.ca, state.ca)
+        cell.ca.cl.set_water_film_thickness(state.ca.cl.non_wetting_saturation)
+
+        gtr = self.gas_transport_model
+        state.ca.h2ov_transport_resistance = gtr.gas_transport_resistance(cell.ca, state.ca, 'h2o')
+        state.an.h2ov_transport_resistance = gtr.gas_transport_resistance(cell.an, state.an, 'h2o')
+        gtr.calculate_gas_concentrations(cell, state)
+        self.voltage_model.compute_cell_voltage(cell, state)
+
+        return state
