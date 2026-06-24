@@ -20,7 +20,7 @@ from ..thermo.gas import GasModel, species_indexes
 from .thermal import ThermalModel
 from .gas_transport import GasTransportModel
 from .voltage import VoltageModel
-from .water_balance import MembraneWaterBalanceModel
+from ..water_balance.water_balance import WaterBalanceModel
 from .state import CellState, LayerState, CatalystLayerState
 
 
@@ -62,7 +62,7 @@ class ExplicitSteadyStateModel:
 
     voltage_model: VoltageModel = field(default_factory=VoltageModel)
     thermal_model: ThermalModel = field(default_factory=ThermalModel)
-    water_balance_model: MembraneWaterBalanceModel = field(default_factory=MembraneWaterBalanceModel)
+    water_balance_model: WaterBalanceModel = field(default_factory=WaterBalanceModel)
     gas_transport_model: GasTransportModel = field(default_factory=GasTransportModel)
 
     def set_initial_conditions(self, cell, cell_conditions) -> CellState:

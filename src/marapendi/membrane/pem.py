@@ -170,7 +170,6 @@ class PFSA(Membrane):
 
         Weights liquid- and vapor-equilibrated conductivities by water saturation.
         """
-        
         average_conductivity = self.proton_conductivity(state.water_content_profile, state.temperature)
         return self.dry_thickness / average_conductivity
 

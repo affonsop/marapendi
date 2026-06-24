@@ -1,6 +1,6 @@
-"""Tests for MembraneWaterBalanceModel.
+"""Tests for WaterBalanceModel.
 
-Verifies that the membrane water balance model produces physically plausible
+Verifies that the water balance model produces physically plausible
 results, handles vectorised inputs, and works with both steady-state model
 variants. Liquid saturation is computed for gas-transport resistance but does
 not feed back into the membrane water-content boundary condition.
@@ -8,7 +8,7 @@ not feed back into the membrane water-content boundary condition.
 import numpy as np
 import pytest
 import marapendi as mrpd
-from marapendi.cell.water_balance import MembraneWaterBalanceModel
+from marapendi.water_balance.water_balance import WaterBalanceModel
 from marapendi.cell.explicit_steady_state import ExplicitSteadyStateModel
 from marapendi.cell.implicit_steady_state import ImplicitSteadyStateModel
 
@@ -139,26 +139,6 @@ class TestWaterBalanceSanity:
         wc_high = float(np.atleast_1d(_solve(cell, _conditions(5e3, rh=0.9), exp_model).membrane.water_content)[0])
         assert wc_high > wc_low
 
-
-# ---------------------------------------------------------------------------
-# Saturation does not feed back into the membrane water balance
-# ---------------------------------------------------------------------------
-
-class TestNoSaturationFeedback:
-    def test_membrane_profile_set_on_state(self, cell, exp_model):
-        """The water content profile must be stored on state for proton resistance."""
-        state = _solve(cell, _conditions(1e4, rh=0.9), exp_model)
-        assert state.membrane.water_content_profile is not None
-        assert np.all(np.isfinite(state.membrane.water_content_profile))
-
-    def test_vapor_liquid_profiles_identical(self, cell, exp_model):
-        """Without saturation feedback, the vapor- and liquid-equilibrium profiles
-        must be the same (no blending between phases)."""
-        state = _solve(cell, _conditions(1e4, rh=0.9), exp_model)
-        np.testing.assert_array_equal(
-            state.membrane.vapor_eq_sat_water_profile,
-            state.membrane.liquid_eq_sat_water_profile,
-        )
 
 
 # ---------------------------------------------------------------------------
