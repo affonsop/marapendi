@@ -178,13 +178,11 @@ class MembraneWaterBalanceModel:
         
         self.calculate_membrane_transport_properties(cell, state)
         self.estimate_equilibrium_water_contents(cell, state)
-        
-        for i in range(2): 
-            self.update_non_dimensional_parameters(cell, state)
-            self.update_water_profile(state)
-            self.update_water_contents(state)
-            self.equilibrium_water_content_from_estimated(state)
-            self.update_membrane_water_fluxes(state)
+        self.update_non_dimensional_parameters(cell, state)
+        self.update_water_profile(state)
+        self.update_water_contents(state)
+        self.equilibrium_water_content_from_estimated(state)
+        self.update_membrane_water_fluxes(state)
         return self.water_content_profile
 
 
