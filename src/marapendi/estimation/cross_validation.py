@@ -809,6 +809,9 @@ def plot_cross_validation_curves(
     # ------------------------------------------------------------
     folds = get_folds_for_complexity(cv_results, n_parameters)
 
+    if case_titles is None:
+        case_titles = case_table
+
     n_cases = len(case_list)
 
     fig, ax = plt.subplots(
