@@ -155,13 +155,14 @@ class TransientModel:
 
         return np.concatenate([[float(dTdt)], np.asarray(dlambdadt).ravel()])
 
-    def evaluate(self, cell, cell_conditions, t_eval, x_eval) -> dict:
+    def evaluate(self, cell, cell_conditions, t_eval, x_eval) -> CellState:
         """Compute model diagnostics from ODE states at given time points.
 
         Runs the full physics pipeline (water balance, gas transport, voltage)
-        for each time point and collects the output quantities.  Call this after
-        :meth:`solve` to obtain quantities that are not part of the ODE state
-        vector (voltage, HFR, water contents, …).
+        once in vectorised form for all *n_t* time points and returns a
+        :class:`~marapendi.cell.state.CellState` whose array-valued fields
+        each have length *n_t* — matching the API of
+        :meth:`~marapendi.cell.ExplicitSteadyStateModel.solve`.
 
         Parameters
         ----------
@@ -170,84 +171,81 @@ class TransientModel:
         t_eval : array_like, shape (n_t,)
             Time points at which to evaluate (s).
         x_eval : array_like, shape (1 + n_memb_mesh, n_t)
-            ODE state ``[T_MEA; λ_profile]`` at each time.  When using
-            :meth:`solve` with ``dense_output=True`` this can be obtained via
-            ``sol.sol(t_eval)``; otherwise use ``sol.y`` to evaluate at the
-            solver's internal steps.
+            ODE state ``[T_MEA; λ_profile]`` at each time.
 
         Returns
         -------
-        dict
-            Dictionary of 1-D arrays of length *n_t* (or shape
-            ``(n_memb_mesh, n_t)`` for ``'water_profile'``):
+        CellState
+            State with array-valued fields of length *n_t*.  Key attributes:
 
-            ``'t'``
-                Time points (s).
-            ``'T_mea'``
-                MEA temperature (K).
-            ``'water_profile'``
-                Membrane water-content profile (mol H₂O / mol SO₃⁻),
-                shape ``(n_memb_mesh, n_t)``.
-            ``'cell_voltage'``
-                Cell voltage (V).
-            ``'hfr'``
-                High-frequency resistance (Ω·m²):
-                membrane protonic resistance + electrical resistance.
-            ``'ca_cl_proton_resistance'``
-                Cathode catalyst-layer proton resistance (Ω·m²).
-            ``'membrane_water_content'``
-                Mean membrane water content (mol H₂O / mol SO₃⁻).
-            ``'ca_cl_water_content'``
-                Cathode CL ionomer water content (mol H₂O / mol SO₃⁻).
-            ``'an_cl_water_content'``
-                Anode CL ionomer water content (mol H₂O / mol SO₃⁻).
-            ``'ca_cl_liquid_saturation'``
-                Cathode CL liquid water saturation (–).
+            * ``cell_voltage`` — cell voltage (V)
+            * ``mea_temperature`` — MEA temperature (K)
+            * ``hfr`` — high-frequency resistance (Ω·m²)
+            * ``membrane.water_content`` — mean membrane water content
+            * ``membrane.water_content_profile`` — shape ``(n_memb_mesh, n_t)``
+            * ``ca.cl.ionomer_water_content``, ``an.cl.ionomer_water_content``
+            * ``ca.cl.liquid_saturation``, ``ca.cl.proton_resistance``
+            * ``ca.water_flux``, ``ca.liquid_flux``, ``ca.membrane_water_flux``,
+              ``ca.max_vapor_removal_flux``
         """
+        from ..simulation.conditions import SideConditions, CellConditions
+
         t_eval = np.asarray(t_eval, dtype=float)
         x_eval = np.asarray(x_eval, dtype=float)
-        n_t = len(t_eval)
 
-        result = {
-            't': t_eval,
-            'T_mea': x_eval[0],
-            'water_profile': x_eval[1:],
-            'cell_voltage': np.empty(n_t),
-            'hfr': np.empty(n_t),
-            'ca_cl_proton_resistance': np.empty(n_t),
-            'membrane_water_content': np.empty(n_t),
-            'ca_cl_water_content': np.empty(n_t),
-            'an_cl_water_content': np.empty(n_t),
-            'ca_cl_liquid_saturation': np.empty(n_t),
-        }
+        # Gather per-time-point conditions and stack into arrays
+        if callable(cell_conditions):
+            cond_list = [cell_conditions(t_k) for t_k in t_eval]
+        else:
+            cond_list = [cell_conditions] * len(t_eval)
 
-        for k, t_k in enumerate(t_eval):
-            T_mea = float(x_eval[0, k])
-            lmbd = x_eval[1:, k]
-            cond = cell_conditions(t_k) if callable(cell_conditions) else cell_conditions
-            state = self._eval_state(cell, cond, T_mea, lmbd)
+        def _stack(sides, attr):
+            return np.array([float(np.atleast_1d(getattr(s, attr))[0]) for s in sides])
 
-            result['cell_voltage'][k] = float(np.atleast_1d(state.cell_voltage)[0])
-            result['hfr'][k] = float(np.atleast_1d(
-                self.voltage_model.high_frequency_resistance(cell, state)
-            )[0])
-            result['ca_cl_proton_resistance'][k] = float(
-                np.atleast_1d(state.ca.cl.proton_resistance)[0]
-            )
-            result['membrane_water_content'][k] = float(
-                np.atleast_1d(state.membrane.water_content)[0]
-            )
-            result['ca_cl_water_content'][k] = float(
-                np.atleast_1d(state.ca.cl.ionomer_water_content)[0]
-            )
-            result['an_cl_water_content'][k] = float(
-                np.atleast_1d(state.an.cl.ionomer_water_content)[0]
-            )
-            result['ca_cl_liquid_saturation'][k] = float(
-                np.atleast_1d(state.ca.cl.liquid_saturation)[0]
-            )
+        ca_sides = [c.ca for c in cond_list]
+        an_sides = [c.an for c in cond_list]
 
-        return result
+        cond_all = CellConditions(
+            current_density=np.array(
+                [float(np.atleast_1d(c.current_density)[0]) for c in cond_list]
+            ),
+            cell_temperature=np.array(
+                [float(np.atleast_1d(c.cell_temperature)[0]) for c in cond_list]
+            ),
+            ca=SideConditions(
+                inlet_temperature=_stack(ca_sides, 'inlet_temperature'),
+                inlet_pressure=_stack(ca_sides, 'inlet_pressure'),
+                outlet_pressure=_stack(ca_sides, 'outlet_pressure'),
+                dry_o2_mole_fraction=_stack(ca_sides, 'dry_o2_mole_fraction'),
+                dry_h2_mole_fraction=_stack(ca_sides, 'dry_h2_mole_fraction'),
+                inlet_relative_humidity=_stack(ca_sides, 'inlet_relative_humidity'),
+                stoichiometry=_stack(ca_sides, 'stoichiometry'),
+                inlet_liquid_saturation=_stack(ca_sides, 'inlet_liquid_saturation'),
+                inlet_liquid=ca_sides[0].inlet_liquid,
+                inlet_liquid_flow_rate=_stack(ca_sides, 'inlet_liquid_flow_rate'),
+                inlet_gas_flow_rate=_stack(ca_sides, 'inlet_gas_flow_rate'),
+            ),
+            an=SideConditions(
+                inlet_temperature=_stack(an_sides, 'inlet_temperature'),
+                inlet_pressure=_stack(an_sides, 'inlet_pressure'),
+                outlet_pressure=_stack(an_sides, 'outlet_pressure'),
+                dry_o2_mole_fraction=_stack(an_sides, 'dry_o2_mole_fraction'),
+                dry_h2_mole_fraction=_stack(an_sides, 'dry_h2_mole_fraction'),
+                inlet_relative_humidity=_stack(an_sides, 'inlet_relative_humidity'),
+                stoichiometry=_stack(an_sides, 'stoichiometry'),
+                inlet_liquid_saturation=_stack(an_sides, 'inlet_liquid_saturation'),
+                inlet_liquid=an_sides[0].inlet_liquid,
+                inlet_liquid_flow_rate=_stack(an_sides, 'inlet_liquid_flow_rate'),
+                inlet_gas_flow_rate=_stack(an_sides, 'inlet_gas_flow_rate'),
+            ),
+        )
+
+        T_mea_arr     = x_eval[0, :]    # (n_t,)
+        water_profile = x_eval[1:, :]   # (n_memb_mesh, n_t)
+
+        state = self._eval_state(cell, cond_all, T_mea_arr, water_profile)
+        state.hfr = self.voltage_model.high_frequency_resistance(cell, state)
+        return state
 
     def solve(self, cell, cell_conditions, t_span, x0=None,
               compute_diagnostics=True, **kwargs):
@@ -282,7 +280,8 @@ class TransientModel:
             * ``sol.t`` — time points (s)
             * ``sol.y[0]`` — T_MEA(t) [K]
             * ``sol.y[1:]`` — membrane water profile λ(ξ, t)
-            * ``sol.diagnostics`` — dict from :meth:`evaluate` at ``sol.t``
+            * ``sol.diagnostics`` — :class:`~marapendi.cell.state.CellState`
+              from :meth:`evaluate` at ``sol.t``
               (only present when ``compute_diagnostics=True``).
         """
         from scipy.integrate import solve_ivp
