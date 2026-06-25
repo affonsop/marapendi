@@ -190,6 +190,9 @@ class CellState:
     # Crossover
     crossover_current: float = None
 
+    # Derived diagnostics (set by evaluate)
+    hfr: float = None
+
     @property
     def sides(self) -> tuple[CellSideState, CellSideState]:
         """``(ca, an)`` side states, for ``for side in state.sides: ...`` loops."""
