@@ -2,6 +2,8 @@
 """PFSA ionomer (e.g. Nafion) material properties."""
 from __future__ import annotations
 
+import functools
+
 import numpy as np
 from dataclasses import dataclass, field
 
@@ -11,6 +13,94 @@ from ..thermo.water import water_molar_volume
 
 from .ionomer_base import Ionomer
 from .membrane_base import Membrane
+
+
+def _compute_pwl_fit(isotherm_fn, n_segments: int, temperature: float,
+                     rh_breaks=None) -> dict:
+    """Run the Nelder-Mead optimisation and return the piecewise linear fit dict.
+
+    *isotherm_fn* is a callable ``(rh, temperature) -> lmbd`` used to build the
+    reference data.  Separated from the caching layer so both the polynomial
+    path and the method-override path share one implementation.
+    """
+    from scipy.optimize import minimize
+
+    rh_ref   = np.linspace(0.0, 1.0, 500)
+    lmbd_ref = isotherm_fn(rh_ref, temperature)
+
+    def _fit(rh_b):
+        lmbd_b = isotherm_fn(np.asarray(rh_b), temperature)
+        n = len(rh_b) - 1
+        a = np.empty(n)
+        b = np.empty(n)
+        for k in range(n):
+            mask = (lmbd_ref >= lmbd_b[k]) & (lmbd_ref <= lmbd_b[k + 1])
+            if mask.sum() >= 2:
+                a[k], b[k] = np.polyfit(lmbd_ref[mask], rh_ref[mask], 1)
+            else:
+                dl   = lmbd_b[k + 1] - lmbd_b[k]
+                a[k] = (rh_b[k + 1] - rh_b[k]) / dl if dl else 0.0
+                b[k] = rh_b[k] - a[k] * lmbd_b[k]
+        da        = a[:-1] - a[1:]
+        crossings = np.where(np.abs(da) > 1e-12,
+                             (b[1:] - b[:-1]) / da,
+                             0.5 * (lmbd_b[1:-1] + lmbd_b[2:]))
+        lmbd_valid = np.concatenate([[lmbd_ref[0]], crossings, [lmbd_ref[-1]]])
+        rh_approx  = np.empty_like(lmbd_ref)
+        for k in range(n):
+            mask = (lmbd_ref >= lmbd_valid[k]) & (lmbd_ref <= lmbd_valid[k + 1])
+            rh_approx[mask] = a[k] * lmbd_ref[mask] + b[k]
+        return a, b, lmbd_valid, rh_approx
+
+    if rh_breaks is not None:
+        fit_breaks = np.asarray(rh_breaks, dtype=float)
+    else:
+        def _objective(x):
+            interior = np.sort(np.clip(x, 1e-4, 1.0 - 1e-4))
+            _, _, _, rh_approx = _fit(np.concatenate([[0.0], interior, [1.0]]))
+            return float(np.sqrt(np.mean((rh_approx - rh_ref) ** 2)))
+
+        x0  = np.linspace(0.0, 1.0, n_segments + 1)[1:-1]
+        res = minimize(_objective, x0, method='Nelder-Mead',
+                       options={'xatol': 1e-7, 'fatol': 1e-9, 'maxiter': 2000})
+        interior   = np.sort(np.clip(res.x, 1e-4, 1.0 - 1e-4))
+        fit_breaks = np.concatenate([[0.0], interior, [1.0]])
+
+    slopes, intercepts, lmbd_valid, _ = _fit(fit_breaks)
+
+    rh_at_valid       = np.empty_like(lmbd_valid)
+    rh_at_valid[0]    = slopes[0]  * lmbd_valid[0]  + intercepts[0]
+    rh_at_valid[-1]   = slopes[-1] * lmbd_valid[-1] + intercepts[-1]
+    for k in range(1, len(lmbd_valid) - 1):
+        rh_at_valid[k] = slopes[k - 1] * lmbd_valid[k] + intercepts[k - 1]
+
+    return dict(
+        fit_rh_breaks   = fit_breaks,
+        lmbd_pwl_breaks = lmbd_valid,
+        rh_pwl_breaks   = rh_at_valid,
+        pwl_slopes      = slopes,
+        pwl_intercepts  = intercepts,
+    )
+
+
+@functools.lru_cache(maxsize=32)
+def _cached_pwl_fit(vapor_eq_poly: tuple, n_segments: int, temperature: float) -> dict:
+    """Polynomial-path cache: keyed on (polynomial, n_segments, T).
+
+    The standard PFSA isotherm depends only on *vapor_eq_poly*, so this runs
+    the Nelder-Mead optimisation at most once per unique combination — e.g.
+    once per parameter-estimation run even when thousands of instances are
+    created with varying ``equivalent_weight``.
+    """
+    a = vapor_eq_poly
+    return _compute_pwl_fit(lambda rh, *_: ((a[0]*rh + a[1])*rh + a[2])*rh + a[3],
+                            n_segments, temperature)
+
+
+# Class-level cache for subclasses that override vapor_equilibrium_water_content.
+# Key: (subclass type, n_segments, temperature).  Assumes the overridden method
+# is deterministic and does not depend on instance-specific parameters.
+_subclass_pwl_cache: dict = {}
 
 @dataclass
 class PFSAIonomer(Ionomer):
@@ -81,79 +171,44 @@ class PFSAIonomer(Ionomer):
         pwl_temperature : float
             Temperature (K) used for fitting.
         """
-        rh_ref   = np.linspace(0.0, 1.0, 500)
-        lmbd_ref = self.vapor_equilibrium_water_content(rh_ref, temperature)
+        if rh_breaks is None:
+            base_method = PFSAIonomer.vapor_equilibrium_water_content
+            if type(self).vapor_equilibrium_water_content is base_method:
+                # Standard path: isotherm determined solely by the polynomial.
+                # lru_cache keyed on (poly, n_segments, T) — runs Nelder-Mead
+                # at most once per unique combination across the process lifetime.
+                result = _cached_pwl_fit(
+                    tuple(self.vapor_equilibrium_polynomial), n_segments, temperature
+                )
+            else:
+                # Subclass overrides vapor_equilibrium_water_content.
+                # Cache once per (subclass, n_segments, T) — assumes the
+                # overridden method is deterministic and instance-independent.
+                key = (type(self), n_segments, temperature)
+                if key not in _subclass_pwl_cache:
+                    _subclass_pwl_cache[key] = _compute_pwl_fit(
+                        self.vapor_equilibrium_water_content, n_segments, temperature
+                    )
+                result = _subclass_pwl_cache[key]
 
-        def _fit(rh_b):
-            """Regression + intersection-based validity. Returns (a, b, lmbd_valid, rh_approx)."""
-            lmbd_b = self.vapor_equilibrium_water_content(np.asarray(rh_b), temperature)
-            n      = len(rh_b) - 1
+            self.fit_rh_breaks   = result['fit_rh_breaks']
+            self.lmbd_pwl_breaks = result['lmbd_pwl_breaks']
+            self.rh_pwl_breaks   = result['rh_pwl_breaks']
+            self.pwl_slopes      = result['pwl_slopes']
+            self.pwl_intercepts  = result['pwl_intercepts']
+            self.pwl_temperature = temperature
+            return
 
-            # Step 1: fit one regression line per fitting interval
-            a = np.empty(n)
-            b = np.empty(n)
-            for k in range(n):
-                mask = (lmbd_ref >= lmbd_b[k]) & (lmbd_ref <= lmbd_b[k + 1])
-                if mask.sum() >= 2:
-                    a[k], b[k] = np.polyfit(lmbd_ref[mask], rh_ref[mask], 1)
-                else:
-                    dl   = lmbd_b[k + 1] - lmbd_b[k]
-                    a[k] = (rh_b[k + 1] - rh_b[k]) / dl if dl else 0.0
-                    b[k] = rh_b[k] - a[k] * lmbd_b[k]
-
-            # Step 2: compute intersections of adjacent lines
-            # a[k]*λ + b[k] = a[k+1]*λ + b[k+1]  →  λ = (b[k+1]-b[k]) / (a[k]-a[k+1])
-            da = a[:-1] - a[1:]
-            crossings = np.where(
-                np.abs(da) > 1e-12,
-                (b[1:] - b[:-1]) / da,
-                0.5 * (lmbd_b[1:-1] + lmbd_b[2:]),   # parallel lines: midpoint fallback
-            )
-
-            # Step 3: validity breakpoints = domain endpoints + intersections
-            lmbd_valid = np.concatenate([[lmbd_ref[0]], crossings, [lmbd_ref[-1]]])
-
-            # Evaluate on reference grid using validity intervals
-            rh_approx = np.empty_like(lmbd_ref)
-            for k in range(n):
-                mask = (lmbd_ref >= lmbd_valid[k]) & (lmbd_ref <= lmbd_valid[k + 1])
-                rh_approx[mask] = a[k] * lmbd_ref[mask] + b[k]
-
-            return a, b, lmbd_valid, rh_approx
-
-        def _rms(rh_b):
-            _, _, _, rh_approx = _fit(rh_b)
-            return float(np.sqrt(np.mean((rh_approx - rh_ref) ** 2)))
-
-        if rh_breaks is not None:
-            fit_breaks = np.asarray(rh_breaks, dtype=float)
-        else:
-            from scipy.optimize import minimize
-
-            def _objective(x):
-                interior = np.sort(np.clip(x, 1e-4, 1.0 - 1e-4))
-                return _rms(np.concatenate([[0.0], interior, [1.0]]))
-
-            x0  = np.linspace(0.0, 1.0, n_segments + 1)[1:-1]
-            res = minimize(_objective, x0, method='Nelder-Mead',
-                           options={'xatol': 1e-7, 'fatol': 1e-9, 'maxiter': 2000})
-            interior   = np.sort(np.clip(res.x, 1e-4, 1.0 - 1e-4))
-            fit_breaks = np.concatenate([[0.0], interior, [1.0]])
-
-        slopes, intercepts, lmbd_valid, _ = _fit(fit_breaks)
-
-        # RH at validity breakpoints (continuous by construction at intersections)
-        rh_at_valid        = np.empty_like(lmbd_valid)
-        rh_at_valid[0]     = slopes[0]  * lmbd_valid[0]  + intercepts[0]
-        rh_at_valid[-1]    = slopes[-1] * lmbd_valid[-1] + intercepts[-1]
-        for k in range(1, len(lmbd_valid) - 1):
-            rh_at_valid[k] = slopes[k - 1] * lmbd_valid[k] + intercepts[k - 1]
-
-        self.fit_rh_breaks   = fit_breaks
-        self.lmbd_pwl_breaks = lmbd_valid
-        self.rh_pwl_breaks   = rh_at_valid
-        self.pwl_slopes      = slopes
-        self.pwl_intercepts  = intercepts
+        # Explicit rh_breaks supplied — fit directly without caching
+        # (used in notebooks to compare specific interval choices)
+        result = _compute_pwl_fit(self.vapor_equilibrium_water_content,
+                                  n_segments, temperature,
+                                  rh_breaks=np.asarray(rh_breaks, dtype=float))
+        self.fit_rh_breaks   = result['fit_rh_breaks']
+        self.lmbd_pwl_breaks = result['lmbd_pwl_breaks']
+        self.rh_pwl_breaks   = result['rh_pwl_breaks']
+        self.pwl_slopes      = result['pwl_slopes']
+        self.pwl_intercepts  = result['pwl_intercepts']
         self.pwl_temperature = temperature
 
     def linear_rh_from_water_content(self, lmbd, interval=None) -> np.ndarray:

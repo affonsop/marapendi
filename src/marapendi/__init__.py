@@ -19,6 +19,8 @@ from .membrane.ionomer_base import *
 from .membrane.pem import *
 from .membrane.aem import *
 from .water_balance.water_balance import *
+from .water_balance.membrane import *
+from .water_balance.membrane_pwl import *
 from .membrane.permeation import *
 from .porous_layers.catalyst_layers import *
 from .degradation.degradation import *

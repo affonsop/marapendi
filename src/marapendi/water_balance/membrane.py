@@ -107,7 +107,14 @@ class MembraneWaterBalanceModel:
             cell.membrane.dry_thickness / (memb_state.water_diffusivity * cell.membrane.dry_concentration)
         )
 
-    def update_non_dimensional_parameters(self, cell, state):
+    def update_non_dim_vapor_resistance(self, side_state, memb_state, cell): 
+            return (
+                side_state.h2ov_transport_resistance
+                / (GasModel.saturation_concentration(side_state.cl) * memb_state.water_diffusion_resistance)
+                * side_state.estimated_water_content_derivative
+            )
+
+    def update_non_dimensional_parameters(self, cell, state, pwl_interval=None):
         """
         Calculate various non-dimensional parameters related to water transport and equilibrium in a cell.
         Reads runtime values from *state*; writes results to *state* and syncs to *cell* for
@@ -128,11 +135,7 @@ class MembraneWaterBalanceModel:
                 (side_state.estimated_water_content_derivative if self.sorption_activity_driving_force else 1),
                 cell.membrane.dry_thickness, memb_state.water_diffusivity
             )
-            side_state.non_dim_vapor_resistance = (
-                side_state.h2ov_transport_resistance
-                / (GasModel.saturation_concentration(side_state.cl) * memb_state.water_diffusion_resistance)
-                * side_state.estimated_water_content_derivative
-            )
+            side_state.non_dim_vapor_resistance = self.update_non_dim_vapor_resistance(side_state, memb_state, cell)
             side_state.non_dim_equiv_resistance = side_state.non_dim_vapor_resistance + 1 / side_state.biot_number
             side_state.peclet_over_modified_biot = memb_state.peclet_number / (1 / side_state.non_dim_equiv_resistance)
             side_state.peclet_over_biot = memb_state.peclet_number / side_state.biot_number
