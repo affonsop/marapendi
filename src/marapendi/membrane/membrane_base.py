@@ -16,7 +16,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from marapendi.thermo.water import water_molar_volume
-from marapendi.membrane.permeation import HydrogenPermeationModel
 from .ionomer_base import Ionomer
 
 
@@ -37,7 +36,6 @@ class Membrane:
 
     dry_thickness: float = 25e-6
     ionomer: Ionomer = field(default=None)
-    h2_permeation_model: HydrogenPermeationModel = field(default=None)
 
     def __post_init__(self):
         if self.ionomer is not None:

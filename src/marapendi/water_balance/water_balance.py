@@ -14,12 +14,13 @@ Ferrara, A. et al. J. Power Sources 390, 197–207 (2018).
 """
 import numpy as np
 from dataclasses import dataclass, field
-from marapendi.thermo.constants import GAS_CONSTANT
-from marapendi.thermo.gas import GasModel
-from marapendi.tools import arrhenius_term
-from marapendi.thermo.water import water_molar_volume, water_dynamic_viscosity
+from ..thermo.constants import GAS_CONSTANT
+from ..thermo.gas import GasModel
+from ..tools import arrhenius_term
+from ..thermo.water import water_molar_volume, water_dynamic_viscosity
 from ..cell.gas_transport import GasTransportModel
 from .membrane import * 
+from .membrane_pwl import *
 
 @dataclass
 class WaterBalanceModel:
@@ -47,7 +48,7 @@ class WaterBalanceModel:
     
     sorption_activity_driving_force: bool = False
     eod_parallel_to_sorption: bool = False
-    membrane_water_balance_model: MembraneWaterBalanceModel = field(default_factory=MembraneWaterBalanceModel)
+    membrane_water_balance_model: MembraneWaterBalanceModel = field(default_factory=MembraneWaterBalanceModelPiecewise)
 
     def update_cell_side_water_fluxes(self, side_state) -> None:
         """Split total water flux into liquid and vapor components.
