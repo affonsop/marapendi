@@ -13,7 +13,6 @@ from .channel.gas_transport_resistance import *
 from .porous_layers.porous_layers import *
 from .porous_layers.darcy import *
 from .porous_layers.diffusion import *
-from .estimation.estimation import *
 from .electrolyte.electrolyte import *
 from .membrane.ionomer_base import *
 from .membrane.pem import *
@@ -26,4 +25,6 @@ from .porous_layers.catalyst_layers import *
 from .degradation.degradation import *
 from .simulation.load_cycles import *
 from .simulation.conditions import *
-from .estimation.cross_validation import *
+# from .estimation.cross_validation import *
+from .estimation.plots import * 
+from .estimation.polarization_curve_calibration import *
