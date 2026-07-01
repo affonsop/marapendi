@@ -3,7 +3,7 @@ Electrochemistry correlations: reversible voltage, Butler-Volmer kinetics.
 
 :func:`calculate_reversible_cell_voltage` computes the Nernst equilibrium
 cell voltage. :class:`ElectrochemicalReaction` encapsulates Butler-Volmer
-kinetics for a single reaction step (ORR or HOR) parameterized by exchange
+kinetics for a single reaction step (ORR or HOR) parameterised by exchange
 current density, activation energy, reaction order and charge-transfer
 coefficient.
 """
@@ -28,74 +28,63 @@ std_formation_entropy_h2ol = STD_FORMATION_ENTROPY_H2OL
 
 def h2_hhv(temperature):
     """
-    Calculate the hydrogen higher heating value voltage.
+    Higher heating value voltage of hydrogen at a given temperature.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     temperature : float
-        Temperature of the cell in Kelvin (K).
+        Temperature in K.
 
-    Returns:
-    --------
+    Returns
+    -------
     float
-        Hydrogen higher heating value voltage in Volts (V).
+        HHV voltage in V.
     """
     return np.polyval(H2_HHV_COEFFS, temperature)
 
 
 def h2_lhv(temperature):
     """
-    Calculate the hydrogen lower heating value voltage.
+    Lower heating value voltage of hydrogen at a given temperature.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     temperature : float
-        Temperature of the cell in Kelvin (K).
+        Temperature in K.
 
-    Returns:
-    --------
+    Returns
+    -------
     float
-        Hydrogen lower heating value voltage in Volts (V).
+        LHV voltage in V.
     """
     return np.polyval(H2_LHV_COEFFS, temperature)
 
 
-def calculate_reversible_cell_voltage(
-    temperature,
-    activities_ratio):
+def calculate_reversible_cell_voltage(temperature, activities_ratio):
     """
-    Calculate the reversible cell voltage of a hydrogen fuel cell or electrolyser,
-    using Nernst equation.
+    Reversible (Nernst) cell voltage of a hydrogen fuel cell or electrolyser.
 
-    Parameters:
-    -----------
-    temperature : float
-        Temperature of the cell in Kelvin (K).
-    partial_pressure_o2 : float
-        Partial pressure of oxygen (O₂) in Pascals (Pa).
-    partial_pressure_h2 : float
-        Partial pressure of hydrogen (H₂) in Pascals (Pa).
-
-    Returns:
-    --------
-    float
-        Reversible cell voltage in Volts (V).
-
-    Notes:
-    ------
-    The function computes the reversible cell voltage using the thermodynamic relationship:
-        E_rev = (-ΔG° + ΔS°(T - T°) + RT ln(Q)) / (2F)
-    where Q is the reaction quotient based on the partial pressures of H₂ and O₂.
-
-    Constants:
+    Parameters
     ----------
-    - R: Universal gas constant, 8.314 J/(mol·K).
-    - F: Faraday constant, 96485 C/mol.
+    temperature : float
+        Cell temperature in K.
+    activities_ratio : float
+        Reaction quotient Q = a_H2 * a_O2^0.5 / a_H2O (dimensionless).
+        Typically computed from partial pressures normalised by a reference pressure.
 
-    Example:
-    --------
-    >>> reversible_cell_voltage(T=300, p_o2=2e5, p_h2=1e5)
-    1.1901
+    Returns
+    -------
+    float
+        Reversible cell voltage in V.
+
+    Notes
+    -----
+    Uses the thermodynamic relation::
+
+        E_rev = (-ΔG° + ΔS°(T - T°) + RT ln Q) / (2F)
+
+    where ΔG° and ΔS° are the standard Gibbs energy and entropy of formation
+    of liquid water, and F is the Faraday constant.
     """
     gibbs_formation_h2ol = (- std_formation_gibbs_h2ol +
                              std_formation_entropy_h2ol * (temperature - STD_TEMPERATURE))
@@ -107,29 +96,27 @@ def calculate_reversible_cell_voltage(
     return reversible_cell_voltage
 
 
-def calculate_tafel_slope(
-        temperature,
-        number_of_electrons,
-        charge_transfer_coeff):
+def calculate_tafel_slope(temperature, number_of_electrons, charge_transfer_coeff):
     """
-    Calculate the Tafel slope for an electrochemical reaction.
+    Tafel slope b = RT / (n α F).
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     temperature : float
-        Temperature in Kelvin (K).
+        Temperature in K.
     number_of_electrons : int
-        Number of electrons transferred in the electrochemical reaction.
-    charge_transfer_coefficient : float
-        Symmetry factor or charge transfer coefficient (dimensionless).
+        Number of electrons transferred per reaction event.
+    charge_transfer_coeff : float
+        Charge-transfer (symmetry) coefficient α (dimensionless).
 
-    Returns:
-    --------
+    Returns
+    -------
     float
-        The Tafel slope in Volts (V/decade).
+        Tafel slope in V.
     """
     return 2.303 * (GAS_CONSTANT * temperature /
             (number_of_electrons * charge_transfer_coeff * FARADAY_CONSTANT))
+
 
 def calculate_tafel_overpotential(
         current_density,
@@ -138,44 +125,36 @@ def calculate_tafel_overpotential(
         number_of_electrons,
         charge_transfer_coeff):
     """
-    Calculate the Tafel overpotential for an electrochemical reaction.
-    This is an approximation of the Butler-Volmer is valid for high
-    overpotentials (> 0.1 V).
+    Activation overpotential from Butler-Volmer or Tafel kinetics.
 
-    Parameters:
-    -----------
+    Uses the symmetric Butler-Volmer form (``arcsinh``) when
+    ``charge_transfer_coeff == 0.5``, and the Tafel approximation
+    (valid for |η| > ~0.1 V) otherwise.
+
+    Parameters
+    ----------
     current_density : float
-        The operating current density in Amperes per square meter (A/m²).
+        Operating current density in A/m².
     exchange_current_density : float
-        The exchange current density in Amperes per square meter (A/m²).
+        Exchange current density i₀ in A/m².
     temperature : float
-        Temperature in Kelvin (K).
+        Temperature in K.
     number_of_electrons : int
-        Number of electrons transferred in the electrochemical reaction.
-    charge_transfer_coefficient : float
-        Symmetry factor or charge transfer coefficient (dimensionless).
+        Number of electrons transferred per reaction event.
+    charge_transfer_coeff : float
+        Charge-transfer coefficient α (dimensionless).
 
-    Returns:
-    --------
+    Returns
+    -------
     float
-        The Tafel overpotential in Volts (V).
-
-    Example:
-    --------
-    >>> calculate_tafel_overpotential(
-    ...     current_density=1e4,
-    ...     exchange_current_density=1e-3,
-    ...     temperature=298.15,
-    ...     number_of_electrons=2,
-    ...     charge_transfer_coeff=0.5
-    ... )
-    0.17985
+        Activation overpotential in V.
     """
-
     tafel_slope = (GAS_CONSTANT * temperature /
                    (number_of_electrons * charge_transfer_coeff * FARADAY_CONSTANT))
-    return tafel_slope * (np.asinh(current_density / exchange_current_density / 2) if charge_transfer_coeff == 0.5
-                          else np.log(np.maximum(current_density / exchange_current_density,1)))
+    return tafel_slope * (np.asinh(current_density / exchange_current_density / 2)
+                          if charge_transfer_coeff == 0.5
+                          else np.log(np.maximum(current_density / exchange_current_density, 1)))
+
 
 def calculate_linear_overpotential(
         current_density,
@@ -184,84 +163,59 @@ def calculate_linear_overpotential(
         number_of_electrons,
         charge_transfer_coeff):
     """
-    Calculate the linear overpotential for an electrochemical reaction.
-    This is an approximation of the Butler-Volmer is valid for low
-    overpotentials (< 0.1 V).
+    Linear (low-overpotential) approximation of Butler-Volmer kinetics.
 
-    Parameters:
-    -----------
+    Valid when |η| ≪ RT/(nF), i.e. η < ~0.01 V.
+
+    Parameters
+    ----------
     current_density : float
-        The operating current density in Amperes per square meter (A/m²).
+        Operating current density in A/m².
     exchange_current_density : float
-        The exchange current density in Amperes per square meter (A/m²).
+        Exchange current density i₀ in A/m².
     temperature : float
-        Temperature in Kelvin (K).
+        Temperature in K.
     number_of_electrons : int
-        Number of electrons transferred in the electrochemical reaction.
-    charge_transfer_coefficient : float
-        Symmetry factor or charge transfer coefficient (dimensionless).
+        Number of electrons transferred per reaction event.
+    charge_transfer_coeff : float
+        Charge-transfer coefficient α (dimensionless).
 
-    Returns:
-    --------
+    Returns
+    -------
     float
-        The Tafel overpotential in Volts (V).
-
-    Example:
-    --------
-    >>> calculate_tafel_overpotential(
-    ...     current_density=1e4,
-    ...     exchange_current_density=1e-3,
-    ...     temperature=298.15,
-    ...     number_of_electrons=2,
-    ...     charge_transfer_coeff=0.5
-    ... )
-    0.17985
+        Linear activation overpotential in V.
     """
-
     tafel_slope = (GAS_CONSTANT * temperature /
                    (number_of_electrons * charge_transfer_coeff * FARADAY_CONSTANT))
     return tafel_slope * current_density / exchange_current_density
 
+
 @dataclass
 class ElectrochemicalReaction:
     """
-    A dataclass representing the parameters of an electrochemical reaction.
+    Parameters of a single-reactant electrochemical reaction (ORR or HOR).
 
-    Attributes:
-    -----------
+    Stores the kinetic constants required to evaluate exchange current density
+    and activation overpotential via Butler-Volmer / Tafel expressions.
+
+    Parameters
+    ----------
     reference_exchange_current_density : float
-        The reference exchange current density in Amperes per square meter (A/m²).
-    activation_energy : float, optional, default=0.0741
-        The activation energy of the reaction in Joules (J/kmol). 
-    reaction_order : float, optional, default=1.0
-        The reaction order with respect to the reactant activity (dimensionless).
-    reference_activity : float, optional, default=1.0
-        The reference reactant activity (dimensionless). Typically set to 1 for 
-        normalized activities or standard concentrations.
-    reference_temperature : float, optional, default=300
-        The reference temperature in Kelvin (K), for the reference exchange current density. 
-    number_of_electrons : int, optional, default=2
-        Number of electrons transferred in the electrochemical reaction.
-    charge_transfer_coeff : float, optional, default=0.5
-        Symmetry factor or charge transfer coefficient (dimensionless).
-
-    Methods:
-    --------
-    exchange_current_density(temperature, reactant_activity):
-        Calculate the exchange current density for the reaction under specific conditions.
-
-    tafel_overpotential(current_density, temperature, reactant_activity):
-        Calculate the Tafel overpotential for the reaction under specific conditions.
- 
-
-    Example:
-    --------
-    >>> reaction = ElectrochemicalReaction(
-    ...     reference_exchange_current_density=1e-4,
-    ...     activation_energy=50e6,
-    ...     number_of_electrons=2,
-    ...     charge_transfer_coeff=0.5
-    ... )
+        Exchange current density i₀,ref at ``reference_temperature`` and
+        ``reference_activity`` in A/m² (per unit geometric area).
+    activation_energy : float
+        Arrhenius activation energy in J/mol.
+    reaction_order : float
+        Reaction order γ with respect to the reactant activity (dimensionless).
+    reference_activity : float
+        Reactant activity at the reference state in Pa (or the same units as
+        the activity passed to the kinetic methods).
+    reference_temperature : float
+        Temperature at which ``reference_exchange_current_density`` is defined, in K.
+    number_of_electrons : int
+        Electrons transferred per elementary step n.
+    charge_transfer_coeff : float
+        Charge-transfer (symmetry) coefficient α (dimensionless).
     """
     reference_exchange_current_density: float = 0.0741
     activation_energy: float = 67.e6
@@ -273,48 +227,35 @@ class ElectrochemicalReaction:
 
     def exchange_current_density(self, temperature, reactant_activity):
         """
-        Calculate the exchange current density for the electrochemical reaction.
+        Exchange current density at the given temperature and reactant activity.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         temperature : float
-            Temperature in Kelvin (K).
+            Temperature in K.
         reactant_activity : float
-            Activity of the reactant (dimensionless), typically a ratio or concentration.
+            Reactant activity (same units as ``reference_activity``).
 
-        Returns:
-        --------
+        Returns
+        -------
         float
-            The exchange current density in Amperes per square meter (A/m²).
-
-        Notes:
-        ------
-        This method uses the `calculate_exchange_current_density` function and passes the 
-        dataclass instance (`self`) to encapsulate the reaction parameters.
-
-        Example:
-        --------
-        >>> reaction = ElectrochemicalReaction(
-            reference_exchange_current_density=1e-4, 
-            activation_energy=50e6
-        )
-        >>> i0 = reaction.exchange_current_density(temperature=310, reactant_activity=0.5)
+            Exchange current density i₀ in A/m².
         """
         return calculate_exchange_current_density(temperature, reactant_activity, self)
-    
+
     def tafel_slope(self, temperature):
         """
-        Calculate the Tafel slope for the electrochemical reaction.
+        Tafel slope b = RT / (n α F) at the given temperature.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         temperature : float
-            Temperature in Kelvin (K).
+            Temperature in K.
 
-        Returns:
-        --------
+        Returns
+        -------
         float
-            The Tafel slope in Volts (V/decade).
+            Tafel slope in V.
         """
         return calculate_tafel_slope(temperature,
                                      self.number_of_electrons,
@@ -322,116 +263,80 @@ class ElectrochemicalReaction:
 
     def tafel_overpotential(self, current_density, temperature, reactant_activity):
         """
-        Calculate the Tafel overpotential for the electrochemical reaction.
+        Activation overpotential η for the given operating conditions.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         current_density : float
-            The operating current density in Amperes per square meter (A/m²).
+            Operating current density in A/m².
         temperature : float
-            Temperature in Kelvin (K).
+            Temperature in K.
         reactant_activity : float
-            Activity of the reactant (dimensionless), typically a ratio or concentration.
+            Reactant activity (same units as ``reference_activity``).
 
-        Returns:
-        --------
+        Returns
+        -------
         float
-            The Tafel overpotential in Volts (V).
-
-        Example:
-        --------
-        >>> reaction = ElectrochemicalReaction(
-        ...     reference_exchange_current_density=1e-4,
-        ...     activation_energy=50e6,
-        ...     number_of_electrons=2,
-        ...     charge_transfer_coeff=0.5
-        ... )
-        >>> eta = reaction.tafel_overpotential(
-            current_density=1e-3, temperature=310, reactant_activity=0.5
-        )
+            Activation overpotential in V.
         """
-        exchange_current_density = self.exchange_current_density(temperature,reactant_activity)
+        i0 = self.exchange_current_density(temperature, reactant_activity)
         return calculate_tafel_overpotential(
-            current_density,
-            exchange_current_density,
-            temperature,
-            self.number_of_electrons, 
-            self.charge_transfer_coeff)
+            current_density, i0, temperature,
+            self.number_of_electrons, self.charge_transfer_coeff)
 
     def linear_overpotential(self, current_density, temperature, reactant_activity):
         """
-        Calculate the linear overpotential for the electrochemical reaction.
+        Linear (low-overpotential) activation overpotential.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         current_density : float
-            The operating current density in Amperes per square meter (A/m²).
+            Operating current density in A/m².
         temperature : float
-            Temperature in Kelvin (K).
+            Temperature in K.
         reactant_activity : float
-            Activity of the reactant (dimensionless), typically a ratio or concentration.
+            Reactant activity (same units as ``reference_activity``).
 
-        Returns:
-        --------
+        Returns
+        -------
         float
-            The linear overpotential in Volts (V).
-
-        Example:
-        --------
-        >>> reaction = ElectrochemicalReaction(
-        ...     reference_exchange_current_density=1e-4,
-        ...     activation_energy=50e6,
-        ...     number_of_electrons=2,
-        ...     charge_transfer_coeff=0.5
-        ... )
-        >>> eta = reaction.linear_overpotential(
-            current_density=1e-3, temperature=310, reactant_activity=0.5
-        )
+            Linear activation overpotential in V.
         """
-        exchange_current_density = self.exchange_current_density(temperature,reactant_activity)
+        i0 = self.exchange_current_density(temperature, reactant_activity)
         return calculate_linear_overpotential(
-            current_density,
-            exchange_current_density,
-            temperature,
-            self.number_of_electrons, 
-            self.charge_transfer_coeff)
+            current_density, i0, temperature,
+            self.number_of_electrons, self.charge_transfer_coeff)
+
 
 def calculate_exchange_current_density(
-    temperature: float,
-    reactant_activity: float,
-    params: ElectrochemicalReaction):
-
+        temperature: float,
+        reactant_activity: float,
+        params: ElectrochemicalReaction):
     """
-    Calculate the exchange current density for an electrochemical reaction with a single reactant. 
+    Exchange current density for a single-reactant reaction.
 
-    Parameters:
-    -----------
+    Combines an Arrhenius temperature correction with a power-law activity
+    dependence::
+
+        i₀ = i₀,ref · (a / a_ref)^γ · exp(−Eact/R · (1/T − 1/T_ref))
+
+    Parameters
+    ----------
     temperature : float
-        Temperature in Kelvin (K).
+        Temperature in K.
     reactant_activity : float
-        Activity of the reactant (dimensionless), typically a ratio or concentration.
+        Reactant activity (same units as ``params.reference_activity``).
     params : ElectrochemicalReaction
-        An instance of the `ElectrochemicalReaction` dataclass containing the reaction parameters:
-        - reference_exchange_current_density : float
-            The reference exchange current density in Amperes per square meter (A/m²).
-        - activation_energy : float
-            Activation energy in Joules (J).
-        - reaction_order : float
-            Reaction order with respect to the reactant activity (dimensionless).
-        - reference_activity : float
-            Reference reactant activity (dimensionless). Defaults to 1.0.
-        - reference_temperature : float
-            Reference temperature in Kelvin (K). Defaults to 300 K.
+        Kinetic parameters for the reaction.
 
-    Returns:
-    --------
+    Returns
+    -------
     float
-        The exchange current density in Amperes per square meter (A/m²).
-
+        Exchange current density i₀ in A/m².
     """
-    activity_correction = np.maximum(reactant_activity / params.reference_activity, 
+    activity_correction = np.maximum(reactant_activity / params.reference_activity,
                                      1e-12) ** params.reaction_order
     arrhenius = arrhenius_term(params.activation_energy,
-                                              temperature,
-                                              params.reference_temperature)
+                               temperature,
+                               params.reference_temperature)
     return params.reference_exchange_current_density * activity_correction * arrhenius
