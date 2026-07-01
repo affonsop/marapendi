@@ -1,36 +1,38 @@
+"""
+Aqueous KOH electrolyte solution with empirical property correlations.
+"""
 from dataclasses import dataclass, field
 import numpy as np
 from .electrolyte import ElectrolyteSolution
 
+
 @dataclass
 class KOH_solution(ElectrolyteSolution):
     """
-    Specialized class for aqueous KOH solutions, with empirical correlations
-    for density, ionic conductivity and vapor pressure lowering.
+    Aqueous KOH solution with empirical correlations for density,
+    ionic conductivity, vapour pressure lowering, and surface tension.
+
+    References
+    ----------
+    Hodges, A. et al. J. Chem. Eng. Data 68, 1485–1506 (2023).
+    Balej, J. Int. J. Hydrogen Energy 10, 233–243 (1985).
     """
-    
+
     def __post_init__(self):
         super().__post_init__()
         self.electrolyte_molecular_weight = 56.105
 
     def calculate_density(self, temperature=300):
         """
-        Calculate solution density using correlation from Hodges et al. (2023).
-
-        Parameters
-        ----------
-        weight_percent : float
-            Weight percent [0-100].
-        temperature : float
-            Temperature [K].
+        Solution density using the correlation from Hodges et al. (2023).
 
         Returns
         -------
         float
-            Density [kg/m³].
-        
-        Reference
-        ---------
+            Density (kg/m³).
+
+        References
+        ----------
         Hodges, A. et al. J. Chem. Eng. Data 68, 1485–1506 (2023).
         """
         T = temperature - 273.15
@@ -39,15 +41,17 @@ class KOH_solution(ElectrolyteSolution):
 
     def calculate_ionic_conductivity(self, temperature=300):
         """
-        Calculate ionic conductivity using correlations from Hodges et al. (2023).
+        Ionic conductivity using the correlations from Hodges et al. (2023).
+
+        Two separate polynomial fits are used below and above 353.15 K.
 
         Returns
         -------
         float
-            Ionic conductivity [S/m].
+            Ionic conductivity (S/m).
 
-        Reference
-        ---------
+        References
+        ----------
         Hodges, A. et al. J. Chem. Eng. Data 68, 1485–1506 (2023).
         """
         low_temp_cond = 100 * self.molarity * (-2.041 - 0.0028 * self.molarity +
@@ -62,24 +66,18 @@ class KOH_solution(ElectrolyteSolution):
 
     def calculate_saturation_pressure(self):
         """
-        Calculate vapor pressure lowering using correlation from Balej (1985).
-        Used to compute the water activity of the electrolyte solution. 
+        Vapour pressure lowering relative to pure water, from Balej (1985).
 
-        Parameters
-        ----------
-        molality : float
-            Molality [kmol/kg].
-        water_sat_pressure : float
-            Pure water saturation pressure [Pa].
+        Used to compute the water activity of the electrolyte solution.
 
         Returns
         -------
         float
-            Solution saturation pressure [Pa].
-        
-        Reference
-        --------- 
-        Balej, J. International Journal of Hydrogen Energy 10, 233–243 (1985).
+            Solution saturation pressure (Pa).
+
+        References
+        ----------
+        Balej, J. Int. J. Hydrogen Energy 10, 233–243 (1985).
         """
         m_mol_per_kg = self.molality * 1000.
         log_p_sat = np.log10(self.water_sat_pressure / 1e5)
@@ -93,20 +91,19 @@ class KOH_solution(ElectrolyteSolution):
 
     def calculate_surface_tension(self) -> float:
         """
-        Calculate the surface tension of aqueous KOH using equation 10 in Hodges (2023).
+        Surface tension of aqueous KOH using equation 10 in Hodges et al. (2023).
 
-        Equation valid between 30 % wt. and 50 % wt.
+        Valid between 30 wt% and 50 wt%.
 
         Returns
         -------
         float
-            Solution surface tension in N/m
+            Surface tension (N/m).
 
-        Reference
-        ---------
+        References
+        ----------
         Hodges, A. et al. J. Chem. Eng. Data 68, 1485–1506 (2023).
         """
-        # Coefficient matrix from the image
         a = np.array([
             [75.4787, -0.138489, -3.38e-04, 4.75e-7, -2.64e-10],
             [-32.889, 1.34382, -9.10e-03, 3.96e-05, -5.74e-08],
@@ -114,17 +111,14 @@ class KOH_solution(ElectrolyteSolution):
             [-1455.06, 39.8511, -0.344234, 1.44e-03, -2.08e-06],
             [1333.62, -38.3316, 0.335129, -1.37e-03, 1.95e-06]
         ])
-
-       
-        T = self.temperature -273.15
+        T = self.temperature - 273.15
         xi = self.weight_percent / 100.
-        # Calculate surface tension using the double polynomial
         sigma = 0
         for i in range(5):
             for j in range(5):
                 sigma += a[i, j] * (T ** j) * (xi ** i)
-
         return sigma * 1e-3
+
 
 # Predefined solutions
 KOH_1M = KOH_solution(temperature=298.15, weight_percent=5.3732)

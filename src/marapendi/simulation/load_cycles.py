@@ -1,4 +1,7 @@
-import numpy as np 
+"""
+Time-varying load cycle definition for transient PEMFC simulations.
+"""
+import numpy as np
 
 
 class LoadCycle:
@@ -11,13 +14,11 @@ class LoadCycle:
 
     Notes
     -----
-    Each input must be provided as a callable function of time:
-        u_key : callable(t) -> scalar or array
-
+    Each input must be provided as a callable function of time.
     Returning ``None`` disables the corresponding input.
 
-    Example
-    -------
+    Examples
+    --------
     >>> cycle = LoadCycle(duration=30., time_step=1.)
 
     >>> current_density = lambda t: np.where(t > 10., 1e4, 0.5e4)

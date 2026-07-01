@@ -28,7 +28,7 @@ std_formation_entropy_h2ol = STD_FORMATION_ENTROPY_H2OL
 
 def h2_hhv(temperature):
     """
-    Higher heating value voltage of hydrogen at a given temperature.
+    Higher heating value of hydrogen at a given temperature.
 
     Parameters
     ----------
@@ -38,14 +38,14 @@ def h2_hhv(temperature):
     Returns
     -------
     float
-        HHV voltage in V.
+        Higher heating value in J/kmol.
     """
     return np.polyval(H2_HHV_COEFFS, temperature)
 
 
 def h2_lhv(temperature):
     """
-    Lower heating value value of hydrogen at a given temperature.
+    Lower heating value of hydrogen at a given temperature.
 
     Parameters
     ----------
@@ -55,7 +55,7 @@ def h2_lhv(temperature):
     Returns
     -------
     float
-        LHV voltage in J/kmol.
+        Lower heating value in J/kmol.
     """
     return np.polyval(H2_LHV_COEFFS, temperature)
 

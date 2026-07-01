@@ -323,6 +323,7 @@ class PFSAIonomer(Ionomer):
         return  ((a[0] * rh + a[1]) * rh + a[2]) * rh + a[3]
     
     def vapor_equilibrium_water_content_derivative(self, rh, temperature):
+        """Derivative of the vapor equilibrium water content with respect to RH (mol H₂O / mol SO₃⁻)."""
         a = self.vapor_equilibrium_polynomial
         return (3 * a[0] * rh + 2 * a[1]) * rh + a[2]
 
@@ -369,6 +370,7 @@ class PFSA(Membrane):
         return ((1 - self.phi) * lmbd_eq_relaxed + s_relax) if s_relax is not None else lmbd_eq_relaxed
 
     def equilibrium_water_content_derivative(self, rh, temperature, s_relax=None):
+        """Derivative of equilibrium water content with respect to RH, accounting for relaxation."""
         rh = np.clip(rh, 0, 1)
         d_lmbd_eq_relaxed = self.ionomer.vapor_equilibrium_water_content_derivative(rh, temperature)
         return ((1 - self.phi) * d_lmbd_eq_relaxed + s_relax) if s_relax is not None else d_lmbd_eq_relaxed

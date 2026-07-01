@@ -4,19 +4,11 @@ Cell model: implicit steady-state PEMFC performance model.
 :class:`ImplicitSteadyStateModel` extends :class:`ExplicitSteadyStateModel`
 by solving for the cell voltage and MEA temperature self-consistently.
 
-The solve equation is:
-
-    V = f(T_MEA(V))
-
-where the MEA temperature is obtained from the heat balance:
-
-    T_MEA = T_stack + R_th · (V_LHV − V) · i
-
-and V is recomputed from the full physics (water balance, gas transport,
-voltage model) at that T_MEA.  Because the problem is diagonal across
-current-density points (each entry of V only affects the corresponding
-entry of state), :func:`scipy.optimize.newton` (secant method) solves it
-elementwise without building a dense Jacobian.
+The MEA temperature depends on the cell voltage through the thermal balance,
+and the cell voltage in turn depends on the MEA temperature through the water
+balance and kinetics, creating a coupled implicit problem.  Because the problem
+is diagonal across current-density points, :func:`scipy.optimize.newton`
+(secant method) solves it elementwise without building a dense Jacobian.
 """
 from __future__ import annotations
 

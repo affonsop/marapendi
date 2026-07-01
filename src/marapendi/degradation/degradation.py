@@ -1,19 +1,14 @@
 """
-Module providing classes describing platinum degradation mechanisms
-in electrochemical cells (e.g. PEM fuel cells).
+Platinum degradation kinetics for PEM fuel cells.
 
-The implementation follows kinetic formulations proposed in:
+Implements particle-size-resolved dissolution, oxide formation, oxide
+dissolution, oxide place-exchange, cathodic dissolution, and carbon corrosion
+following Darling and Meyers (2003) and Schneider et al. (2019).
 
-Darling & Meyers,
-"Kinetic Model of Platinum Dissolution in PEMFCs",
-Journal of The Electrochemical Society, 150(11), A1523 (2003).
-
-The module includes:
-    - Platinum particle size distributions
-    - Material thermodynamic properties
-    - Platinum dissolution kinetics
-    - Platinum oxide formation/dissolution
-    - Coupled degradation rate evaluation
+References
+----------
+Darling, R. M. & Meyers, J. P. J. Electrochem. Soc. 150, A1523 (2003).
+Schneider, P. et al. J. Electrochem. Soc. 166, F322–F333 (2019).
 """
 
 from dataclasses import dataclass, field
@@ -48,18 +43,18 @@ class PtSizeDistribution:
     ----------
     n_points : int
         Number of discretization points.
-    r_mean : float [m]
-        Mean particle radius.
-    r_std : float [m]
-        Standard deviation of particle radius.
-    initial_platinum_loading : float [kg/m²]
-        Platinum loading.
-    initial_cl_thickness : float [m]
-        Catalyst layer thickness.
-    initial_ecsa : float [m²/kg]
-        Initial electrochemical surface area.
-    distribution_type : {"norm","lognorm"}
-        Type of statistical radius distribution.
+    r_mean : float
+        Mean particle radius (m).
+    r_std : float
+        Standard deviation of particle radius (m).
+    initial_platinum_loading : float
+        Platinum loading (kg/m²).
+    initial_cl_thickness : float
+        Catalyst layer thickness (m).
+    initial_ecsa : float
+        Initial electrochemical surface area (m²/kg).
+    distribution_type : str
+        Type of statistical radius distribution: ``'norm'`` or ``'lognorm'``.
     """
     number_density_array: NDArray[np.float64]
     r_array: NDArray[np.float64]
@@ -234,11 +229,14 @@ class PlatinumSpecies:
 
     Parameters
     ----------
-    density : float [kg/m³]
-    molecular_weight : float [kg/kmol]
-    surface_tension : float [J/m²]
-    reference_pontial : float [J/kmol]
-        Reference Gibbs potential.
+    density : float
+        Density (kg/m³).
+    molecular_weight : float
+        Molecular weight (kg/kmol).
+    surface_tension : float
+        Surface tension (J/m²).
+    reference_pontential : float
+        Reference Gibbs potential (J/kmol).
     """
 
     density: float
@@ -293,9 +291,9 @@ class PlatinumDissolution:
     """
     Platinum electrochemical dissolution reaction.
 
-    Reference: 
-    ---------- 
-    Schneider et al. J. Electrochem. Soc. 2019, 166 (4), F322–F333.
+    References
+    ----------
+    Schneider, P. et al. J. Electrochem. Soc. 166, F322–F333 (2019).
     """
 
     rate_constant: float = 3.43e-23
@@ -371,27 +369,26 @@ class PlatinumOxideFormation:
     """
     Platinum oxide formation reaction kinetics.
 
-    Model based on:
-    Darling & Meyers (2003), J. Electrochem. Soc.
+    Electrochemical oxidation of metallic platinum to platinum oxide.
 
-    Describes electrochemical oxidation of metallic platinum:
-
-        Pt + H2O ⇌ PtO + 2H+ + 2e-
+    References
+    ----------
+    Darling, R. M. & Meyers, J. P. J. Electrochem. Soc. 150, A1523 (2003).
 
     Parameters
     ----------
-    rate_constant : float [kmol/m²/s]
-        Reaction kinetic prefactor.
-    reference_potential : float [V]
-        Standard equilibrium potential.
+    rate_constant : float
+        Reaction kinetic prefactor (kmol/m²/s).
+    reference_potential : float
+        Standard equilibrium potential (V).
     transfer_coeff_ca : float
-        Cathodic transfer coefficient.
+        Cathodic charge-transfer coefficient (n.d.).
     transfer_coeff_an : float
-        Anodic transfer coefficient.
-    omega_platinum_oxide_formation : float [J/kmol]
-        Lateral interaction parameter between oxide species.
-    proton_reference_concentration : float [kmol/m³]
-        Reference proton concentration.
+        Anodic charge-transfer coefficient (n.d.).
+    omega_platinum_oxide_formation : float
+        Lateral interaction parameter between oxide species (J/kmol).
+    proton_reference_concentration : float
+        Reference proton concentration (kmol/m³).
     """
 
     rate_constant: float = 1.36e-10
@@ -477,10 +474,11 @@ class PlatinumOxideFormation:
 @dataclass
 class OxidePlaceExchange:
     """
-    Oxide place exchange reaction kinetics.
+    Oxide place-exchange reaction kinetics.
 
-    Model based on:
-    Schneider et al. (2019), J. Electrochem. Soc.
+    References
+    ----------
+    Schneider, P. et al. J. Electrochem. Soc. 166, F322–F333 (2019).
     """
 
     forward_rate_constant: float = 1.e-21
@@ -576,8 +574,9 @@ class CathodicDissolution:
     """
     Cathodic platinum dissolution kinetics.
 
-    Model based on:
-    Schneider et al. (2019), J. Electrochem. Soc.
+    References
+    ----------
+    Schneider, P. et al. J. Electrochem. Soc. 166, F322–F333 (2019).
     """
 
     rate_constant: float = 1.4e-8
@@ -602,10 +601,12 @@ class PlatinumOxideDissolution:
     """
     Chemical dissolution of platinum oxide.
 
-    Reaction couples oxide reduction and platinum ion
-    concentration in the ionomer phase.
+    Couples oxide reduction with the dissolved platinum ion concentration
+    in the ionomer phase.
 
-    Based on Darling & Meyers (2003).
+    References
+    ----------
+    Darling, R. M. & Meyers, J. P. J. Electrochem. Soc. 150, A1523 (2003).
     """
 
     rate_constant: float = 3.2e-23  # kmol/m²/s
@@ -649,9 +650,23 @@ class PlatinumOxideDissolution:
 # Carbon corrosion
 # ======================================================================
 @dataclass
-class CarbonCorrosion: 
+class CarbonCorrosion:
+    """
+    Carbon support corrosion kinetics.
+
+    Exponential potential dependence for the carbon oxidation reaction rate.
+
+    Attributes
+    ----------
+    rate_constant : float
+        Reaction rate prefactor (kmol/m²/s).
+    potential_dependency : float
+        Exponential sensitivity to potential (1/V).
+    reference_potential : float
+        Reference potential for the exponential term (V).
+    """
     rate_constant: float = 1.5e-22
-    potential_dependency: float = 19 
+    potential_dependency: float = 19
     reference_potential: float = 0.2
 
     def reaction_rate(
@@ -732,17 +747,21 @@ class PtDissolution:
 
         Returns
         -------
-        particle_radius_time_derivative : ndarray [m/s]
-            Radius evolution for each particle size bin.
+        particle_radius_time_derivative : ndarray
+            Radius evolution for each particle size bin (m/s).
+        dissolved_platinum_concentration_time_derivative : float
+            Dissolved platinum accumulation rate (kmol/m³/s).
+        platinum_oxide_coverage_time_derivative : float
+            Rate of change of oxide surface coverage (1/s).
+        place_exchanged_oxide_coverage_time_derivative : float
+            Rate of change of place-exchanged oxide coverage (1/s).
+        number_density_time_derivative : ndarray
+            Rate of change of particle number density (1/m³/s).
 
-        dissolved_platinum_concentration_time_derivative :
-            float [kmol/m³/s]
-            Dissolved platinum accumulation rate.
-
-        Reference: 
-        ---------- 
-        Schneider et al. J. Electrochem. Soc. 2019, 166 (4), F322–F333.
-        Darling; Meyers. J. Electrochem. Soc. 2003, 150 (11), A1523.
+        References
+        ----------
+        Schneider, P. et al. J. Electrochem. Soc. 166, F322–F333 (2019).
+        Darling, R. M. & Meyers, J. P. J. Electrochem. Soc. 150, A1523 (2003).
         """
 
         # ---- Reaction rates

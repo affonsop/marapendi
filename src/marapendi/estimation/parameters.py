@@ -1,3 +1,9 @@
+"""Parameter descriptors used by :class:`~marapendi.estimation.BaseModelCalibration`.
+
+:class:`Parameter` stores fixed (known) model parameters with display metadata.
+:class:`UnknownParameter` extends it with estimation bounds and a normalisation flag
+used by the ``p_to_theta`` / ``theta_to_p`` normalisation scheme.
+"""
 from dataclasses import dataclass
 
 

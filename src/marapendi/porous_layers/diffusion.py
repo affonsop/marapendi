@@ -1,12 +1,13 @@
 
 """
-Module providing a model for gas diffusion in porous layers.
+Porous-media gas diffusion model with water saturation and Knudsen corrections.
 """
 from dataclasses import dataclass
 import numpy as np
 from ..thermo.constants import GAS_CONSTANT
 from ..thermo.gas import GasModel, species_indexes, molecular_weights
-    
+
+
 @dataclass
 class PorousGasDiffusionModel:
     """
@@ -15,105 +16,105 @@ class PorousGasDiffusionModel:
     Attributes
     ----------
     water_saturation_exponent : float
-        Exponent for empirical water saturation correction.
+        Exponent for the empirical water saturation correction (n.d.).
     """
     water_saturation_exponent: float = 3.0
 
     def water_saturation_correction(self, water_saturation):
         """
-        Compute correction factor for effective diffusivity.
+        Correction factor for effective diffusivity due to liquid water presence.
 
         Parameters
         ----------
         water_saturation : float
-            Water saturation [-].
+            Water saturation (n.d.).
 
         Returns
         -------
         float
-            Correction factor [-].
+            Correction factor (n.d.).
         """
         return np.clip(1 - water_saturation, 1e-6, 1) ** self.water_saturation_exponent
-    
+
     def molecular_diffusion_effective_length(self, layer, water_saturation=0):
         """
-        Compute effective diffusion length with saturation correction.
+        Effective diffusion length accounting for porosity and water saturation.
 
         Parameters
         ----------
         layer : PorousLayer
             Layer with thickness and effective diffusion ratio.
         water_saturation : float, optional
-            Water saturation [-].
+            Water saturation (n.d.).
 
         Returns
         -------
         float
-            Effective diffusion length [m].
+            Effective diffusion length (m).
         """
         return layer.thickness / layer.effective_gas_diffusion_ratio / self.water_saturation_correction(water_saturation)
-    
+
     def molecular_diffusion_resistance(self, layer, diffusion_coefficient, water_saturation=0):
         """
-        Compute molecular diffusion resistance.
+        Molecular diffusion resistance through the layer.
 
         Parameters
         ----------
         layer : PorousLayer
             Layer properties.
         diffusion_coefficient : float
-            Diffusion coefficient [m2/s].
+            Binary diffusion coefficient (m^2/s).
         water_saturation : float, optional
-            Water saturation [-].
+            Water saturation (n.d.).
 
         Returns
         -------
         float
-            Diffusion resistance [s/m].
+            Diffusion resistance (s/m).
         """
         return self.molecular_diffusion_effective_length(layer, water_saturation) / diffusion_coefficient
-    
+
     def knudsen_diffusivity(self, layer, temperature, molecular_weight):
         """
-        Compute Knudsen diffusivity in the porous layer.
+        Knudsen diffusivity in the porous layer.
 
         Parameters
         ----------
         layer : PorousLayer
-            Contains pore diameter.
+            Contains pore diameter (m).
         temperature : float
-            Temperature [K].
+            Temperature (K).
         molecular_weight : float
-            Molecular weight [kg/mol].
+            Molecular weight (kg/kmol).
 
         Returns
         -------
         float
-            Knudsen diffusivity [m2/s].
+            Knudsen diffusivity (m^2/s).
         """
         return layer.pore_diameter / 3 * np.sqrt(8 * GAS_CONSTANT * temperature / molecular_weight / np.pi)
-    
+
     def total_diffusion_resistance(self, layer, temperature, diffusion_coefficient, molecular_weight, water_saturation):
         """
-        Compute total diffusion resistance (molecular + Knudsen).
+        Total diffusion resistance combining molecular and Knudsen contributions.
 
         Parameters
         ----------
         layer : PorousLayer
             Layer properties.
         temperature : float
-            Temperature [K].
+            Temperature (K).
         diffusion_coefficient : float
-            Molecular diffusion coefficient [m2/s].
+            Molecular diffusion coefficient (m^2/s).
         molecular_weight : float
-            Molecular weight [kg/mol].
+            Molecular weight (kg/kmol).
         water_saturation : float
-            Water saturation [-].
+            Water saturation (n.d.).
 
         Returns
         -------
         float
-            Total resistance [s/m].
+            Total resistance (s/m).
         """
         correction = np.clip(1 - water_saturation, 1e-6, 1) ** self.water_saturation_exponent
         effective_length = layer.thickness / layer.effective_gas_diffusion_ratio / correction

@@ -1,4 +1,16 @@
+"""
+Analytical steady-state membrane water balance model.
 
+:class:`MembraneWaterBalanceModel` implements the Ferrara et al. (2018) analytical
+solution for the 1D water-content profile across the membrane, given boundary
+conditions from the catalyst-layer equilibrium water content and membrane
+transport properties (diffusivity, electroosmotic drag speed, absorption
+coefficient).
+
+References
+----------
+Ferrara, A. et al. J. Power Sources 390, 197–207 (2018).
+"""
 import numpy as np
 from dataclasses import dataclass, field
 from marapendi.thermo.constants import GAS_CONSTANT
@@ -10,6 +22,25 @@ from ..cell.gas_transport import GasTransportModel
 
 @dataclass
 class MembraneWaterBalanceModel:
+    """
+    Steady-state membrane water balance using an analytical profile solution.
+
+    Solves the combined diffusion and electroosmotic drag problem analytically,
+    computing the water-content profile, boundary absorption/desorption fluxes,
+    and equilibrium water content at each catalyst layer interface.
+
+    Attributes
+    ----------
+    n_profile_points : int
+        Number of points used to discretise the membrane profile for output
+        and downstream calculations.
+    sorption_activity_driving_force : bool
+        When ``True``, water activity is the driving force for sorption at
+        the membrane surface; otherwise water content difference is used.
+    eod_parallel_to_sorption : bool
+        When ``True``, the electroosmotic drag contribution is added to the
+        absorption flux in the boundary conditions.
+    """
 
     n_profile_points: int = 10 
     sorption_activity_driving_force: bool = False
@@ -96,7 +127,8 @@ class MembraneWaterBalanceModel:
         state.ca.membrane_interface_water_content = self.water_content_profile[-1, ...]
         state.an.membrane_interface_water_content = self.water_content_profile[0, ...]
     
-    def calculate_membrane_transport_properties(self, cell, state): 
+    def calculate_membrane_transport_properties(self, cell, state):
+        """Compute EOD speed, absorption coefficient, water diffusivity, and diffusion resistance; write to ``state.membrane``."""
         memb_state = state.membrane
 
         memb_state.eod_speed = cell.membrane.calculate_electroosmotic_drag_speed(
@@ -107,8 +139,9 @@ class MembraneWaterBalanceModel:
             cell.membrane.dry_thickness / (memb_state.water_diffusivity * cell.membrane.dry_concentration)
         )
 
-    def update_non_dim_vapor_resistance(self, side_state, memb_state, cell): 
-            return (
+    def update_non_dim_vapor_resistance(self, side_state, memb_state, cell):
+        """Non-dimensional vapor resistance R_v* for one electrode side (Ferrara et al. 2018, eq. 13)."""
+        return (
                 side_state.h2ov_transport_resistance
                 / (GasModel.saturation_concentration(side_state.cl) * memb_state.water_diffusion_resistance)
                 * side_state.estimated_water_content_derivative

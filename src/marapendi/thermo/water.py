@@ -42,7 +42,7 @@ def water_dew_point(vapor_pressure):
 def water_dynamic_viscosity(temperature=300):
     """Dynamic viscosity of liquid water (Pa·s) — Vogel equation.
 
-    μ = A · exp(B / (T − C))  with A, B, C fitted to Cantera values.
+    Exponential fit with three coefficients fitted to Cantera values.
     Accuracy: < 1.1 % vs. Cantera over 274–373 K.
     """
     return 3.162220e-05 * np.exp(482.6125 / (temperature - 153.5669))

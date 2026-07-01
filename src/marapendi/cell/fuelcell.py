@@ -171,6 +171,11 @@ class FuelCell(Cell):
             side.cl.set_water_film_thickness(side.cl.non_wetting_saturation)
 
     def f_transient(self, t, x, u, p, n_memb_mesh=3):
+        """Right-hand side for the full transient ODE: [dT/dt | dλ/dt (membrane) | ds/dt (porous) | ds_relax/dt].
+
+        The state vector *x* is ordered as
+        ``[mea_temperature, *membrane_water_profile, *saturation_profile, s_relax_ca, s_relax_an]``.
+        """
         self.set_conditions_from_input_dict(u, t * np.ones_like(x[0, ...]))
         k = 1 + n_memb_mesh
         water_profile = x[1:k, ...]
@@ -192,6 +197,7 @@ class FuelCell(Cell):
         return [dTdt] + list(dlmbddt) + list(dsdt) + list(dsrlxdt)
 
     def f_relax(self, t, x, u, p, n_memb_mesh=3):
+        """Right-hand side for the ionomer relaxation sub-ODE only (``[ds_relax_ca/dt, ds_relax_an/dt]``)."""
         self.set_conditions_from_input_dict(u, t * np.ones_like(x[0, ...]))
         self._run_explicit_solve()
 
@@ -228,9 +234,11 @@ class FuelCell(Cell):
             self.h2_permeation_flux = s.membrane.h2_permeation_flux
 
     def set_conditions_from_input_functions(self, u, t):
+        """Evaluate time-dependent input functions *u* at time *t* and update the cell state."""
         self.set_conditions_from_input_dict({key: fn(t) for key, fn in u.items()})
 
     def set_conditions_from_input_dict(self, u):
+        """Build a :class:`CellState` from the flat input dict *u* (keys are e.g. ``'current-density'``)."""
         current_density = u['current-density']
         stack_temperature = u['cell-temperature']
         cathode_conditions, anode_conditions = [

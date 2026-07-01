@@ -1,3 +1,17 @@
+"""
+Steady-state polarisation curve calibration against voltage and HFR data.
+
+:class:`SteadyStatePolarizationCurveCalibration` extends
+:class:`~marapendi.estimation.BaseModelCalibration` to calibrate PEMFC performance
+models.  It builds the simulated-vs-experimental residual vector from voltage and
+high-frequency resistance (HFR) measurements across multiple operating conditions,
+and provides helpers to run and post-process k-fold cross-validation.
+
+Module-level helpers (:func:`collect_rmse_df`, :func:`optimal_n_1se`,
+:func:`build_rmse_stats_df`, :func:`rmse_complexity_latex`,
+:func:`rmse_complexity_table`) are used by the plotting functions in
+:mod:`marapendi.estimation.plots`.
+"""
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -37,45 +51,62 @@ class SteadyStatePolarizationCurveCalibration(BaseModelCalibration):
         )
 
     def solve_case(self, cell, case):
+        """Run the steady-state solver for *case* and return the final :class:`CellState`."""
         cond = self.case_conditions[case]
         state = self.cell_model.set_initial_conditions(cell, cond)
         return self.cell_model.solve(cell, cond, state)
 
     def apply_hfr_weights(self, hfr):
+        """Scale HFR values so their residuals are comparable in magnitude to voltage residuals.
+
+        Multiplies by 1e4 (unit conversion from Ω·m² to mΩ·cm²) and by
+        ``hfr_weight_factor`` (ratio of voltage to HFR measurement counts).
+        """
         return hfr * 1e4 * self.hfr_weight_factor
 
     def build_cell_from_unknown_p_vector(self, unknown_p_vector):
+        """Build a :class:`FuelCell` from the current known params merged with *unknown_p_vector*."""
         px = self.params.copy()
         px.update(dict(zip(self.p_i_name, unknown_p_vector)))
         cell = self.cell_creator(px)
         return cell
 
     def build_y_sim_cases(self, cell, case_list):
+        """Concatenate simulated output vectors for all cases in *case_list*."""
         return np.concatenate([
             self.build_y_sim(cell, case) for case in case_list
         ])
 
     def simulate_voltage_and_hfr(self, cell, case):
+        """Solve *case* and return ``(cell_voltage, hfr, state)``."""
         state = self.solve_case(cell, case)
         hfr = self.cell_model.voltage_model.high_frequency_resistance(cell, state)
         return state.cell_voltage, hfr, state
 
     def build_y_sim(self, cell, case):
+        """Return the concatenated [voltage | weighted HFR] simulated vector for *case*."""
         cell_voltage, hfr, _ = self.simulate_voltage_and_hfr(cell, case)
         hfr_sim = self.apply_hfr_weights(hfr) * self.hfr_mask[case]
         return np.concatenate([cell_voltage, hfr_sim])
 
     def build_y_exp_cases(self, case_list):
+        """Concatenate experimental output vectors for all cases in *case_list*."""
         return np.concatenate([
             self.build_y_exp(case) for case in case_list
         ])
 
     def build_y_exp(self, case):
+        """Return the concatenated [voltage | weighted HFR] experimental vector for *case*."""
         case_dataset = self.get_case_dataset(case)
         hfr_exp = self.apply_hfr_weights(case_dataset['hfr']) * self.hfr_mask[case]
         return np.concatenate([case_dataset['voltage'], hfr_exp])
 
     def compute_y_sim(self, unknown_p_vector=None, cell=None, case_list=[]):
+        """Return the concatenated simulated output vector for all cases.
+
+        Either *unknown_p_vector* (physical values) or *cell* must be provided.
+        When *case_list* is empty, all cases in ``self.full_case_list`` are used.
+        """
         if len(case_list) == 0:
             case_list = self.full_case_list
         if (unknown_p_vector is not None) and (cell is None):
@@ -83,6 +114,7 @@ class SteadyStatePolarizationCurveCalibration(BaseModelCalibration):
         return self.build_y_sim_cases(cell, case_list)
 
     def compute_residuals(self, unknown_p_vector=None, cell=None, case_list=[]):
+        """Return element-wise residuals (y_exp − y_sim) for *case_list*."""
         if len(case_list) == 0:
             case_list = self.full_case_list
         return self.build_y_exp_cases(case_list) - self.compute_y_sim(unknown_p_vector, cell, case_list)
@@ -101,9 +133,11 @@ class SteadyStatePolarizationCurveCalibration(BaseModelCalibration):
                 )
 
     def get_case_dataset(self, case):
+        """Return the subset of ``experimental_dataset`` for *case*."""
         return self.experimental_dataset[self.experimental_dataset['case'] == case]
 
     def build_cases_conditions(self, current_density=None):
+        """Build and store a :class:`CellConditions` object for every case in ``full_case_list``."""
         self.case_conditions = {}
         for case in self.full_case_list:
             self.case_conditions[case] = self.make_conditions(case, current_density)
@@ -144,9 +178,11 @@ class SteadyStatePolarizationCurveCalibration(BaseModelCalibration):
         )
 
     def get_estimated_parameters_from_fold_results(self, fold_results):
+        """Extract the estimated-parameter columns from a fold-results DataFrame row."""
         return fold_results.loc[:, fold_results.columns[4:]].copy()
 
     def simulate_for_fold_results(self, fold_results):
+        """Build a cell from *fold_results* and simulate all cases; return voltage, HFR, and state dicts."""
         estimated_parameters = self.get_estimated_parameters_from_fold_results(fold_results)
         estimated_parameters.dropna(axis=1, inplace=True)
         estimated_dict = dict(
@@ -169,6 +205,18 @@ class SteadyStatePolarizationCurveCalibration(BaseModelCalibration):
 
 
 def collect_rmse_df(model, cv_results, variable, quantity_multiplier):
+    """Compute per-case, per-fold RMSE from cross-validation results and return a tidy DataFrame.
+
+    Parameters
+    ----------
+    model : SteadyStatePolarizationCurveCalibration
+    cv_results : pd.DataFrame
+        Output of :meth:`run_k_fold_cross_validation`.
+    variable : str
+        ``'voltage'`` or ``'hfr'``.
+    quantity_multiplier : float
+        Unit conversion factor applied to residuals before computing RMSE.
+    """
     rmse_values, case_column, fold_id_column, complexity_column, is_test_column = [], [], [], [], []
 
     for n_params in cv_results.n_params.unique():
@@ -204,6 +252,10 @@ def collect_rmse_df(model, cv_results, variable, quantity_multiplier):
 
 
 def optimal_n_1se(test_mean, test_std):
+    """Return the simplest complexity whose mean test RMSE is within 1 SE of the minimum (1-SE rule).
+
+    Reference: Hastie, T. et al. "The Elements of Statistical Learning", §7.3.
+    """
     # 1-SE rule: simplest model within 1 std of the best
     # See https://esl.hohoweiya.xyz/book/The%20Elements%20of%20Statistical%20Learning.pdf
     best_n = test_mean.idxmin()
@@ -212,6 +264,11 @@ def optimal_n_1se(test_mean, test_std):
 
 
 def build_rmse_stats_df(rmse_vs_complexity_df):
+    """Aggregate per-case RMSE values into summary statistics by complexity level.
+
+    Returns a DataFrame indexed by ``n_params`` with one column per fold and
+    aggregate columns (Min., Max., Median, Mean).
+    """
     test_rows = (
         rmse_vs_complexity_df[rmse_vs_complexity_df["is_test"]]
         .groupby(['n_params', 'fold_id']).mean()
@@ -245,6 +302,7 @@ def build_rmse_stats_df(rmse_vs_complexity_df):
 
 
 def rmse_complexity_latex(stats_df):
+    """Render *stats_df* as a LaTeX booktabs table string."""
     n_cases = sum(1 for c in stats_df.columns if c not in ('Min.', 'Max.', 'Median', 'Mean'))
     return (
         stats_df.to_latex(
@@ -263,6 +321,10 @@ def rmse_complexity_latex(stats_df):
 
 
 def rmse_complexity_table(rmse_vs_complexity_df, filename=None):
+    """Build the RMSE summary table and its LaTeX representation.
+
+    Optionally writes the LaTeX string to *filename*.  Returns ``(stats_df, latex)``.
+    """
     stats_df = build_rmse_stats_df(rmse_vs_complexity_df)
     latex = rmse_complexity_latex(stats_df)
 

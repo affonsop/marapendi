@@ -1,3 +1,11 @@
+"""
+Plotting utilities for sensitivity analysis and cross-validation results.
+
+Functions in this module visualise outputs produced by
+:class:`~marapendi.estimation.BaseModelCalibration`:
+global sensitivity scatter plots, co-linearity maps, parameter ranking by
+Hessian eigenvalue, and train/test RMSE vs. model complexity.
+"""
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
@@ -56,6 +64,7 @@ def plot_colinearity_map(model, fig=None, ax=None, cmap='viridis', xlabel_angle=
 
 
 def plot_parameter_ranking(model):
+    """Plot the Hessian-based parameter ranking: smallest eigenvalue vs. number of selected parameters."""
     n_unknown_p = len(model.unknown_p_list)
     model.get_smallest_hessian_eigenvalues()
 

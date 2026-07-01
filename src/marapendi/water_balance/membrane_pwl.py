@@ -1,11 +1,28 @@
+"""
+Piecewise-linear membrane water balance model.
 
+Extends :class:`MembraneWaterBalanceModel` by replacing the polynomial sorption
+isotherm with the piecewise linear approximation fitted by
+:meth:`~marapendi.membrane.pem.PFSAIonomer.fit_rh_piecewise_linear`.  The active
+linear segment is selected self-consistently so the equilibrium water content
+falls within the validity interval of that segment.
+"""
 import numpy as np
 from dataclasses import dataclass
 from marapendi.thermo.gas import GasModel
 from .membrane import MembraneWaterBalanceModel
 
+
 @dataclass
 class MembraneWaterBalanceModelPiecewise(MembraneWaterBalanceModel):
+    """
+    Membrane water balance using a piecewise linear sorption isotherm.
+
+    The linear segment active at each operating point is found by iterating
+    downward from the highest segment until the resulting equilibrium water
+    content falls within the validity bounds of the chosen segment.
+    Convergence is guaranteed in at most ``n_segments`` iterations.
+    """
 
     def estimate_equilibrium_water_contents(self, cell, state):
         """Estimate CL equilibrium water content using the piecewise linear λ(RH) inverse.

@@ -25,18 +25,14 @@ class Membrane:
     """Static properties of a proton/anion exchange membrane.
 
     Holds membrane geometry and delegates transport correlations to the
-    composed :attr:`ionomer`.  The optional :attr:`h2_permeation_model`
-    overrides the default ionomer-based H2 crossover correlation.
-
+    composed :attr:`ionomer`.  
+    
     Attributes
     ----------
     dry_thickness : float
         Membrane thickness in the dry state (m).
     ionomer : Ionomer
         Ionomer instance providing transport correlations.
-    h2_permeation_model : HydrogenPermeationModel or None
-        Optional custom H2 permeation model.  When ``None`` the ionomer's
-        ``h2_permeability`` is used directly.
     """
 
     dry_thickness: float = 25e-6
@@ -79,17 +75,7 @@ class Membrane:
         water_content: float,
     ) -> float:
         """Hydrogen permeation flux through the membrane (kmol/m²/s).
-
-        Uses :attr:`h2_permeation_model` when set; otherwise falls back to
-        the ionomer's ``h2_permeability`` correlation.
         """
-        if self.h2_permeation_model is not None:
-            water_vol_fraction = self.ionomer.water_vol_fraction(
-                water_content, water_molar_volume(temperature)
-            )
-            return self.h2_permeation_model.permeation_flux(
-                self.dry_thickness, h2_pressure_difference, temperature, 0., water_vol_fraction
-            )
         return self.ionomer.h2_permeability(water_content, temperature) * h2_pressure_difference / self.dry_thickness
 
     def charge_resistance(self, water_content, temperature, charge='proton'):

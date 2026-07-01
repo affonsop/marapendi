@@ -158,7 +158,7 @@ class PorousLayer():
         Returns
         -------
         float
-            Saturation flow resistance in s·m²/mol.
+            Saturation flow resistance in m²·s/kmol.
         """
         if self.non_wetting_phase == 'water':
             non_wetting_kinematic_viscosity = water_kinematic_viscosity(temperature)
@@ -185,9 +185,11 @@ class PorousLayer():
         return self.two_phase_transport_model.capillary_pressure_from_saturation(self, saturation)
 
     def set_ionomer_wet_properties(self, ionomer_water_content, temperature):
+        """Update ionomer transport properties at *ionomer_water_content* and *temperature*. Override in subclasses."""
         pass
 
     def set_water_film_thickness(self, water_saturation):
+        """Set the liquid water film thickness from *water_saturation*. Override in subclasses."""
         pass
 
 

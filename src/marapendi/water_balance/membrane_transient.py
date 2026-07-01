@@ -1,4 +1,11 @@
+"""
+Transient membrane water balance model.
 
+Extends :class:`MembraneWaterBalanceModel` to handle a prescribed membrane
+water-content profile supplied by the transient ODE integrator.  When the
+profile is available, the steady-state analytical solution is bypassed and
+boundary fluxes are computed directly from the prescribed profile.
+"""
 import numpy as np
 from dataclasses import dataclass, field
 from marapendi.thermo.constants import GAS_CONSTANT
@@ -6,10 +13,19 @@ from marapendi.thermo.gas import GasModel
 from marapendi.tools import arrhenius_term
 from marapendi.thermo.water import water_molar_volume, water_dynamic_viscosity
 from ..cell.gas_transport import GasTransportModel
-from .membrane import MembraneWaterBalanceModel 
+from .membrane import MembraneWaterBalanceModel
+
 
 @dataclass
 class MembraneWaterBalanceTransientModel(MembraneWaterBalanceModel):
+    """
+    Membrane water balance for transient integration with a prescribed profile.
+
+    When a water-content profile is provided (transient mode), the boundary
+    fluxes are evaluated from the prescribed profile rather than solving the
+    steady-state analytical equation.  Falls back to the parent steady-state
+    solver when no profile is supplied.
+    """
 
     def _initialize_interface_water_contents(self, state, water_profile):
         """Set membrane interface water contents from profile (dynamic) or zero (static)."""
@@ -19,6 +35,7 @@ class MembraneWaterBalanceTransientModel(MembraneWaterBalanceModel):
         state.an.membrane_interface_water_content = water_profile[0, ...]
 
     def update_internal_water_fluxes(self, state, cell):
+        """Compute diffusion, EOD, and net water fluxes across the membrane mesh; write to ``state.membrane``."""
         state.membrane.diffusion_flux = (
             -self.water_content_derivative_profile / state.membrane.water_diffusion_resistance
         )

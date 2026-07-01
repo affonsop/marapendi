@@ -3,12 +3,13 @@ Transient PEMFC model: coupled MEA temperature and membrane water content ODE.
 
 :class:`TransientModel` integrates two sets of coupled ODEs:
 
-* **MEA temperature** T(t) — from the lumped thermal energy balance with a
-  surface heat capacity ``cell.mea_surface_heat_capacity`` [J/(m²·K)].
-* **Membrane water-content profile** λ(ξ, t) — from Fickian diffusion and
+* **MEA temperature** — from the lumped thermal energy balance with a
+  surface heat capacity ``cell.mea_surface_heat_capacity`` (J/(m²·K)).
+* **Membrane water-content profile** — from Fickian diffusion and
   electroosmotic drag, discretised into ``n_memb_mesh`` finite-volume nodes.
 
-The state vector is ``x = [T_MEA, λ_0, …, λ_{n-1}]``.
+The ODE state vector has ``1 + n_memb_mesh`` entries: the MEA temperature
+followed by the water content at each membrane node.
 
 At each timestep the model:
 
@@ -28,9 +29,9 @@ Usage
     model = TransientModel(n_memb_mesh=5)
     state, x0 = model.set_initial_conditions(cell, conditions)
     sol = model.solve(cell, conditions, t_span=(0, 3600))
-    # sol.y[0]           → T_MEA(t)  [K]
-    # sol.y[1:]          → λ(ξ, t)   [mol H2O / mol site]
-    # sol.diagnostics    → dict of arrays (voltage, HFR, water contents, …)
+    # sol.y[0]           → MEA temperature (K)
+    # sol.y[1:]          → membrane water-content profile
+    # sol.diagnostics    → CellState with array-valued fields
 
     # Or evaluate at custom time points from a dense-output solution:
     diag = model.evaluate(cell, conditions, t_eval, x_eval=sol.sol(t_eval))
@@ -105,7 +106,8 @@ class TransientModel:
         state : CellState
             Fully populated steady-state solution used as the starting point.
         x0 : np.ndarray, shape (1 + n_memb_mesh,)
-            Initial state ``[T_MEA, λ_0, …, λ_{n-1}]``.
+            Initial ODE state: MEA temperature followed by the membrane
+            water-content profile at each finite-volume node.
         """
         state = self._ss_model.set_initial_conditions(cell, cell_conditions)
         state = self._ss_model.solve(cell, cell_conditions, state)
@@ -131,14 +133,16 @@ class TransientModel:
         t : float
             Current time (s).
         x : np.ndarray, shape (1 + n_memb_mesh,)
-            ``[T_MEA, λ_0, …, λ_{n-1}]``.
+            ODE state: MEA temperature followed by membrane water-content
+            at each finite-volume node.
         cell : FuelCell
         cell_conditions : CellConditions or callable(t) -> CellConditions
 
         Returns
         -------
         np.ndarray, shape (1 + n_memb_mesh,)
-            ``[dT/dt, dλ_0/dt, …, dλ_{n-1}/dt]``.
+            Rate of change of MEA temperature followed by rate of change of
+            water content at each membrane node.
         """
         n = self.n_memb_mesh
         T_mea = float(x[0])
@@ -180,7 +184,7 @@ class TransientModel:
 
             * ``cell_voltage`` — cell voltage (V)
             * ``mea_temperature`` — MEA temperature (K)
-            * ``hfr`` — high-frequency resistance (Ω·m²)
+            * ``hfr`` — high-frequency resistance (Ohm·m²)
             * ``membrane.water_content`` — mean membrane water content
             * ``membrane.water_content_profile`` — shape ``(n_memb_mesh, n_t)``
             * ``ca.cl.ionomer_water_content``, ``an.cl.ionomer_water_content``
@@ -259,9 +263,8 @@ class TransientModel:
         t_span : tuple of float
             ``(t_start, t_end)`` in seconds.
         x0 : array_like, optional
-            Initial state ``[T_MEA, λ_0, …, λ_{n-1}]``.  When omitted a
-            steady-state solve is run automatically via
-            :meth:`set_initial_conditions`.
+            Initial ODE state as returned by :meth:`set_initial_conditions`.
+            When omitted, a steady-state solve is run automatically.
         compute_diagnostics : bool, optional
             When ``True`` (default), :meth:`evaluate` is called at the
             solver's internal time steps after the ODE integration completes
@@ -278,8 +281,8 @@ class TransientModel:
             Standard result object extended with:
 
             * ``sol.t`` — time points (s)
-            * ``sol.y[0]`` — T_MEA(t) [K]
-            * ``sol.y[1:]`` — membrane water profile λ(ξ, t)
+            * ``sol.y[0]`` — MEA temperature (K)
+            * ``sol.y[1:]`` — membrane water-content profile
             * ``sol.diagnostics`` — :class:`~marapendi.cell.state.CellState`
               from :meth:`evaluate` at ``sol.t``
               (only present when ``compute_diagnostics=True``).

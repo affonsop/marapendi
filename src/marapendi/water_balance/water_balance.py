@@ -37,11 +37,11 @@ class WaterBalanceModel:
 
     Notes
     -----
-    The class is based on the equations and assumptions in Ferrara et al. (2018), while accounting 
-    for gas transport resistance and non-equilibrium conditions at the membrane interface.
+    Based on Ferrara et al. (2018), accounting for gas transport resistance
+    and non-equilibrium sorption at the membrane interface.
 
-    References:
-    -----------
+    References
+    ----------
     Ferrara, A. et al. J. Power Sources 390, 197–207 (2018).
     """
     
@@ -171,7 +171,7 @@ class WaterBalanceModel:
             cl.set_ionomer_wet_properties(side_state.cl.ionomer_water_content, side_state.cl.temperature)
 
     def membrane_water_rate_of_change(self, cell, state, n_memb_mesh):
-        """Rate of change of water content at each membrane mesh node (mol/mol/s).
+        """Rate of change of water content at each membrane mesh node (1/s).
 
         Uses a finite-volume discretisation of the combined diffusion + EOD
         flux divergence, with boundary fluxes taken from the absorption/desorption
@@ -216,7 +216,7 @@ class WaterBalanceModel:
         return (J_faces[:-1] - J_faces[1:]) / (sc / n)
 
     def relaxation_rate_of_change(self, cell, state):
-        """ds_relax/dt for ionomer sorption hysteresis on each side [mol/mol/s].
+        """Rate of change of the ionomer sorption relaxation variable on each side (1/s).
 
         Returns a 2-element list ``[dsrelax_ca_dt, dsrelax_an_dt]``.
         Requires ``state.*.s_relax`` and ``state.*.rh_at_cl_without_crossover`` to be set.

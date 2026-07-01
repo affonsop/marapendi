@@ -1,5 +1,14 @@
 """
-Module providing an AEM water electrolyzer class.
+AEM water electrolyzer cell model.
+
+:class:`ElectrolyzerCellSide` extends :class:`FuelCellSide` for wet-side
+operation and adds the dry-gas partial pressure calculation.
+
+:class:`ElectrolyzerCell` extends :class:`FuelCell` with AEM-specific
+electrochemistry: Nernst voltage from gas activities corrected for water
+activity, ohmic overpotential via hydroxide conductance, and a two-phase
+water balance loop that couples cathode and anode water fluxes through
+a root-finding iteration.
 """
 
 from dataclasses import dataclass, field
@@ -47,28 +56,38 @@ class ElectrolyzerCellSide(FuelCellSide):
 @dataclass
 class ElectrolyzerCell(FuelCell):
     """
-    Class representing an AEM water electrolyzer cell.
+    AEM water electrolyzer cell.
+
+    Extends :class:`FuelCell` with electrolyzer-specific voltage model and
+    a coupled water balance. The cathode operates in gas mode and the anode
+    in liquid mode. Gas activities at each electrode are computed from the
+    dry partial pressure after subtracting the solution saturation pressure.
+
+    Attributes
+    ----------
+    electrolyte_saturation_exponent : float
+        Exponent for the electrolyte saturation correction on the activation
+        overpotential (n.d.).
     """
     electrolyte_saturation_exponent: float = 2 
     
     def reversible_cell_voltage(self):
         """
-        Calculate the reversible cell voltage based on the Nernst equation.
-        Follows eq. 8 in Lawand et al. (2024)
+        Reversible (Nernst) cell voltage for the water splitting reaction.
+
+        Gas activities at each electrode are derived from the dry gas partial
+        pressure at the catalyst layer. The water activity is the ratio of the
+        electrolyte solution saturation pressure to the pure water saturation
+        pressure, following Lawand et al. (2024).
 
         Returns
         -------
         float
-            The reversible cell voltage (also known as the Nernst potential) in volts.
+            Reversible cell voltage (V).
 
-        Reference 
-        --------- 
+        References
+        ----------
         Lawand, K. et al. J. Power Sources 595, 234047 (2024).
-
-        Notes
-        -----
-        The water activity is defined as the ratio between the solution saturation pressure
-        and the pure water saturation pressure. 
         """
         h2_activity = self.ca.calculate_dry_gas_pressure() / STD_PRESSURE
         o2_activity = self.an.calculate_dry_gas_pressure() / STD_PRESSURE
@@ -181,21 +200,13 @@ class ElectrolyzerCell(FuelCell):
     def calculate_gas_concentrations_at_cl(self): 
         pass
 
-    def calculate_water_transport(self, dynamic=False): 
+    def calculate_water_transport(self, dynamic=False):
         """
-        Calculate the water balance across the fuel cell components.
+        Solve the coupled water balance across both electrodes and the membrane.
 
-        This method updates water vapor transport resistance for both the cathode 
-        and anode, computes the membrane water balance, and recalculates the 
-        equivalent flow resistance and water saturation in the cathode.
-
-        Notes
-        -----
-        - The water transport resistance for water vapor (`h2o`) is computed for both 
-        the cathode (`ca`) and anode (`an`).
-        - The membrane water balance is updated using the defined water balance model.
-        - The equivalent flow resistance and water saturation in the cathode are recalculated.
-        - Finally, the water vapor transport resistance values are updated again for consistency.
+        Iterates over each current-density point to find the membrane water
+        flux that satisfies the overall water balance. Updates gas compositions,
+        liquid saturations, and ionomer water content on both sides.
         """
 
         self.ca.is_wet=False

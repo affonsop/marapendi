@@ -1,3 +1,11 @@
+"""
+Base class for model calibration using sensitivity analysis and cross-validation.
+
+:class:`BaseModelCalibration` handles parameter normalisation, global sensitivity
+analysis (Sobol + local finite-differences, Goshtasbi et al. 2020), Hessian-based
+parameter ranking, and k-fold cross-validation with optional model-complexity sweeps.
+Concrete subclasses implement :meth:`compute_y_sim` and :meth:`compute_residuals`.
+"""
 from dataclasses import dataclass
 import time
 import random
@@ -24,9 +32,11 @@ class BaseModelCalibration:
         self.full_case_list = []
 
     def set_params(self, params):
+        """Replace the full parameter dict with *params*."""
         self.params = params
 
     def set_known_params(self, known_p_list):
+        """Merge fixed-value parameters from *known_p_list* into ``self.params``."""
         self.params.update({p.key: p.value for p in known_p_list})
 
     def set_unknown_params(self, unknown_p_list):
@@ -43,6 +53,15 @@ class BaseModelCalibration:
         self.n_unkown_p = len(self.unknown_p_list)
 
     def subset_of_unknown_parameters(self, indices=None, keys=None):
+        """Promote a subset of unknown parameters to known, keeping only the selected ones unknown.
+
+        Parameters
+        ----------
+        indices : list of int, optional
+            Positions in ``self.unknown_parameters`` to keep as unknown.
+        keys : list of str, optional
+            Alternative to *indices* — parameter keys to keep as unknown.
+        """
         if indices is None:
             indices = [self.p_i_index[key] for key in keys]
         known_list, unknown_list = [], []
@@ -55,10 +74,16 @@ class BaseModelCalibration:
         self.set_unknown_params(unknown_list)
 
     def reset_unknown_parameters(self):
+        """Restore all parameters to their original known/unknown split."""
         self.set_known_params(self.known_parameters)
         self.set_unknown_params(self.unknown_parameters)
 
     def p_to_theta(self, unknown_p_values):
+        """Map physical parameter values to the normalised [0, 1] space (eqs. 5–6, Goshtasbi et al. 2020).
+
+        Parameters with ``is_linear=True`` use linear scaling; those with
+        ``is_linear=False`` use log-scale normalisation.
+        """
         log_mask = ~self.p_i_is_linear
         theta_i_k = (unknown_p_values - self.p_i_min) / (self.p_i_max - self.p_i_min)
         theta_i_k[log_mask] = (
@@ -79,9 +104,11 @@ class BaseModelCalibration:
         return p_i_k
 
     def compute_y_sim(self, params, case_list=[]):
+        """Return the concatenated simulated output vector for *case_list*. Override in subclasses."""
         pass
 
     def compute_residuals(self, params, case_list=[]):
+        """Return element-wise residuals (y_exp − y_sim) for *case_list*. Override in subclasses."""
         pass
 
     def calculate_local_sensitivity_neighborhood(self, unknown_p_values, eps_p=0):
@@ -264,6 +291,11 @@ class BaseModelCalibration:
         return pd.DataFrame(result_dict)
 
     def set_k_folds(self, k=1):
+        """Partition ``self.full_case_list`` into *k* folds and store them in ``self.k_folds``.
+
+        When ``k == len(cases)`` the order is preserved (leave-one-out); otherwise
+        the list is shuffled randomly before splitting.
+        """
         cases = list(self.full_case_list)
         if k != len(cases):
             random.shuffle(cases)
@@ -331,6 +363,7 @@ class BaseModelCalibration:
                 self.reset_unknown_parameters()
 
     def load_cross_validation_results(self, filename, dir='.'):
+        """Read a previously saved k-fold CV results CSV and return it as a DataFrame."""
         filepath = os.path.join(dir, f"k_fold_results_{filename}.csv")
         if not os.path.exists(filepath):
             print(f"No existing CV results found at: {filepath}")

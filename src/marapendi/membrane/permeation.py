@@ -1,5 +1,5 @@
 """
-Module providing classes for different membrane permeation models. 
+Membrane hydrogen permeation models.
 """
 from dataclasses import dataclass
 from marapendi.tools import arrhenius_term
@@ -8,41 +8,36 @@ from marapendi.tools import arrhenius_term
 @dataclass
 class HydrogenPermeationModel:
     """
-    A dataclass representing the properties of membrane hydrogen permeability model.
-    
-    For details, see Trinke et al. (2016)
-    
-    Attributes:
-    -----------
-    permeability_reference_temperature : float = 333.15
-        The reference temperature for reference permeability coefficients in K. 
-    permeability_reference_water_vol_fraction: float = 0.37
-        The reference water volume fraction for reference permeability coefficients (n.d.). 
-    reference_diffusion_permeability_coefficient: float = 2.95e-17
-        Reference hydrogen diffusion permeability coefficient in kmol/(m.s.Pa). 
-    diffusion_permeability_activation_energy: float = 27e6
-        Diffusion permeability activation energy in J/kmol. 
-    reference_convection_permeability_coefficient: float = 9.01e-24
-        Reference hydrogen convection permeability coefficient in kmol/(m.s.Pa). 
-    convection_permeability_activation_energy: float = 2.7e6
-        Convection permeability activation energy in J/kmol.   
-    interface_resistance: float = 1.6e12
-        Interface resistance in (m.s.Pa)/kmol.
-    permeability_correction_factor: float = 1.
-        A correction factor to the permeation flux that can be fitted. 
+    Hydrogen permeation model combining diffusion and convection contributions.
 
-    Methods:
-    --------
-    calculate_permeability_coefficient(self, temperature, pressure_difference):
-        Calculate the effective hydrogen permeability coefficient
-    permeation_flux(membrane_thickness, partial_pressure_h2, temperature, 
-                    pressure_difference, water_vol_fraction): 
-        Calculate the hydrogen permeation flux through the membrane.
+    Models the hydrogen crossover flux through a membrane as a function of
+    temperature, pressure difference, and membrane water content, following
+    Trinke et al. (2016). An interface resistance term is added in series to
+    avoid overestimating crossover in thin membranes.
 
-    References:
-    -----------
-    Kang, Z., Pak, M. & Bender, G. Int. J. Hydrogen Energy 46, 15161–15167 (2021).
+    Attributes
+    ----------
+    permeability_reference_temperature : float
+        Reference temperature for the permeability coefficients (K).
+    permeability_reference_water_vol_fraction : float
+        Reference water volume fraction for the permeability coefficients (n.d.).
+    reference_diffusion_permeability_coefficient : float
+        Reference diffusion permeability coefficient (kmol/(m·s·Pa)).
+    diffusion_permeability_activation_energy : float
+        Activation energy for diffusion permeability (J/kmol).
+    reference_convection_permeability_coefficient : float
+        Reference convection permeability coefficient (kmol/(m·s·Pa²)).
+    convection_permeability_activation_energy : float
+        Activation energy for convection permeability (J/kmol).
+    interface_resistance : float
+        Interface resistance in series with the membrane ((m·s·Pa)/kmol).
+    permeability_correction_factor : float
+        Multiplicative correction factor applied to the permeation flux (n.d.).
+
+    References
+    ----------
     Trinke, P. et al. J. Electrochem. Soc. 163, F3164–F3170 (2016).
+    Kang, Z., Pak, M. & Bender, G. Int. J. Hydrogen Energy 46, 15161–15167 (2021).
     """
 
     # Default values from table II in Trinke et al. (2016)
@@ -57,31 +52,28 @@ class HydrogenPermeationModel:
 
     def calculate_permeability_coefficient(self, temperature, pressure_difference):
         """
-        Calculate the effective hydrogen permeability coefficient. 
+        Effective hydrogen permeability coefficient at the given conditions.
 
-        We adopt the model proposed by Trinke et al. (2016) with temperature dependency.
-        The effective hydroogne permeability coefficient is calculated as the sum of 
-        diffusion and convection contributions. 
+        Sums diffusion and convection contributions, each with Arrhenius
+        temperature dependence following Trinke et al. (2016).
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         temperature : float
-            The temperature in K. 
-        
+            Temperature (K).
         pressure_difference : float
-            The pressure difference between anode and cathode. 
-            Positive when the pressure on the hydrogen side is higher. 
-         
-        Returns:
-        --------
-        float
-            The hydrogen permeability coefficient in kmol/(m·s·Pa).
+            Pressure difference between anode and cathode (Pa). Positive
+            when the hydrogen side is at higher pressure.
 
-        References:
-        -----------
+        Returns
+        -------
+        float
+            Effective hydrogen permeability coefficient (kmol/(m·s·Pa)).
+
+        References
+        ----------
         Trinke, P. et al. J. Electrochem. Soc. 163, F3164–F3170 (2016).
         """
-
         diffusion_permeability_coeff = (
             self.reference_diffusion_permeability_coefficient *
             arrhenius_term(
@@ -90,7 +82,6 @@ class HydrogenPermeationModel:
                 self.permeability_reference_temperature
             )
         )
-
         convection_permeability_coeff = (
             self.reference_convection_permeability_coefficient *
             arrhenius_term(
@@ -109,50 +100,42 @@ class HydrogenPermeationModel:
                         water_vol_fraction: float
         ) -> float:
         """
-        Calculate the hydrogen permeation flux through the membrane. 
+        Hydrogen permeation flux through the membrane.
 
-        We adopt the model proposed by Trinke et al. (2016) with temperature dependency, 
-        as well as the parameters given in table II of that paper. However, we add an interface 
-        resistance in series to avoid overestimating the hydrogen crossover in thin membranes and
-        to match (within 10%) experimental data in Kang et al. (2021). A formal validation of this 
-        approach would be welcome. 
+        Uses the Trinke et al. (2016) model with temperature dependence and
+        an interface resistance in series to match experimental data for thin
+        membranes (Kang et al., 2021).
 
-        Parameters:
-        -----------
-        membrane_thickness : float 
-            The thickness of the membrane in meters (m). 
-
+        Parameters
+        ----------
+        membrane_thickness : float
+            Membrane thickness (m).
         partial_pressure_h2 : float
-            The partial pressure of hydrogen in Pascals (Pa).
-
+            Hydrogen partial pressure on the high-pressure side (Pa).
         temperature : float
-            The temperature in K. 
-        
+            Temperature (K).
         pressure_difference : float
-            The pressure difference between anode and cathode. 
-            Positive when the pressure on the hydrogen side is higher. 
-        
+            Pressure difference between anode and cathode (Pa). Positive
+            when the hydrogen side is at higher pressure.
         water_vol_fraction : float
-            The membrane water volume fraction. 
+            Membrane water volume fraction (n.d.).
 
-        Returns:
-        --------
+        Returns
+        -------
         float
-            The hydrogen permeation flux in kmol/(m²·s).
+            Hydrogen permeation flux (kmol/(m²·s)).
 
-        References:
-        -----------
-        Kang, Z., Pak, M. & Bender, G. Int. J. Hydrogen Energy 46, 15161–15167 (2021).
+        References
+        ----------
         Trinke, P. et al. J. Electrochem. Soc. 163, F3164–F3170 (2016).
+        Kang, Z., Pak, M. & Bender, G. Int. J. Hydrogen Energy 46, 15161–15167 (2021).
         """
-
         permeability_coefficient = self.calculate_permeability_coefficient(
             temperature,
             pressure_difference
         )
 
-        # The interface resistance is set to reproduce (within 10%) results from Kang et al. (2021).
-        # A formal parameter estimation would be better.
+        # The interface resistance reproduces (within 10%) results from Kang et al. (2021).
         h2_permeability_resistance = (membrane_thickness / permeability_coefficient +
                                         self.interface_resistance)
 

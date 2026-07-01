@@ -95,7 +95,7 @@ class GasModel:
 
     @staticmethod
     def species_concentration(state, species: str) -> float:
-        """Concentration of ``species`` (mol/m^3)."""
+        """Concentration of ``species`` (kmol/m^3)."""
         return GasModel.species_partial_pressure(state, species) / (GAS_CONSTANT * state.temperature)
 
     @staticmethod
@@ -105,7 +105,7 @@ class GasModel:
 
     @staticmethod
     def vapor_concentration(state) -> float:
-        """Concentration of water vapor (mol/m^3)."""
+        """Concentration of water vapor (kmol/m^3)."""
         return GasModel.species_concentration(state, 'h2o')
 
     @staticmethod
@@ -135,7 +135,7 @@ class GasModel:
 
     @staticmethod
     def concentration(state) -> float:
-        """Total molar concentration of the gas mixture (mol/m^3)."""
+        """Total molar concentration of the gas mixture (kmol/m^3)."""
         return state.pressure / (GAS_CONSTANT * state.temperature)
 
     @staticmethod
@@ -168,8 +168,8 @@ class GasModel:
         Uses empirical correlations based on reference values adjusted for
         temperature and pressure. Data from Vetter and Schumacher (2019).
 
-        Reference
-        ---------
+        References
+        ----------
         Vetter, R. & Schumacher, J. O. Comput. Phys. Commun. 234, 223-234 (2019).
         """
         if species == 'o2':

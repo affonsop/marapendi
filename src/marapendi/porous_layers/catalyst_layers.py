@@ -147,18 +147,18 @@ class CatalystLayer(PorousLayer):
     def ionomer_tortuosity(self, volume_fraction: float) -> float:
         """Bruggeman tortuosity factor for the ionomer phase.
 
-        Uses the inverse power law τ = ε⁻⁰·⁵, the standard Bruggeman
-        approximation for a randomly distributed phase.
+        Standard Bruggeman inverse power-law approximation for a randomly
+        distributed phase with exponent -0.5.
 
         Parameters
         ----------
         volume_fraction : float
-            Ionomer volume fraction (–).
+            Ionomer volume fraction (n.d.).
 
         Returns
         -------
         float
-            Tortuosity factor (–).
+            Tortuosity factor (n.d.).
         """
         return volume_fraction ** -0.5
     
