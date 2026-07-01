@@ -45,7 +45,7 @@ def h2_hhv(temperature):
 
 def h2_lhv(temperature):
     """
-    Lower heating value voltage of hydrogen at a given temperature.
+    Lower heating value value of hydrogen at a given temperature.
 
     Parameters
     ----------
@@ -55,7 +55,7 @@ def h2_lhv(temperature):
     Returns
     -------
     float
-        LHV voltage in V.
+        LHV voltage in J/kmol.
     """
     return np.polyval(H2_LHV_COEFFS, temperature)
 
@@ -98,7 +98,7 @@ def calculate_reversible_cell_voltage(temperature, activities_ratio):
 
 def calculate_tafel_slope(temperature, number_of_electrons, charge_transfer_coeff):
     """
-    Tafel slope b = RT / (n α F).
+    Calculate the Tafel slope.
 
     Parameters
     ----------
@@ -107,12 +107,12 @@ def calculate_tafel_slope(temperature, number_of_electrons, charge_transfer_coef
     number_of_electrons : int
         Number of electrons transferred per reaction event.
     charge_transfer_coeff : float
-        Charge-transfer (symmetry) coefficient α (dimensionless).
+        Charge-transfer (symmetry) coefficient (dimensionless).
 
     Returns
     -------
     float
-        Tafel slope in V.
+        Tafel slope in V/decade.
     """
     return 2.303 * (GAS_CONSTANT * temperature /
             (number_of_electrons * charge_transfer_coeff * FARADAY_CONSTANT))
@@ -142,7 +142,7 @@ def calculate_tafel_overpotential(
     number_of_electrons : int
         Number of electrons transferred per reaction event.
     charge_transfer_coeff : float
-        Charge-transfer coefficient α (dimensionless).
+        Charge-transfer coefficient (dimensionless).
 
     Returns
     -------
@@ -178,7 +178,7 @@ def calculate_linear_overpotential(
     number_of_electrons : int
         Number of electrons transferred per reaction event.
     charge_transfer_coeff : float
-        Charge-transfer coefficient α (dimensionless).
+        Charge-transfer coefficient (dimensionless).
 
     Returns
     -------
@@ -201,21 +201,21 @@ class ElectrochemicalReaction:
     Parameters
     ----------
     reference_exchange_current_density : float
-        Exchange current density i₀,ref at ``reference_temperature`` and
+        Reference exchange current density at ``reference_temperature`` and
         ``reference_activity`` in A/m² (per unit geometric area).
     activation_energy : float
-        Arrhenius activation energy in J/mol.
+        Arrhenius activation energy in J/kmol.
     reaction_order : float
-        Reaction order γ with respect to the reactant activity (dimensionless).
+        Reaction order with respect to the reactant activity (dimensionless).
     reference_activity : float
         Reactant activity at the reference state in Pa (or the same units as
         the activity passed to the kinetic methods).
     reference_temperature : float
         Temperature at which ``reference_exchange_current_density`` is defined, in K.
     number_of_electrons : int
-        Electrons transferred per elementary step n.
+        Electrons transferred per elementary step.
     charge_transfer_coeff : float
-        Charge-transfer (symmetry) coefficient α (dimensionless).
+        Charge-transfer (symmetry) coefficient (dimensionless).
     """
     reference_exchange_current_density: float = 0.0741
     activation_energy: float = 67.e6
@@ -245,7 +245,7 @@ class ElectrochemicalReaction:
 
     def tafel_slope(self, temperature):
         """
-        Tafel slope b = RT / (n α F) at the given temperature.
+        Tafel slope at the given temperature.
 
         Parameters
         ----------
@@ -263,7 +263,7 @@ class ElectrochemicalReaction:
 
     def tafel_overpotential(self, current_density, temperature, reactant_activity):
         """
-        Activation overpotential η for the given operating conditions.
+        Activation overpotential for the given operating conditions.
 
         Parameters
         ----------
@@ -316,9 +316,7 @@ def calculate_exchange_current_density(
     Exchange current density for a single-reactant reaction.
 
     Combines an Arrhenius temperature correction with a power-law activity
-    dependence::
-
-        i₀ = i₀,ref · (a / a_ref)^γ · exp(−Eact/R · (1/T − 1/T_ref))
+    dependence.
 
     Parameters
     ----------
