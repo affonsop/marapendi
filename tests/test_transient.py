@@ -208,19 +208,19 @@ class TestTransientPhysics:
 
 class TestTransientEvaluate:
     def test_diagnostics_attached_to_sol(self):
-        """solve() attaches sol.diagnostics when compute_diagnostics=True."""
+        """solve() attaches sol.diagnostics (CellState) when compute_diagnostics=True."""
         cell = _make_cell()
         model = TransientModel(n_memb_mesh=3)
         sol = model.solve(cell, _conditions(), t_span=(0, 600))
         assert hasattr(sol, 'diagnostics')
         diag = sol.diagnostics
-        assert 'cell_voltage' in diag
-        assert 'hfr' in diag
-        assert 'ca_cl_proton_resistance' in diag
-        assert 'membrane_water_content' in diag
-        assert 'ca_cl_water_content' in diag
-        assert 'an_cl_water_content' in diag
-        assert 'ca_cl_liquid_saturation' in diag
+        assert hasattr(diag, 'cell_voltage')
+        assert hasattr(diag, 'hfr')
+        assert hasattr(diag.ca.cl, 'proton_resistance')
+        assert hasattr(diag.membrane, 'water_content')
+        assert hasattr(diag.ca.cl, 'ionomer_water_content')
+        assert hasattr(diag.an.cl, 'ionomer_water_content')
+        assert hasattr(diag.ca.cl, 'liquid_saturation')
 
     def test_diagnostics_shape(self):
         """Diagnostic arrays match the number of ODE time steps."""
@@ -229,9 +229,9 @@ class TestTransientEvaluate:
         sol = model.solve(cell, _conditions(), t_span=(0, 600))
         n_t = len(sol.t)
         diag = sol.diagnostics
-        assert diag['cell_voltage'].shape == (n_t,)
-        assert diag['water_profile'].shape == (3, n_t)
-        assert diag['T_mea'].shape == (n_t,)
+        assert np.asarray(diag.cell_voltage).shape == (n_t,)
+        assert np.asarray(diag.membrane.water_content_profile).shape == (3, n_t)
+        assert np.asarray(diag.mea_temperature).shape == (n_t,)
 
     def test_diagnostics_physical_values(self):
         """Diagnostic quantities are physically plausible at steady state."""
@@ -239,18 +239,18 @@ class TestTransientEvaluate:
         model = TransientModel(n_memb_mesh=3)
         sol = model.solve(cell, _conditions(), t_span=(0, 7200))
         diag = sol.diagnostics
-        # Voltage in (0, 1) V
-        assert np.all(diag['cell_voltage'] > 0)
-        assert np.all(diag['cell_voltage'] < 1.3)
+        # Voltage in (0, 1.3) V
+        assert np.all(np.asarray(diag.cell_voltage) > 0)
+        assert np.all(np.asarray(diag.cell_voltage) < 1.3)
         # HFR positive
-        assert np.all(diag['hfr'] > 0)
+        assert np.all(np.asarray(diag.hfr) > 0)
         # Water contents positive
-        assert np.all(diag['membrane_water_content'] > 0)
-        assert np.all(diag['ca_cl_water_content'] > 0)
-        assert np.all(diag['an_cl_water_content'] > 0)
+        assert np.all(np.asarray(diag.membrane.water_content) > 0)
+        assert np.all(np.asarray(diag.ca.cl.ionomer_water_content) > 0)
+        assert np.all(np.asarray(diag.an.cl.ionomer_water_content) > 0)
         # Saturation in [0, 1]
-        assert np.all(diag['ca_cl_liquid_saturation'] >= 0)
-        assert np.all(diag['ca_cl_liquid_saturation'] <= 1)
+        assert np.all(np.asarray(diag.ca.cl.liquid_saturation) >= 0)
+        assert np.all(np.asarray(diag.ca.cl.liquid_saturation) <= 1)
 
     def test_no_diagnostics_when_disabled(self):
         """compute_diagnostics=False skips post-processing."""
@@ -261,7 +261,7 @@ class TestTransientEvaluate:
         assert not hasattr(sol, 'diagnostics')
 
     def test_evaluate_at_custom_times(self):
-        """evaluate() returns correct shapes for custom t_eval from dense output."""
+        """evaluate() returns a CellState with correct array shapes for custom t_eval."""
         cell = _make_cell()
         model = TransientModel(n_memb_mesh=3)
         sol = model.solve(cell, _conditions(), t_span=(0, 1800),
@@ -269,5 +269,5 @@ class TestTransientEvaluate:
         t_custom = np.linspace(0, 1800, 10)
         diag = model.evaluate(cell, _conditions(), t_custom,
                               x_eval=sol.sol(t_custom))
-        assert diag['cell_voltage'].shape == (10,)
-        assert diag['water_profile'].shape == (3, 10)
+        assert np.asarray(diag.cell_voltage).shape == (10,)
+        assert np.asarray(diag.membrane.water_content_profile).shape == (3, 10)

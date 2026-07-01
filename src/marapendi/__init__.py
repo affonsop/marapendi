@@ -6,7 +6,6 @@ from .cell.implicit_steady_state import *
 from .cell.explicit_steady_state import *
 from .cell.transient import *
 from .simulation.conditions import *
-from .cell.aem_electrolyzer import *
 from .membrane.membrane_base import *
 from .channel.flow_channels import *
 from .channel.gas_transport_resistance import *

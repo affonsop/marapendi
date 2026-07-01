@@ -144,16 +144,6 @@ BASELINE_DIR = Path(__file__).parent / 'baseline_data'
 # ---------------------------------------------------------------------------
 
 def create_fuel_cell(params: dict) -> mrpd.FuelCell:
-    class NewPermModel(mrpd.HydrogenPermeationModel):
-        def permeation_flux(self,
-                            membrane_thickness, partial_pressure_h2,
-                            temperature, pressure_difference,
-                            water_vol_fraction) -> float:
-            return self.permeability_correction_factor * (
-                15.7e-9 * np.exp(-20280 / 8.3415 / temperature) +
-                water_vol_fraction * 45e-9 * np.exp(-18930 / 8.3145 / temperature)
-            ) / 1000 * 100 / 1e5 * partial_pressure_h2 / membrane_thickness
-
     memb = mrpd.PFSA(
         ionomer=mrpd.PFSAIonomer(
             equivalent_weight=params['memb-equiv-weight'],
@@ -167,8 +157,6 @@ def create_fuel_cell(params: dict) -> mrpd.FuelCell:
             water_absorption_activation_energy=params['E-act-memb-abs'],
         ),
         dry_thickness=params['memb-thickness'],
-        h2_permeation_model=NewPermModel(
-            permeability_correction_factor=params['ix-corr']),
     )
 
     orr_kinetics = mrpd.ElectrochemicalReaction(
