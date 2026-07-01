@@ -2,520 +2,272 @@ from dataclasses import dataclass, field
 from typing import Callable
 
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
-from scipy.stats import qmc
-from scipy.linalg import qr, eigvals
-from scipy.optimize import differential_evolution, minimize
 
 from ..simulation.conditions import CellConditions, SideConditions
 from ..cell.explicit_steady_state import ExplicitSteadyStateModel
+from .base_calibration import BaseModelCalibration
 
-@dataclass 
-class Parameter: 
-    value: float
-    key: str = None
-    symbol: str = None
-    units: str = 'n.d.'
-    factor: float = 1
 
 @dataclass
-class UnknownParameter(Parameter): 
-    initial_guess: float = None
-    lower_bound: float = None
-    upper_bound: float = None
-    is_linear: bool = True 
-    
+class SteadyStatePolarizationCurveCalibration(BaseModelCalibration):
+    """Calibration of a steady-state polarisation curve model against voltage and HFR data.
 
-@dataclass 
-class BaseModelCalibration: 
-    
-    def set_params(self, params): 
-        self.params = params 
-
-    def set_known_params(self, known_p_list): 
-        self.params.update({p.key: p.value for p in known_p_list})
-
-    def set_unknown_params(self, unknown_p_list):
-        """
-        Define the parameters to be estimated, their bounds and types.
-
-        Parameters
-        ----------
-        p_list : list of tuples
-            Each tuple is (name, (min, max), is_linear, label).
-        """
-        self.unknown_p_list = unknown_p_list
-        self.p_i_min = np.array([p.lower_bound for p in unknown_p_list])
-        self.p_i_max = np.array([p.upper_bound for p in unknown_p_list])
-        self.p_i_is_linear = np.array([p.is_linear for p in unknown_p_list])
-        self.p_i_name = [p.key for p in unknown_p_list]
-        self.p_initial_guess = np.array([p.initial_guess for p in unknown_p_list])
-        self.params.update({p.key: p.initial_guess for p in unknown_p_list})
-
-    def p_to_theta(self, unknown_p_values):
-       
-        log_mask = ~self.p_i_is_linear
-        theta_i_k = (unknown_p_values - self.p_i_min) / (self.p_i_max - self.p_i_min)
-
-        theta_i_k[log_mask] = ((np.log(unknown_p_values[log_mask]) - np.log(self.p_i_min[log_mask])) / 
-                               (np.log(self.p_i_max[log_mask]) - np.log(self.p_i_min[log_mask])))
-        
-        return theta_i_k
-
-    def theta_to_p(self, theta_k):
-        """
-        Convert normalized parameters to physical parameters.
-
-        Follows equations 5 and 6 in Goshtasbi et al. (2020).
-
-        Parameters
-        ----------
-        theta_k : array_like
-            Normalized parameters in [0,1].
-
-        Returns
-        -------
-        p_i_k : ndarray
-            Physical parameters.
-        
-        References
-        ----------
-        Goshtasbi, A. et al. J. Electrochem. Soc. 167, 044504 (2020).
-        """
-        p_i_k = np.where(self.p_i_is_linear,
-                         self.p_i_min + (self.p_i_max - self.p_i_min) * theta_k,
-                         self.p_i_min * np.exp((np.log(self.p_i_max + 1e-20) - np.log(self.p_i_min + 1e-20)) * theta_k))
-        return p_i_k
-
-    def compute_y_sim(self, params): 
-        pass 
-
-    def compute_residuals(self, params): 
-        pass 
-
-    def calculate_local_sensitivity_neighborhood(self, params=None, eps_p=0):
-        """
-        Compute local sensitivities by finite differences in the neighborhood of the parameters.
-        
-        Parameters
-        ----------
-        t : array_like
-            Time vector.
-        u, x0, p : optional
-            Same as above.
-        eps_p : float
-            Relative difference for derivative estimation by finite difference.
-
-        Returns
-        -------
-        S : ndarray
-            Local sensitivities.
-        
-        References
-        ----------
-        Goshtasbi, A. et al. J. Electrochem. Soc. 167, 044504 (2020).
-        """
-        # Generate normalized samples in parameter space [0,1]
-        
-
-        y = []  # to store outputs for each parameter
-        for i, p_i in enumerate(self.unknown_p_list):
-            y_i = []
-            # Make sure to start with a fresh copy of parameter dict
-            p_modified = params.copy() if params else self.params.copy()
-            unknown_p_values = np.array([p_modified[unknown_p.key] for unknown_p in self.unknown_p_list])
-            theta_i = self.p_to_theta(unknown_p_values)[i]
-            theta = [theta_i, np.minimum(1,theta_i+eps_p)]
-            for k in range(len(theta)):
-                # Get the parameter value at theta[k] for this parameter
-                p_i_k = self.theta_to_p(theta[k])[i]
-                # Update parameter set with this single varied parameter
-                p_modified.update({p_i.key: p_i_k})
-                # Solve model with updated parameter
-                y_i_k = self.compute_y_sim(p_modified)
-                y_i.append(y_i_k)
-            y.append(y_i)
-
-
-        # Convert collected outputs to numpy array of shape (n_parameters, n_samples, len(y))
-        y = np.array(y)
-
-        # Compute finite differences along sample axis (axis=1)
-        dy = np.diff(y, axis=1)
-        dtheta = np.diff(theta)  # uniform steps
-    
-        # Compute derivative dy/dtheta, broadcast over state dimension
-        dydtheta = dy / dtheta[:, np.newaxis]
-
-        # Compute normalized sensitivity as in equation 7
-        # S = (1 / mean(y)) * mean( dy/dtheta )
-        # Added small epsilon in denominator to avoid division by zero
-        S = 1 / (1e-20 + np.mean(y, axis=1)) * np.mean(dydtheta, axis=1)
-
-        self.S = S
-        return S
-
-    def compute_global_sensitivity(self, params=None,
-                                m=8, check_samples=False,
-                                rmse_limit=0.3, print_px=False, filename_to_save=None):
-        """
-        Compute global sensitivities using Sobol sampling.
-
-        Follows equation 8, 9 and 10 in Goshtasbi et al. (2020). 
-
-        Parameters
-        ----------
-        t, u, x0, p : optional
-            Same as above.
-        n_samples : int
-            Samples for local sensitivity.
-        m : int
-            Generates 2**m Sobol samples.
-        check_samples : bool
-            If True, check RMSE against `y_exp`. Similar to Goshtasbi et al. (2020), but uses L2 norm instead.
-        y_exp : array_like, optional
-            Experimental data for RMSE check.
-        rmse_limit : float
-            RMSE threshold.
-        print_px : bool
-            Print parameter sets.
-        filename_to_save :  str
-            Filename where to save results. Do not save if None. 
-
-        Returns
-        -------
-        cosPhi_med_ij : ndarray
-            Median co-linearity index matrix.
-        norm_s_i : ndarray
-            Norm of sensitivities.
-        S_med, S_std : ndarray
-            Median and std of sensitivities.
-        S_med_i, S_std_i : ndarray
-            Median and std by parameter.
-        S_n : ndarray
-            Sensitivity samples.
-        n_valid : int
-            Number of valid samples.
-
-        References
-        ----------
-        Goshtasbi, A. et al. J. Electrochem. Soc. 167, 044504 (2020).
-        """
-        n_unknown_p = len(self.unknown_p_list)
-        # Generate Sobol samples in the normalized [0,1] space for each parameter
-        sampler = qmc.Sobol(d=n_unknown_p, scramble=False,)
-        theta_samples = sampler.random_base2(m)
-
-        # Use provided parameter dict, else self.p or empty
-        params = params if params else self.params
-        
-        p_valid = []
-        S_n = []
-        for n in range(2**m):
-            # Transform Sobol sample to actual parameter values
-            p_i_n = self.theta_to_p(theta_samples[n])
-            # Build parameter dict for this sample
-            px = params.copy()
-            px.update({p_i: v for p_i, v in zip(self.p_i_name, p_i_n)})
-
-            # Optionally check RMSE to reject unrealistic samples
-            if check_samples:
-                res = self.compute_residuals(px)
-                res = res[~np.isnan(res)]
-                isValid = np.sqrt(np.dot(res, res) / len(res)) < rmse_limit
-            else:
-                isValid = True
-                
-            if isValid: 
-                if print_px:
-                    print(px)
-                # Compute local sensitivities for this global sample
-                s_n = self.calculate_local_sensitivity_neighborhood(px, eps_p=1e-6)
-                S_n.append(s_n)
-                p_valid.append(px)
-
-        n_valid = len(S_n)
-        S_n = np.array(S_n)
-
-        # Compute norms of sensitivities ||S|| for each parameter and sample
-        norm_s_i = np.linalg.norm(S_n, axis=-1)
-
-        # Compute pairwise colinearity indices (cosPhi) between parameters
-        cosPhi_n = np.ones((len(S_n), n_unknown_p, n_unknown_p)) * np.nan
-        # Compute all pairwise dot products for all samples
-        dot_product = np.einsum('nij,nkj->nik', S_n, S_n)
-
-        # Compute all pairwise norm products for all samples
-        norm_product = np.einsum('ni,nj->nij', norm_s_i, norm_s_i)
-        norm_product = np.maximum(norm_product, 1e-12)
-
-        # Compute cosine similarity for all samples
-        cosPhi_n = np.abs(dot_product / norm_product)
-
-        # If you only need the upper triangular part (including diagonal):
-        cosPhi_n = np.tril(cosPhi_n)
-                
-        # Store statistics on sensitivity norms and colinearity
-        self.norm_s_i = norm_s_i
-        self.cosPhi_med_ij = np.median(cosPhi_n, axis=0)
-        self.S_med_i = np.median(norm_s_i, axis=0)
-        self.S_std_i = np.std(norm_s_i, axis=0)
-        self.S_med = np.median(S_n, axis=0)
-        self.S_std = np.std(S_n, axis=0)
-        self.S_n = S_n
-        self.n_valid = n_valid
-
-        # If save results
-        if filename_to_save: 
-            np.savez(filename_to_save, 
-                    cosPhi_med_ij=self.cosPhi_med_ij, 
-                    norm_s_i=self.norm_s_i, 
-                    S_med=self.S_med, 
-                    S_std=self.S_std, 
-                    S_med_i=self.S_med_i, 
-                    S_std_i=self.S_std_i, 
-                    S_n=self.S_n, 
-                    n_valid=self.n_valid) 
-
-
-    def load_global_sensitivity_results(self, filename): 
-        """
-        Load global sensitivity results from file. 
-
-        Parameters
-        ----------
-        filname : str
-            Filename where results are stored. 
-        """
-        npzfile = np.load(filename)
-        self.norm_s_i = npzfile['norm_s_i']
-        self.cosPhi_med_ij = npzfile['cosPhi_med_ij']
-        self.S_med_i = npzfile['S_med_i']
-        self.S_std_i = npzfile['S_std_i']
-        self.S_med = npzfile['S_med']
-        self.S_std = npzfile['S_std']
-        self.S_n = npzfile['S_n']
-        self.n_valid = npzfile['n_valid']
-
-    def get_smallest_hessian_eigenvalues(self):
-        """
-        Compute the smallest eigenvalues of successive Hessian approximations 
-        constructed from the median sensitivity matrix.
-
-        This helps to analyze parameter identifiability and numerical conditioning
-        by progressively adding parameters and observing the smallest eigenvalue
-        of the resulting Hessian-like matrix.
-
-        Returns
-        -------
-        P : ndarray
-            Array of parameter indices sorted by importance (from QR decomposition with pivoting).
-        min_eigvals : list of float
-            List of smallest eigenvalues for each incremental Hessian matrix,
-            starting from 1 parameter up to all parameters.
-        num_parameters : int
-            Total number of parameters considered.
-
-        Notes
-        -----
-        - Uses QR decomposition with column pivoting to identify influential parameters.
-        - The Hessian approximation is built as `H = S_selected x S_selected.T`
-        where `S_selected` contains rows of the median sensitivity matrix.
-        - Small eigenvalues close to zero indicate collinearity or poor identifiability.
-
-        References
-        ----------
-        Goshtasbi, A. et al. J. Electrochem. Soc. 167, 044504 (2020).
-        Lund, B. F. & Foss, B. A. Automatica (Oxf.) 44, 278–281 (2008).
-        """
-        num_parameters = len(self.unknown_p_list)
-
-        # Transpose sensitivity matrix to have shape (n_parameters, n_outputs)
-        S = self.S_med.copy()
-        S = S.transpose()
-
-        # Perform QR decomposition with pivoting to get parameter ordering
-        Q, R, P = qr(S, mode='economic', pivoting=True)
-
-        min_eigvals = []
-        indices = np.arange(num_parameters)
-        for i in range(num_parameters):
-            # Select first i+1 parameters based on pivoting order
-            selected_indices = indices[np.isin(indices, P[:i+1])]
-            
-            # Build Hessian-like matrix H = S_selected x S_selected^T
-            H = np.matmul(self.S_med[selected_indices,:], self.S_med[selected_indices,:].transpose())
-            
-            # Compute smallest eigenvalue
-            min_eigvals.append(np.min(eigvals(H)))
-
-        self.P = P
-        self.min_eigvals = min_eigvals
-        self.num_parameters = num_parameters
-
-    def plot_parameter_ranking(self):
-        """
-        Plot the ranking of parameters based on smallest eigenvalues of the Hessian matrix.
-
-        Parameters
-        ----------
-        filename : str
-            (Currently unused in function, could be for saving figure).
-        model : object
-            Model containing the list of unknown parameters.
-
-        Returns
-        -------
-        P : ndarray
-            Permutation indices indicating parameter ranking.
-        num_parameters : int
-            Total number of parameters.
-        fig, ax, ax2 : Matplotlib objects
-            Figure and axes for further customization or saving.
-        """
-        n_unknown_p = len(self.unknown_p_list)
-
-        # Compute pivoted QR-based eigenvalue ranking
-        self.get_smallest_hessian_eigenvalues()
-
-        # Set up main plot
-        fig, ax = plt.subplots(figsize=(12, 2.5))
-        
-        # Plot the smallest eigenvalues vs parameter ranking
-        ax.semilogy(1 + np.arange(n_unknown_p), np.abs(self.min_eigvals), '-s')
-        
-        # X-axis: ranks with parameter names (ordered by pivoting)
-        ax.set_xticks(1 + np.arange(n_unknown_p))
-        ax.set_xticklabels([self.unknown_p_list[i].symbol for i in self.P], rotation=45)
-        
-        # Twin x-axis: showing simply number of selected parameters
-        ax2 = ax.twiny()
-        ax.set_xlim([0.5, n_unknown_p + 0.5])
-        ax2.set_xticks(ax.get_xticks())
-        ax2.set_xlim([0.5, n_unknown_p + 0.5])
-        ax2.set_xlabel('Number of selected parameters')
-        
-        # Label left y-axis
-        ax.set_xlabel('Ranked parameters')
-        ax.set_ylabel('Smallest Hessian\neigenvalue')
-        ax.grid()
-        
-        # Adjust layout
-        fig.tight_layout()
-        
-        return fig, ax, ax2
-
-@dataclass
-class SteadyStatePolarizationCurveCalibration(BaseModelCalibration): 
-    # Values must be on SI units, 
-    conditions_dataset: pd.DataFrame   # dataset with columns case, cell-temperature, pressure-ca, pressure-an, rh-ca, rh-an, st-ca, st-an, min-current-at-st-ca, min-current-at-st-an
-    experimental_dataset: pd.DataFrame # dataset with columns case, current_density, voltage, hfr 
-    cell_creator: Callable 
-    known_parameters: list = field(default_factory=list)
-    unknown_parameters: list = field(default_factory=list)
+    conditions_dataset : per-case operating conditions (temperature, pressures, RH, stoichiometries).
+    experimental_dataset : per-case measurements with columns case, current-density, voltage, hfr.
+    cell_creator : callable(params) → FuelCell used to build the model from a parameter dict.
+    cell_model : solver instance; defaults to ExplicitSteadyStateModel.
+    """
+    conditions_dataset: pd.DataFrame
+    experimental_dataset: pd.DataFrame
+    cell_creator: Callable
     cell_model: ExplicitSteadyStateModel = field(default_factory=ExplicitSteadyStateModel)
 
     def __post_init__(self):
-        self.params = {}
-        self.set_unknown_params(self.unknown_parameters)
-        self.set_known_params(self.known_parameters)
+        BaseModelCalibration.__post_init__(self)
         self.full_case_list = self.experimental_dataset['case'].unique()
 
         self.populate_exp_dataset_conditions()
         self.build_cases_conditions()
-        
+
         self.hfr_mask = {case: np.isfinite(self.get_case_dataset(case)['hfr']) for case in self.full_case_list}
         self.hfr_weight_factor = (
-              np.sum(np.isfinite(self.experimental_dataset['voltage']))
-             / np.sum(np.isfinite(self.experimental_dataset['hfr'])) 
+            np.sum(np.isfinite(self.experimental_dataset['voltage']))
+            / np.sum(np.isfinite(self.experimental_dataset['hfr']))
         )
-        
+
     def solve_case(self, cell, case):
         cond = self.case_conditions[case]
         state = self.cell_model.set_initial_conditions(cell, cond)
-        return self.cell_model.solve(cell, cond, state) 
-    
-    def apply_hfr_weights(self, hfr): 
+        return self.cell_model.solve(cell, cond, state)
+
+    def apply_hfr_weights(self, hfr):
         return hfr * 1e4 * self.hfr_weight_factor
 
-    
+    def build_cell_from_unknown_p_vector(self, unknown_p_vector):
+        px = self.params.copy()
+        px.update(dict(zip(self.p_i_name, unknown_p_vector)))
+        cell = self.cell_creator(px)
+        return cell
 
-    
-    def build_y_sim_cases(self, cell, case_list): 
+    def build_y_sim_cases(self, cell, case_list):
         return np.concatenate([
             self.build_y_sim(cell, case) for case in case_list
         ])
 
-    def build_y_sim(self, cell, case):
+    def simulate_voltage_and_hfr(self, cell, case):
         state = self.solve_case(cell, case)
         hfr = self.cell_model.voltage_model.high_frequency_resistance(cell, state)
-        hfr_sim = (
-            self.apply_hfr_weights(hfr) * self.hfr_mask[case]
-        )
-        return np.concatenate([state.cell_voltage, hfr_sim])
-    
-    def build_y_exp_cases(self, case_list): 
+        return state.cell_voltage, hfr, state
+
+    def build_y_sim(self, cell, case):
+        cell_voltage, hfr, _ = self.simulate_voltage_and_hfr(cell, case)
+        hfr_sim = self.apply_hfr_weights(hfr) * self.hfr_mask[case]
+        return np.concatenate([cell_voltage, hfr_sim])
+
+    def build_y_exp_cases(self, case_list):
         return np.concatenate([
             self.build_y_exp(case) for case in case_list
         ])
-    
-    def build_y_exp(self, case): 
+
+    def build_y_exp(self, case):
         case_dataset = self.get_case_dataset(case)
-        hfr = case_dataset['hfr']
-        hfr_exp = (
-            self.apply_hfr_weights(hfr) * self.hfr_mask[case]
-        )
+        hfr_exp = self.apply_hfr_weights(case_dataset['hfr']) * self.hfr_mask[case]
         return np.concatenate([case_dataset['voltage'], hfr_exp])
 
-    def compute_y_sim(self, params=None, cell=None, case_list=[]): 
-        if len(case_list) == 0: 
+    def compute_y_sim(self, unknown_p_vector=None, cell=None, case_list=[]):
+        if len(case_list) == 0:
             case_list = self.full_case_list
-        if params and not cell: 
-            cell = self.cell_creator(params)
+        if (unknown_p_vector is not None) and (cell is None):
+            cell = self.build_cell_from_unknown_p_vector(unknown_p_vector)
         return self.build_y_sim_cases(cell, case_list)
 
-    def compute_residuals(self, params=None, cell=None, case_list=[]):
-        if len(case_list) == 0: 
-            case_list = self.full_case_list 
-        return self.build_y_exp_cases(case_list) - self.compute_y_sim(params, cell, case_list)
-     
-    def populate_exp_dataset_conditions(self): 
+    def compute_residuals(self, unknown_p_vector=None, cell=None, case_list=[]):
+        if len(case_list) == 0:
+            case_list = self.full_case_list
+        return self.build_y_exp_cases(case_list) - self.compute_y_sim(unknown_p_vector, cell, case_list)
+
+    def populate_exp_dataset_conditions(self):
+        """Merge per-case conditions into experimental_dataset and shift current-density by +1 A/m² to avoid division-by-zero at OCV."""
         for side in ('ca', 'an'):
-            if f'min-current-at-st-{side}' not in self.conditions_dataset.columns: 
-                self.conditions_dataset[f'min-current-at-st-{side}'] =  0
+            if f'min-current-at-st-{side}' not in self.conditions_dataset.columns:
+                self.conditions_dataset[f'min-current-at-st-{side}'] = 0
         self.experimental_dataset['current-density'] += 1
 
-        for column in self.conditions_dataset.columns: 
-            if column not in self.experimental_dataset.columns: 
-                self.experimental_dataset = self.experimental_dataset.merge(self.conditions_dataset[['case', column]], on='case')
+        for column in self.conditions_dataset.columns:
+            if column not in self.experimental_dataset.columns:
+                self.experimental_dataset = self.experimental_dataset.merge(
+                    self.conditions_dataset[['case', column]], on='case'
+                )
 
     def get_case_dataset(self, case):
-        return self.experimental_dataset[self.experimental_dataset['case']==case] 
-    
-    def build_cases_conditions(self):
+        return self.experimental_dataset[self.experimental_dataset['case'] == case]
+
+    def build_cases_conditions(self, current_density=None):
         self.case_conditions = {}
         for case in self.full_case_list:
-            self.case_conditions[case] = self._make_conditions(case)
+            self.case_conditions[case] = self.make_conditions(case, current_density)
 
-    def _make_conditions(self, case):
+    def make_conditions(self, case, current_density=None):
+        """Build CellConditions for a case. If current_density is given, all tabulated columns are interpolated onto it."""
         case_dataset = self.get_case_dataset(case)
-        
+        xp = case_dataset['current-density'].values
+
+        def interp(col):
+            return np.interp(current_density, xp, case_dataset[col].values)
+
+        if current_density is None:
+            current_density = xp
+            interp = lambda col: case_dataset[col].values  # noqa: E731
+
+        i = current_density
+        stoich_ca = interp('st-ca') * np.maximum(interp('min-current-at-st-ca') / i, 1)
+        stoich_an = interp('st-an') * np.maximum(interp('min-current-at-st-an') / i, 1)
+
         return CellConditions(
-            current_density=case_dataset['current-density'].values,
-            cell_temperature=case_dataset['cell-temperature'].values,
+            current_density=i,
+            cell_temperature=interp('cell-temperature'),
             ca=SideConditions(
-                inlet_temperature=case_dataset['cell-temperature'].values, 
-                outlet_pressure=case_dataset['pressure-ca'].values,
-                inlet_relative_humidity=case_dataset['rh-ca'].values,
-                dry_o2_mole_fraction=0.21, 
-                stoichiometry=case_dataset['st-ca'].values * np.maximum(case_dataset['min-current-at-st-ca'].values / case_dataset['current-density'].values, 1),
+                inlet_temperature=interp('cell-temperature'),
+                outlet_pressure=interp('pressure-ca'),
+                inlet_relative_humidity=interp('rh-ca'),
+                dry_o2_mole_fraction=0.21,
+                stoichiometry=stoich_ca,
             ),
             an=SideConditions(
-                inlet_temperature=case_dataset['cell-temperature'].values, 
-                outlet_pressure=case_dataset['pressure-an'].values,
-                inlet_relative_humidity=case_dataset['rh-an'].values,
-                dry_h2_mole_fraction=1.0, 
-                stoichiometry=case_dataset['st-an'].values * np.maximum(case_dataset['min-current-at-st-an'].values / case_dataset['current-density'].values, 1),
+                inlet_temperature=interp('cell-temperature'),
+                outlet_pressure=interp('pressure-an'),
+                inlet_relative_humidity=interp('rh-an'),
+                dry_h2_mole_fraction=1.0,
+                stoichiometry=stoich_an,
             ),
         )
+
+    def get_estimated_parameters_from_fold_results(self, fold_results):
+        return fold_results.loc[:, fold_results.columns[4:]].copy()
+
+    def simulate_for_fold_results(self, fold_results):
+        estimated_parameters = self.get_estimated_parameters_from_fold_results(fold_results)
+        estimated_parameters.dropna(axis=1, inplace=True)
+        estimated_dict = dict(
+            zip(
+                estimated_parameters.columns.values,
+                estimated_parameters.values[0],
+            )
+        )
+        px = self.params.copy()
+        px.update(estimated_dict)
+        cell = self.cell_creator(px)
+
+        voltage_cases, hfr_cases, state_cases = {}, {}, {}
+        for case in self.full_case_list:
+            voltage, hfr, state = self.simulate_voltage_and_hfr(cell, case)
+            voltage_cases[case] = voltage
+            hfr_cases[case] = hfr
+            state_cases[case] = state
+        return voltage_cases, hfr_cases, state_cases
+
+
+def collect_rmse_df(model, cv_results, variable, quantity_multiplier):
+    rmse_values, case_column, fold_id_column, complexity_column, is_test_column = [], [], [], [], []
+
+    for n_params in cv_results.n_params.unique():
+        folds_results = cv_results[cv_results.n_params == n_params]
+
+        for fold_id in cv_results.fold_id.unique():
+            fold_id = int(fold_id)
+            fold_results = folds_results[folds_results.fold_id == fold_id]
+            voltage_cases, hfr_cases, _ = model.simulate_for_fold_results(fold_results)
+
+            for case in model.full_case_list:
+                y_sim = voltage_cases[case] if variable == 'voltage' else hfr_cases[case] * model.hfr_mask[case]
+                case_dataset = model.get_case_dataset(case)
+                y_exp = np.nan_to_num(case_dataset[variable])
+
+                residuals = y_exp - y_sim
+                n_valid = sum(1 - np.isnan(case_dataset[variable]))
+                rmse = np.sqrt(np.dot(residuals, residuals) / n_valid) * quantity_multiplier
+
+                rmse_values.append(rmse)
+                case_column.append(case)
+                fold_id_column.append(fold_id)
+                complexity_column.append(n_params)
+                is_test_column.append(case in model.k_folds[fold_id])
+
+    return pd.DataFrame({
+        "rmse": rmse_values,
+        "case": case_column,
+        "fold_id": fold_id_column,
+        "n_params": complexity_column,
+        "is_test": is_test_column,
+    })
+
+
+def optimal_n_1se(test_mean, test_std):
+    # 1-SE rule: simplest model within 1 std of the best
+    # See https://esl.hohoweiya.xyz/book/The%20Elements%20of%20Statistical%20Learning.pdf
+    best_n = test_mean.idxmin()
+    threshold = test_mean[best_n] + test_std[best_n]
+    return next(n for n in test_mean.index if test_mean[n] <= threshold)
+
+
+def build_rmse_stats_df(rmse_vs_complexity_df):
+    test_rows = (
+        rmse_vs_complexity_df[rmse_vs_complexity_df["is_test"]]
+        .groupby(['n_params', 'fold_id']).mean()
+        .reset_index()
+    )
+
+    per_case = test_rows.pivot(index='n_params', columns='fold_id', values='rmse')
+
+    stats_df = (
+        test_rows.groupby('n_params')
+        .agg(['min', 'max', 'median', 'mean'])
+        .drop(columns=['case', 'fold_id'], level=0)
+    )
+    stats_df.columns = ['_'.join(col) for col in stats_df.columns]
+    stats_df = stats_df.join(per_case)
+
+    case_cols = [c for c in stats_df.columns if not (isinstance(c, str) and '_' in c)]
+    stat_cols = [c for c in stats_df.columns if c not in case_cols]
+
+    stats_df = stats_df[case_cols + stat_cols]
+    stats_df = stats_df.rename(columns={
+        c: f'{c:.0f}' for c in case_cols
+    } | {
+        'rmse_min': 'Min.',
+        'rmse_max': 'Max.',
+        'rmse_median': 'Median',
+        'rmse_mean': 'Mean',
+    })
+
+    return stats_df
+
+
+def rmse_complexity_latex(stats_df):
+    n_cases = sum(1 for c in stats_df.columns if c not in ('Min.', 'Max.', 'Median', 'Mean'))
+    return (
+        stats_df.to_latex(
+            float_format="%.1f",
+            na_rep="-",
+            caption="RMSE vs complexity",
+            label="tab:rmse_complexity",
+            position="h",
+        ).replace(
+            r'\toprule',
+            r'\toprule' + '\n' +
+            rf' & \multicolumn{{{n_cases}}}{{c}}{{Cases}} \\' + '\n' +
+            rf'\cmidrule(lr){{2-{n_cases + 1}}}',
+        )
+    )
+
+
+def rmse_complexity_table(rmse_vs_complexity_df, filename=None):
+    stats_df = build_rmse_stats_df(rmse_vs_complexity_df)
+    latex = rmse_complexity_latex(stats_df)
+
+    if filename:
+        with open(filename, 'w') as f:
+            f.write(latex)
+
+    return stats_df, latex
