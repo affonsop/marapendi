@@ -19,4 +19,7 @@ tests/figures/
 .DS_Store
 
 # Data files (not committed)
-notebooks/*.csv
+examples/data/
+examples/*.csv
+examples/*.npz
+examples/figures/
