@@ -133,7 +133,6 @@ class FuelCell(Cell):
     def __post_init__(self):
         self.ca.reactant = 'o2'
         self.an.reactant = 'h2'
-        super().__post_init__()
         self._voltage_model = VoltageModel()
         self._thermal_model = ThermalModel()
         self._model = ExplicitSteadyStateModel(

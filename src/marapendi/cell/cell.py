@@ -43,27 +43,27 @@ class CellSide:
 
     cl: CatalystLayer = field(default_factory=PtCCatalystLayer)
     gdl: GasDiffusionLayer = field(default_factory=GasDiffusionLayer)
-    mpl: MicroPorousLayer = field(default_factory=MicroPorousLayer)
+    mpl: MicroPorousLayer = field(default=None)
     ch: FlowChannel = field(default_factory=FlowChannel)
-    has_mpl: bool = False
-    has_gdl: bool = True
+
     thermal_contact_resistance: float = 0.
 
-    def __post_init__(self):
-        self.porous_layers = (
-            ([self.cl, self.mpl] if self.has_mpl else [self.cl])
-            + ([self.gdl] if self.has_gdl else [])
-        )
-        self.layers = self.porous_layers + [self.ch]
-        
+    @property
+    def has_mpl(self) -> bool:
+        return self.mpl is not None
+
+    @property
+    def has_gdl(self) -> bool:
+        return self.gdl is not None
+
     @property
     def porous_layers(self) -> list:
-        """Active porous layers GDL-to-CL order, respecting has_gdl and has_mpl."""
-        return [l for l, inc in [(self.gdl, self.has_gdl), (self.mpl, self.has_mpl), (self.cl, True)] if inc]
+        """Active porous layers, channel-to-CL order (gdl → [mpl →] cl)."""
+        return [l for l in [self.gdl, self.mpl, self.cl] if l is not None]
 
     @property
     def layers(self) -> list:
-        """Channel + active porous layers, channel-to-CL order."""
+        """Flow channel + active porous layers, channel-to-CL order."""
         return [self.ch] + self.porous_layers
 
 @dataclass
@@ -90,7 +90,16 @@ class Cell:
     area: float = 1.
     electrical_resistance: float = 0.
 
-    def __post_init__(self):
-        self.porous_layers = self.an.porous_layers[::-1] + self.ca.porous_layers
-        self.layers = self.an.layers[::-1] + [self.membrane] + self.ca.layers
-        self.sides = [self.ca, self.an]
+    @property
+    def porous_layers(self) -> list:
+        """All porous layers, anode-to-cathode order."""
+        return self.an.porous_layers[::-1] + self.ca.porous_layers
+
+    @property
+    def layers(self) -> list:
+        """All layers (channels + porous + membrane), anode-to-cathode order."""
+        return self.an.layers[::-1] + [self.membrane] + self.ca.layers
+
+    @property
+    def sides(self) -> list:
+        return [self.ca, self.an]
