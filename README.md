@@ -1,8 +1,7 @@
 # marapendi
 
 **marapendi** is a Python framework for physics-based modelling of proton-exchange
-membrane (PEM) and anion-exchange membrane (AEM) electrochemical cells, including
-PEM fuel cells and AEM water electrolyzers.
+membrane (PEM) fuel cells.
 
 The model is zero-dimensional (single operating point). Both steady-state and
 transient formulations are provided. The steady-state solver computes cell voltage
@@ -19,14 +18,17 @@ conditions.
 - **Two steady-state model variants** — `ExplicitSteadyStateModel` (one forward pass, fast) and
   `ImplicitSteadyStateModel` (self-consistent MEA temperature via vectorised secant iteration);
   both accept full current-density arrays in a single call
+- **Piecewise-linear membrane water balance** — `MembraneWaterBalanceModelPiecewise` fits
+  the PFSA equilibrium isotherm RH(λ) with a piecewise-linear regression; this is the
+  default model used in the steady-state solvers
 - **Transient model** — `TransientModel` integrates coupled MEA-temperature and membrane
   water-content ODEs (Ferrara et al., 2018) under time-varying conditions via
-  `scipy.integrate.solve_ivp`; `solve()` auto-attaches a `diagnostics` dict (voltage,
-  HFR, water contents, saturation) at each internal time step, and `evaluate()` lets you
-  re-sample any dense-output trajectory at arbitrary times
-- **AEM electrolyzer** — analogous model with AEM membrane (PAP family) and KOH electrolyte
-- **Parameter estimation** — differential-evolution global optimizer wrapped in
-  `SteadyStateModel` for fitting to experimental data
+  `scipy.integrate.solve_ivp`; `solve()` auto-attaches a `diagnostics` `CellState`
+  (voltage, HFR, water contents, saturation) at each internal time step, and `evaluate()`
+  lets you re-sample any dense-output trajectory at arbitrary times
+- **Parameter estimation** — `SteadyStatePolarizationCurveCalibration` fits kinetic and
+  transport parameters to experimental polarization and HFR data using differential-evolution
+  global optimisation, with k-fold cross-validation and automatic model-complexity selection
 - **Clean component/state separation** — static cell parameters and runtime state are
   kept strictly separate, making the data flow explicit
 
@@ -93,7 +95,6 @@ cell = mrpd.FuelCell(
         ionomer=mrpd.PFSAIonomer(equivalent_weight=1100, dry_density=1980),
         dry_thickness=25e-6,
     ),
-    use_eq_water_content_for_ionomer=True,
 )
 
 # --- Operating conditions ---
@@ -115,7 +116,7 @@ conditions = mrpd.CellConditions(
 model = mrpd.ExplicitSteadyStateModel()
 state = model.set_initial_conditions(cell, conditions)
 state = model.solve(cell, conditions, state)
-# state.cell_voltage — array of voltages (V)
+# state.cell_voltage   — array of voltages (V)
 # state.mea_temperature — array of MEA temperatures (K)
 
 # --- Implicit model (self-consistent T_MEA, fully vectorised) ---
@@ -141,7 +142,7 @@ tr_model = TransientModel(n_memb_mesh=5)
 sol = tr_model.solve(cell, cond_0, t_span=(0, 3600))
 # sol.y[0]           → T_MEA(t)  [K]
 # sol.y[1:]          → λ(ξ, t)   [mol H2O / mol site]
-# sol.diagnostics    → dict with 'cell_voltage', 'hfr', 'membrane_water_content', …
+# sol.diagnostics    → CellState with .cell_voltage, .hfr, .membrane.water_content, …
 
 # Pass a callable for time-varying conditions:
 def conditions_t(t):
@@ -156,40 +157,43 @@ sol = tr_model.solve(cell, conditions_t, t_span=(0, 3600))
 
 ```
 src/marapendi/
-├── cell/          # FuelCell, ElectrolyzerCell, and all physics models
-│   ├── fuelcell.py             # FuelCell, FuelCellSide
-│   ├── aem_electrolyzer.py     # ElectrolyzerCell, ElectrolyzerCellSide
-│   ├── state.py                # CellState, CellSideState, LayerState, …
+├── cell/          # FuelCell and all physics models
+│   ├── fuelcell.py              # FuelCell, FuelCellSide
+│   ├── state.py                 # CellState, CellSideState, LayerState, …
 │   ├── explicit_steady_state.py # ExplicitSteadyStateModel
 │   ├── implicit_steady_state.py # ImplicitSteadyStateModel (self-consistent T_MEA)
 │   ├── transient.py             # TransientModel (ODE for T_MEA + membrane water profile)
-│   ├── voltage.py              # VoltageModel
-│   ├── thermal.py              # ThermalModel
-│   ├── gas_transport.py        # GasTransportModel
-│   └── water_balance.py        # MembraneWaterBalanceModel
+│   ├── voltage.py               # VoltageModel
+│   └── thermal.py               # ThermalModel
 ├── membrane/      # Membrane and ionomer materials
-│   ├── ionomer_base.py         # Ionomer (abstract base class)
-│   ├── pem.py                  # PFSAIonomer, PFSA, NafionD2020
-│   ├── aem.py                  # PAPIonomer, AEM, PAP85
-│   ├── membrane_base.py        # Membrane (composes an Ionomer instance)
-│   └── permeation.py           # HydrogenPermeationModel
+│   ├── ionomer_base.py          # Ionomer (abstract base class)
+│   ├── pem.py                   # PFSAIonomer, PFSA, NafionD2020
+│   ├── aem.py                   # PAPIonomer, AEM, PAP85
+│   └── membrane_base.py         # Membrane (composes an Ionomer instance)
+├── water_balance/ # Membrane water balance models
+│   ├── water_balance.py         # WaterBalanceModel (orchestration)
+│   ├── membrane_pwl.py          # MembraneWaterBalanceModelPiecewise (default)
+│   └── membrane.py              # MembraneWaterBalanceModel (Affonso Nobrega et al. 2026)
 ├── porous_layers/ # GasDiffusionLayer, MicroPorousLayer, CatalystLayer, …
 ├── channel/       # FlowChannel, ChannelGasResistanceModel, BakerChannelGasResistanceModel
 ├── thermo/        # GasState, GasModel, water properties, constants
 ├── electrolyte/   # ElectrolyteSolution, KOHSolution
 ├── degradation/   # PtDissolution, PlatinumOxideFormation
-├── simulation/    # OperatingConditions, DynamicOperatingConditions, LoadCycle
-└── estimation/    # SteadyStateModel, DynamicModel
+├── simulation/    # CellConditions, SideConditions, LoadCycle
+└── estimation/    # BaseModelCalibration, SteadyStatePolarizationCurveCalibration, Parameter
 ```
 
 ## Example notebooks
 
 | Notebook | Description |
 |---|---|
-| `notebooks/01_polarization_curve.ipynb` | Simulate a polarization curve, plot V–i and HFR |
-| `notebooks/02_parameter_estimation.ipynb` | Fit kinetic parameters to data |
-| `notebooks/03_quasi_steady_simulation_monocell.ipynb` | Replay a test-bench log sample-by-sample; compare simulated and measured cell voltage over time |
-| `notebooks/05_transient_vs_quasi_steady.ipynb` | Compare transient and vectorised QSS simulations: voltage, MEA temperature, membrane and CL water contents, liquid saturation, HFR, and CL proton resistance |
+| [examples/01_cell_assembly_and_polarization_curve.ipynb](examples/01_cell_assembly_and_polarization_curve.ipynb) | Assemble a cell, simulate a polarization curve, plot V–i and HFR |
+| [examples/02_quasi_steady_simulation_monocell.ipynb](examples/02_quasi_steady_simulation_monocell.ipynb) | Replay a test-bench log with a vectorised quasi-steady simulation; compare simulated and measured voltage over time |
+| [examples/03_implicit_vs_explicit_comparison.ipynb](examples/03_implicit_vs_explicit_comparison.ipynb) | Compare explicit and implicit steady-state models on voltage, MEA temperature, and HFR |
+| [examples/04_transient_vs_quasi_steady.ipynb](examples/04_transient_vs_quasi_steady.ipynb) | Compare transient and quasi-steady simulations: voltage, MEA temperature, membrane and CL water contents, liquid saturation, HFR |
+| [examples/05_multi_condition_comparison.ipynb](examples/05_multi_condition_comparison.ipynb) | Simulate and compare polarization curves across multiple experimental conditions |
+| [examples/06_picewise_linear_approximation_water_conent.ipynb](examples/06_picewise_linear_approximation_water_conent.ipynb) | Compare the piecewise-linear (standard) and paper-model (Affonso Nobrega et al. 2026) membrane water balance models |
+| [examples/07_parameter_estimation.ipynb](examples/07_parameter_estimation.ipynb) | Fit kinetic and transport parameters to multi-condition experimental data; k-fold cross-validation and complexity selection |
 
 ## Running the tests
 
@@ -199,13 +203,19 @@ pytest
 
 ## Documentation
 
-Build the Sphinx docs from the `doc/` directory:
+Build the Sphinx docs from the `docs/` directory:
 
 ```bash
-cd doc
+cd docs
 make html
 open _build/html/index.html
 ```
+
+## Reference
+
+Pedro Affonso Nobrega, Christophe Morin, Anass Chabani, Mathias Herlé,
+"A zero-dimensional PEM fuel cell model with self-consistent MEA temperature
+and membrane water balance", *J. Electrochem. Soc.* **173**, 114503 (2026).
 
 ## Author
 
@@ -214,7 +224,3 @@ Pedro Affonso Nobrega, pedro.affonso_nobrega@minesparis.psl.eu
 ## License
 
 MIT License
-
-## Project status
-
-In development

@@ -1,0 +1,524 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>marapendi.porous_layers.catalyst_layers &mdash; marapendi 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            marapendi
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">marapendi</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">marapendi.porous_layers.catalyst_layers</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for marapendi.porous_layers.catalyst_layers</h1><div class="highlight"><pre>
+<span></span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Catalyst layer models for electrochemical cells.</span>
+
+<span class="sd">:class:`CatalystLayer` is the base class, providing ionomer charge resistance,</span>
+<span class="sd">effective charge resistance (Neyerlin / Goshtasbi distribution model), and a</span>
+<span class="sd">Bruggeman electrolyte resistance for alkaline layers.</span>
+
+<span class="sd">:class:`PtCCatalystLayer` extends it with an explicit Pt/C agglomerate geometry</span>
+<span class="sd">following Hao et al. (2015): volume fractions are computed from platinum and</span>
+<span class="sd">carbon loadings, the wet ionomer film thickness is updated at each operating</span>
+<span class="sd">point, and local O₂ transport resistance across the ionomer film (bulk + gas/Pt</span>
+<span class="sd">interface terms) is evaluated via :meth:`~PtCCatalystLayer.o2_ionomer_film_resistance`.</span>
+
+<span class="sd">:class:`PorousTransferLayer` adapts the geometry to a fibrous PTL structure.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..thermo.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">GAS_CONSTANT</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..thermo.electrochemistry</span><span class="w"> </span><span class="kn">import</span> <span class="n">ElectrochemicalReaction</span> 
+<span class="kn">from</span><span class="w"> </span><span class="nn">..membrane.ionomer_base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Ionomer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..membrane.pem</span><span class="w"> </span><span class="kn">import</span> <span class="n">PFSAIonomer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.porous_layers</span><span class="w"> </span><span class="kn">import</span> <span class="n">PorousLayer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..thermo.water</span><span class="w"> </span><span class="kn">import</span> <span class="n">o2_water_diffusivity</span> 
+
+<div class="viewcode-block" id="CatalystLayer">
+<a class="viewcode-back" href="../../../api/catalyst_layers.html#marapendi.porous_layers.catalyst_layers.CatalystLayer">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CatalystLayer</span><span class="p">(</span><span class="n">PorousLayer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Base class for catalyst layers in fuel cells and electrolysers.</span>
+
+<span class="sd">    Combines a porous electrode structure with an ionomer phase and an</span>
+<span class="sd">    electrochemical reaction model.  Provides ionomer/electrolyte charge</span>
+<span class="sd">    resistance and activation overpotential; subclasses add geometry-specific</span>
+<span class="sd">    transport models.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ionomer : Ionomer</span>
+<span class="sd">        Ionomer transport model (proton/hydroxide conductivity, O₂ permeability).</span>
+<span class="sd">    reaction : ElectrochemicalReaction</span>
+<span class="sd">        Electrochemical reaction parameters (exchange current density, Tafel slope).</span>
+<span class="sd">    catalyst_loading : float</span>
+<span class="sd">        Total catalyst loading (kg/m²).</span>
+<span class="sd">    ionomer_to_catalyst_ratio : float</span>
+<span class="sd">        Ionomer/catalyst mass ratio (–).</span>
+<span class="sd">    catalyst_density : float</span>
+<span class="sd">        Catalyst particle density (kg/m³).</span>
+<span class="sd">    ecsa : float</span>
+<span class="sd">        Electrochemically active surface area (m²/kg).</span>
+<span class="sd">    ionomer_vol_fraction : float</span>
+<span class="sd">        Volume fraction of ionomer (–).</span>
+<span class="sd">    ionomer_film_thickness : float</span>
+<span class="sd">        Ionomer film thickness around catalyst particles (m).</span>
+<span class="sd">    contact_angle : float</span>
+<span class="sd">        Contact angle between liquid water and the solid phase (°).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ionomer</span><span class="p">:</span> <span class="n">Ionomer</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">PFSAIonomer</span><span class="p">)</span>
+    <span class="n">reaction</span><span class="p">:</span> <span class="n">ElectrochemicalReaction</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">ElectrochemicalReaction</span><span class="p">)</span>
+    <span class="n">catalyst_loading</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2e-6</span> <span class="o">*</span> <span class="mf">1e4</span>
+    <span class="n">ionomer_to_catalyst_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.75</span>
+    <span class="n">catalyst_density</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">21450</span>
+    <span class="n">ecsa</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">70e3</span>
+    <span class="n">ionomer_vol_fraction</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span>
+    <span class="n">ionomer_film_thickness</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">2e-9</span>
+    <span class="n">contact_angle</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">95.</span>
+
+<div class="viewcode-block" id="CatalystLayer.ionomer_sheet_charge_resistance">
+<a class="viewcode-back" href="../../../api/catalyst_layers.html#marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_sheet_charge_resistance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ionomer_sheet_charge_resistance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ionomer_water_content</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">charge</span><span class="o">=</span><span class="s1">&#39;proton&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute ionomer film proton resistance.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        ionomer_water_content : float</span>
+<span class="sd">            Water content.</span>
+<span class="sd">        temperature : float</span>
+<span class="sd">            Temperature in Kelvin.</span>
+<span class="sd">        charge : str</span>
+<span class="sd">            Charge carrier.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            Ionomer resistance [Ohm.m²].</span>
+<span class="sd">        </span>
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+<span class="sd">        Hao, L. et al. J. Electrochem. Soc. 163, F744 (2016).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ionomer_charge_conductivity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer</span><span class="o">.</span><span class="n">charge_conductivity</span><span class="p">(</span><span class="n">ionomer_water_content</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">charge</span><span class="p">)</span>
+        <span class="n">eps_ion</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_vol_fraction</span>
+        <span class="n">tort_ion</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_tortuosity</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ionomer_vol_fraction</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">/</span> <span class="p">(</span><span class="n">eps_ion</span> <span class="o">/</span> <span class="n">tort_ion</span> <span class="o">*</span> <span class="n">ionomer_charge_conductivity</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="CatalystLayer.effective_charge_resistance">
+<a class="viewcode-back" href="../../../api/catalyst_layers.html#marapendi.porous_layers.catalyst_layers.CatalystLayer.effective_charge_resistance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">effective_charge_resistance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">current_density</span><span class="p">,</span> <span class="n">ionomer_water_content</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">charge</span><span class="o">=</span><span class="s1">&#39;proton&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate effective charge resistance using the equations from Goshtasbi et al. (2020)</span>
+<span class="sd">        based on Neyerlin et al. (2007).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        current_density : float</span>
+<span class="sd">            Current density [A/m²].</span>
+<span class="sd">        ionomer_water_content : float</span>
+<span class="sd">            Water content in the ionomer.</span>
+<span class="sd">        temperature : float</span>
+<span class="sd">            Temperature in Kelvin.</span>
+<span class="sd">        charge : str</span>
+<span class="sd">            Charge carrier type.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            Effective charge resistance [Ohm.m²].</span>
+<span class="sd">        </span>
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+<span class="sd">        Neyerlin, K. C. et al. J. Electrochem. Soc. 154, B279 (2007).</span>
+<span class="sd">        Goshtasbi, A. et al. J. Electrochem. Soc. 167, 024518 (2020).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sheet_resistance</span> <span class="o">=</span> <span class="mf">1.</span> <span class="o">/</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_sheet_charge_resistance</span><span class="p">(</span><span class="n">ionomer_water_content</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">charge</span><span class="p">)</span> <span class="o">+</span>
+                                      <span class="mf">1.</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">electrolyte_sheet_resistance</span><span class="p">(</span><span class="n">temperature</span><span class="p">))</span>
+        <span class="n">nu</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sheet_resistance</span> <span class="o">*</span> <span class="n">current_density</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">reaction</span><span class="o">.</span><span class="n">tafel_slope</span><span class="p">(</span><span class="n">temperature</span><span class="p">),</span> <span class="mi">10</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xi_neyerlin</span> <span class="o">=</span> <span class="n">nu</span> <span class="o">*</span> <span class="p">(</span><span class="o">-</span><span class="mf">8.287e-3</span> <span class="o">*</span> <span class="n">nu</span> <span class="o">+</span> <span class="mf">0.7184</span><span class="p">)</span> <span class="o">-</span> <span class="mf">2.072e-3</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sheet_resistance</span> <span class="o">/</span> <span class="p">(</span><span class="mi">3</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">xi_neyerlin</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="CatalystLayer.electrolyte_sheet_resistance">
+<a class="viewcode-back" href="../../../api/catalyst_layers.html#marapendi.porous_layers.catalyst_layers.CatalystLayer.electrolyte_sheet_resistance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">electrolyte_sheet_resistance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">electrolyte_saturation</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate electrolyte sheet resistance in the porous electrolyte phase.</span>
+<span class="sd">        Uses Bruggeman correlation for electrolyte. </span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        temperature : float</span>
+<span class="sd">            Temperature in Kelvin.</span>
+<span class="sd">        electrolyte_saturation : float</span>
+<span class="sd">            Electrolyte saturation.</span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            Electrolyte sheet resistance [Ohm.m²].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">electrolyte_saturation</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">electrolyte_saturation</span><span class="p">,</span> <span class="mf">1e-12</span><span class="p">)</span>
+        <span class="n">electrolyte_conductivity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">electrolyte</span><span class="o">.</span><span class="n">calculate_ionic_conductivity</span><span class="p">(</span><span class="n">temperature</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">/</span> <span class="p">((</span><span class="n">electrolyte_saturation</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">porosity</span><span class="p">)</span> <span class="o">**</span> <span class="mf">1.5</span> <span class="o">*</span> <span class="n">electrolyte_conductivity</span><span class="p">)</span> </div>
+
+
+<div class="viewcode-block" id="CatalystLayer.ionomer_tortuosity">
+<a class="viewcode-back" href="../../../api/catalyst_layers.html#marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_tortuosity">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ionomer_tortuosity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">volume_fraction</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Bruggeman tortuosity factor for the ionomer phase.</span>
+
+<span class="sd">        Standard Bruggeman inverse power-law approximation for a randomly</span>
+<span class="sd">        distributed phase with exponent -0.5.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        volume_fraction : float</span>
+<span class="sd">            Ionomer volume fraction (n.d.).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            Tortuosity factor (n.d.).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">volume_fraction</span> <span class="o">**</span> <span class="o">-</span><span class="mf">0.5</span></div>
+</div>
+
+    
+    
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PorousTransferLayer</span><span class="p">(</span><span class="n">CatalystLayer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents a porous transfer layer (PTL) over a catalyst layer,</span>
+<span class="sd">    e.g. fibrous media structure in fuel cells.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ptl_porosity : float</span>
+<span class="sd">        PTL porosity (default: 0.83).</span>
+<span class="sd">    fiber_diameter : float</span>
+<span class="sd">        Diameter of fibers [m].</span>
+<span class="sd">    ionomer_k1, ionomer_k2 : float</span>
+<span class="sd">        Constants from Hao et al. (2015) for film resistance calculations.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ptl_porosity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.83</span>
+    <span class="n">fiber_diameter</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">20e-6</span>
+    <span class="n">ionomer_k1</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">8.5</span>
+    <span class="n">ionomer_k2</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.4</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute derived PTL geometry from fiber and catalyst composition.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fiber_number_density_cross_section</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">ptl_porosity</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">fiber_diameter</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fiber_surface_per_volume</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">ptl_porosity</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">fiber_diameter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">catalyst_vol_surface_area</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalyst_loading</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ecsa</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">catalyst_vol_fraction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalyst_loading</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalyst_density</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_vol_fraction</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">catalyst_vol_fraction</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalyst_density</span> <span class="o">*</span>
+                                     <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_to_catalyst_ratio</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer</span><span class="o">.</span><span class="n">dry_density</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">porosity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ptl_porosity</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalyst_vol_fraction</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_vol_fraction</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_film_thickness</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_vol_fraction</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">fiber_surface_per_volume</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_vol_surface_area</span> <span class="o">=</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span>
+                                         <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fiber_diameter</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_film_thickness</span><span class="p">)</span> <span class="o">*</span>
+                                         <span class="bp">self</span><span class="o">.</span><span class="n">fiber_number_density_cross_section</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">effective_gas_diffusion_ratio</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">porosity</span> <span class="o">**</span> <span class="mf">1.5</span>
+        <span class="n">PorousLayer</span><span class="o">.</span><span class="n">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+
+
+
+<div class="viewcode-block" id="PtCCatalystLayer">
+<a class="viewcode-back" href="../../../api/catalyst_layers.html#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PtCCatalystLayer</span><span class="p">(</span><span class="n">CatalystLayer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Catalyst layer with explicit Pt/C agglomerate geometry and ionomer film.</span>
+
+<span class="sd">    Volume fractions (carbon, platinum, ionomer, pore) are derived from the</span>
+<span class="sd">    catalyst composition at construction time.  The wet ionomer film thickness</span>
+<span class="sd">    is updated at each operating point via :meth:`set_ionomer_wet_properties`.</span>
+
+<span class="sd">    Local O₂ transport resistance across the ionomer film is modelled following</span>
+<span class="sd">    Hao et al. (2015): bulk diffusion through the film plus gas/ionomer and</span>
+<span class="sd">    ionomer/Pt interface resistances weighted by empirical factors ``ionomer_k1``</span>
+<span class="sd">    (gas-side) and ``ionomer_k2`` (Pt-side).  A water-film correction term</span>
+<span class="sd">    (``ionomer_k3``) accounts for flooding at the ionomer surface.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    platinum_loading : float</span>
+<span class="sd">        Pt loading (kg/m²).</span>
+<span class="sd">    catalyst_platinum_weight_percent : float</span>
+<span class="sd">        Pt weight fraction in the catalyst powder (–).</span>
+<span class="sd">    ionomer_to_carbon_ratio : float</span>
+<span class="sd">        Ionomer/carbon mass ratio (–).</span>
+<span class="sd">    platinum_density, carbon_density : float</span>
+<span class="sd">        Material densities (kg/m³).</span>
+<span class="sd">    carbon_agglomerate_radius : float</span>
+<span class="sd">        Radius of carbon agglomerates (m).</span>
+<span class="sd">    ionomer_k1, ionomer_k2, ionomer_k3 : float</span>
+<span class="sd">        Interface resistance pre-factors from Hao et al. (2015).</span>
+<span class="sd">    omega_PtO : float</span>
+<span class="sd">        Molar volume of platinum oxide (m³/kmol), used by the PtO coverage model.</span>
+
+<span class="sd">    References</span>
+<span class="sd">    ----------</span>
+<span class="sd">    Hao, L. et al. J. Electrochem. Soc. 162, F854 (2015).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">porosity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">platinum_loading</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2e-6</span> <span class="o">*</span> <span class="mf">1e4</span>
+    <span class="n">catalyst_platinum_weight_percent</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">ionomer_to_carbon_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.75</span>
+    <span class="n">platinum_density</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">21450</span>
+    <span class="n">carbon_density</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1950</span>
+    <span class="n">platinum_vol_surface_area</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">carbon_agglomerate_radius</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">25e-9</span>
+    <span class="n">dry_ionomer_vol_fraction</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">ionomer_vol_fraction</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">ionomer_film_thickness</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">contact_angle</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">95.</span>
+    <span class="n">omega_PtO</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">3000e3</span>
+    <span class="n">ionomer_k1</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">8.5</span>
+    <span class="n">ionomer_k2</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.4</span>
+    <span class="n">ionomer_k3</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">5.4</span>
+    <span class="n">ionomer_water_content</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">10</span>
+
+<div class="viewcode-block" id="PtCCatalystLayer.__post_init__">
+<a class="viewcode-back" href="../../../api/catalyst_layers.html#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.__post_init__">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute volume fractions and geometry from catalyst composition (Hao et al. 2015).&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">platinum_vol_surface_area</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">platinum_vol_surface_area</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">platinum_loading</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ecsa</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">porosity</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">carbon_loading</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">platinum_loading</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalyst_platinum_weight_percent</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">carbon_vol_fraction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">carbon_loading</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">carbon_density</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">platinum_vol_fraction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">platinum_loading</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">platinum_density</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">catalyst_vol_fraction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">platinum_vol_fraction</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">carbon_vol_fraction</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dry_ionomer_vol_fraction</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">carbon_vol_fraction</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">carbon_density</span> <span class="o">*</span>
+                                             <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_to_carbon_ratio</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer</span><span class="o">.</span><span class="n">dry_density</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">catalyst_vol_fraction</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">dry_ionomer_vol_fraction</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">porosity</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">carbon_agglomerate_surface</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">carbon_agglomerate_radius</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">carbon_agglomerate_volume</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">carbon_agglomerate_surface</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">carbon_agglomerate_radius</span> <span class="o">/</span> <span class="mf">3.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">carbon_agglomerate_number_density</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">carbon_vol_fraction</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">carbon_agglomerate_volume</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_ionomer_wet_properties</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ionomer_water_content</span><span class="p">,</span> <span class="mi">300</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_water_film_thickness</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">PorousLayer</span><span class="o">.</span><span class="n">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PtCCatalystLayer.set_ionomer_wet_properties">
+<a class="viewcode-back" href="../../../api/catalyst_layers.html#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.set_ionomer_wet_properties">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_ionomer_wet_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ionomer_water_content</span><span class="p">,</span> <span class="n">temperature</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update ionomer volume fraction, film thickness, and pore volume for given water content.</span>
+
+<span class="sd">        Computes the wet ionomer expansion factor from the ionomer model, then</span>
+<span class="sd">        recalculates ``ionomer_vol_fraction``, ``porosity``, ``ionomer_film_thickness``,</span>
+<span class="sd">        ``ionomer_vol_surface_area``, and ``effective_gas_diffusion_ratio``.</span>
+<span class="sd">        Called at construction and at every MEA temperature update.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_expansion_factor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer</span><span class="o">.</span><span class="n">wet_expansion_factor</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">ionomer_water_content</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">20</span><span class="p">),</span> <span class="n">temperature</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_vol_fraction</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dry_ionomer_vol_fraction</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_expansion_factor</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">porosity</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">catalyst_vol_fraction</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_vol_fraction</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_film_thickness</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">carbon_agglomerate_radius</span> <span class="o">*</span> <span class="p">(</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ionomer_vol_fraction</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">carbon_vol_fraction</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="mi">1</span><span class="o">/</span><span class="mi">3</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_vol_surface_area</span> <span class="o">=</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">carbon_agglomerate_radius</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_film_thickness</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">carbon_agglomerate_number_density</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_to_carbon_vol_ratio</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_film_thickness</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">carbon_agglomerate_radius</span><span class="p">)</span><span class="o">**</span><span class="mi">3</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">effective_gas_diffusion_ratio</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">porosity</span> <span class="o">**</span> <span class="mf">1.5</span></div>
+
+    
+<div class="viewcode-block" id="PtCCatalystLayer.set_water_film_thickness">
+<a class="viewcode-back" href="../../../api/catalyst_layers.html#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.set_water_film_thickness">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_water_film_thickness</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">water_saturation</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Compute and store the liquid water film thickness around agglomerates.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        water_saturation : float</span>
+<span class="sd">            Non-wetting (liquid water) saturation in the pore space (–).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ionomer_radius</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">carbon_agglomerate_radius</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_film_thickness</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">water_film_thickness</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">water_saturation</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">porosity</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">carbon_agglomerate_radius</span> <span class="o">**</span> <span class="mi">3</span>
+            <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">carbon_vol_fraction</span> <span class="o">+</span> <span class="n">ionomer_radius</span> <span class="o">**</span> <span class="mi">3</span>
+        <span class="p">)</span> <span class="o">**</span> <span class="p">(</span><span class="mf">1.</span> <span class="o">/</span> <span class="mi">3</span><span class="p">)</span> <span class="o">-</span> <span class="n">ionomer_radius</span></div>
+
+
+<div class="viewcode-block" id="PtCCatalystLayer.o2_ionomer_film_bulk_resistance">
+<a class="viewcode-back" href="../../../api/catalyst_layers.html#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.o2_ionomer_film_bulk_resistance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">o2_ionomer_film_bulk_resistance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ionomer_water_content</span><span class="p">,</span> <span class="n">temperature</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the oxygen bulk resistance across the ionomer film.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        ionomer_water_content : float</span>
+<span class="sd">            Water content in the ionomer.</span>
+<span class="sd">        temperature : float</span>
+<span class="sd">            Temperature in Kelvin.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            Oxygen film resistance [s/m].</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ionomer_film_thickness</span> <span class="o">/</span>
+                <span class="p">(</span><span class="n">GAS_CONSTANT</span> <span class="o">*</span> <span class="n">temperature</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer</span><span class="o">.</span><span class="n">o2_permeability</span><span class="p">(</span><span class="n">ionomer_water_content</span><span class="p">,</span> <span class="n">temperature</span><span class="p">)))</span></div>
+
+
+<div class="viewcode-block" id="PtCCatalystLayer.o2_ionomer_film_resistance">
+<a class="viewcode-back" href="../../../api/catalyst_layers.html#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.o2_ionomer_film_resistance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">o2_ionomer_film_resistance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ionomer_water_content</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">catalyst_availability</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate total oxygen film resistance. </span>
+<span class="sd">        Interface resistances are calculated according to equation 32 in Hao et al. (2015),</span>
+<span class="sd">        but neglecting the effect of the water film. </span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        ionomer_water_content : float</span>
+<span class="sd">            Water content in ionomer.</span>
+<span class="sd">        temperature : float</span>
+<span class="sd">            Temperature in Kelvin.</span>
+<span class="sd">        catalyst_availability: float</span>
+<span class="sd">            Catalyst availability = 1 - catalyst coverage ratio. </span>
+<span class="sd">            </span>
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            Total oxygen film resistance [s/m].</span>
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+<span class="sd">        Hao, L. et al. J. Electrochem. Soc. 162, F854 (2015).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">ionomer_pt_interface_term</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ionomer_k2</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">platinum_loading</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ecsa</span> <span class="o">*</span> <span class="n">catalyst_availability</span><span class="p">)</span>
+        <span class="n">ionomer_gas_interface_term</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ionomer_k1</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ionomer_vol_surface_area</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="p">)</span>
+        <span class="n">water_term</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ionomer_k3</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">water_film_thickness</span> <span class="o">/</span> <span class="n">o2_water_diffusivity</span><span class="p">(</span><span class="n">temperature</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ionomer_vol_surface_area</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">ionomer_gas_interface_term</span> <span class="o">+</span> <span class="n">ionomer_pt_interface_term</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">o2_ionomer_film_bulk_resistance</span><span class="p">(</span><span class="n">ionomer_water_content</span><span class="p">,</span> <span class="n">temperature</span><span class="p">)</span> <span class="o">+</span> <span class="n">water_term</span></div>
+
+    
+<div class="viewcode-block" id="PtCCatalystLayer.ionomer_tortuosity">
+<a class="viewcode-back" href="../../../api/catalyst_layers.html#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_tortuosity">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ionomer_tortuosity</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">volume_fraction</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Piecewise tortuosity factor for the ionomer film in a Pt/C agglomerate layer.</span>
+
+<span class="sd">        Above a threshold of 0.16 the ionomer network is well-connected and the</span>
+<span class="sd">        tortuosity approaches 1.  Below that threshold a fitted power law is used,</span>
+<span class="sd">        following the correlation from Hao et al. (2015).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        volume_fraction : float</span>
+<span class="sd">            Ionomer volume fraction (–).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            Tortuosity factor (–).</span>
+
+<span class="sd">        References</span>
+<span class="sd">        ----------</span>
+<span class="sd">        Hao, L. et al. J. Electrochem. Soc. 162, F854 (2015).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">volume_fraction</span> <span class="o">&gt;</span> <span class="mf">0.16</span><span class="p">,</span>
+            <span class="mi">1</span><span class="p">,</span>
+            <span class="mf">0.0845</span> <span class="o">*</span> <span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="mf">0.1</span><span class="p">,</span> <span class="n">volume_fraction</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.04</span><span class="p">)</span> <span class="o">**</span> <span class="o">-</span><span class="mf">1.17</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Pedro Affonso Nobrega.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

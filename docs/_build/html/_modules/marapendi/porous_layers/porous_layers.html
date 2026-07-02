@@ -1,0 +1,347 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>marapendi.porous_layers.porous_layers &mdash; marapendi 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            marapendi
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">marapendi</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">marapendi.porous_layers.porous_layers</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for marapendi.porous_layers.porous_layers</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Module providing classes to model porous layers in electrochemical cells.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..thermo.constants</span><span class="w"> </span><span class="kn">import</span> <span class="n">GAS_CONSTANT</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..thermo.gas</span><span class="w"> </span><span class="kn">import</span> <span class="n">GasModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..cell.state</span><span class="w"> </span><span class="kn">import</span> <span class="n">GasState</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.diffusion</span><span class="w"> </span><span class="kn">import</span> <span class="n">PorousGasDiffusionModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.darcy</span><span class="w"> </span><span class="kn">import</span> <span class="n">DarcyTransportModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..thermo.water</span><span class="w"> </span><span class="kn">import</span> <span class="n">water_kinematic_viscosity</span><span class="p">,</span> <span class="n">water_surface_tension</span><span class="p">,</span> <span class="n">water_molecular_weight</span>
+
+<div class="viewcode-block" id="PorousLayer">
+<a class="viewcode-back" href="../../../api/porous_layers.html#marapendi.porous_layers.porous_layers.PorousLayer">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">PorousLayer</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents a porous layer in a fuel cell or electrolyzer, defining its</span>
+<span class="sd">    static geometry and material properties.</span>
+
+<span class="sd">    Runtime temperature-dependent quantities (``RT``, ``breakthrough_pressure``,</span>
+<span class="sd">    ``saturation_flow_resistance``) are computed by</span>
+<span class="sd">    :meth:`update_state_at_temperature` and stored in the corresponding</span>
+<span class="sd">    :class:`~marapendi.cell.state.LayerState`.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    thickness : float</span>
+<span class="sd">        Thickness of the porous layer in meters (default is 1e-3 m).</span>
+<span class="sd">    gas : GasState</span>
+<span class="sd">        Initial gas composition.</span>
+<span class="sd">    temperature : float</span>
+<span class="sd">        Reference temperature used at construction time to pre-compute</span>
+<span class="sd">        component-level capillary properties (K).</span>
+<span class="sd">    pressure : float</span>
+<span class="sd">        Reference pressure (Pa).</span>
+<span class="sd">    porosity : float</span>
+<span class="sd">        Porosity of the layer (0 &lt; porosity &lt; 1).</span>
+<span class="sd">    effective_gas_diffusion_ratio : float</span>
+<span class="sd">        Ratio accounting for effective gas diffusion through the porous medium.</span>
+<span class="sd">    pore_diameter : float</span>
+<span class="sd">        Average pore diameter in meters (default is large, so Knudsen diffusion negligible).</span>
+<span class="sd">    transport_resistance_model : PorousGasDiffusionModel</span>
+<span class="sd">        Model used to calculate gas transport resistance.</span>
+<span class="sd">    two_phase_transport_model : DarcyTransportModel</span>
+<span class="sd">        Model used to compute liquid water flow and capillarity.</span>
+<span class="sd">    non_wetting_saturation : float</span>
+<span class="sd">        Fraction of the pore volume occupied by non-wetting phase (0 to 1).</span>
+<span class="sd">    thermal_conductivity : float</span>
+<span class="sd">        Thermal conductivity in W/(m·K).</span>
+<span class="sd">    absolute_permeability : float</span>
+<span class="sd">        Absolute permeability in m².</span>
+<span class="sd">    relative_permeability_exponent : float</span>
+<span class="sd">        Exponent for relative permeability model.</span>
+<span class="sd">    contact_angle : float</span>
+<span class="sd">        Contact angle for the non-wetting phase in degrees (default is 120°).</span>
+<span class="sd">    non_wetting_phase : str</span>
+<span class="sd">        Non-wetting phase identifier (&#39;water&#39; or &#39;gas&#39;).</span>
+<span class="sd">    breakthrough_pressure : float, optional</span>
+<span class="sd">        Capillary entry-pressure scale σ·cos θ / √(K/ε) (Pa).  When ``None``</span>
+<span class="sd">        (default), computed from geometry and ``temperature`` at construction</span>
+<span class="sd">        time and recomputed at the actual operating temperature by</span>
+<span class="sd">        :meth:`update_state_at_temperature`.  Provide an explicit value to</span>
+<span class="sd">        override the geometry-based calculation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">thickness</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-3</span>
+    <span class="n">gas</span><span class="p">:</span> <span class="n">GasState</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">GasState</span><span class="p">)</span>
+    <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">300.</span>
+    <span class="n">pressure</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e5</span>
+    <span class="n">porosity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">effective_gas_diffusion_ratio</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">pore_diameter</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e12</span>
+    <span class="n">transport_resistance_model</span><span class="p">:</span> <span class="n">PorousGasDiffusionModel</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">PorousGasDiffusionModel</span><span class="p">)</span>
+    <span class="n">two_phase_transport_model</span><span class="p">:</span> <span class="n">DarcyTransportModel</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">DarcyTransportModel</span><span class="p">)</span>
+    <span class="n">non_wetting_saturation</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">thermal_conductivity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e12</span>
+    <span class="n">absolute_permeability</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e6</span>
+    <span class="n">relative_permeability_exponent</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">contact_angle</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">120.</span>
+    <span class="n">non_wetting_phase</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;water&#39;</span>
+    <span class="n">wetting_phase</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;gas&#39;</span>
+    <span class="n">breakthrough_pressure</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sqrt_abs_permeability_porosity</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">absolute_permeability</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">porosity</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cosinus_contact_angle</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">180</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">contact_angle</span><span class="p">))</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">contact_angle</span> <span class="o">&lt;</span> <span class="mi">90</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">non_wetting_phase</span> <span class="o">=</span> <span class="s1">&#39;gas&#39;</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">wetting_phase</span> <span class="o">=</span> <span class="s1">&#39;water&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_bp_from_geometry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">breakthrough_pressure</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bp_from_geometry</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">breakthrough_pressure</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_compute_breakthrough_pressure</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">temperature</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">RT</span> <span class="o">=</span> <span class="n">GAS_CONSTANT</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">saturation_pressure</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">saturation_flow_resistance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_saturation_flow_resistance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">temperature</span><span class="p">)</span>
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Temperature-dependent capillary helpers</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_compute_breakthrough_pressure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Capillary entry-pressure scale (Pa) from layer geometry at *temperature*.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">water_surface_tension</span><span class="p">(</span><span class="n">temperature</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cosinus_contact_angle</span>
+            <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">absolute_permeability</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">porosity</span><span class="p">)</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="PorousLayer.update_state_at_temperature">
+<a class="viewcode-back" href="../../../api/porous_layers.html#marapendi.porous_layers.porous_layers.PorousLayer.update_state_at_temperature">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_state_at_temperature</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">layer_state</span><span class="p">,</span> <span class="n">temperature</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Write temperature-dependent capillary quantities into *layer_state*.</span>
+
+<span class="sd">        Called by :meth:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel.set_initial_state`</span>
+<span class="sd">        for every layer at stack temperature, and by</span>
+<span class="sd">        :meth:`~marapendi.cell.thermal.ThermalModel.set_mea_temperature` for</span>
+<span class="sd">        catalyst layers at MEA temperature.  The component&#39;s own fields are</span>
+<span class="sd">        not mutated.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        layer_state : LayerState</span>
+<span class="sd">            State object to populate.  Sets ``temperature``, ``RT``,</span>
+<span class="sd">            ``breakthrough_pressure``, and ``saturation_flow_resistance``.</span>
+<span class="sd">        temperature : float</span>
+<span class="sd">            Temperature at which to evaluate all temperature-dependent</span>
+<span class="sd">            quantities (K).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">layer_state</span><span class="o">.</span><span class="n">temperature</span> <span class="o">=</span> <span class="n">temperature</span>
+        <span class="n">layer_state</span><span class="o">.</span><span class="n">RT</span> <span class="o">=</span> <span class="n">GAS_CONSTANT</span> <span class="o">*</span> <span class="n">temperature</span>
+        <span class="n">layer_state</span><span class="o">.</span><span class="n">breakthrough_pressure</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_compute_breakthrough_pressure</span><span class="p">(</span><span class="n">temperature</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bp_from_geometry</span>
+            <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">breakthrough_pressure</span>
+        <span class="p">)</span>
+        <span class="n">layer_state</span><span class="o">.</span><span class="n">saturation_flow_resistance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calculate_saturation_flow_resistance</span><span class="p">(</span>
+            <span class="n">temperature</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;electrolyte&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Static geometry / thermal</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">thermal_resistance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Thermal resistance of the layer (m²·K/W).&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">thermal_conductivity</span>
+
+<div class="viewcode-block" id="PorousLayer.calculate_saturation_flow_resistance">
+<a class="viewcode-back" href="../../../api/porous_layers.html#marapendi.porous_layers.porous_layers.PorousLayer.calculate_saturation_flow_resistance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_saturation_flow_resistance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">temperature</span><span class="p">,</span> <span class="n">electrolyte</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resistance to non-wetting phase flow at *temperature* (s·m²/mol).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        temperature : float</span>
+<span class="sd">            Temperature at which to evaluate fluid viscosity and surface</span>
+<span class="sd">            tension (K).</span>
+<span class="sd">        electrolyte : ElectrolyteSolution, optional</span>
+<span class="sd">            Required only when ``non_wetting_phase == &#39;gas&#39;`` and the wetting</span>
+<span class="sd">            phase is a liquid electrolyte (provides ``surface_tension``).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        float</span>
+<span class="sd">            Saturation flow resistance in m²·s/kmol.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">non_wetting_phase</span> <span class="o">==</span> <span class="s1">&#39;water&#39;</span><span class="p">:</span>
+            <span class="n">non_wetting_kinematic_viscosity</span> <span class="o">=</span> <span class="n">water_kinematic_viscosity</span><span class="p">(</span><span class="n">temperature</span><span class="p">)</span>
+            <span class="n">non_wetting_molecular_weight</span> <span class="o">=</span> <span class="n">water_molecular_weight</span>
+            <span class="n">non_wetting_surface_tension</span> <span class="o">=</span> <span class="n">water_surface_tension</span><span class="p">(</span><span class="n">temperature</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">non_wetting_phase</span> <span class="o">==</span> <span class="s1">&#39;gas&#39;</span><span class="p">:</span>
+            <span class="n">non_wetting_kinematic_viscosity</span> <span class="o">=</span> <span class="n">GasModel</span><span class="o">.</span><span class="n">mixture_kinematic_viscosity</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            <span class="n">non_wetting_molecular_weight</span> <span class="o">=</span> <span class="n">GasModel</span><span class="o">.</span><span class="n">mixture_molecular_weight</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+            <span class="n">non_wetting_surface_tension</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">water_surface_tension</span><span class="p">(</span><span class="n">temperature</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">wetting_phase</span> <span class="o">==</span> <span class="s1">&#39;water&#39;</span>
+                <span class="k">else</span> <span class="n">electrolyte</span><span class="o">.</span><span class="n">surface_tension</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">thickness</span> <span class="o">*</span> <span class="n">non_wetting_kinematic_viscosity</span> <span class="o">*</span> <span class="n">non_wetting_molecular_weight</span><span class="p">)</span>
+            <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sqrt_abs_permeability_porosity</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">cosinus_contact_angle</span> <span class="o">*</span> <span class="n">non_wetting_surface_tension</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PorousLayer.saturation_from_capillary_pressure">
+<a class="viewcode-back" href="../../../api/porous_layers.html#marapendi.porous_layers.porous_layers.PorousLayer.saturation_from_capillary_pressure">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">saturation_from_capillary_pressure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">capillary_pressure</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Non-wetting saturation from capillary pressure via the two-phase transport model.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">two_phase_transport_model</span><span class="o">.</span><span class="n">saturation_from_capillary_pressure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">capillary_pressure</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PorousLayer.capillary_pressure_from_saturation">
+<a class="viewcode-back" href="../../../api/porous_layers.html#marapendi.porous_layers.porous_layers.PorousLayer.capillary_pressure_from_saturation">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">capillary_pressure_from_saturation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">saturation</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Capillary pressure from non-wetting saturation via the two-phase transport model.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">two_phase_transport_model</span><span class="o">.</span><span class="n">capillary_pressure_from_saturation</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">saturation</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="PorousLayer.set_ionomer_wet_properties">
+<a class="viewcode-back" href="../../../api/porous_layers.html#marapendi.porous_layers.porous_layers.PorousLayer.set_ionomer_wet_properties">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_ionomer_wet_properties</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ionomer_water_content</span><span class="p">,</span> <span class="n">temperature</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update ionomer transport properties at *ionomer_water_content* and *temperature*. Override in subclasses.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+
+
+<div class="viewcode-block" id="PorousLayer.set_water_film_thickness">
+<a class="viewcode-back" href="../../../api/porous_layers.html#marapendi.porous_layers.porous_layers.PorousLayer.set_water_film_thickness">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_water_film_thickness</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">water_saturation</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set the liquid water film thickness from *water_saturation*. Override in subclasses.&quot;&quot;&quot;</span>
+        <span class="k">pass</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="GasDiffusionLayer">
+<a class="viewcode-back" href="../../../api/porous_layers.html#marapendi.porous_layers.porous_layers.GasDiffusionLayer">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">GasDiffusionLayer</span><span class="p">(</span><span class="n">PorousLayer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Gas diffusion layer: a :class:`PorousLayer` with typical GDL defaults.&quot;&quot;&quot;</span>
+
+    <span class="n">thickness</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">200e-6</span>
+    <span class="n">porosity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.6</span>
+    <span class="n">contact_angle</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">120.</span>
+    <span class="n">absolute_permeability</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-12</span>
+    <span class="n">thermal_conductivity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span></div>
+
+
+
+<div class="viewcode-block" id="MicroPorousLayer">
+<a class="viewcode-back" href="../../../api/porous_layers.html#marapendi.porous_layers.porous_layers.MicroPorousLayer">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">MicroPorousLayer</span><span class="p">(</span><span class="n">PorousLayer</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Microporous layer (MPL): a :class:`PorousLayer` with typical MPL defaults.&quot;&quot;&quot;</span>
+
+    <span class="n">thickness</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">30e-6</span>
+    <span class="n">porosity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.4</span>
+    <span class="n">contact_angle</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">130.</span>
+    <span class="n">absolute_permeability</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-13</span>
+    <span class="n">thermal_conductivity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Pedro Affonso Nobrega.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

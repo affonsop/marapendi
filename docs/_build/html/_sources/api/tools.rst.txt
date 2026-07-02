@@ -1,14 +1,12 @@
-Tools
-=====
+Tools and Utilities
+===================
 
 Utility functions and load-cycle helpers.
 
-.. automodule:: marapendi.tools.tools
+.. automodule:: marapendi.tools
    :members:
-   :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.tools.load_cycles
+.. automodule:: marapendi.simulation.load_cycles
    :members:
-   :undoc-members:
    :show-inheritance:

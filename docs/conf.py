@@ -6,14 +6,13 @@ import os
 import sys
 
 # -- Path setup ----------------------------------------------------------------
-# Point Sphinx at the src/ layout so `import marapendi` resolves.
 sys.path.insert(0, os.path.abspath("../src"))
 
 # -- Project information -------------------------------------------------------
 project = "marapendi"
 copyright = "2024, Pedro Affonso Nobrega"
 author = "Pedro Affonso Nobrega"
-release = "0.1.0"
+release = "1.0.0"
 
 # -- General configuration -----------------------------------------------------
 extensions = [
@@ -21,72 +20,101 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx.ext.autosummary",
+    "sphinx.ext.intersphinx",
+    "sphinx_copybutton",
+    "sphinx_design",
+    "sphinx_gallery.gen_gallery",
 ]
 
 templates_path = ["_templates"]
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 
-# Automatically generate stub pages for autosummary directives.
 autosummary_generate = True
+
+# -- Intersphinx ---------------------------------------------------------------
+intersphinx_mapping = {
+    "python": ("https://docs.python.org/3", None),
+    "numpy":  ("https://numpy.org/doc/stable", None),
+    "scipy":  ("https://docs.scipy.org/doc/scipy", None),
+}
 
 # -- autodoc options -----------------------------------------------------------
 autodoc_default_options = {
     "members": True,
-    "undoc-members": True,
+    "undoc-members": False,
     "show-inheritance": True,
 }
-
-# The top-level marapendi/__init__.py re-exports every submodule via star
-# imports.  When Sphinx imports one submodule it ends up importing the whole
-# package, which triggers "duplicate object description" warnings for every
-# attribute that appears under both the subpackage page and the parent package
-# namespace.  These are harmless — the filter below silences them so that
-# `-W` builds stay clean without modifying any source file.
-
-
-def _filter_duplicate_object_warnings() -> None:
-    """Install a log filter that drops Sphinx duplicate-object warnings.
-
-    The warning is emitted by ``sphinx.domains.python`` without a structured
-    type tag, so it cannot be suppressed via ``suppress_warnings``.  Instead we
-    attach a ``logging.Filter`` to the ``sphinx`` logger that drops the specific
-    message text before it reaches the warning handler.
-    """
-
-    class _DupFilter(logging.Filter):
-        def filter(self, record: logging.LogRecord) -> bool:  # noqa: A003
-            msg = record.getMessage()
-            return "duplicate object description" not in msg
-
-    logging.getLogger("sphinx").addFilter(_DupFilter())
+autodoc_typehints = "description"
+autodoc_typehints_format = "short"
 
 # -- Napoleon (NumPy-style docstrings) -----------------------------------------
 napoleon_google_docstring = False
 napoleon_numpy_docstring = True
 napoleon_include_init_with_doc = True
 napoleon_include_private_with_doc = False
-napoleon_include_special_with_doc = True
-napoleon_use_admonition_for_examples = False
-napoleon_use_admonition_for_notes = False
-napoleon_use_admonition_for_references = False
-napoleon_use_ivar = False
+napoleon_include_special_with_doc = False
+napoleon_use_admonition_for_examples = True
+napoleon_use_admonition_for_notes = True
 napoleon_use_param = True
 napoleon_use_rtype = True
 
-# -- HTML output ---------------------------------------------------------------
-# Try sphinx_rtd_theme; fall back gracefully to alabaster.
-try:
-    import sphinx_rtd_theme  # noqa: F401
+# -- copybutton ----------------------------------------------------------------
+copybutton_prompt_text = r">>> |\.\.\. |\$ "
+copybutton_prompt_is_regexp = True
 
-    html_theme = "sphinx_rtd_theme"
-except ImportError:
-    html_theme = "alabaster"
+# -- HTML output ---------------------------------------------------------------
+html_theme = "pydata_sphinx_theme"
+
+html_theme_options = {
+    "logo": {
+        "image_light": "_static/marapendi-full-bleu.png",
+        "image_dark":  "_static/marapendi-full-bleu.png",
+        "alt_text": "marapendi",
+    },
+    "navbar_start": ["navbar-logo"],
+    "navbar_center": ["navbar-nav"],
+    "navbar_end": ["navbar-icon-links"],
+    "secondary_sidebar_items": ["page-toc"],
+    "show_toc_level": 2,
+    "navigation_with_keys": True,
+    "pygments_light_style": "tango",
+    "footer_start": ["copyright"],
+    "footer_end": [],
+}
+
+# Force light mode via the Jinja2 template variable used by the theme layout.
+html_context = {
+    "default_mode": "light",
+}
+
+# -- Sphinx-Gallery ------------------------------------------------------------
+sphinx_gallery_conf = {
+    "examples_dirs": "../examples",               # location of gallery scripts
+    "gallery_dirs": "auto_examples",            # generated HTML output
+    "filename_pattern": r"/plot_",              # only files named plot_*.py
+    "within_subsection_order": "FileNameSortKey",
+    "download_all_examples": True,
+    "remove_config_comments": True,
+    "plot_gallery": True,
+    "thumbnail_size": (400, 280),
+    "image_scrapers": ("matplotlib",),
+    "reset_modules": ("matplotlib",),
+}
 
 html_static_path = ["_static"]
+html_css_files = ["custom.css"]
+
+# -- Duplicate-object warning filter -------------------------------------------
+
+def _filter_duplicate_object_warnings() -> None:
+    """Suppress benign duplicate-object warnings from star-import re-exports."""
+
+    class _DupFilter(logging.Filter):
+        def filter(self, record: logging.LogRecord) -> bool:
+            return "duplicate object description" not in record.getMessage()
+
+    logging.getLogger("sphinx").addFilter(_DupFilter())
 
 
-# -- Setup hook ----------------------------------------------------------------
-
-def setup(app) -> None:  # noqa: ANN001
-    """Install log filter to suppress benign duplicate-object warnings."""
+def setup(app) -> None:
     _filter_duplicate_object_warnings()

@@ -1,0 +1,436 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>marapendi.cell.fuelcell &mdash; marapendi 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            marapendi
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">marapendi</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">marapendi.cell.fuelcell</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for marapendi.cell.fuelcell</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">PEM fuel cell component: :class:`FuelCell` and :class:`FuelCellSide`.</span>
+
+<span class="sd">:class:`FuelCell` is the component tree a user builds to describe a cell&#39;s</span>
+<span class="sd">geometry and materials.  Physics are evaluated by creating a model object</span>
+<span class="sd">and calling its :meth:`~ExplicitSteadyStateModel.set_initial_conditions` /</span>
+<span class="sd">:meth:`~ExplicitSteadyStateModel.solve` pair:</span>
+
+<span class="sd">::</span>
+
+<span class="sd">    cell = FuelCell(</span>
+<span class="sd">        area=25e-4,</span>
+<span class="sd">        ca=FuelCellSide(cl=PtCCatalystLayer(...), gdl=GasDiffusionLayer(...), ch=FlowChannel(...)),</span>
+<span class="sd">        an=FuelCellSide(...),</span>
+<span class="sd">        membrane=PFSA(...),</span>
+<span class="sd">    )</span>
+
+<span class="sd">    model = ExplicitSteadyStateModel()</span>
+<span class="sd">    conditions = CellConditions(</span>
+<span class="sd">        current_density=np.linspace(1e3, 2e4, 20),</span>
+<span class="sd">        cell_temperature=353.15,</span>
+<span class="sd">        ca=SideConditions(outlet_pressure=1.5e5, dry_o2_mole_fraction=0.21, ...),</span>
+<span class="sd">        an=SideConditions(outlet_pressure=1.5e5, dry_h2_mole_fraction=1.0, ...),</span>
+<span class="sd">    )</span>
+<span class="sd">    state = model.set_initial_conditions(cell, conditions)</span>
+<span class="sd">    state = model.solve(cell, conditions, state)</span>
+<span class="sd">    # state.cell_voltage, state.mea_temperature, … are now populated</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..porous_layers.porous_layers</span><span class="w"> </span><span class="kn">import</span> <span class="n">PorousLayer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..porous_layers.catalyst_layers</span><span class="w"> </span><span class="kn">import</span> <span class="n">PtCCatalystLayer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..channel.flow_channels</span><span class="w"> </span><span class="kn">import</span> <span class="n">FlowChannel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..membrane.membrane_base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Membrane</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.cell</span><span class="w"> </span><span class="kn">import</span> <span class="n">Cell</span><span class="p">,</span> <span class="n">CellSide</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.voltage</span><span class="w"> </span><span class="kn">import</span> <span class="n">VoltageModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.thermal</span><span class="w"> </span><span class="kn">import</span> <span class="n">ThermalModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..electrolyte.electrolyte</span><span class="w"> </span><span class="kn">import</span> <span class="n">ElectrolyteSolution</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.explicit_steady_state</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExplicitSteadyStateModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.implicit_steady_state</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImplicitSteadyStateModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.state</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CellState</span><span class="p">,</span> <span class="n">CellSideState</span><span class="p">,</span> <span class="n">LayerState</span><span class="p">,</span> <span class="n">CatalystLayerState</span><span class="p">,</span>
+    <span class="n">FlowChannelState</span><span class="p">,</span> <span class="n">MembraneState</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.state</span><span class="w"> </span><span class="kn">import</span> <span class="n">GasState</span>
+
+
+<div class="viewcode-block" id="FuelCellSide">
+<a class="viewcode-back" href="../../../api/cell.html#marapendi.cell.fuelcell.FuelCellSide">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FuelCellSide</span><span class="p">(</span><span class="n">CellSide</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    One side (anode or cathode) of a PEM fuel cell.</span>
+
+<span class="sd">    Owns the porous layers (catalyst layer, optional microporous layer, gas</span>
+<span class="sd">    diffusion layer) and flow channel for one electrode.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cl : CatalystLayer</span>
+<span class="sd">        Catalyst layer (defaults to :class:`~marapendi.PtCCatalystLayer`).</span>
+<span class="sd">    gdl : PorousLayer</span>
+<span class="sd">        Gas diffusion layer.</span>
+<span class="sd">    mpl : PorousLayer, optional</span>
+<span class="sd">        Microporous layer.</span>
+<span class="sd">    ch : FlowChannel</span>
+<span class="sd">        Flow channel.</span>
+<span class="sd">    has_mpl : bool</span>
+<span class="sd">        Whether this side includes a microporous layer.</span>
+<span class="sd">    is_wet : bool</span>
+<span class="sd">        Whether this side is flooded with liquid (used for water electrolysis).</span>
+<span class="sd">    thermal_contact_resistance : float</span>
+<span class="sd">        Additional thermal contact resistance at the GDL/bipolar-plate interface (m²·K/W).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">is_wet</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="FuelCellSide.set_catalyst_layer">
+<a class="viewcode-back" href="../../../api/cell.html#marapendi.cell.fuelcell.FuelCellSide.set_catalyst_layer">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_catalyst_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cl</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Replace the catalyst layer.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cl</span> <span class="o">=</span> <span class="n">cl</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__post_init__</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="FuelCellSide.set_gas_diffusion_layer">
+<a class="viewcode-back" href="../../../api/cell.html#marapendi.cell.fuelcell.FuelCellSide.set_gas_diffusion_layer">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_gas_diffusion_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gdl</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Replace the gas diffusion layer.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gdl</span> <span class="o">=</span> <span class="n">gdl</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__post_init__</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="FuelCellSide.set_channel">
+<a class="viewcode-back" href="../../../api/cell.html#marapendi.cell.fuelcell.FuelCellSide.set_channel">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_channel</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ch</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Replace the flow channel.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ch</span> <span class="o">=</span> <span class="n">ch</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">__post_init__</span><span class="p">()</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="FuelCell">
+<a class="viewcode-back" href="../../../api/cell.html#marapendi.cell.fuelcell.FuelCell">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">FuelCell</span><span class="p">(</span><span class="n">Cell</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Proton exchange membrane fuel cell.</span>
+
+<span class="sd">    The cell object is a pure component tree: it holds geometry and material</span>
+<span class="sd">    parameters only.  All physics are evaluated by a separate model object::</span>
+
+<span class="sd">        model = ExplicitSteadyStateModel()</span>
+<span class="sd">        state = model.set_initial_conditions(cell, conditions)</span>
+<span class="sd">        state = model.solve(cell, conditions, state)</span>
+<span class="sd">        # state.cell_voltage, state.mea_temperature, … are now populated</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    ca : FuelCellSide</span>
+<span class="sd">        Cathode side (catalyst layer, GDL, optional MPL, flow channel).</span>
+<span class="sd">    an : FuelCellSide</span>
+<span class="sd">        Anode side.</span>
+<span class="sd">    membrane : Membrane</span>
+<span class="sd">        Membrane component (e.g. :class:`~marapendi.membrane.pem.PFSA`).</span>
+<span class="sd">    area : float</span>
+<span class="sd">        Active cell area (m²).</span>
+<span class="sd">    electrical_resistance : float</span>
+<span class="sd">        Through-plane electrical contact resistance (Ω·m²).</span>
+<span class="sd">    cell_number : int</span>
+<span class="sd">        Number of cells in the stack (default 1 — single cell).</span>
+<span class="sd">    mea_surface_heat_capacity : float</span>
+<span class="sd">        Effective MEA heat capacity per unit area (J/m²/K).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">ca</span><span class="p">:</span> <span class="n">FuelCellSide</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">FuelCellSide</span><span class="p">)</span>
+    <span class="n">an</span><span class="p">:</span> <span class="n">FuelCellSide</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">FuelCellSide</span><span class="p">)</span>
+    <span class="n">membrane</span><span class="p">:</span> <span class="n">Membrane</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">Membrane</span><span class="p">)</span>
+
+    <span class="n">cell_number</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">mea_surface_heat_capacity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">10000.</span>
+    <span class="n">use_eq_water_content_for_ionomer</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">reactant</span> <span class="o">=</span> <span class="s1">&#39;o2&#39;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">reactant</span> <span class="o">=</span> <span class="s1">&#39;h2&#39;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">__post_init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_voltage_model</span> <span class="o">=</span> <span class="n">VoltageModel</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_thermal_model</span> <span class="o">=</span> <span class="n">ThermalModel</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">ExplicitSteadyStateModel</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_voltage_model</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_thermal_model</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gas_transport_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">gas_transport_model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="n">CellState</span><span class="p">()</span>
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Voltage accessors — require self.state to be populated by a solve call</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="FuelCell.reversible_cell_voltage">
+<a class="viewcode-back" href="../../../api/cell.html#marapendi.cell.fuelcell.FuelCell.reversible_cell_voltage">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reversible_cell_voltage</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_voltage_model</span><span class="o">.</span><span class="n">reversible_cell_voltage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FuelCell.reversible_voltage_vs_RHE">
+<a class="viewcode-back" href="../../../api/cell.html#marapendi.cell.fuelcell.FuelCell.reversible_voltage_vs_RHE">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">reversible_voltage_vs_RHE</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_voltage_model</span><span class="o">.</span><span class="n">reversible_voltage_vs_RHE</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FuelCell.activation_overpotential">
+<a class="viewcode-back" href="../../../api/cell.html#marapendi.cell.fuelcell.FuelCell.activation_overpotential">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">activation_overpotential</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">theta_PtO</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_voltage_model</span><span class="o">.</span><span class="n">activation_overpotential</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">,</span> <span class="n">theta_PtO</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FuelCell.high_frequency_resistance">
+<a class="viewcode-back" href="../../../api/cell.html#marapendi.cell.fuelcell.FuelCell.high_frequency_resistance">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">high_frequency_resistance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_voltage_model</span><span class="o">.</span><span class="n">high_frequency_resistance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FuelCell.ohmic_overpotential">
+<a class="viewcode-back" href="../../../api/cell.html#marapendi.cell.fuelcell.FuelCell.ohmic_overpotential">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ohmic_overpotential</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_voltage_model</span><span class="o">.</span><span class="n">ohmic_overpotential</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FuelCell.calculate_theta_PtO">
+<a class="viewcode-back" href="../../../api/cell.html#marapendi.cell.fuelcell.FuelCell.calculate_theta_PtO">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_theta_PtO</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_voltage_model</span><span class="o">.</span><span class="n">calculate_theta_PtO</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FuelCell.calculate_cell_voltage">
+<a class="viewcode-back" href="../../../api/cell.html#marapendi.cell.fuelcell.FuelCell.calculate_cell_voltage">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">calculate_cell_voltage</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_voltage_model</span><span class="o">.</span><span class="n">compute_cell_voltage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span><span class="p">)</span></div>
+
+
+    <span class="c1"># ------------------------------------------------------------------</span>
+    <span class="c1"># Transient solver support (internal — not part of steady-state API)</span>
+    <span class="c1"># ------------------------------------------------------------------</span>
+
+<div class="viewcode-block" id="FuelCell.set_water_saturation_in_porous_layers">
+<a class="viewcode-back" href="../../../api/cell.html#marapendi.cell.fuelcell.FuelCell.set_water_saturation_in_porous_layers">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_water_saturation_in_porous_layers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">saturation_profile</span><span class="p">):</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">side</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">an</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ca</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">side</span><span class="o">.</span><span class="n">porous_layers</span><span class="p">:</span>
+                <span class="n">layer</span><span class="o">.</span><span class="n">non_wetting_saturation</span> <span class="o">=</span> <span class="n">saturation_profile</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+                <span class="n">k</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">side</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">an</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ca</span><span class="p">):</span>
+            <span class="n">side</span><span class="o">.</span><span class="n">h2ov_transport_resistance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gas_transport_model</span><span class="o">.</span><span class="n">gas_transport_resistance</span><span class="p">(</span>
+                <span class="n">side</span><span class="p">,</span> <span class="n">side</span><span class="p">,</span> <span class="s1">&#39;h2o&#39;</span>
+            <span class="p">)</span>
+            <span class="n">side</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">set_water_film_thickness</span><span class="p">(</span><span class="n">side</span><span class="o">.</span><span class="n">cl</span><span class="o">.</span><span class="n">non_wetting_saturation</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FuelCell.f_transient">
+<a class="viewcode-back" href="../../../api/cell.html#marapendi.cell.fuelcell.FuelCell.f_transient">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">f_transient</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">n_memb_mesh</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Right-hand side for the full transient ODE: [dT/dt | dλ/dt (membrane) | ds/dt (porous) | ds_relax/dt].</span>
+
+<span class="sd">        The state vector *x* is ordered as</span>
+<span class="sd">        ``[mea_temperature, *membrane_water_profile, *saturation_profile, s_relax_ca, s_relax_an]``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_conditions_from_input_dict</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">t</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">]))</span>
+        <span class="n">k</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">n_memb_mesh</span>
+        <span class="n">water_profile</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">:</span><span class="n">k</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+        <span class="n">saturation_profile</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">k</span><span class="p">:</span><span class="n">k</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">porous_layers</span><span class="p">),</span> <span class="o">...</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">s_relax</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">s_relax</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_mea_temperature</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_water_saturation_in_porous_layers</span><span class="p">(</span><span class="n">saturation_profile</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">water_balance_model</span><span class="o">.</span><span class="n">solve_water_balance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">water_profile</span><span class="o">=</span><span class="n">water_profile</span><span class="p">,</span> <span class="n">dynamic</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">calculate_gas_concentrations_at_cl</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">calculate_cell_voltage</span><span class="p">()</span>
+
+        <span class="n">wbm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">water_balance_model</span>
+        <span class="n">dlmbddt</span> <span class="o">=</span> <span class="n">wbm</span><span class="o">.</span><span class="n">membrane_water_rate_of_change</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n_memb_mesh</span><span class="p">)</span>
+        <span class="n">dTdt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_thermal_model</span><span class="o">.</span><span class="n">temperature_rate_of_change</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">dsdt</span> <span class="o">=</span> <span class="n">wbm</span><span class="o">.</span><span class="n">saturation_rate_of_change</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">dsrlxdt</span> <span class="o">=</span> <span class="n">wbm</span><span class="o">.</span><span class="n">relaxation_rate_of_change</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">dTdt</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">dlmbddt</span><span class="p">)</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">dsdt</span><span class="p">)</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">dsrlxdt</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="FuelCell.f_relax">
+<a class="viewcode-back" href="../../../api/cell.html#marapendi.cell.fuelcell.FuelCell.f_relax">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">f_relax</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">n_memb_mesh</span><span class="o">=</span><span class="mi">3</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Right-hand side for the ionomer relaxation sub-ODE only (``[ds_relax_ca/dt, ds_relax_an/dt]``).&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_conditions_from_input_dict</span><span class="p">(</span><span class="n">u</span><span class="p">,</span> <span class="n">t</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="o">...</span><span class="p">]))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_run_explicit_solve</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">ca</span><span class="o">.</span><span class="n">s_relax</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">2</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">an</span><span class="o">.</span><span class="n">s_relax</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+
+        <span class="n">dsrlxdt</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">water_balance_model</span><span class="o">.</span><span class="n">relaxation_rate_of_change</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">dsrlxdt</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_run_explicit_solve</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Run the explicit steady-state physics on ``self.state`` and sync attributes.&quot;&quot;&quot;</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span>
+        <span class="n">state</span><span class="o">.</span><span class="n">thermal_resistance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_thermal_model</span><span class="o">.</span><span class="n">heat_transfer_resistance</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">mea_temperature</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_thermal_model</span><span class="o">.</span><span class="n">mea_temperature</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_thermal_model</span><span class="o">.</span><span class="n">set_mea_temperature</span><span class="p">(</span><span class="n">mea_temperature</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">water_balance_model</span><span class="o">.</span><span class="n">calculate_water_transport</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">gas_transport_model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_gas_transport_model</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_gas_transport_model</span><span class="o">.</span><span class="n">calculate_gas_concentrations</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_voltage_model</span><span class="o">.</span><span class="n">compute_cell_voltage</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_sync_state_to_fc</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_sync_state_to_fc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Copy solved quantities from ``self.state`` to legacy ``FuelCell`` attributes.&quot;&quot;&quot;</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">state</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cell_voltage</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">cell_voltage</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mea_temperature</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">mea_temperature</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">mea_temperature</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">temperature</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mea_temperature_increase</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">s</span><span class="o">.</span><span class="n">mea_temperature_increase</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">mea_temperature_increase</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mf">0.</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">thermal_resistance</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">thermal_resistance</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">thermal_resistance</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">thermal_resistance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">crossover_current</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">crossover_current</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">crossover_current</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mf">0.</span>
+        <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">h2_permeation_flux</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">h2_permeation_flux</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">membrane</span><span class="o">.</span><span class="n">h2_permeation_flux</span>
+
+<div class="viewcode-block" id="FuelCell.set_conditions_from_input_functions">
+<a class="viewcode-back" href="../../../api/cell.html#marapendi.cell.fuelcell.FuelCell.set_conditions_from_input_functions">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_conditions_from_input_functions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">t</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Evaluate time-dependent input functions *u* at time *t* and update the cell state.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">set_conditions_from_input_dict</span><span class="p">({</span><span class="n">key</span><span class="p">:</span> <span class="n">fn</span><span class="p">(</span><span class="n">t</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">fn</span> <span class="ow">in</span> <span class="n">u</span><span class="o">.</span><span class="n">items</span><span class="p">()})</span></div>
+
+
+<div class="viewcode-block" id="FuelCell.set_conditions_from_input_dict">
+<a class="viewcode-back" href="../../../api/cell.html#marapendi.cell.fuelcell.FuelCell.set_conditions_from_input_dict">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_conditions_from_input_dict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a :class:`CellState` from the flat input dict *u* (keys are e.g. ``&#39;current-density&#39;``).&quot;&quot;&quot;</span>
+        <span class="n">current_density</span> <span class="o">=</span> <span class="n">u</span><span class="p">[</span><span class="s1">&#39;current-density&#39;</span><span class="p">]</span>
+        <span class="n">stack_temperature</span> <span class="o">=</span> <span class="n">u</span><span class="p">[</span><span class="s1">&#39;cell-temperature&#39;</span><span class="p">]</span>
+        <span class="n">cathode_conditions</span><span class="p">,</span> <span class="n">anode_conditions</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">SideConditions</span><span class="p">(</span>
+                <span class="n">inlet_temperature</span><span class="o">=</span><span class="n">u</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">side</span><span class="si">}</span><span class="s1">-inlet-temperature&#39;</span><span class="p">],</span>
+                <span class="n">inlet_pressure</span><span class="o">=</span><span class="n">u</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">side</span><span class="si">}</span><span class="s1">-inlet-pressure&#39;</span><span class="p">],</span>
+                <span class="n">outlet_pressure</span><span class="o">=</span><span class="n">u</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">side</span><span class="si">}</span><span class="s1">-outlet-pressure&#39;</span><span class="p">],</span>
+                <span class="n">inlet_relative_humidity</span><span class="o">=</span><span class="n">u</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">side</span><span class="si">}</span><span class="s1">-inlet-rh&#39;</span><span class="p">],</span>
+                <span class="n">stoichiometry</span><span class="o">=</span><span class="n">u</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">side</span><span class="si">}</span><span class="s1">-stoichiometry&#39;</span><span class="p">],</span>
+                <span class="n">dry_o2_mole_fraction</span><span class="o">=</span><span class="n">u</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">side</span><span class="si">}</span><span class="s1">-dry-o2-mole-fraction&#39;</span><span class="p">],</span>
+                <span class="n">dry_h2_mole_fraction</span><span class="o">=</span><span class="n">u</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">side</span><span class="si">}</span><span class="s1">-dry-h2-mole-fraction&#39;</span><span class="p">],</span>
+                <span class="n">inlet_liquid_saturation</span><span class="o">=</span><span class="n">u</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">side</span><span class="si">}</span><span class="s1">-inlet-liquid-saturation&#39;</span><span class="p">],</span>
+                <span class="n">inlet_gas_flow_rate</span><span class="o">=</span><span class="n">u</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">side</span><span class="si">}</span><span class="s1">-inlet-gas-flow-rate&#39;</span><span class="p">],</span>
+                <span class="n">inlet_liquid_flow_rate</span><span class="o">=</span><span class="n">u</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">side</span><span class="si">}</span><span class="s1">-inlet-liquid-flow-rate&#39;</span><span class="p">],</span>
+                <span class="n">inlet_liquid</span><span class="o">=</span><span class="n">u</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">side</span><span class="si">}</span><span class="s1">-inlet-liquid&#39;</span><span class="p">,</span> <span class="n">ElectrolyteSolution</span><span class="p">()),</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">side</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;ca&#39;</span><span class="p">,</span> <span class="s1">&#39;an&#39;</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">_init_state</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span> <span class="n">stack_temperature</span><span class="p">,</span> <span class="n">current_density</span><span class="p">,</span>
+            <span class="n">cathode_conditions</span><span class="p">,</span> <span class="n">anode_conditions</span><span class="p">,</span>
+        <span class="p">)</span></div>
+</div>
+
+
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..simulation.conditions</span><span class="w"> </span><span class="kn">import</span> <span class="n">SideConditions</span><span class="p">,</span> <span class="n">OperatingConditions</span><span class="p">,</span> <span class="n">DynamicOperatingConditions</span>  <span class="c1"># noqa: F401</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Pedro Affonso Nobrega.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

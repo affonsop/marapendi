@@ -13,10 +13,14 @@ dependencies :
     - xarray
     - pytest
     - pytest-cov
-    - sphinx
+    - sphinx>=7.0
     - notebook
     - pylint
     - sphinx-autoapi
     - nbsphinx
+    - pydata-sphinx-theme>=0.15
+    - sphinx-copybutton
+    - sphinx-design
+    - sphinx-autodoc-typehints
     - scipy
     - matplotlib

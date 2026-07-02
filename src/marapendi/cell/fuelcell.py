@@ -94,18 +94,32 @@ class FuelCellSide(CellSide):
 
 @dataclass
 class FuelCell(Cell):
-    """
-    Proton exchange membrane fuel cell.
+    """Proton exchange membrane fuel cell.
 
-    Inherits static geometry (``ca``, ``an``, ``membrane``, ``area``,
-    ``electrical_resistance``) from :class:`~marapendi.cell.Cell`.  The cell
-    object itself holds only component parameters; all physics are handled by
-    a separate :class:`~marapendi.cell.ExplicitSteadyStateModel` or
-    :class:`~marapendi.cell.ImplicitSteadyStateModel` instance.
+    The cell object is a pure component tree: it holds geometry and material
+    parameters only.  All physics are evaluated by a separate model object::
 
-    Convenience voltage accessors (e.g. :meth:`high_frequency_resistance`)
-    delegate to the ``VoltageModel`` using ``cell.state``, which is populated
-    after a :meth:`~ExplicitSteadyStateModel.solve` call.
+        model = ExplicitSteadyStateModel()
+        state = model.set_initial_conditions(cell, conditions)
+        state = model.solve(cell, conditions, state)
+        # state.cell_voltage, state.mea_temperature, … are now populated
+
+    Attributes
+    ----------
+    ca : FuelCellSide
+        Cathode side (catalyst layer, GDL, optional MPL, flow channel).
+    an : FuelCellSide
+        Anode side.
+    membrane : Membrane
+        Membrane component (e.g. :class:`~marapendi.membrane.pem.PFSA`).
+    area : float
+        Active cell area (m²).
+    electrical_resistance : float
+        Through-plane electrical contact resistance (Ω·m²).
+    cell_number : int
+        Number of cells in the stack (default 1 — single cell).
+    mea_surface_heat_capacity : float
+        Effective MEA heat capacity per unit area (J/m²/K).
     """
 
     ca: FuelCellSide = field(default_factory=FuelCellSide)

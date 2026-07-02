@@ -1,5 +1,5 @@
 """
-Transient PEMFC model: coupled MEA temperature and membrane water content ODE.
+Transient PEMFC model, with coupled MEA temperature and membrane water content ODE.
 
 :class:`TransientModel` integrates two sets of coupled ODEs:
 

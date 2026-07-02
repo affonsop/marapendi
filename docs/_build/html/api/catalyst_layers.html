@@ -1,0 +1,1257 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" data-theme="light">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Catalyst Layers &#8212; marapendi 1.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "light";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=a95f357e85573c9b56d5" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=fd6457a4" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=248d985a" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../_static/scripts/fontawesome.js?digest=a95f357e85573c9b56d5"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5" />
+
+    <script src="../_static/documentation_options.js?v=4ebf8126"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=fd10adb8"></script>
+    <script src="../_static/sg-tags.js?v=d80f6fa4"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api/catalyst_layers';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Flow Channels" href="channels.html" />
+    <link rel="prev" title="Porous Layers" href="porous_layers.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../_static/searchtools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script src="../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="light">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../_static/marapendi-full-bleu.png" class="logo__image only-light" alt="marapendi"/>
+    <img src="../_static/marapendi-full-bleu.png" class="logo__image only-dark pst-js-only" alt="marapendi"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../auto_examples/index.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="index.html">
+    API Reference
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../user_guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../auto_examples/index.html">
+    Examples
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="index.html">
+    API Reference
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item pst-sidebar-collapse"><button id="pst-collapse-sidebar-button" aria-expanded="true" aria-controls="pst-primary-sidebar"><svg class="pst-icon svg-inline--fa" role="img" aria-hidden="true" focusable="false" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+    <path fill="currentColor" d="M3 15.5C2.36232 15.5 1.74874 15.2564 1.28478 14.8189C0.820828 14.3815 0.541576 13.7832 0.504167 13.1467L0.5 13L0.5 3C0.499965 2.36232 0.743605 1.74874 1.18107 1.28478C1.61854 0.820828 2.21676 0.541576 2.85333 0.504167L3 0.5L13 0.5C13.6377 0.499965 14.2513 0.743605 14.7152 1.18107C15.1792 1.61854 15.4584 2.21676 15.4958 2.85333L15.5 3L15.5 13C15.5 13.6377 15.2564 14.2513 14.8189 14.7152C14.3815 15.1792 13.7832 15.4584 13.1467 15.4958L13 15.5L3 15.5ZM3 13.8333L10.5 13.8333L10.5 2.16667L3 2.16667C2.79589 2.16669 2.59889 2.24163 2.44636 2.37726C2.29383 2.5129 2.19638 2.69979 2.1725 2.9025L2.16667 3L2.16667 13C2.16669 13.2041 2.24163 13.4011 2.37726 13.5536C2.5129 13.7062 2.69979 13.8036 2.9025 13.8275L3 13.8333ZM6.65583 10.325L6.5775 10.2558L4.91083 8.58917C4.76735 8.44567 4.68116 8.25476 4.66843 8.05223C4.65569 7.84971 4.71729 7.6495 4.84167 7.48917L4.91083 7.41083L6.5775 5.74417C6.72747 5.59471 6.9287 5.50794 7.14032 5.50148C7.35194 5.49502 7.55809 5.56935 7.7169 5.70937C7.8757 5.8494 7.97525 6.04463 7.99533 6.25539C8.01541 6.46616 7.95451 6.67667 7.825 6.84417L7.75583 6.9225L6.67917 8L7.75583 9.0775C7.89931 9.22099 7.98551 9.41191 7.99824 9.61443C8.01097 9.81695 7.94938 10.0172 7.825 10.1775L7.75583 10.2558C7.61234 10.3993 7.42142 10.4855 7.2189 10.4982C7.01638 10.511 6.81617 10.4494 6.65583 10.325Z"/>
+  </svg>
+  <span class="pst-collapse-sidebar-label">Collapse Sidebar</span>
+  <span class="pst-expand-sidebar-label">Expand Sidebar</span>
+</button></div>
+        <div class="sidebar-primary-item">
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="cell.html">Cell</a></li>
+<li class="toctree-l1"><a class="reference internal" href="porous_layers.html">Porous Layers</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Catalyst Layers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="channels.html">Flow Channels</a></li>
+<li class="toctree-l1"><a class="reference internal" href="membrane.html">Membrane and Ionomer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="models.html">Models</a></li>
+<li class="toctree-l1"><a class="reference internal" href="conditions.html">Operating Conditions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="estimation.html">Parameter Estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools.html">Tools and Utilities</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="index.html" class="nav-link">API Reference</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Catalyst Layers</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="catalyst-layers">
+<h1>Catalyst Layers<a class="headerlink" href="#catalyst-layers" title="Link to this heading">#</a></h1>
+<p><a class="reference internal" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer" title="marapendi.porous_layers.catalyst_layers.CatalystLayer"><code class="xref py py-class docutils literal notranslate"><span class="pre">CatalystLayer</span></code></a> extends
+<a class="reference internal" href="porous_layers.html#marapendi.porous_layers.porous_layers.PorousLayer" title="marapendi.porous_layers.porous_layers.PorousLayer"><code class="xref py py-class docutils literal notranslate"><span class="pre">PorousLayer</span></code></a> with an ionomer phase
+and an electrochemical reaction model.  It provides ionomer charge resistance via
+the Neyerlin/Goshtasbi distribution model and activation overpotential from
+Butler-Volmer kinetics.</p>
+<p><a class="reference internal" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer" title="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer"><code class="xref py py-class docutils literal notranslate"><span class="pre">PtCCatalystLayer</span></code></a> adds explicit
+Pt/C agglomerate geometry following Hao et al. (2015): volume fractions are derived
+from the catalyst composition and the wet ionomer film thickness is updated at each
+operating point.  Local O₂ transport resistance across the ionomer film (bulk + gas/Pt
+and ionomer/Pt interface terms) is evaluated at each solve step.</p>
+<p>The electrochemical reaction is parameterised by
+<a class="reference internal" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction" title="marapendi.thermo.electrochemistry.ElectrochemicalReaction"><code class="xref py py-class docutils literal notranslate"><span class="pre">ElectrochemicalReaction</span></code></a>, which holds the
+Butler-Volmer parameters and the Nernst correction.</p>
+<section id="components">
+<h2>Components<a class="headerlink" href="#components" title="Link to this heading">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.CatalystLayer">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">marapendi.porous_layers.catalyst_layers.</span></span><span class="sig-name descname"><span class="pre">CatalystLayer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">thickness</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gas</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pressure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">porosity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">effective_gas_diffusion_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pore_diameter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000000000000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transport_resistance_model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">two_phase_transport_model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">non_wetting_saturation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thermal_conductivity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000000000000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">absolute_permeability</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relative_permeability_exponent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">contact_angle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">95.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">non_wetting_phase</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'water'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wetting_phase</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gas'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">breakthrough_pressure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ionomer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reaction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catalyst_loading</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.002</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ionomer_to_catalyst_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.75</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catalyst_density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">21450</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ecsa</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">70000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ionomer_vol_fraction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ionomer_film_thickness</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2e-09</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/porous_layers/catalyst_layers.html#CatalystLayer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="porous_layers.html#marapendi.porous_layers.porous_layers.PorousLayer" title="marapendi.porous_layers.porous_layers.PorousLayer"><code class="xref py py-class docutils literal notranslate"><span class="pre">PorousLayer</span></code></a></p>
+<p>Base class for catalyst layers in fuel cells and electrolysers.</p>
+<p>Combines a porous electrode structure with an ionomer phase and an
+electrochemical reaction model.  Provides ionomer/electrolyte charge
+resistance and activation overpotential; subclasses add geometry-specific
+transport models.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>thickness</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>gas</strong> (<em>GasState</em>)</p></li>
+<li><p><strong>temperature</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>pressure</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>porosity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>effective_gas_diffusion_ratio</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>pore_diameter</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>transport_resistance_model</strong> (<a class="reference internal" href="porous_layers.html#marapendi.porous_layers.diffusion.PorousGasDiffusionModel" title="marapendi.porous_layers.diffusion.PorousGasDiffusionModel"><em>PorousGasDiffusionModel</em></a>)</p></li>
+<li><p><strong>two_phase_transport_model</strong> (<a class="reference internal" href="porous_layers.html#marapendi.porous_layers.darcy.DarcyTransportModel" title="marapendi.porous_layers.darcy.DarcyTransportModel"><em>DarcyTransportModel</em></a>)</p></li>
+<li><p><strong>non_wetting_saturation</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>thermal_conductivity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>absolute_permeability</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>relative_permeability_exponent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>contact_angle</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>non_wetting_phase</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>wetting_phase</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>breakthrough_pressure</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>ionomer</strong> (<a class="reference internal" href="membrane.html#marapendi.membrane.ionomer_base.Ionomer" title="marapendi.membrane.ionomer_base.Ionomer"><em>Ionomer</em></a>)</p></li>
+<li><p><strong>reaction</strong> (<a class="reference internal" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction" title="marapendi.thermo.electrochemistry.ElectrochemicalReaction"><em>ElectrochemicalReaction</em></a>)</p></li>
+<li><p><strong>catalyst_loading</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>ionomer_to_catalyst_ratio</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>catalyst_density</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>ecsa</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>ionomer_vol_fraction</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>ionomer_film_thickness</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer">
+<span class="sig-name descname"><span class="pre">ionomer</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer" title="Link to this definition">#</a></dt>
+<dd><p>Ionomer transport model (proton/hydroxide conductivity, O₂ permeability).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="membrane.html#marapendi.membrane.ionomer_base.Ionomer" title="marapendi.membrane.ionomer_base.Ionomer">Ionomer</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.CatalystLayer.reaction">
+<span class="sig-name descname"><span class="pre">reaction</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.reaction" title="Link to this definition">#</a></dt>
+<dd><p>Electrochemical reaction parameters (exchange current density, Tafel slope).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction" title="marapendi.thermo.electrochemistry.ElectrochemicalReaction">ElectrochemicalReaction</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.CatalystLayer.catalyst_loading">
+<span class="sig-name descname"><span class="pre">catalyst_loading</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.catalyst_loading" title="Link to this definition">#</a></dt>
+<dd><p>Total catalyst loading (kg/m²).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_to_catalyst_ratio">
+<span class="sig-name descname"><span class="pre">ionomer_to_catalyst_ratio</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_to_catalyst_ratio" title="Link to this definition">#</a></dt>
+<dd><p>Ionomer/catalyst mass ratio (–).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.CatalystLayer.catalyst_density">
+<span class="sig-name descname"><span class="pre">catalyst_density</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.catalyst_density" title="Link to this definition">#</a></dt>
+<dd><p>Catalyst particle density (kg/m³).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.CatalystLayer.ecsa">
+<span class="sig-name descname"><span class="pre">ecsa</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.ecsa" title="Link to this definition">#</a></dt>
+<dd><p>Electrochemically active surface area (m²/kg).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_vol_fraction">
+<span class="sig-name descname"><span class="pre">ionomer_vol_fraction</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_vol_fraction" title="Link to this definition">#</a></dt>
+<dd><p>Volume fraction of ionomer (–).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_film_thickness">
+<span class="sig-name descname"><span class="pre">ionomer_film_thickness</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_film_thickness" title="Link to this definition">#</a></dt>
+<dd><p>Ionomer film thickness around catalyst particles (m).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.CatalystLayer.contact_angle">
+<span class="sig-name descname"><span class="pre">contact_angle</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.contact_angle" title="Link to this definition">#</a></dt>
+<dd><p>Contact angle between liquid water and the solid phase (°).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">catalyst_density</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">21450</span></span><a class="headerlink" href="#id0" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">catalyst_loading</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.002</span></span><a class="headerlink" href="#id1" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id2">
+<span class="sig-name descname"><span class="pre">contact_angle</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">95.0</span></span><a class="headerlink" href="#id2" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id3">
+<span class="sig-name descname"><span class="pre">ecsa</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">70000.0</span></span><a class="headerlink" href="#id3" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.CatalystLayer.effective_charge_resistance">
+<span class="sig-name descname"><span class="pre">effective_charge_resistance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">current_density</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ionomer_water_content</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charge</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'proton'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/porous_layers/catalyst_layers.html#CatalystLayer.effective_charge_resistance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.effective_charge_resistance" title="Link to this definition">#</a></dt>
+<dd><p>Calculate effective charge resistance using the equations from Goshtasbi et al. (2020)
+based on Neyerlin et al. (2007).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>current_density</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Current density [A/m²].</p></li>
+<li><p><strong>ionomer_water_content</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Water content in the ionomer.</p></li>
+<li><p><strong>temperature</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Temperature in Kelvin.</p></li>
+<li><p><strong>charge</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Charge carrier type.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Effective charge resistance [Ohm.m²].</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>Neyerlin, K. C. et al. J. Electrochem. Soc. 154, B279 (2007).
+Goshtasbi, A. et al. J. Electrochem. Soc. 167, 024518 (2020).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.CatalystLayer.electrolyte_sheet_resistance">
+<span class="sig-name descname"><span class="pre">electrolyte_sheet_resistance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">electrolyte_saturation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/porous_layers/catalyst_layers.html#CatalystLayer.electrolyte_sheet_resistance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.electrolyte_sheet_resistance" title="Link to this definition">#</a></dt>
+<dd><p>Calculate electrolyte sheet resistance in the porous electrolyte phase.
+Uses Bruggeman correlation for electrolyte.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>temperature</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Temperature in Kelvin.</p></li>
+<li><p><strong>electrolyte_saturation</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Electrolyte saturation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Electrolyte sheet resistance [Ohm.m²].</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id4">
+<span class="sig-name descname"><span class="pre">ionomer</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="membrane.html#marapendi.membrane.ionomer_base.Ionomer" title="marapendi.membrane.ionomer_base.Ionomer"><span class="pre">Ionomer</span></a></span><a class="headerlink" href="#id4" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id5">
+<span class="sig-name descname"><span class="pre">ionomer_film_thickness</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2e-09</span></span><a class="headerlink" href="#id5" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_sheet_charge_resistance">
+<span class="sig-name descname"><span class="pre">ionomer_sheet_charge_resistance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ionomer_water_content</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charge</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'proton'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/porous_layers/catalyst_layers.html#CatalystLayer.ionomer_sheet_charge_resistance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_sheet_charge_resistance" title="Link to this definition">#</a></dt>
+<dd><p>Compute ionomer film proton resistance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ionomer_water_content</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Water content.</p></li>
+<li><p><strong>temperature</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Temperature in Kelvin.</p></li>
+<li><p><strong>charge</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>) – Charge carrier.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Ionomer resistance [Ohm.m²].</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>Hao, L. et al. J. Electrochem. Soc. 163, F744 (2016).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id6">
+<span class="sig-name descname"><span class="pre">ionomer_to_catalyst_ratio</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.75</span></span><a class="headerlink" href="#id6" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_tortuosity">
+<span class="sig-name descname"><span class="pre">ionomer_tortuosity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">volume_fraction</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/porous_layers/catalyst_layers.html#CatalystLayer.ionomer_tortuosity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_tortuosity" title="Link to this definition">#</a></dt>
+<dd><p>Bruggeman tortuosity factor for the ionomer phase.</p>
+<p>Standard Bruggeman inverse power-law approximation for a randomly
+distributed phase with exponent -0.5.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>volume_fraction</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Ionomer volume fraction (n.d.).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tortuosity factor (n.d.).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id7">
+<span class="sig-name descname"><span class="pre">ionomer_vol_fraction</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.3</span></span><a class="headerlink" href="#id7" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id8">
+<span class="sig-name descname"><span class="pre">reaction</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction" title="marapendi.thermo.electrochemistry.ElectrochemicalReaction"><span class="pre">ElectrochemicalReaction</span></a></span><a class="headerlink" href="#id8" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">marapendi.porous_layers.catalyst_layers.</span></span><span class="sig-name descname"><span class="pre">PtCCatalystLayer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">thickness</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.001</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gas</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">300.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pressure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">porosity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">effective_gas_diffusion_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pore_diameter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000000000000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">transport_resistance_model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">two_phase_transport_model</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">non_wetting_saturation</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thermal_conductivity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000000000000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">absolute_permeability</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relative_permeability_exponent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">contact_angle</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">95.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">non_wetting_phase</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'water'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wetting_phase</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gas'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">breakthrough_pressure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ionomer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reaction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">&lt;factory&gt;</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catalyst_loading</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.002</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ionomer_to_catalyst_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.75</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catalyst_density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">21450</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ecsa</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">70000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ionomer_vol_fraction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ionomer_film_thickness</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">platinum_loading</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.002</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catalyst_platinum_weight_percent</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ionomer_to_carbon_ratio</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.75</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">platinum_density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">21450</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">carbon_density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1950</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">platinum_vol_surface_area</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">carbon_agglomerate_radius</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2.5e-08</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dry_ionomer_vol_fraction</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">omega_PtO</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3000000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ionomer_k1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">8.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ionomer_k2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ionomer_k3</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.4</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ionomer_water_content</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/porous_layers/catalyst_layers.html#PtCCatalystLayer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer" title="marapendi.porous_layers.catalyst_layers.CatalystLayer"><code class="xref py py-class docutils literal notranslate"><span class="pre">CatalystLayer</span></code></a></p>
+<p>Catalyst layer with explicit Pt/C agglomerate geometry and ionomer film.</p>
+<p>Volume fractions (carbon, platinum, ionomer, pore) are derived from the
+catalyst composition at construction time.  The wet ionomer film thickness
+is updated at each operating point via <a class="reference internal" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.set_ionomer_wet_properties" title="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.set_ionomer_wet_properties"><code class="xref py py-meth docutils literal notranslate"><span class="pre">set_ionomer_wet_properties()</span></code></a>.</p>
+<p>Local O₂ transport resistance across the ionomer film is modelled following
+Hao et al. (2015): bulk diffusion through the film plus gas/ionomer and
+ionomer/Pt interface resistances weighted by empirical factors <code class="docutils literal notranslate"><span class="pre">ionomer_k1</span></code>
+(gas-side) and <code class="docutils literal notranslate"><span class="pre">ionomer_k2</span></code> (Pt-side).  A water-film correction term
+(<code class="docutils literal notranslate"><span class="pre">ionomer_k3</span></code>) accounts for flooding at the ionomer surface.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>thickness</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>gas</strong> (<em>GasState</em>)</p></li>
+<li><p><strong>temperature</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>pressure</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>porosity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>effective_gas_diffusion_ratio</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>pore_diameter</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>transport_resistance_model</strong> (<a class="reference internal" href="porous_layers.html#marapendi.porous_layers.diffusion.PorousGasDiffusionModel" title="marapendi.porous_layers.diffusion.PorousGasDiffusionModel"><em>PorousGasDiffusionModel</em></a>)</p></li>
+<li><p><strong>two_phase_transport_model</strong> (<a class="reference internal" href="porous_layers.html#marapendi.porous_layers.darcy.DarcyTransportModel" title="marapendi.porous_layers.darcy.DarcyTransportModel"><em>DarcyTransportModel</em></a>)</p></li>
+<li><p><strong>non_wetting_saturation</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>thermal_conductivity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>absolute_permeability</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>relative_permeability_exponent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>contact_angle</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>non_wetting_phase</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>wetting_phase</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><em>str</em></a>)</p></li>
+<li><p><strong>breakthrough_pressure</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>ionomer</strong> (<a class="reference internal" href="membrane.html#marapendi.membrane.ionomer_base.Ionomer" title="marapendi.membrane.ionomer_base.Ionomer"><em>Ionomer</em></a>)</p></li>
+<li><p><strong>reaction</strong> (<a class="reference internal" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction" title="marapendi.thermo.electrochemistry.ElectrochemicalReaction"><em>ElectrochemicalReaction</em></a>)</p></li>
+<li><p><strong>catalyst_loading</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>ionomer_to_catalyst_ratio</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>catalyst_density</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>ecsa</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>ionomer_vol_fraction</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>ionomer_film_thickness</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>platinum_loading</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>catalyst_platinum_weight_percent</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>ionomer_to_carbon_ratio</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>platinum_density</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>carbon_density</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>platinum_vol_surface_area</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>carbon_agglomerate_radius</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>dry_ionomer_vol_fraction</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>omega_PtO</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>ionomer_k1</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>ionomer_k2</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>ionomer_k3</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+<li><p><strong>ionomer_water_content</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>)</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.platinum_loading">
+<span class="sig-name descname"><span class="pre">platinum_loading</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.platinum_loading" title="Link to this definition">#</a></dt>
+<dd><p>Pt loading (kg/m²).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.catalyst_platinum_weight_percent">
+<span class="sig-name descname"><span class="pre">catalyst_platinum_weight_percent</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.catalyst_platinum_weight_percent" title="Link to this definition">#</a></dt>
+<dd><p>Pt weight fraction in the catalyst powder (–).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_to_carbon_ratio">
+<span class="sig-name descname"><span class="pre">ionomer_to_carbon_ratio</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_to_carbon_ratio" title="Link to this definition">#</a></dt>
+<dd><p>Ionomer/carbon mass ratio (–).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">platinum_density,</span> <span class="pre">carbon_density</span></span></dt>
+<dd><p>Material densities (kg/m³).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.carbon_agglomerate_radius">
+<span class="sig-name descname"><span class="pre">carbon_agglomerate_radius</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.carbon_agglomerate_radius" title="Link to this definition">#</a></dt>
+<dd><p>Radius of carbon agglomerates (m).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">ionomer_k1,</span> <span class="pre">ionomer_k2,</span> <span class="pre">ionomer_k3</span></span></dt>
+<dd><p>Interface resistance pre-factors from Hao et al. (2015).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.omega_PtO">
+<span class="sig-name descname"><span class="pre">omega_PtO</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.omega_PtO" title="Link to this definition">#</a></dt>
+<dd><p>Molar volume of platinum oxide (m³/kmol), used by the PtO coverage model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<p class="rubric">References</p>
+<p>Hao, L. et al. J. Electrochem. Soc. 162, F854 (2015).</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id9">
+<span class="sig-name descname"><span class="pre">carbon_agglomerate_radius</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2.5e-08</span></span><a class="headerlink" href="#id9" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.carbon_density">
+<span class="sig-name descname"><span class="pre">carbon_density</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1950</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.carbon_density" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id10">
+<span class="sig-name descname"><span class="pre">catalyst_platinum_weight_percent</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.5</span></span><a class="headerlink" href="#id10" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.contact_angle">
+<span class="sig-name descname"><span class="pre">contact_angle</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">95.0</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.contact_angle" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.dry_ionomer_vol_fraction">
+<span class="sig-name descname"><span class="pre">dry_ionomer_vol_fraction</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.dry_ionomer_vol_fraction" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_film_thickness">
+<span class="sig-name descname"><span class="pre">ionomer_film_thickness</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_film_thickness" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_k1">
+<span class="sig-name descname"><span class="pre">ionomer_k1</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">8.5</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_k1" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_k2">
+<span class="sig-name descname"><span class="pre">ionomer_k2</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5.4</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_k2" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_k3">
+<span class="sig-name descname"><span class="pre">ionomer_k3</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5.4</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_k3" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id11">
+<span class="sig-name descname"><span class="pre">ionomer_to_carbon_ratio</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.75</span></span><a class="headerlink" href="#id11" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_tortuosity">
+<span class="sig-name descname"><span class="pre">ionomer_tortuosity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">volume_fraction</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/porous_layers/catalyst_layers.html#PtCCatalystLayer.ionomer_tortuosity"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_tortuosity" title="Link to this definition">#</a></dt>
+<dd><p>Piecewise tortuosity factor for the ionomer film in a Pt/C agglomerate layer.</p>
+<p>Above a threshold of 0.16 the ionomer network is well-connected and the
+tortuosity approaches 1.  Below that threshold a fitted power law is used,
+following the correlation from Hao et al. (2015).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>volume_fraction</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Ionomer volume fraction (–).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tortuosity factor (–).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>Hao, L. et al. J. Electrochem. Soc. 162, F854 (2015).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_vol_fraction">
+<span class="sig-name descname"><span class="pre">ionomer_vol_fraction</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_vol_fraction" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_water_content">
+<span class="sig-name descname"><span class="pre">ionomer_water_content</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">10</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_water_content" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.o2_ionomer_film_bulk_resistance">
+<span class="sig-name descname"><span class="pre">o2_ionomer_film_bulk_resistance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ionomer_water_content</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/porous_layers/catalyst_layers.html#PtCCatalystLayer.o2_ionomer_film_bulk_resistance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.o2_ionomer_film_bulk_resistance" title="Link to this definition">#</a></dt>
+<dd><p>Calculate the oxygen bulk resistance across the ionomer film.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ionomer_water_content</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Water content in the ionomer.</p></li>
+<li><p><strong>temperature</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Temperature in Kelvin.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Oxygen film resistance [s/m].</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.o2_ionomer_film_resistance">
+<span class="sig-name descname"><span class="pre">o2_ionomer_film_resistance</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ionomer_water_content</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">catalyst_availability</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/porous_layers/catalyst_layers.html#PtCCatalystLayer.o2_ionomer_film_resistance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.o2_ionomer_film_resistance" title="Link to this definition">#</a></dt>
+<dd><p>Calculate total oxygen film resistance.
+Interface resistances are calculated according to equation 32 in Hao et al. (2015),
+but neglecting the effect of the water film.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ionomer_water_content</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Water content in ionomer.</p></li>
+<li><p><strong>temperature</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Temperature in Kelvin.</p></li>
+<li><p><strong>catalyst_availability</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Catalyst availability = 1 - catalyst coverage ratio.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Total oxygen film resistance [s/m].</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+<p class="rubric">References</p>
+<p>Hao, L. et al. J. Electrochem. Soc. 162, F854 (2015).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id12">
+<span class="sig-name descname"><span class="pre">omega_PtO</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3000000.0</span></span><a class="headerlink" href="#id12" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.platinum_density">
+<span class="sig-name descname"><span class="pre">platinum_density</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">21450</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.platinum_density" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="id13">
+<span class="sig-name descname"><span class="pre">platinum_loading</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.002</span></span><a class="headerlink" href="#id13" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.platinum_vol_surface_area">
+<span class="sig-name descname"><span class="pre">platinum_vol_surface_area</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.platinum_vol_surface_area" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.porosity">
+<span class="sig-name descname"><span class="pre">porosity</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></span><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.porosity" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.set_ionomer_wet_properties">
+<span class="sig-name descname"><span class="pre">set_ionomer_wet_properties</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ionomer_water_content</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/porous_layers/catalyst_layers.html#PtCCatalystLayer.set_ionomer_wet_properties"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.set_ionomer_wet_properties" title="Link to this definition">#</a></dt>
+<dd><p>Update ionomer volume fraction, film thickness, and pore volume for given water content.</p>
+<p>Computes the wet ionomer expansion factor from the ionomer model, then
+recalculates <code class="docutils literal notranslate"><span class="pre">ionomer_vol_fraction</span></code>, <code class="docutils literal notranslate"><span class="pre">porosity</span></code>, <code class="docutils literal notranslate"><span class="pre">ionomer_film_thickness</span></code>,
+<code class="docutils literal notranslate"><span class="pre">ionomer_vol_surface_area</span></code>, and <code class="docutils literal notranslate"><span class="pre">effective_gas_diffusion_ratio</span></code>.
+Called at construction and at every MEA temperature update.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.set_water_film_thickness">
+<span class="sig-name descname"><span class="pre">set_water_film_thickness</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">water_saturation</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/porous_layers/catalyst_layers.html#PtCCatalystLayer.set_water_film_thickness"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.set_water_film_thickness" title="Link to this definition">#</a></dt>
+<dd><p>Compute and store the liquid water film thickness around agglomerates.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>water_saturation</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Non-wetting (liquid water) saturation in the pore space (–).</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="electrochemical-reaction">
+<h2>Electrochemical reaction<a class="headerlink" href="#electrochemical-reaction" title="Link to this heading">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="marapendi.thermo.electrochemistry.ElectrochemicalReaction">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">marapendi.thermo.electrochemistry.</span></span><span class="sig-name descname"><span class="pre">ElectrochemicalReaction</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reference_exchange_current_density</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0741</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">activation_energy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">67000000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reaction_order</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.54</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference_activity</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">100000.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference_temperature</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">353.15</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">number_of_electrons</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">charge_transfer_coeff</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/thermo/electrochemistry.html#ElectrochemicalReaction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></a></p>
+<p>Parameters of a single-reactant electrochemical reaction (ORR or HOR).</p>
+<p>Stores the kinetic constants required to evaluate exchange current density
+and activation overpotential via Butler-Volmer / Tafel expressions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>reference_exchange_current_density</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Reference exchange current density at <code class="docutils literal notranslate"><span class="pre">reference_temperature</span></code> and
+<code class="docutils literal notranslate"><span class="pre">reference_activity</span></code> in A/m² (per unit geometric area).</p></li>
+<li><p><strong>activation_energy</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Arrhenius activation energy in J/kmol.</p></li>
+<li><p><strong>reaction_order</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Reaction order with respect to the reactant activity (dimensionless).</p></li>
+<li><p><strong>reference_activity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Reactant activity at the reference state in Pa (or the same units as
+the activity passed to the kinetic methods).</p></li>
+<li><p><strong>reference_temperature</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Temperature at which <code class="docutils literal notranslate"><span class="pre">reference_exchange_current_density</span></code> is defined, in K.</p></li>
+<li><p><strong>number_of_electrons</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><em>int</em></a>) – Electrons transferred per elementary step.</p></li>
+<li><p><strong>charge_transfer_coeff</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Charge-transfer (symmetry) coefficient (dimensionless).</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.thermo.electrochemistry.ElectrochemicalReaction.activation_energy">
+<span class="sig-name descname"><span class="pre">activation_energy</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">67000000.0</span></span><a class="headerlink" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.activation_energy" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.thermo.electrochemistry.ElectrochemicalReaction.charge_transfer_coeff">
+<span class="sig-name descname"><span class="pre">charge_transfer_coeff</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.5</span></span><a class="headerlink" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.charge_transfer_coeff" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.thermo.electrochemistry.ElectrochemicalReaction.exchange_current_density">
+<span class="sig-name descname"><span class="pre">exchange_current_density</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reactant_activity</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/thermo/electrochemistry.html#ElectrochemicalReaction.exchange_current_density"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.exchange_current_density" title="Link to this definition">#</a></dt>
+<dd><p>Exchange current density at the given temperature and reactant activity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>temperature</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Temperature in K.</p></li>
+<li><p><strong>reactant_activity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Reactant activity (same units as <code class="docutils literal notranslate"><span class="pre">reference_activity</span></code>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Exchange current density i₀ in A/m².</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.thermo.electrochemistry.ElectrochemicalReaction.linear_overpotential">
+<span class="sig-name descname"><span class="pre">linear_overpotential</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">current_density</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reactant_activity</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/thermo/electrochemistry.html#ElectrochemicalReaction.linear_overpotential"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.linear_overpotential" title="Link to this definition">#</a></dt>
+<dd><p>Linear (low-overpotential) activation overpotential.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>current_density</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Operating current density in A/m².</p></li>
+<li><p><strong>temperature</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Temperature in K.</p></li>
+<li><p><strong>reactant_activity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Reactant activity (same units as <code class="docutils literal notranslate"><span class="pre">reference_activity</span></code>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Linear activation overpotential in V.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.thermo.electrochemistry.ElectrochemicalReaction.number_of_electrons">
+<span class="sig-name descname"><span class="pre">number_of_electrons</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></span><a class="headerlink" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.number_of_electrons" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.thermo.electrochemistry.ElectrochemicalReaction.reaction_order">
+<span class="sig-name descname"><span class="pre">reaction_order</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.54</span></span><a class="headerlink" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.reaction_order" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.thermo.electrochemistry.ElectrochemicalReaction.reference_activity">
+<span class="sig-name descname"><span class="pre">reference_activity</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">100000.0</span></span><a class="headerlink" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.reference_activity" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.thermo.electrochemistry.ElectrochemicalReaction.reference_exchange_current_density">
+<span class="sig-name descname"><span class="pre">reference_exchange_current_density</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.0741</span></span><a class="headerlink" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.reference_exchange_current_density" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="marapendi.thermo.electrochemistry.ElectrochemicalReaction.reference_temperature">
+<span class="sig-name descname"><span class="pre">reference_temperature</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><span class="pre">float</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">353.15</span></span><a class="headerlink" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.reference_temperature" title="Link to this definition">#</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.thermo.electrochemistry.ElectrochemicalReaction.tafel_overpotential">
+<span class="sig-name descname"><span class="pre">tafel_overpotential</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">current_density</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reactant_activity</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/thermo/electrochemistry.html#ElectrochemicalReaction.tafel_overpotential"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.tafel_overpotential" title="Link to this definition">#</a></dt>
+<dd><p>Activation overpotential for the given operating conditions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>current_density</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Operating current density in A/m².</p></li>
+<li><p><strong>temperature</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Temperature in K.</p></li>
+<li><p><strong>reactant_activity</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Reactant activity (same units as <code class="docutils literal notranslate"><span class="pre">reference_activity</span></code>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Activation overpotential in V.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="marapendi.thermo.electrochemistry.ElectrochemicalReaction.tafel_slope">
+<span class="sig-name descname"><span class="pre">tafel_slope</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temperature</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/marapendi/thermo/electrochemistry.html#ElectrochemicalReaction.tafel_slope"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.tafel_slope" title="Link to this definition">#</a></dt>
+<dd><p>Tafel slope at the given temperature.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>temperature</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)"><em>float</em></a>) – Temperature in K.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tafel slope in V.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.14)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="porous_layers.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Porous Layers</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="channels.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Flow Channels</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#components">Components</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer"><code class="docutils literal notranslate"><span class="pre">CatalystLayer</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.ionomer</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.reaction"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.reaction</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.catalyst_loading"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.catalyst_loading</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_to_catalyst_ratio"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.ionomer_to_catalyst_ratio</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.catalyst_density"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.catalyst_density</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.ecsa"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.ecsa</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_vol_fraction"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.ionomer_vol_fraction</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_film_thickness"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.ionomer_film_thickness</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.contact_angle"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.contact_angle</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id0"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.catalyst_density</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id1"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.catalyst_loading</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id2"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.contact_angle</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id3"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.ecsa</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.effective_charge_resistance"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.effective_charge_resistance()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.electrolyte_sheet_resistance"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.electrolyte_sheet_resistance()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id4"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.ionomer</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id5"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.ionomer_film_thickness</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_sheet_charge_resistance"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.ionomer_sheet_charge_resistance()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id6"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.ionomer_to_catalyst_ratio</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_tortuosity"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.ionomer_tortuosity()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id7"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.ionomer_vol_fraction</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id8"><code class="docutils literal notranslate"><span class="pre">CatalystLayer.reaction</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.platinum_loading"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.platinum_loading</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.catalyst_platinum_weight_percent"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.catalyst_platinum_weight_percent</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_to_carbon_ratio"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.ionomer_to_carbon_ratio</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.carbon_agglomerate_radius"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.carbon_agglomerate_radius</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.omega_PtO"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.omega_PtO</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id9"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.carbon_agglomerate_radius</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.carbon_density"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.carbon_density</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id10"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.catalyst_platinum_weight_percent</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.contact_angle"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.contact_angle</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.dry_ionomer_vol_fraction"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.dry_ionomer_vol_fraction</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_film_thickness"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.ionomer_film_thickness</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_k1"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.ionomer_k1</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_k2"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.ionomer_k2</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_k3"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.ionomer_k3</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id11"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.ionomer_to_carbon_ratio</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_tortuosity"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.ionomer_tortuosity()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_vol_fraction"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.ionomer_vol_fraction</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_water_content"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.ionomer_water_content</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.o2_ionomer_film_bulk_resistance"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.o2_ionomer_film_bulk_resistance()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.o2_ionomer_film_resistance"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.o2_ionomer_film_resistance()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id12"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.omega_PtO</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.platinum_density"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.platinum_density</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#id13"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.platinum_loading</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.platinum_vol_surface_area"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.platinum_vol_surface_area</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.porosity"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.porosity</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.set_ionomer_wet_properties"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.set_ionomer_wet_properties()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.set_water_film_thickness"><code class="docutils literal notranslate"><span class="pre">PtCCatalystLayer.set_water_film_thickness()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#electrochemical-reaction">Electrochemical reaction</a><ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction"><code class="docutils literal notranslate"><span class="pre">ElectrochemicalReaction</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.activation_energy"><code class="docutils literal notranslate"><span class="pre">ElectrochemicalReaction.activation_energy</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.charge_transfer_coeff"><code class="docutils literal notranslate"><span class="pre">ElectrochemicalReaction.charge_transfer_coeff</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.exchange_current_density"><code class="docutils literal notranslate"><span class="pre">ElectrochemicalReaction.exchange_current_density()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.linear_overpotential"><code class="docutils literal notranslate"><span class="pre">ElectrochemicalReaction.linear_overpotential()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.number_of_electrons"><code class="docutils literal notranslate"><span class="pre">ElectrochemicalReaction.number_of_electrons</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.reaction_order"><code class="docutils literal notranslate"><span class="pre">ElectrochemicalReaction.reaction_order</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.reference_activity"><code class="docutils literal notranslate"><span class="pre">ElectrochemicalReaction.reference_activity</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.reference_exchange_current_density"><code class="docutils literal notranslate"><span class="pre">ElectrochemicalReaction.reference_exchange_current_density</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.reference_temperature"><code class="docutils literal notranslate"><span class="pre">ElectrochemicalReaction.reference_temperature</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.tafel_overpotential"><code class="docutils literal notranslate"><span class="pre">ElectrochemicalReaction.tafel_overpotential()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#marapendi.thermo.electrochemistry.ElectrochemicalReaction.tafel_slope"><code class="docutils literal notranslate"><span class="pre">ElectrochemicalReaction.tafel_slope()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=a95f357e85573c9b56d5"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=a95f357e85573c9b56d5"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024, Pedro Affonso Nobrega.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

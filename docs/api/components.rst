@@ -1,46 +1,16 @@
+:orphan:
+
+.. _components:
+
 Components
 ==========
 
-Physical building blocks of an electrochemical cell, and the per-simulation
-state that mirrors them.
+.. note::
 
-Component classes are dataclasses that hold geometric and material
-parameters, together with the correlation methods that turn those
-parameters (and a state object) into transport and electrochemical
-quantities. Computation across components is orchestrated by
-:class:`~marapendi.model.CellModel` (see :doc:`models`).
+   This page has been reorganised.  See:
 
-.. automodule:: marapendi.cell
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: marapendi.state
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: marapendi.catalyst_layers
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: marapendi.porous_layers
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: marapendi.membrane
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: marapendi.flow_channels
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: marapendi.ionomer
-   :members:
-   :undoc-members:
-   :show-inheritance:
+   - :doc:`cell` — :class:`~marapendi.cell.fuelcell.FuelCell`, :class:`~marapendi.cell.fuelcell.FuelCellSide`, state classes
+   - :doc:`porous_layers` — :class:`~marapendi.porous_layers.porous_layers.GasDiffusionLayer`, :class:`~marapendi.porous_layers.porous_layers.MicroPorousLayer`, transport models
+   - :doc:`catalyst_layers` — :class:`~marapendi.porous_layers.catalyst_layers.PtCCatalystLayer`, :class:`~marapendi.thermo.electrochemistry.ElectrochemicalReaction`
+   - :doc:`channels` — :class:`~marapendi.channel.flow_channels.FlowChannel`, channel resistance models
+   - :doc:`membrane` — :class:`~marapendi.membrane.pem.PFSA`, :class:`~marapendi.membrane.pem.PFSAIonomer`, water balance models

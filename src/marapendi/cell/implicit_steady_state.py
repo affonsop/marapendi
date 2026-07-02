@@ -1,5 +1,5 @@
 """
-Cell model: implicit steady-state PEMFC performance model.
+Implicit steady-state PEMFC performance model.
 
 :class:`ImplicitSteadyStateModel` extends :class:`ExplicitSteadyStateModel`
 by solving for the cell voltage and MEA temperature self-consistently.

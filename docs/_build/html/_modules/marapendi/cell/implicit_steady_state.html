@@ -1,0 +1,203 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>marapendi.cell.implicit_steady_state &mdash; marapendi 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            marapendi
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">marapendi</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">marapendi.cell.implicit_steady_state</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for marapendi.cell.implicit_steady_state</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Implicit steady-state PEMFC performance model.</span>
+
+<span class="sd">:class:`ImplicitSteadyStateModel` extends :class:`ExplicitSteadyStateModel`</span>
+<span class="sd">by solving for the cell voltage and MEA temperature self-consistently.</span>
+
+<span class="sd">The MEA temperature depends on the cell voltage through the thermal balance,</span>
+<span class="sd">and the cell voltage in turn depends on the MEA temperature through the water</span>
+<span class="sd">balance and kinetics, creating a coupled implicit problem.  Because the problem</span>
+<span class="sd">is diagonal across current-density points, :func:`scipy.optimize.newton`</span>
+<span class="sd">(secant method) solves it elementwise without building a dense Jacobian.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">scipy.optimize</span><span class="w"> </span><span class="kn">import</span> <span class="n">newton</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">.explicit_steady_state</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExplicitSteadyStateModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">.state</span><span class="w"> </span><span class="kn">import</span> <span class="n">CellState</span>
+
+
+<div class="viewcode-block" id="ImplicitSteadyStateModel">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.cell.implicit_steady_state.ImplicitSteadyStateModel">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">ImplicitSteadyStateModel</span><span class="p">(</span><span class="n">ExplicitSteadyStateModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Implicit steady-state model for PEMFC polarization curves.</span>
+
+<span class="sd">    Unlike :class:`ExplicitSteadyStateModel`, which estimates T_MEA</span>
+<span class="sd">    analytically, this model iterates until the heat released by the cell</span>
+<span class="sd">    is consistent with the actual cell voltage.  The solve is fully</span>
+<span class="sd">    vectorised: pass an array of current densities (and optionally</span>
+<span class="sd">    array-valued condition fields) to evaluate all points in one call.</span>
+
+<span class="sd">    Usage</span>
+<span class="sd">    -----</span>
+<span class="sd">    ::</span>
+
+<span class="sd">        model = ImplicitSteadyStateModel()</span>
+<span class="sd">        conditions = CellConditions(</span>
+<span class="sd">            current_density=np.linspace(1e3, 2e4, 20),</span>
+<span class="sd">            cell_temperature=353.15,</span>
+<span class="sd">            ca=SideConditions(outlet_pressure=1.5e5, dry_o2_mole_fraction=0.21, ...),</span>
+<span class="sd">            an=SideConditions(outlet_pressure=1.5e5, dry_h2_mole_fraction=1.0, ...),</span>
+<span class="sd">        )</span>
+<span class="sd">        state = model.set_initial_conditions(cell, conditions)</span>
+<span class="sd">        state = model.solve(cell, conditions, state)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ImplicitSteadyStateModel.solve">
+<a class="viewcode-back" href="../../../api/models.html#marapendi.cell.implicit_steady_state.ImplicitSteadyStateModel.solve">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">solve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">cell_conditions</span><span class="p">,</span> <span class="n">initial_state</span><span class="p">:</span> <span class="n">CellState</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CellState</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Solve for the self-consistent cell voltage and return the state.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cell : FuelCell</span>
+<span class="sd">            Fully configured fuel-cell object.</span>
+<span class="sd">        cell_conditions : CellConditions</span>
+<span class="sd">            Operating conditions (same object passed to :meth:`set_initial_conditions`).</span>
+<span class="sd">            All fields may be scalars or arrays of the same shape as</span>
+<span class="sd">            ``current_density``.</span>
+<span class="sd">        initial_state : CellState</span>
+<span class="sd">            State returned by :meth:`set_initial_conditions`.  Modified in place.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        CellState</span>
+<span class="sd">            The same object as *initial_state*, populated with all solved</span>
+<span class="sd">            quantities including the self-consistent ``mea_temperature``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="n">initial_state</span>
+        <span class="n">state</span><span class="o">.</span><span class="n">thermal_resistance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thermal_model</span><span class="o">.</span><span class="n">heat_transfer_resistance</span><span class="p">(</span><span class="n">cell</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_f</span><span class="p">(</span><span class="n">cell_voltage</span><span class="p">):</span>
+            <span class="n">mea_temperature</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">thermal_model</span><span class="o">.</span><span class="n">mea_temperature</span><span class="p">(</span><span class="n">cell</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">cell_voltage</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">thermal_model</span><span class="o">.</span><span class="n">set_mea_temperature</span><span class="p">(</span><span class="n">mea_temperature</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">water_balance_model</span><span class="o">.</span><span class="n">calculate_water_transport</span><span class="p">(</span>
+                <span class="n">cell</span><span class="p">,</span> <span class="n">state</span><span class="p">,</span> <span class="n">gas_transport_model</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">gas_transport_model</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">gas_transport_model</span><span class="o">.</span><span class="n">calculate_gas_concentrations</span><span class="p">(</span><span class="n">cell</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">voltage_model</span><span class="o">.</span><span class="n">compute_cell_voltage</span><span class="p">(</span><span class="n">cell</span><span class="p">,</span> <span class="n">state</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">cell_voltage</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">state</span><span class="o">.</span><span class="n">cell_voltage</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">cell_voltage</span> <span class="o">-</span> <span class="n">state</span><span class="o">.</span><span class="n">cell_voltage</span>
+
+        <span class="c1"># Warm start from the explicit 0.7 V estimate.</span>
+        <span class="n">cell_voltage_0</span> <span class="o">=</span> <span class="n">_f</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+
+        <span class="c1"># Each entry of cell_voltage only affects the corresponding entry of</span>
+        <span class="c1"># state (no cross-point coupling), so the Jacobian is diagonal — a</span>
+        <span class="c1"># vectorised elementwise secant solve avoids a dense Jacobian.</span>
+        <span class="n">cell_voltage</span> <span class="o">=</span> <span class="n">newton</span><span class="p">(</span><span class="n">_f</span><span class="p">,</span> <span class="n">x0</span><span class="o">=</span><span class="n">cell_voltage_0</span><span class="p">,</span> <span class="n">disp</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">,</span> <span class="n">rtol</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
+        <span class="n">_f</span><span class="p">(</span><span class="n">cell_voltage</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">state</span></div>
+</div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Pedro Affonso Nobrega.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

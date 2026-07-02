@@ -1,0 +1,271 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>marapendi.simulation.conditions &mdash; marapendi 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../_static/css/theme.css?v=9edc463e" />
+
+  
+      <script src="../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            marapendi
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../user_guide/index.html">User Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/index.html">API Reference</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">marapendi</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">marapendi.simulation.conditions</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for marapendi.simulation.conditions</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;Operating conditions for steady-state PEMFC simulations.</span>
+
+<span class="sd">:class:`SideConditions` holds the steady-state inlet boundary conditions for</span>
+<span class="sd">one side of the cell (cathode or anode).</span>
+
+<span class="sd">:class:`CellConditions` bundles ``current_density``, ``cell_temperature``, and</span>
+<span class="sd">one :class:`SideConditions` per side into a single object that is passed to</span>
+<span class="sd">:meth:`~marapendi.cell.ExplicitSteadyStateModel.set_initial_conditions` and</span>
+<span class="sd">:meth:`~marapendi.cell.ExplicitSteadyStateModel.solve`.</span>
+
+<span class="sd">:class:`OperatingConditions` is a backward-compatible alias for</span>
+<span class="sd">:class:`SideConditions`.  :class:`DynamicOperatingConditions` wraps</span>
+<span class="sd">:class:`SideConditions` fields as callables of time.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">dataclasses</span><span class="w"> </span><span class="kn">import</span> <span class="n">dataclass</span><span class="p">,</span> <span class="n">field</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..electrolyte.electrolyte</span><span class="w"> </span><span class="kn">import</span> <span class="n">ElectrolyteSolution</span>
+
+
+<div class="viewcode-block" id="SideConditions">
+<a class="viewcode-back" href="../../../api/conditions.html#marapendi.simulation.conditions.SideConditions">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">SideConditions</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Inlet boundary conditions for one side of the cell (cathode or anode).</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    inlet_temperature : float</span>
+<span class="sd">        Gas inlet temperature (K).</span>
+<span class="sd">    inlet_pressure : float</span>
+<span class="sd">        Inlet pressure (Pa).  Defaults to ``outlet_pressure`` when omitted.</span>
+<span class="sd">    outlet_pressure : float</span>
+<span class="sd">        Outlet pressure (Pa).  Defaults to ``inlet_pressure`` when omitted.</span>
+<span class="sd">    dry_o2_mole_fraction : float</span>
+<span class="sd">        O₂ mole fraction in the dry gas stream.</span>
+<span class="sd">    dry_h2_mole_fraction : float</span>
+<span class="sd">        H₂ mole fraction in the dry gas stream.</span>
+<span class="sd">    inlet_relative_humidity : float</span>
+<span class="sd">        Relative humidity at the inlet (0–1).</span>
+<span class="sd">    stoichiometry : float</span>
+<span class="sd">        Inlet stoichiometric ratio (actual / required flow).</span>
+<span class="sd">    inlet_liquid_saturation : float</span>
+<span class="sd">        Volume fraction of the liquid phase at the inlet.</span>
+<span class="sd">    inlet_liquid : ElectrolyteSolution</span>
+<span class="sd">        Liquid phase composition.</span>
+<span class="sd">    inlet_liquid_flow_rate : float</span>
+<span class="sd">        Liquid volumetric flow rate at the inlet (m³/s).</span>
+<span class="sd">    inlet_gas_flow_rate : float</span>
+<span class="sd">        Gas volumetric flow rate at the inlet (m³/s).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">inlet_temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">353.15</span>
+    <span class="n">inlet_pressure</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">outlet_pressure</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">dry_o2_mole_fraction</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span>
+    <span class="n">dry_h2_mole_fraction</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="n">inlet_relative_humidity</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.5</span>
+    <span class="n">stoichiometry</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">2</span>
+    <span class="n">inlet_liquid_saturation</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">inlet_liquid</span><span class="p">:</span> <span class="n">ElectrolyteSolution</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">ElectrolyteSolution</span><span class="p">)</span>
+    <span class="n">inlet_liquid_flow_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">inlet_gas_flow_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">inlet_pressure</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inlet_pressure</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">outlet_pressure</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">outlet_pressure</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="mf">101325.0</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">outlet_pressure</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">outlet_pressure</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inlet_pressure</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">average_pressure</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inlet_pressure</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">outlet_pressure</span><span class="p">)</span></div>
+
+
+
+<span class="c1"># Backward-compatible alias.</span>
+<span class="n">OperatingConditions</span> <span class="o">=</span> <span class="n">SideConditions</span>
+
+
+<div class="viewcode-block" id="CellConditions">
+<a class="viewcode-back" href="../../../api/conditions.html#marapendi.simulation.conditions.CellConditions">[docs]</a>
+<span class="nd">@dataclass</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CellConditions</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Full set of operating conditions for a steady-state cell simulation.</span>
+
+<span class="sd">    Bundles the current density, stack temperature, and one</span>
+<span class="sd">    :class:`SideConditions` per side into a single object for use with</span>
+<span class="sd">    :meth:`~marapendi.cell.ExplicitSteadyStateModel.set_initial_conditions`</span>
+<span class="sd">    and :meth:`~marapendi.cell.ExplicitSteadyStateModel.solve`.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    current_density : float or ndarray</span>
+<span class="sd">        Current density (A/m²).  Can be a scalar or a 1-D array to evaluate</span>
+<span class="sd">        the full polarization curve in one vectorised call.</span>
+<span class="sd">    cell_temperature : float or ndarray</span>
+<span class="sd">        Stack operating temperature (K).  Must be broadcastable with</span>
+<span class="sd">        ``current_density``.</span>
+<span class="sd">    ca : SideConditions</span>
+<span class="sd">        Cathode inlet conditions.</span>
+<span class="sd">    an : SideConditions</span>
+<span class="sd">        Anode inlet conditions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">current_density</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">cell_temperature</span><span class="p">:</span> <span class="nb">float</span> <span class="o">|</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span>
+    <span class="n">ca</span><span class="p">:</span> <span class="n">SideConditions</span>
+    <span class="n">an</span><span class="p">:</span> <span class="n">SideConditions</span></div>
+
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">DynamicOperatingConditions</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Time-varying inlet boundary conditions for one side of the cell.</span>
+
+<span class="sd">    Each attribute is a callable ``f(t)`` that returns the value at time *t*.</span>
+<span class="sd">    Call :meth:`get_operating_conditions` to snapshot a steady-state</span>
+<span class="sd">    :class:`OperatingConditions` at a given time.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">inlet_temperature</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="mf">353.15</span><span class="p">,</span>
+        <span class="n">inlet_pressure</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">outlet_pressure</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">dry_o2_mole_fraction</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="mf">0.2</span><span class="p">,</span>
+        <span class="n">dry_h2_mole_fraction</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">inlet_relative_humidity</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span>
+        <span class="n">stoichiometry</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="n">inlet_liquid_saturation</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">inlet_liquid</span><span class="o">=</span><span class="n">ElectrolyteSolution</span><span class="p">(),</span>
+        <span class="n">inlet_liquid_flow_rate</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+        <span class="n">inlet_gas_flow_rate</span><span class="o">=</span><span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inlet_temperature</span> <span class="o">=</span> <span class="n">inlet_temperature</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inlet_pressure</span> <span class="o">=</span> <span class="n">inlet_pressure</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">outlet_pressure</span> <span class="o">=</span> <span class="n">outlet_pressure</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dry_o2_mole_fraction</span> <span class="o">=</span> <span class="n">dry_o2_mole_fraction</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dry_h2_mole_fraction</span> <span class="o">=</span> <span class="n">dry_h2_mole_fraction</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inlet_relative_humidity</span> <span class="o">=</span> <span class="n">inlet_relative_humidity</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stoichiometry</span> <span class="o">=</span> <span class="n">stoichiometry</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inlet_liquid_saturation</span> <span class="o">=</span> <span class="n">inlet_liquid_saturation</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inlet_liquid</span> <span class="o">=</span> <span class="n">inlet_liquid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inlet_liquid_flow_rate</span> <span class="o">=</span> <span class="n">inlet_liquid_flow_rate</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inlet_gas_flow_rate</span> <span class="o">=</span> <span class="n">inlet_gas_flow_rate</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">inlet_pressure</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inlet_pressure</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">outlet_pressure</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">outlet_pressure</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="k">lambda</span> <span class="n">t</span><span class="p">:</span> <span class="mf">101325.0</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">outlet_pressure</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">outlet_pressure</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inlet_pressure</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_operating_conditions</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">OperatingConditions</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return an :class:`OperatingConditions` snapshot at time *t*.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">OperatingConditions</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inlet_temperature</span><span class="p">(</span><span class="n">t</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inlet_pressure</span><span class="p">(</span><span class="n">t</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">outlet_pressure</span><span class="p">(</span><span class="n">t</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dry_o2_mole_fraction</span><span class="p">(</span><span class="n">t</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dry_h2_mole_fraction</span><span class="p">(</span><span class="n">t</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inlet_relative_humidity</span><span class="p">(</span><span class="n">t</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stoichiometry</span><span class="p">(</span><span class="n">t</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inlet_liquid_saturation</span><span class="p">(</span><span class="n">t</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inlet_liquid</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inlet_liquid_flow_rate</span><span class="p">(</span><span class="n">t</span><span class="p">),</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">inlet_gas_flow_rate</span><span class="p">(</span><span class="n">t</span><span class="p">),</span>
+        <span class="p">)</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Pedro Affonso Nobrega.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

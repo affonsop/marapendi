@@ -1,5 +1,5 @@
 """
-Thermal model: heat transfer resistance and MEA temperature.
+Thermal model including heat transfer resistance and MEA temperature calculation.
 
 :class:`ThermalModel` computes the MEA heat transfer resistance and estimates
 the MEA operating temperature from the current density and stack temperature.

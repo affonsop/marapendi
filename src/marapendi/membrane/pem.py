@@ -104,7 +104,36 @@ _subclass_pwl_cache: dict = {}
 
 @dataclass
 class PFSAIonomer(Ionomer):
-    """PFSA ionomer (e.g. Nafion) with empirical fits for proton conductivity and O2 transport."""
+    """PFSA ionomer (e.g. Nafion) with empirical fits for conductivity and O₂ transport.
+
+    Attributes
+    ----------
+    equivalent_weight : float
+        Equivalent weight (kg/kmol, i.e. g/mol).  Default 952 corresponds to
+        Nafion NR-211/N-115.
+    dry_density : float
+        Dry polymer density (kg/m³).
+    vapor_equilibrium_polynomial : list of float
+        Coefficients ``[a, b, c, d]`` of the cubic λ(RH) isotherm
+        ``λ = ((a·RH + b)·RH + c)·RH + d``.
+    conductivity_correction : float
+        Multiplicative correction on the reference conductivity (used for
+        calibration; default 1.0 leaves the correlation unchanged).
+    reference_conductivity : float
+        Pre-exponential coefficient in the proton conductivity correlation (S/m).
+    conductivity_exp : float
+        Free-volume exponent in the conductivity correlation.
+    conductivity_activation_energy : float
+        Activation energy for proton conductivity (J/kmol).
+    reference_conductivity_temperature : float
+        Reference temperature for the conductivity Arrhenius factor (K).
+    hydrated_o2_diffusion : float
+        O₂ diffusivity in fully hydrated ionomer at the reference temperature (m²/s).
+    o2_diffusion_exponent : float
+        Water-content exponent for O₂ diffusivity.
+    o2_diffusion_activation_energy : float
+        Activation energy for O₂ diffusion in ionomer (J/kmol).
+    """
     equivalent_weight: float = 952.
     dry_density: float = 2004.
     vapor_equilibrium_polynomial: list = field(default_factory=lambda: [36, -39.85, 17.18, 0.043])
@@ -313,11 +342,28 @@ class PFSAIonomer(Ionomer):
         return 9.22 + 0.181 * (temperature - 273.15)
 
     def vapor_equilibrium_water_content(self, rh: float, temperature) -> float:
-        """Equilibrium water content as a function of relative humidity.
+        """Equilibrium water content λ as a function of relative humidity.
+
+        Evaluates the cubic polynomial
+        ``λ = ((a₀·RH + a₁)·RH + a₂)·RH + a₃``
+        defined by :attr:`vapor_equilibrium_polynomial`.
+
+        Parameters
+        ----------
+        rh : array_like
+            Relative humidity (0–1).
+        temperature : float
+            Temperature (K).  Not used by the polynomial form but kept for
+            interface consistency with subclasses.
+
+        Returns
+        -------
+        float or ndarray
+            Water content λ (mol H₂O / mol SO₃⁻).
 
         References
         ----------
-        
+        Springer, T. E. et al. J. Electrochem. Soc. 138, 2334 (1991).
         """
         a = self.vapor_equilibrium_polynomial
         return  ((a[0] * rh + a[1]) * rh + a[2]) * rh + a[3]
@@ -381,6 +427,23 @@ class PFSA(Membrane):
         return self.ionomer.liquid_equilibrium_water_content(temperature)
 
     def proton_conductivity(self, water_content_profile, temperature):
+        """Effective through-plane proton conductivity (S/m).
+
+        Computes the harmonic mean of the local conductivities across the
+        water-content profile, consistent with a series resistance model.
+
+        Parameters
+        ----------
+        water_content_profile : array_like
+            Water content λ at each mesh point along the membrane thickness.
+        temperature : float
+            Membrane temperature (K).
+
+        Returns
+        -------
+        float or ndarray
+            Harmonic-mean proton conductivity (S/m).
+        """
         return 1 / np.mean(
             1 / (
                 self.ionomer.charge_conductivity(water_content_profile, 

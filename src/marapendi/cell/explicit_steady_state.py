@@ -1,5 +1,5 @@
 """
-Cell model: explicit steady-state PEMFC performance model.
+Explicit steady-state PEMFC performance model.
 
 :class:`ExplicitSteadyStateModel` orchestrates the solve sequence:
 heat-transfer resistance → MEA temperature → water transport →
@@ -44,8 +44,8 @@ class ExplicitSteadyStateModel:
         state = model.solve(cell, conditions, state)
         # state.cell_voltage, state.mea_temperature, … are now populated
 
-    Hypotheses
-    ----------
+    Notes
+    -----
     - MEA temperature is estimated analytically: either from the 0.7 V efficiency
       approximation (``mea_temperature_estimation=False``) or from a first-pass
       voltage calculation (``mea_temperature_estimation=True``).

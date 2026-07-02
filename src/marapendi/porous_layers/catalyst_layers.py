@@ -113,8 +113,8 @@ class CatalystLayer(PorousLayer):
         float
             Effective charge resistance [Ohm.m²].
         
-        References 
-        ---------
+        References
+        ----------
         Neyerlin, K. C. et al. J. Electrochem. Soc. 154, B279 (2007).
         Goshtasbi, A. et al. J. Electrochem. Soc. 167, 024518 (2020).
         """
@@ -184,10 +184,7 @@ class PorousTransferLayer(CatalystLayer):
     ionomer_k2: float = 5.4
 
     def __post_init__(self):
-        """
-        Calculate derived PTL properties such as fiber density,
-        surface area, ionomer volume fraction and update porosity.
-        """
+        """Compute derived PTL geometry from fiber and catalyst composition."""
         self.fiber_number_density_cross_section = 4 * (1 - self.ptl_porosity) / (np.pi * self.fiber_diameter ** 2)
         self.fiber_surface_per_volume = 4 * (1 - self.ptl_porosity) / self.fiber_diameter
         self.catalyst_vol_surface_area = self.catalyst_loading * self.ecsa / self.thickness
@@ -259,15 +256,7 @@ class PtCCatalystLayer(CatalystLayer):
     ionomer_water_content: float = 10
 
     def __post_init__(self):
-        """
-        Compute volume fractions and geometry based on catalyst composition.
-
-        Equations come from Hao et al. (2015). 
-
-        References
-        ----------
-        Hao, L. et al. J. Electrochem. Soc. 162, F854 (2015).
-        """
+        """Compute volume fractions and geometry from catalyst composition (Hao et al. 2015)."""
         if self.platinum_vol_surface_area == 0:
             self.platinum_vol_surface_area = self.platinum_loading * self.ecsa / self.thickness
         if not self.porosity:
