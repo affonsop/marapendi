@@ -52,7 +52,7 @@ class PorousGasDiffusionModel:
         float
             Effective diffusion length (m).
         """
-        return layer.thickness / layer.effective_gas_diffusion_ratio / self.water_saturation_correction(water_saturation)
+        return layer.thickness * layer.porosity / layer.tortuosity / self.water_saturation_correction(water_saturation)
 
     def molecular_diffusion_resistance(self, layer, diffusion_coefficient, water_saturation=0):
         """
@@ -117,7 +117,7 @@ class PorousGasDiffusionModel:
             Total resistance (s/m).
         """
         correction = np.clip(1 - water_saturation, 1e-6, 1) ** self.water_saturation_exponent
-        effective_length = layer.thickness / layer.effective_gas_diffusion_ratio / correction
+        effective_length = layer.thickness * layer.porosity / layer.tortuosity  / correction
         return effective_length * (
             1/diffusion_coefficient + 1/self.knudsen_diffusivity(layer, temperature, molecular_weight))
 

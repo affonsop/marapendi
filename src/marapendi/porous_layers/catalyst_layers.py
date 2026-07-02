@@ -291,7 +291,7 @@ class PtCCatalystLayer(CatalystLayer):
             (self.ionomer_vol_fraction / self.carbon_vol_fraction + 1) ** (1/3) - 1)
         self.ionomer_vol_surface_area = 4 * np.pi * (self.carbon_agglomerate_radius + self.ionomer_film_thickness) ** 2 * self.carbon_agglomerate_number_density
         self.ionomer_to_carbon_vol_ratio = (1 + self.ionomer_film_thickness / self.carbon_agglomerate_radius)**3 - 1
-        self.effective_gas_diffusion_ratio = self.porosity ** 1.5
+        self.tortuosity = self.porosity ** -0.5
     
     def set_water_film_thickness(self, water_saturation):
         """Compute and store the liquid water film thickness around agglomerates.

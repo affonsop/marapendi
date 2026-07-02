@@ -35,8 +35,8 @@ class PorousLayer():
         Reference pressure (Pa).
     porosity : float
         Porosity of the layer (0 < porosity < 1).
-    effective_gas_diffusion_ratio : float
-        Ratio accounting for effective gas diffusion through the porous medium.
+    tortuosity : float
+        Tortuosity of the layer (tortuosity > 1).
     pore_diameter : float
         Average pore diameter in meters (default is large, so Knudsen diffusion negligible).
     transport_resistance_model : PorousGasDiffusionModel
@@ -68,7 +68,7 @@ class PorousLayer():
     temperature: float = 300.
     pressure: float = 1e5
     porosity: float = 1
-    effective_gas_diffusion_ratio: float = 1
+    tortuosity: float = 1
     pore_diameter: float = 1e12
     transport_resistance_model: PorousGasDiffusionModel = field(default_factory=PorousGasDiffusionModel)
     two_phase_transport_model: DarcyTransportModel = field(default_factory=DarcyTransportModel)
