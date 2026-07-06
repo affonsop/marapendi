@@ -80,7 +80,7 @@ class Cell:
         Membrane.
     area : float
         Active area (m²).
-    electrical_resistance : float
+    electric_resistance : float
         Area-specific electrical resistance (Ω·m²).
     """
 
@@ -88,7 +88,7 @@ class Cell:
     an: CellSide = field(default_factory=CellSide)
     membrane: Membrane = field(default_factory=PFSA)
     area: float = 1.
-    electrical_resistance: float = 0.
+    electric_resistance: float = 0.
 
     @property
     def porous_layers(self) -> list:

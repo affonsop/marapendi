@@ -114,7 +114,7 @@ class FuelCell(Cell):
         Membrane component (e.g. :class:`~marapendi.membrane.pem.PFSA`).
     area : float
         Active cell area (m²).
-    electrical_resistance : float
+    electric_resistance : float
         Through-plane electrical contact resistance (Ω·m²).
     cell_number : int
         Number of cells in the stack (default 1 — single cell).
