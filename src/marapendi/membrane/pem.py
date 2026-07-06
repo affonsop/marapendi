@@ -143,13 +143,12 @@ class PFSAIonomer(Ionomer):
     reference_water_absorption_coefficient: float = 1e-5   
     conductivity_exp: float = 1.5
     conductivity_fv_threshold: float = 0.11
-    hydrated_proton_conductivity: float = 11
-    conductivity_activation_energy: float = 11e6
+    conductivity_activation_energy: float = 15e6
     water_diffusivity_activation_energy: float = 20e6
     water_absorption_activation_energy: float = 20e6
-    reference_conductivity_temperature: float = 353.15
-    reference_water_absorption_temperature: float = 353.15
-    reference_water_diffusivity_temperature: float = 353.15
+    reference_conductivity_temperature: float = 298.15
+    reference_water_absorption_temperature: float = 300.15
+    reference_water_diffusivity_temperature: float = 300.15
     hydrated_o2_diffusion: float = 1.14698e-10 * 14 ** 0.708
     o2_diffusion_exponent: float = 0.708
     o2_diffusion_activation_energy: float = 24e6
@@ -323,7 +322,7 @@ class PFSAIonomer(Ionomer):
         """Proton conductivity from empirical fits (S/m)."""
         fv = self.water_vol_fraction(water_content, water_molar_volume(temperature))
         return (
-            self.conductivity_correction * 50 * (np.maximum(fv, 0.11) - 0.1) ** self.conductivity_exp
+            self.conductivity_correction * self.reference_conductivity * (np.maximum(fv, 0.11) - 0.1) ** self.conductivity_exp
             * arrhenius_term(self.conductivity_activation_energy, temperature, 298.15)
         )
 
