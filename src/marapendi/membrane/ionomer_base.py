@@ -111,15 +111,15 @@ class Ionomer:
             * current_density / FARADAY_CONSTANT / self.dry_concentration
         )
 
-    def charge_conductivity(self, water_content: float, temperature: float, charge: str = 'proton', water_saturation=0) -> float:
+    def charge_conductivity(self, water_content: float, temperature: float, charge: str = 'proton') -> float:
         """Charge conductivity (proton or hydroxide), in S/m.
 
         Dispatches to :meth:`proton_conductivity` or :meth:`hydroxide_conductivity`,
         which must be implemented by concrete subclasses.
         """
         if charge == 'proton':
-            return self.proton_conductivity(water_content, temperature, water_saturation)
+            return self.proton_conductivity(water_content, temperature)
         elif charge == 'hydroxide':
-            return self.hydroxide_conductivity(water_content, temperature, water_saturation)
+            return self.hydroxide_conductivity(water_content, temperature)
         raise ValueError(f"Unknown charge carrier: {charge!r}")
 

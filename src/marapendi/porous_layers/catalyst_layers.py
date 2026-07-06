@@ -92,7 +92,7 @@ class CatalystLayer(PorousLayer):
         return self.thickness / (eps_ion / tort_ion * ionomer_charge_conductivity)
 
 
-    def effective_charge_resistance(self, current_density, ionomer_water_content, temperature, charge='proton'):
+    def effective_charge_resistance(self, current_density, ionomer_water_content, temperature, charge='proton', water_saturation=0):
         """
         Calculate effective charge resistance using the equations from Goshtasbi et al. (2020)
         based on Neyerlin et al. (2007).
