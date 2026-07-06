@@ -64,7 +64,7 @@ class CatalystLayer(PorousLayer):
     ionomer_film_thickness: float = 2e-9
     contact_angle: float = 95.
 
-    def ionomer_sheet_charge_resistance(self, ionomer_water_content, temperature, charge='proton'):
+    def ionomer_sheet_charge_resistance(self, ionomer_water_content, temperature, charge='proton', water_saturation=0):
         """
         Compute ionomer film proton resistance.
 
@@ -88,7 +88,7 @@ class CatalystLayer(PorousLayer):
         """
         ionomer_charge_conductivity = self.ionomer.charge_conductivity(ionomer_water_content, temperature, charge)
         eps_ion = self.ionomer_vol_fraction
-        tort_ion = self.ionomer_tortuosity(self.ionomer_vol_fraction)
+        tort_ion = self.ionomer_tortuosity(eps_ion)
         return self.thickness / (eps_ion / tort_ion * ionomer_charge_conductivity)
 
 
@@ -238,6 +238,7 @@ class PtCCatalystLayer(CatalystLayer):
     Hao, L. et al. J. Electrochem. Soc. 162, F854 (2015).
     """
     porosity: float = None
+    tortuosity: float = None
     platinum_loading: float = 0.2e-6 * 1e4
     catalyst_platinum_weight_percent: float = 0.5
     ionomer_to_carbon_ratio: float = 0.75
@@ -291,7 +292,7 @@ class PtCCatalystLayer(CatalystLayer):
             (self.ionomer_vol_fraction / self.carbon_vol_fraction + 1) ** (1/3) - 1)
         self.ionomer_vol_surface_area = 4 * np.pi * (self.carbon_agglomerate_radius + self.ionomer_film_thickness) ** 2 * self.carbon_agglomerate_number_density
         self.ionomer_to_carbon_vol_ratio = (1 + self.ionomer_film_thickness / self.carbon_agglomerate_radius)**3 - 1
-        self.tortuosity = self.porosity ** -0.5
+        if self.tortuosity is None: self.tortuosity = self.porosity ** -0.5
     
     def set_water_film_thickness(self, water_saturation):
         """Compute and store the liquid water film thickness around agglomerates.
