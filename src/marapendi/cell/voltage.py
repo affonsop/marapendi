@@ -68,7 +68,7 @@ class VoltageModel:
         side_cell = cell.ca
         state.ca.cl.proton_resistance = side_cell.cl.effective_charge_resistance(
                 state.current_density, side_state.cl.ionomer_water_content, side_state.cl.temperature,
-                charge='proton', water_saturation=side_state.cl.liquid_saturation
+                charge='proton', water_saturation=0 # Water saturation is not considered for CL ionomer conductivity. 
         )
         return state.current_density * (state.ca.cl.proton_resistance + self.high_frequency_resistance(cell, state))
 
