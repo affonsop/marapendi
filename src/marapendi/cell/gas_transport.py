@@ -106,10 +106,6 @@ class GasTransportModel:
                 - side_state.cl.gas.X[..., species_indexes['h2']]
             )
 
-            # Sync to component object so legacy code reading cell_side.cl.gas.X still works.
-            cell_side.cl.gas.X = side_state.cl.gas.X
-            cell_side.reactant_transport_resistance = side_state.reactant_transport_resistance
-
     def max_water_vapor_removal(self, cell_side, side_state):
         """Maximum water vapor removal rate for *cell_side* (kmol/m²/s)."""
         return (
