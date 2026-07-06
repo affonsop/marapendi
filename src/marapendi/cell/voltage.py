@@ -30,10 +30,11 @@ class VoltageModel:
         )
 
     def reversible_voltage_vs_RHE(self, cell, state) -> float:
-        return calculate_reversible_cell_voltage(
+        state.reversible_voltage = calculate_reversible_cell_voltage(
             state.ca.cl.temperature,
             GasModel.species_partial_pressure(state.ca.cl, 'o2') / STD_PRESSURE,
         )
+        return state.reversible_voltage
 
     def activation_overpotential(self, cell, state, theta_PtO: float = 0) -> float:
         state.membrane.h2_permeation_flux = cell.membrane.hydrogen_permeation_flux(
@@ -56,19 +57,22 @@ class VoltageModel:
         return orr_overpotential + omega_PtO_voltage_drop + hor_overpotential
 
     def high_frequency_resistance(self, cell, state) -> float:
-        return (
-            cell.membrane.proton_resistance(state.membrane, water_saturation=state.ca.cl.liquid_saturation)
-            + cell.electrical_resistance
+        state.hfr = (
+            cell.membrane.proton_resistance(state.membrane, water_saturation=0)
+            + cell.electric_resistance
         )
+        return state.hfr
 
     def ohmic_overpotential(self, cell, state) -> float:
         side_state = state.ca
         side_cell = cell.ca
         state.ca.cl.proton_resistance = side_cell.cl.effective_charge_resistance(
                 state.current_density, side_state.cl.ionomer_water_content, side_state.cl.temperature,
+                charge='proton', water_saturation=side_state.cl.liquid_saturation
         )
         return state.current_density * (state.ca.cl.proton_resistance + self.high_frequency_resistance(cell, state))
 
+    
     def calculate_theta_PtO(self, cell, state) -> float:
         E_rev_vs_RHE = self.reversible_voltage_vs_RHE(cell, state)
         theta_PtO = 0
