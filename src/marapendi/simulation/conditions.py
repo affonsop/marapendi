@@ -92,6 +92,12 @@ class CellConditions:
     cell_temperature : float or ndarray
         Stack operating temperature (K).  Must be broadcastable with
         ``current_density``.
+    inlet_cooling_temperature : float or ndarray
+        Stack inlet cooling liquid temperature (K).  Must be broadcastable with
+        ``current_density``.
+    outlet_cooling_temperature : float or ndarray
+        Stack outlet cooling liquid temperature (K).  Must be broadcastable with
+        ``current_density``.
     ca : SideConditions
         Cathode inlet conditions.
     an : SideConditions
@@ -99,10 +105,18 @@ class CellConditions:
     """
 
     current_density: float | np.ndarray
-    cell_temperature: float | np.ndarray
-    ca: SideConditions
-    an: SideConditions
+    cell_temperature: float | np.ndarray = None 
+    inlet_cooling_temperature: float | np.ndarray = None 
+    outlet_cooling_temperature: float | np.ndarray = None 
+    ca: SideConditions = None 
+    an: SideConditions = None 
 
+    def __post_init__(self): 
+        if self.cell_temperature is None: 
+            self.cell_temperature = (self.inlet_cooling_temperature + self.outlet_cooling_temperature) / 2
+        else: 
+            self.outlet_cooling_temperature = self.cell_temperature 
+            self.inlet_cooling_temperature = self.cell_temperature - 1
 
 class DynamicOperatingConditions:
     """Time-varying inlet boundary conditions for one side of the cell.
