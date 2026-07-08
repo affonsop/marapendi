@@ -72,7 +72,7 @@ class TransientModel:
     voltage_model: VoltageModel = field(default_factory=VoltageModel)
     thermal_model: ThermalModel = field(default_factory=ThermalModel)
     gas_transport_model: GasTransportModel = field(default_factory=GasTransportModel)
-    n_memb_mesh: int = 3
+    n_memb_mesh: int = 10
 
     def __post_init__(self):
         self.water_balance_model = WaterBalanceModel(
@@ -88,6 +88,7 @@ class TransientModel:
             self.gas_transport_model,
         )
 
+        self.norm_factors = [353.15, 10.]
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -122,7 +123,7 @@ class TransientModel:
         xi_tr = np.linspace(0, 1, self.n_memb_mesh)
         lmbd0 = np.interp(xi_tr, xi_ss, lmbd_ss_1d)
 
-        x0 = np.concatenate([[T0], lmbd0])
+        x0 = np.concatenate([[T0 / self.norm_factors[0]], lmbd0 / self.norm_factors[1]])
         return state, x0
 
     def f_transient(self, t, x, cell, cell_conditions) -> np.ndarray:
@@ -137,7 +138,8 @@ class TransientModel:
             at each finite-volume node.
         cell : FuelCell
         cell_conditions : CellConditions or callable(t) -> CellConditions
-
+        state : CellState 
+            Avoids instatiating a new CellState object at each time step.
         Returns
         -------
         np.ndarray, shape (1 + n_memb_mesh,)
@@ -145,8 +147,8 @@ class TransientModel:
             water content at each membrane node.
         """
         n = self.n_memb_mesh
-        T_mea = float(x[0])
-        water_profile = x[1:1 + n]
+        T_mea = float(x[0] * self.norm_factors[0])
+        water_profile = x[1:1 + n] * self.norm_factors[1]
 
         cond = cell_conditions(t) if callable(cell_conditions) else cell_conditions
         state = self._eval_state(cell, cond, T_mea, water_profile)
@@ -157,7 +159,7 @@ class TransientModel:
             cell, state, n
         )
 
-        return np.concatenate([[float(dTdt)], np.asarray(dlambdadt).ravel()])
+        return np.concatenate([[float(dTdt) / self.norm_factors[0]], np.asarray(dlambdadt / self.norm_factors[1]).ravel()])
 
     def evaluate(self, cell, cell_conditions, t_eval, x_eval) -> CellState:
         """Compute model diagnostics from ODE states at given time points.
@@ -244,8 +246,8 @@ class TransientModel:
             ),
         )
 
-        T_mea_arr     = x_eval[0, :]    # (n_t,)
-        water_profile = x_eval[1:, :]   # (n_memb_mesh, n_t)
+        T_mea_arr     = x_eval[0, :] * self.norm_factors[0]   # (n_t,)
+        water_profile = x_eval[1:, :] * self.norm_factors[1]  # (n_memb_mesh, n_t)
 
         state = self._eval_state(cell, cond_all, T_mea_arr, water_profile)
         state.hfr = self.voltage_model.high_frequency_resistance(cell, state)
@@ -273,7 +275,7 @@ class TransientModel:
             are needed).
         **kwargs
             Forwarded to :func:`scipy.integrate.solve_ivp`.  Defaults:
-            ``method='Radau'``, ``rtol=1e-4``, ``atol=1e-6``.
+            ``method='Radau'``, ``rtol=1e-3``, ``atol=1e-5``.
 
         Returns
         -------
@@ -294,8 +296,8 @@ class TransientModel:
             _, x0 = self.set_initial_conditions(cell, cond0)
 
         kwargs.setdefault('method', 'Radau')
-        kwargs.setdefault('rtol', 1e-4)
-        kwargs.setdefault('atol', 1e-6)
+        kwargs.setdefault('rtol', 1e-3)
+        kwargs.setdefault('atol', 1e-5)
 
         sol = solve_ivp(
             lambda t, x: self.f_transient(t, x, cell, cell_conditions),

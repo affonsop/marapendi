@@ -89,7 +89,8 @@ class MembraneWaterBalanceModelPiecewise(MembraneWaterBalanceModel):
             # Physics calls go here — once per iteration, not once per side
             self.estimate_equilibrium_water_contents(cell, state)
             self.update_non_dimensional_parameters(cell, state)
-            self.update_water_profile(state)
+            if not dynamic: 
+                self.update_water_profile(state)
             self.update_water_contents(state)
             self.equilibrium_water_content_from_estimated(state)
 
@@ -110,7 +111,8 @@ class MembraneWaterBalanceModelPiecewise(MembraneWaterBalanceModel):
                                                     side_state.peclet_over_biot, side_state.peclet_over_modified_biot)
             side_state.non_dim_vapor_resistance = np.where(side_state.is_saturated, 
                                                     0, side_state.non_dim_vapor_resistance)
-            self.update_water_profile(state)
+            if not dynamic: 
+                self.update_water_profile(state)
             self.update_water_contents(state)
             self.equilibrium_water_content_from_estimated(state)
             self.equilibrium_water_content_from_estimated(state)
