@@ -10,7 +10,7 @@ from dataclasses import dataclass
 @dataclass
 class Parameter:
     """A fixed model parameter with display metadata."""
-    value: float
+    value: float = None
     key: str = None      # dict key used in the params mapping passed to cell_creator
     symbol: str = None   # LaTeX symbol for plots
     units: str = 'n.d.'
@@ -26,4 +26,5 @@ class UnknownParameter(Parameter):
     is_linear: bool = True   # False → log-scale normalisation via p_to_theta / theta_to_p
 
     def __post_init__(self):
-        self.value = self.initial_guess
+        if self.value is None:
+            self.value = self.initial_guess
