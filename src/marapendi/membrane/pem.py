@@ -138,7 +138,7 @@ class PFSAIonomer(Ionomer):
     dry_density: float = 2004.
     vapor_equilibrium_polynomial: list = field(default_factory=lambda: [36, -39.85, 17.18, 0.043])
     reference_conductivity: float = 50
-    conductivity_correction: float = 1.0
+    residual_conductivity: float = 0.3
     reference_water_diffusivity: float = 4.3e-10
     reference_water_absorption_coefficient: float = 1e-5   
     conductivity_exp: float = 1.5
@@ -322,7 +322,8 @@ class PFSAIonomer(Ionomer):
         """Proton conductivity from empirical fits (S/m)."""
         fv = self.water_vol_fraction(water_content, water_molar_volume(temperature))
         return (
-            self.conductivity_correction * self.reference_conductivity * (np.maximum(fv, 0.11) - 0.1) ** self.conductivity_exp
+            (self.residual_conductivity + 
+             self.reference_conductivity * np.maximum((fv - self.conductivity_fv_threshold),0) ** self.conductivity_exp)
             * arrhenius_term(self.conductivity_activation_energy, temperature, 298.15)
         )
 
