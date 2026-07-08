@@ -133,6 +133,7 @@ class ExplicitSteadyStateModel:
                     cathode_conditions, anode_conditions) -> CellState:
         """Low-level state initialiser used by :meth:`set_initial_conditions`."""
         state = CellState()
+    
         for side, side_state in zip(cell.sides, state.sides):
             if side.has_mpl:
                 side_state.mpl = LayerState()
@@ -142,7 +143,7 @@ class ExplicitSteadyStateModel:
 
         state.temperature = stack_temperature
         state.membrane.temperature = stack_temperature
-
+        
         for side, side_state in zip(cell.sides, state.sides):
             for layer_state in side_state.layers:
                 layer_state.temperature = stack_temperature
@@ -191,19 +192,20 @@ class ExplicitSteadyStateModel:
     def _set_consumption_production(self, state, current_density) -> None:
         """Write O₂/H₂ consumption and H₂O production rates into *state*."""
         state.ca.reactant_consumption = current_density / (4 * FARADAY_CONSTANT)
-        state.an.reactant_consumption = current_density / (2 * FARADAY_CONSTANT)
-        state.ca.h2o_production = current_density / (2 * FARADAY_CONSTANT)
+        state.an.reactant_consumption = state.ca.reactant_consumption * 2
+        state.ca.h2o_production = state.an.reactant_consumption
         state.an.h2o_production = 0
-
+        
     def _set_flow_rates(self, cell, state, cathode_conditions, anode_conditions) -> None:
         """Compute and store inlet gas/liquid flow rates on the channel state."""
         for cell_side, side_state, conditions in zip(
             cell.sides, state.sides, (cathode_conditions, anode_conditions)
         ):
+            minimal_reactant_consumption = conditions.minimum_current_density_for_stoich / ((4 if cell_side is cell.ca else 2) * FARADAY_CONSTANT)
             side_state.ch.inlet_liquid_flow_rate = conditions.inlet_liquid_flow_rate
             side_state.ch.inlet_gas_flow_rate = (
                 conditions.stoichiometry
-                * side_state.reactant_consumption
+                * np.maximum(side_state.reactant_consumption, minimal_reactant_consumption)
                 * cell.area
                 / (
                     side_state.ch.gas.X[..., species_indexes[cell_side.reactant]]
