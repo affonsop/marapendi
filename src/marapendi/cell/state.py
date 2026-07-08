@@ -56,7 +56,7 @@ class LayerState:
     upstream_saturation: float = None
     downstream_capillary_pressure: float = None
     electrolyte_saturation: float = None
-
+    gas_transport_resistance: dict = field(default_factory=dict)
 
 @dataclass
 class CatalystLayerState(LayerState):
@@ -67,7 +67,7 @@ class CatalystLayerState(LayerState):
     water_film_thickness: float = None
     proton_resistance: float = None
     theta_catalyst: float = None
-
+    local_o2_resistance: float = None
     eq_water_content: float = None
     membrane_interface_water_content: float = None
 
@@ -119,7 +119,7 @@ class FlowChannelState:
     inlet_liquid_flow_rate: float = None
     inlet_liquid_saturation: float = None
     inlet_stoichiometry: float = None
-
+    gas_transport_resistance: dict = field(default_factory=dict)
 
 @dataclass
 class CellSideState:
@@ -133,6 +133,7 @@ class CellSideState:
     h2ov_transport_resistance: float = None
     reactant_transport_resistance: float = None
     reactant_consumption: float = None
+    gas_transport_resistance: dict = field(default_factory=dict)
 
     h2o_production: float = 0.
     s_relax: float | None = None

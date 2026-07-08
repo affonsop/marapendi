@@ -40,18 +40,27 @@ class GasTransportModel:
         float
             Sum of porous-layer, channel, and (for O₂) ionomer-film resistances.
         """
-        resistance = sum(
-            layer.transport_resistance_model.gas_transport_resistance(layer, layer_state, species)
-            for layer, layer_state in zip(cell_side.porous_layers, side_state.porous_layers)
-        )
-        resistance += cell_side.ch.transport_resistance_model.gas_transport_resistance(
+        for layer, layer_state in zip(cell_side.porous_layers, side_state.porous_layers): 
+            layer_state.gas_transport_resistance[species] = (
+                layer.transport_resistance_model.gas_transport_resistance(layer, layer_state, species)
+            )
+        side_state.ch.gas_transport_resistance[species] = cell_side.ch.transport_resistance_model.gas_transport_resistance(
             cell_side.ch, side_state.ch, species,
             volume_flow_rate=side_state.ch.inlet_gas_flow_rate,
-        )
+        ) 
         if species == 'o2':
-            resistance += cell_side.cl.o2_ionomer_film_resistance(
+            side_state.cl.local_o2_resistance = cell_side.cl.o2_ionomer_film_resistance(
                 side_state.cl.ionomer_water_content, side_state.cl.temperature,
             )
+            side_state.cl.gas_transport_resistance['o2'] += side_state.cl.local_o2_resistance
+            
+        resistance = sum(
+            layer_state.gas_transport_resistance[species]
+            for layer_state in side_state.layers
+        )
+        if species == 'o2':
+            resistance += side_state.cl.local_o2_resistance
+        side_state.gas_transport_resistance[species] = resistance
         return resistance
 
     def calculate_gas_concentrations(self, cell, state) -> None:
