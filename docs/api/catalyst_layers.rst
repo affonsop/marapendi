@@ -14,7 +14,7 @@ operating point.  Local O₂ transport resistance across the ionomer film (bulk 
 and ionomer/Pt interface terms) is evaluated at each solve step.
 
 The electrochemical reaction is parameterised by
-:class:`~marapendi.thermo.electrochemistry.ElectrochemicalReaction`, which holds the
+:class:`~marapendi.models.thermo.electrochemistry.ElectrochemicalReaction`, which holds the
 Butler-Volmer parameters and the Nernst correction.
 
 Components
@@ -31,6 +31,6 @@ Components
 Electrochemical reaction
 ------------------------
 
-.. autoclass:: marapendi.thermo.electrochemistry.ElectrochemicalReaction
+.. autoclass:: marapendi.models.thermo.electrochemistry.ElectrochemicalReaction
    :members:
    :show-inheritance:

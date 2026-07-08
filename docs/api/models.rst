@@ -2,7 +2,7 @@ Models
 ======
 
 Orchestration classes that combine a :class:`~marapendi.cell.fuelcell.FuelCell` and a
-:class:`~marapendi.cell.state.CellState` to compute the cell's behaviour:
+:class:`~marapendi.simulation.state.CellState` to compute the cell's behaviour:
 membrane water balance, gas transport, voltage and thermal sub-models.
 
 Steady-state models
@@ -11,17 +11,17 @@ Steady-state models
 Two top-level steady-state models are available, differing in how MEA temperature
 is handled:
 
-- :class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel` —
+- :class:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel` —
   MEA temperature is estimated analytically (one forward pass).
-- :class:`~marapendi.cell.implicit_steady_state.ImplicitSteadyStateModel` —
+- :class:`~marapendi.models.base.implicit_steady_state.ImplicitSteadyStateModel` —
   cell voltage and MEA temperature are solved self-consistently via a
   vectorised elementwise secant iteration (:func:`scipy.optimize.newton`).
 
-Both models use :class:`~marapendi.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise`
+Both models use :class:`~marapendi.models.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise`
 by default.  This model solves a 1-D water-content profile with boundary conditions
 derived from a piecewise-linear regression of the PFSA equilibrium isotherm RH(λ).
 The first-order linear approximation of the isotherm used in Affonso Nobrega et al.
-(2026) is available as :class:`~marapendi.water_balance.membrane.MembraneWaterBalanceModel`.
+(2026) is available as :class:`~marapendi.models.water_balance.membrane.MembraneWaterBalanceModel`.
 
 All models share the same two-step API::
 
@@ -42,10 +42,10 @@ and :class:`~marapendi.simulation.conditions.SideConditions`.
 Transient model
 ---------------
 
-:class:`~marapendi.cell.transient.TransientModel` integrates coupled ODEs for MEA
+:class:`~marapendi.models.base.transient.TransientModel` integrates coupled ODEs for MEA
 temperature and membrane water-content profile (Ferrara et al., 2018) via
 :func:`scipy.integrate.solve_ivp`.  The ``solve()`` method auto-attaches a
-``diagnostics`` :class:`~marapendi.cell.state.CellState` (voltage, HFR, water
+``diagnostics`` :class:`~marapendi.simulation.state.CellState` (voltage, HFR, water
 contents, liquid saturation) evaluated at each internal time step::
 
     tr_model = TransientModel(n_memb_mesh=5)
@@ -61,32 +61,32 @@ contents, liquid saturation) evaluated at each internal time step::
     diag = tr_model.evaluate(cell, conditions, t_eval, x_eval=sol.sol(t_eval))
 
 
-.. automodule:: marapendi.cell.explicit_steady_state
+.. automodule:: marapendi.models.base.explicit_steady_state
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.cell.implicit_steady_state
+.. automodule:: marapendi.models.base.implicit_steady_state
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.cell.transient
+.. automodule:: marapendi.models.base.transient
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.water_balance.water_balance
+.. automodule:: marapendi.models.water_balance.water_balance
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.water_balance.membrane_pwl
+.. automodule:: marapendi.models.water_balance.membrane_pwl
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: marapendi.water_balance.membrane
+.. automodule:: marapendi.models.water_balance.membrane
    :members:
    :undoc-members:
    :show-inheritance:

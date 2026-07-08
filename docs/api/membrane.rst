@@ -21,15 +21,15 @@ Springer et al. (1991) vapor-equilibrium isotherm and liquid equilibrium.
 **Water balance models** — solve the 1-D water-content profile across the membrane.
 Two implementations are provided:
 
-- :class:`~marapendi.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise`
+- :class:`~marapendi.models.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise`
   (default) — boundary conditions derived from a piecewise-linear regression of the
   equilibrium isotherm RH(λ) stored on the ionomer.
-- :class:`~marapendi.water_balance.membrane.MembraneWaterBalanceModel` — boundary
+- :class:`~marapendi.models.water_balance.membrane.MembraneWaterBalanceModel` — boundary
   conditions derived from the first-order linear expansion of the isotherm used in
   Affonso Nobrega et al. (2026).
 
 Both are orchestrated by
-:class:`~marapendi.water_balance.water_balance.WaterBalanceModel`, which also handles
+:class:`~marapendi.models.water_balance.water_balance.WaterBalanceModel`, which also handles
 gas-transport resistances and liquid saturation.
 
 Ionomer
@@ -57,14 +57,14 @@ Membrane
 Water balance models
 --------------------
 
-.. autoclass:: marapendi.water_balance.water_balance.WaterBalanceModel
+.. autoclass:: marapendi.models.water_balance.water_balance.WaterBalanceModel
    :members:
    :show-inheritance:
 
-.. autoclass:: marapendi.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise
+.. autoclass:: marapendi.models.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise
    :members:
    :show-inheritance:
 
-.. autoclass:: marapendi.water_balance.membrane.MembraneWaterBalanceModel
+.. autoclass:: marapendi.models.water_balance.membrane.MembraneWaterBalanceModel
    :members:
    :show-inheritance:

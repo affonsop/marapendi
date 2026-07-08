@@ -23,10 +23,10 @@ Quick class summary
 
    marapendi.cell.fuelcell.FuelCell
    marapendi.cell.fuelcell.FuelCellSide
-   marapendi.cell.state.CellState
-   marapendi.cell.state.CellSideState
-   marapendi.cell.state.CatalystLayerState
-   marapendi.cell.state.MembraneState
+   marapendi.simulation.state.CellState
+   marapendi.simulation.state.CellSideState
+   marapendi.simulation.state.CatalystLayerState
+   marapendi.simulation.state.MembraneState
 
 **Porous layers**
 
@@ -35,8 +35,8 @@ Quick class summary
    marapendi.porous_layers.porous_layers.PorousLayer
    marapendi.porous_layers.porous_layers.GasDiffusionLayer
    marapendi.porous_layers.porous_layers.MicroPorousLayer
-   marapendi.porous_layers.darcy.DarcyTransportModel
-   marapendi.porous_layers.diffusion.PorousGasDiffusionModel
+   marapendi.models.darcy.DarcyTransportModel
+   marapendi.models.diffusion.PorousGasDiffusionModel
 
 **Catalyst layers**
 
@@ -44,7 +44,7 @@ Quick class summary
 
    marapendi.porous_layers.catalyst_layers.CatalystLayer
    marapendi.porous_layers.catalyst_layers.PtCCatalystLayer
-   marapendi.thermo.electrochemistry.ElectrochemicalReaction
+   marapendi.models.thermo.electrochemistry.ElectrochemicalReaction
 
 **Flow channels**
 
@@ -62,17 +62,17 @@ Quick class summary
    marapendi.membrane.pem.PFSAIonomer
    marapendi.membrane.membrane_base.Membrane
    marapendi.membrane.pem.PFSA
-   marapendi.water_balance.water_balance.WaterBalanceModel
-   marapendi.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise
-   marapendi.water_balance.membrane.MembraneWaterBalanceModel
+   marapendi.models.water_balance.water_balance.WaterBalanceModel
+   marapendi.models.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise
+   marapendi.models.water_balance.membrane.MembraneWaterBalanceModel
 
 **Models**
 
 .. autosummary::
 
-   marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel
-   marapendi.cell.implicit_steady_state.ImplicitSteadyStateModel
-   marapendi.cell.transient.TransientModel
+   marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel
+   marapendi.models.base.implicit_steady_state.ImplicitSteadyStateModel
+   marapendi.models.base.transient.TransientModel
 
 **Operating conditions**
 

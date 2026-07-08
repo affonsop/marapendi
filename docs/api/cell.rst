@@ -13,7 +13,7 @@ All physics are evaluated by a model object passed the cell at solve time::
     state = model.set_initial_conditions(cell, conditions)
     state = model.solve(cell, conditions, state)
 
-The :class:`~marapendi.cell.state.CellState` returned by ``solve`` mirrors the
+The :class:`~marapendi.simulation.state.CellState` returned by ``solve`` mirrors the
 structure of :class:`~marapendi.cell.fuelcell.FuelCell` but holds runtime
 physical quantities (voltages, temperatures, transport resistances, water
 contents, saturation).
@@ -32,26 +32,26 @@ FuelCell
 State
 -----
 
-.. autoclass:: marapendi.cell.state.CellState
+.. autoclass:: marapendi.simulation.state.CellState
    :members:
    :show-inheritance:
 
-.. autoclass:: marapendi.cell.state.CellSideState
+.. autoclass:: marapendi.simulation.state.CellSideState
    :members:
    :show-inheritance:
 
-.. autoclass:: marapendi.cell.state.CatalystLayerState
+.. autoclass:: marapendi.simulation.state.CatalystLayerState
    :members:
    :show-inheritance:
 
-.. autoclass:: marapendi.cell.state.MembraneState
+.. autoclass:: marapendi.simulation.state.MembraneState
    :members:
    :show-inheritance:
 
-.. autoclass:: marapendi.cell.state.LayerState
+.. autoclass:: marapendi.simulation.state.LayerState
    :members:
    :show-inheritance:
 
-.. autoclass:: marapendi.cell.state.FlowChannelState
+.. autoclass:: marapendi.simulation.state.FlowChannelState
    :members:
    :show-inheritance:
