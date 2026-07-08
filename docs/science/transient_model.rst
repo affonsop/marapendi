@@ -1,19 +1,19 @@
-Transient model and load cycles
-=====================================
+Transient model
+===================
 
 :class:`~marapendi.models.base.transient.TransientModel` extends the
-steady-state building blocks from :doc:`kinetics`, :doc:`membrane` and
-:doc:`transport` into a coupled ODE system with state vector :math:`x =
-[T_\mathrm{MEA},\, \lambda_1, \ldots, \lambda_n]` (MEA temperature followed by
-the membrane water content at each of ``n_memb_mesh`` finite-volume nodes).
+steady-state building blocks from :doc:`steady_state_model` into a coupled
+ODE system with state vector :math:`x = [T_\mathrm{MEA},\, \lambda_1,
+\ldots, \lambda_n]` (MEA temperature followed by the membrane water content
+at each of ``n_memb_mesh`` finite-volume nodes).
 
 MEA temperature
 --------------------
 
 The same lumped thermal resistance :math:`R_\mathrm{th}` from
-:doc:`transport` is integrated in time against the MEA's areal heat capacity
-:math:`C_\mathrm{MEA}` = ``cell.mea_surface_heat_capacity`` (J·m⁻²·K⁻¹),
-rather than solved for its steady-state value
+:doc:`heat_transfer` is integrated in time against the MEA's areal heat
+capacity :math:`C_\mathrm{MEA}` = ``cell.mea_surface_heat_capacity``
+(J·m⁻²·K⁻¹), rather than solved for its steady-state value
 (:meth:`~marapendi.models.thermal.ThermalModel.temperature_rate_of_change`):
 
 .. math::
@@ -25,25 +25,25 @@ rather than solved for its steady-state value
     \Delta T_\mathrm{MEA} = T_\mathrm{MEA} - T,
 
 with :math:`\dot q` the same heat-release rate as the steady-state model (see
-:doc:`transport`) and :math:`T` the instantaneous stack/coolant temperature.
+:doc:`heat_transfer`) and :math:`T` the instantaneous stack/coolant
+temperature.
 
 Membrane water-content profile
 ------------------------------------
 
-Rather than solving the closed-form :math:`\lambda(\xi)` of
-:class:`~marapendi.models.water_balance.membrane.MembraneWaterBalanceModel`
-(:doc:`membrane`), the transient model prescribes :math:`\lambda` at each mesh
-node from the ODE state and only evaluates the local diffusive and
-electroosmotic-drag fluxes
+Rather than solving the closed-form :math:`\lambda(\xi)` of :doc:`water_balance`,
+the transient model prescribes :math:`\lambda` at each mesh node from the ODE
+state and only evaluates the local diffusive and electroosmotic-drag fluxes
 (:class:`~marapendi.models.water_balance.membrane_transient.MembraneWaterBalanceTransientModel`):
 
 .. math::
 
     J_\mathrm{diff}(\xi) = -\frac{1}{R_D}\frac{\partial\lambda}{\partial\xi},
     \qquad
-    J_\mathrm{EOD}(\xi) = Pe\cdot\lambda(\xi).
+    J_\mathrm{EOD}(\xi) = Pe\cdot\lambda(\xi),
 
-The finite-volume flux divergence then gives the rate of change at each node
+using the same :math:`Pe` and :math:`R_D` defined in :doc:`water_balance`. The
+finite-volume flux divergence then gives the rate of change at each node
 (:meth:`~marapendi.models.water_balance.water_balance.WaterBalanceModel.membrane_water_rate_of_change`):
 
 .. math::
@@ -52,16 +52,18 @@ The finite-volume flux divergence then gives the rate of change at each node
         \frac{J_{w,k+1/2} - J_{w,k-1/2}}{\Delta\xi},
 
 with the boundary fluxes at :math:`k=0` and :math:`k=n` taken from the
-catalyst-layer absorption/desorption terms of the membrane model — i.e. the
-transient membrane model and the steady-state one share the same boundary
-physics, only the interior evolution differs. This discretisation follows
-Goshtasbi et al., *J. Electrochem. Soc.* **167**, 024518 (2020).
+catalyst-layer absorption/desorption terms of the water-balance model — i.e.
+the transient membrane model and the steady-state one in :doc:`water_balance`
+share the same boundary physics, only the interior evolution differs. This
+discretisation follows Goshtasbi et al., *J. Electrochem. Soc.* **167**,
+024518 (2020).
 
 At each time step,
 :meth:`~marapendi.models.base.transient.TransientModel.f_transient` re-derives
 gas compositions and flow rates from the (possibly time-varying) operating
 conditions, recomputes cathode liquid saturation quasi-statically from the net
-water flux, and re-evaluates gas transport and cell voltage — so the only
+water flux (:doc:`two_phase_flow`), and re-evaluates gas transport
+(:doc:`gas_transport`) and cell voltage (:doc:`cell_voltage`) — so the only
 quantities actually integrated in time are :math:`T_\mathrm{MEA}` and
 :math:`\lambda`; everything else is quasi-static at each instant.
 
