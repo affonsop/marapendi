@@ -127,10 +127,10 @@ class FuelCell(Cell):
     membrane: Membrane = field(default_factory=Membrane)
 
     cell_number: int = 1
-    mea_surface_heat_capacity: float = 10000.
     use_eq_water_content_for_ionomer: bool = True
 
     def __post_init__(self):
+        Cell.__post_init__(self)
         self.ca.reactant = 'o2'
         self.an.reactant = 'h2'
         self._voltage_model = VoltageModel()

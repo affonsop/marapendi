@@ -402,6 +402,7 @@ class PFSA(Membrane):
     relaxation_time_activation_energy: float = 28e6
     uptake_relaxed_fraction_constant: float = 0.014
     phi: float = 0.15
+    volume_heat_capacity: float = 1.9e6 
 
     def equilibrium_water_content(self, rh, temperature, s_relax=None):
         """Equilibrium water content from the Springer et al. (1991) polynomial isotherm.

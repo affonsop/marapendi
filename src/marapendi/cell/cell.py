@@ -89,6 +89,15 @@ class Cell:
     membrane: Membrane = field(default_factory=PFSA)
     area: float = 1.
     electric_resistance: float = 0.
+    
+    def __post_init__(self): 
+        self.mea_surface_heat_capacity = (
+            sum(
+                layer.volume_heat_capacity * layer.thickness 
+                for layer in self.porous_layers
+            ) + self.membrane.volume_heat_capacity * self.membrane.dry_thickness
+            )
+                                        
 
     @property
     def porous_layers(self) -> list:

@@ -255,7 +255,8 @@ class PtCCatalystLayer(CatalystLayer):
     ionomer_k2: float = 5.4
     ionomer_k3: float = 5.4
     ionomer_water_content: float = 10
-
+    volume_heat_capacity: float = 1.56e6 
+    
     def __post_init__(self):
         """Compute volume fractions and geometry from catalyst composition (Hao et al. 2015)."""
         if self.platinum_vol_surface_area == 0:

@@ -47,6 +47,8 @@ class PorousLayer():
         Fraction of the pore volume occupied by non-wetting phase (0 to 1).
     thermal_conductivity : float
         Thermal conductivity in W/(m·K).
+    volume_heat_capacity : float
+        Volumetric heat capacity in J/(m3.K).
     absolute_permeability : float
         Absolute permeability in m².
     relative_permeability_exponent : float
@@ -74,6 +76,7 @@ class PorousLayer():
     two_phase_transport_model: DarcyTransportModel = field(default_factory=DarcyTransportModel)
     non_wetting_saturation: float = 0
     thermal_conductivity: float = 1e12
+    volume_heat_capacity: float = 1e6
     absolute_permeability: float = 1e6
     relative_permeability_exponent: float = 3
     contact_angle: float = 120.
@@ -207,7 +210,7 @@ class GasDiffusionLayer(PorousLayer):
     contact_angle: float = 120.
     absolute_permeability: float = 1e-12
     thermal_conductivity: float = 0.5
-
+    volume_heat_capacity: float = 1.58e6
 
 @dataclass
 class MicroPorousLayer(PorousLayer):
@@ -218,3 +221,4 @@ class MicroPorousLayer(PorousLayer):
     contact_angle: float = 130.
     absolute_permeability: float = 1e-13
     thermal_conductivity: float = 0.3
+    volume_heat_capacity: float = 1.98e6

@@ -32,10 +32,13 @@ class Membrane:
         Membrane thickness in the dry state (m).
     ionomer : Ionomer
         Ionomer instance providing transport correlations.
+    volume_heat_capacity : float
+        Volumetric heat capacity in J/(m3.K).
     """
 
     dry_thickness: float = 25e-6
     ionomer: Ionomer = field(default=None)
+    volume_heat_capacity: float = 1e6 
 
     def __post_init__(self):
         if self.ionomer is not None:
