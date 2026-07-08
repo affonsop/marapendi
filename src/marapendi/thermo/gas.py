@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import numpy as np
 
-from .constants import GAS_CONSTANT
 from .water import water_saturation_pressure
 from ..cell.state import GasState  # noqa: F401  defined there, re-exported for convenience
 
@@ -28,6 +27,9 @@ index_o2, index_n2, index_h2, index_h2ov = (species_indexes[s] for s in species_
 
 molecular_weights = np.array([32., 28., 2., 18.])
 """Molecular weights of (O2, N2, H2, H2O), in kg/kmol."""
+
+_FICK_PT_REFERENCE_FACTOR = 1e5 / 353.15 ** 1.5
+"""P_ref / T_ref**1.5 for the Fick's law T/P adjustment (T_ref=353.15 K, P_ref=1e5 Pa)."""
 
 # Polynomial coefficients (highest degree first) for ``sqrt(kinematic_viscosity) = poly(log(T))``,
 # fitted from the Cantera "gri30" transport data for O2, N2, H2 and H2O.
@@ -96,7 +98,7 @@ class GasModel:
     @staticmethod
     def species_concentration(state, species: str) -> float:
         """Concentration of ``species`` (kmol/m^3)."""
-        return GasModel.species_partial_pressure(state, species) / (GAS_CONSTANT * state.temperature)
+        return GasModel.species_partial_pressure(state, species) / state.RT
 
     @staticmethod
     def vapor_pressure(state) -> float:
@@ -121,7 +123,7 @@ class GasModel:
     @staticmethod
     def saturation_concentration(state) -> float:
         """Saturation concentration of water vapor (kmol/m^3)."""
-        return GasModel.saturation_pressure(state) / (GAS_CONSTANT * state.temperature)
+        return GasModel.saturation_pressure(state) / state.RT
 
     @staticmethod
     def relative_humidity(state) -> float:
@@ -136,7 +138,7 @@ class GasModel:
     @staticmethod
     def concentration(state) -> float:
         """Total molar concentration of the gas mixture (kmol/m^3)."""
-        return state.pressure / (GAS_CONSTANT * state.temperature)
+        return state.pressure / state.RT
 
     @staticmethod
     def density(state) -> float:
@@ -162,6 +164,18 @@ class GasModel:
         )
 
     @staticmethod
+    def diffusion_temp_and_pressure_correction(temperature, pressure) -> float:
+        """Species-independent Fick's law adjustment ``T^1.5 / P`` for :meth:`species_diffusion_coefficient`.
+
+        Cached on ``state.diffusion_temp_and_pressure_correction`` by
+        :meth:`~marapendi.porous_layers.porous_layers.PorousLayer.update_state_at_temperature`,
+        since up to 3 species share the same ``temperature``/``pressure`` per state.
+        """
+        # T**1.5 written as T * sqrt(T): np.sqrt dispatches faster than np.power
+        # with a non-integer exponent, and this is on the transient ODE hot path.
+        return _FICK_PT_REFERENCE_FACTOR * temperature * np.sqrt(temperature) / pressure
+
+    @staticmethod
     def species_diffusion_coefficient(state, species: str) -> float:
         """Binary diffusion coefficient of ``species`` in the gas mixture (m^2/s).
 
@@ -183,5 +197,4 @@ class GasModel:
             else:
                 reference_diffusion_coefficient = 0.36e-4
 
-        # Fick's law adjustment: D ~ T^1.5 / P. 15.0682 = 100000 / 353.15**1.5
-        return reference_diffusion_coefficient * (state.temperature ** 1.5 / state.pressure) * 15.0682
+        return reference_diffusion_coefficient * state.diffusion_temp_and_pressure_correction

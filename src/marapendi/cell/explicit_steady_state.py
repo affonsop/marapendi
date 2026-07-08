@@ -15,7 +15,7 @@ from __future__ import annotations
 import numpy as np
 from dataclasses import dataclass, field
 
-from ..thermo.constants import FARADAY_CONSTANT
+from ..thermo.constants import FARADAY_CONSTANT, GAS_CONSTANT
 from ..thermo.gas import GasModel, species_indexes
 from .thermal import ThermalModel
 from .gas_transport import GasTransportModel
@@ -147,6 +147,7 @@ class ExplicitSteadyStateModel:
         for side, side_state in zip(cell.sides, state.sides):
             for layer_state in side_state.layers:
                 layer_state.temperature = stack_temperature
+                layer_state.RT = GAS_CONSTANT * stack_temperature
 
             side.cl.set_water_film_thickness(0)
             side_state.is_liquid_equilibrated = False

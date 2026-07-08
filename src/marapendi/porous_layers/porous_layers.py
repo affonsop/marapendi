@@ -118,13 +118,18 @@ class PorousLayer():
         ----------
         layer_state : LayerState
             State object to populate.  Sets ``temperature``, ``RT``,
+            ``diffusion_temp_and_pressure_correction``,
             ``breakthrough_pressure``, and ``saturation_flow_resistance``.
+            Requires ``layer_state.pressure`` to already be set.
         temperature : float
             Temperature at which to evaluate all temperature-dependent
             quantities (K).
         """
         layer_state.temperature = temperature
         layer_state.RT = GAS_CONSTANT * temperature
+        layer_state.diffusion_temp_and_pressure_correction = (
+            GasModel.diffusion_temp_and_pressure_correction(temperature, layer_state.pressure)
+        )
         layer_state.breakthrough_pressure = (
             self._compute_breakthrough_pressure(temperature)
             if self._bp_from_geometry

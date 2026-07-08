@@ -48,6 +48,7 @@ class LayerState:
     capillary_pressure: float = None
     # Temperature-derived capillary quantities (set by PorousLayer.update_state_at_temperature)
     RT: float = None
+    diffusion_temp_and_pressure_correction: float = None
     breakthrough_pressure: float = None
     saturation_flow_resistance: float = None
     # Two-phase transport state (set by water saturation model)

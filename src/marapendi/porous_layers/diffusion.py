@@ -7,6 +7,8 @@ import numpy as np
 from ..thermo.constants import GAS_CONSTANT
 from ..thermo.gas import GasModel, species_indexes, molecular_weights
 
+_KNUDSEN_CONST = 8 * GAS_CONSTANT / np.pi  # folds the constant factors of the Knudsen formula
+
 
 @dataclass
 class PorousGasDiffusionModel:
@@ -35,6 +37,7 @@ class PorousGasDiffusionModel:
             Correction factor (n.d.).
         """
         return np.clip(1 - water_saturation, 1e-6, 1) ** self.water_saturation_exponent
+
 
     def molecular_diffusion_effective_length(self, layer, water_saturation=0):
         """
@@ -92,7 +95,7 @@ class PorousGasDiffusionModel:
         float
             Knudsen diffusivity (m^2/s).
         """
-        return layer.pore_diameter / 3 * np.sqrt(8 * GAS_CONSTANT * temperature / molecular_weight / np.pi)
+        return (layer.pore_diameter / 3) * np.sqrt(_KNUDSEN_CONST * temperature / molecular_weight)
 
     def total_diffusion_resistance(self, layer, temperature, diffusion_coefficient, molecular_weight, water_saturation):
         """
@@ -116,7 +119,7 @@ class PorousGasDiffusionModel:
         float
             Total resistance (s/m).
         """
-        correction = np.clip(1 - water_saturation, 1e-6, 1) ** self.water_saturation_exponent
+        correction = self.water_saturation_correction(water_saturation)
         effective_length = layer.thickness * layer.tortuosity / layer.porosity / correction
         return effective_length * (
             1/diffusion_coefficient + 1/self.knudsen_diffusivity(layer, temperature, molecular_weight))
