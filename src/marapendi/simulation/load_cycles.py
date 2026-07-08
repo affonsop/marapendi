@@ -389,6 +389,8 @@ class LoadCycle:
                 v[f'{prefix}-inlet-rh'] = _psat(T_dew) / _psat(T_gas)
             if side.stoichiometry is not None:
                 v[f'{prefix}-stoichiometry'] = _veval(side.stoichiometry, t)
+            if side.dry_o2_mole_fraction is not None:
+                v[f'{prefix}-dry-o2-mole-fraction'] = _veval(side.dry_o2_mole_fraction, t)
 
         return v
 

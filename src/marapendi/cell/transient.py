@@ -81,8 +81,8 @@ class _PiecewiseDenseOutput:
 def _stitch_solutions(segments):
     """Merge consecutive :func:`~scipy.integrate.solve_ivp` results from :meth:`TransientModel.solve`'s
     per-breakpoint sub-intervals into a single result with the same shape as a one-shot solve."""
-    t = np.concatenate([seg.t for seg in segments[1:]])
-    y = np.concatenate([seg.y for seg in segments[1:]], axis=1)
+    t = np.concatenate([segments[0].t] + [seg.t[1:] for seg in segments[1:]])
+    y = np.concatenate([segments[0].y] + [seg.y[:, 1:] for seg in segments[1:]], axis=1)
     success = all(seg.success for seg in segments)
     failed = next((seg for seg in segments if not seg.success), None)
 

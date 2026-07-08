@@ -36,8 +36,8 @@ from .load_cycles import LoadCycle, PiecewiseProfile
 # Levels: 'C0'–'C4' are power levels; '0' is the idle stop.
 
 _LOW_STEPS: list[tuple[str, int]] = (
-    [('C0', 85), ('C1', 50), ('C2', 40), ('C1', 50)] + 
-    [('C0', 200), ('C1', 50), ('C2', 40), ('C1', 50)] * 4 + 
+    [('C0', 120), ('C1', 50)] + 
+    [('C0', 200), ('C1', 50), ('C2', 40), ('C1', 50)] * 5 + 
     [('C0', 100), ('0',  320)]
 )
 _HIGH_STEPS: list[tuple[str, int]] = (
@@ -137,6 +137,11 @@ class IDFastCycle(LoadCycle):
         Cathode stoichiometric ratio.  Default 1.6.
     stoichiometry_an : float
         Anode stoichiometric ratio.  Default 1.4.
+    dry_o2_mole_fraction : float
+        Cathode dry O2 mole fraction during power-producing ('C0'-'C4') levels.  Default 0.21.
+    dry_o2_mole_fraction_idle : float
+        Cathode dry O2 mole fraction during the idle-stop ('0') level, when
+        air flow is cut off.  Default 0.05.
     time_step : float
         Time-grid step for :attr:`~LoadCycle.cycle_time` (s).  Default 1.0.
 
@@ -166,8 +171,10 @@ class IDFastCycle(LoadCycle):
         stoichiometry_an: float = 1.4,
         cathode_minimum_current_for_stoich: float = 0.e4,
         anode_minimum_current_for_stoich: float = 0.e4,
+        dry_o2_mole_fraction: float = 0.21,
+        dry_o2_mole_fraction_idle: float = 0.00001,
         time_step: float = 1.0,
-    ):  
+    ):
         if current_densities is None: 
             current_densities = {
                 'C0': 950.,    # 0.095 A cm⁻²
@@ -223,6 +230,14 @@ class IDFastCycle(LoadCycle):
             ('const', 273.15 + dew_point_an_cold, float(CYCLE_DURATION)),
         ])
 
+        # ── cathode dry O2 mole fraction profile ───────────────────────────────
+        # Drops during the idle-stop ('0') level, when air flow is cut off.
+        o2_lvl = {**{k: dry_o2_mole_fraction for k in i_lvl}, '0': dry_o2_mole_fraction_idle}
+        o2_profile = PiecewiseProfile(
+            _steps_to_segs(_LOW_STEPS,  o2_lvl, offset=0.)
+            + _steps_to_segs(_HIGH_STEPS, o2_lvl, offset=float(LOW_DURATION))
+        )
+
         super().__init__(
             duration=CYCLE_DURATION,
             time_step=time_step,
@@ -233,7 +248,7 @@ class IDFastCycle(LoadCycle):
                 outlet_pressure=p_ca_profile,
                 dew_point_temperature=dew_ca_profile,
                 stoichiometry=stoichiometry_ca,
-                dry_o2_mole_fraction=0.21,
+                dry_o2_mole_fraction=o2_profile,
                 minimum_current_density_for_stoich=cathode_minimum_current_for_stoich
             ),
             an=DynamicSideConditions(
