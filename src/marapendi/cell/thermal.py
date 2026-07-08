@@ -12,7 +12,8 @@ from dataclasses import dataclass
 
 from .cell import Cell, CellSide
 from ..thermo.water import water_molar_volume, water_saturation_pressure
-
+from ..thermo.electrochemistry import h2_lhv
+from ..thermo.constants import FARADAY_CONSTANT
 
 @dataclass
 class ThermalModel:
@@ -40,9 +41,6 @@ class ThermalModel:
         (all irreversible losses go to heat).  Otherwise the 0.7 V
         efficiency approximation is used.
         """
-        from ..thermo.electrochemistry import h2_lhv
-        from ..thermo.constants import FARADAY_CONSTANT
-
         thermal_resistance = self.heat_transfer_resistance(cell)
         if cell_voltage is not None:
             state.heat_release = state.current_density * (
@@ -60,9 +58,6 @@ class ThermalModel:
         from the steady-state balance; when ``True``, skips that update so the
         transient integrator can evolve the temperature independently.
         """
-        from ..thermo.electrochemistry import h2_lhv
-        from ..thermo.constants import FARADAY_CONSTANT
-
         thermal_resistance = self.heat_transfer_resistance(cell)
         cell.heat_release_rate = (
             -h2_lhv(cell.temperature) / (2 * FARADAY_CONSTANT) - cell.cell_voltage
@@ -81,16 +76,6 @@ class ThermalModel:
             When ``None``, falls back to the legacy API where quantities are
             attributes on *cell* (used by :meth:`FuelCell.f_transient`).
         """
-        if state is None:
-            self.calculate_heat_transport(cell, dynamic=True)
-            return (
-                cell.heat_release_rate
-                - cell.mea_temperature_increase / cell.thermal_resistance
-            ) / cell.mea_surface_heat_capacity
-
-        from ..thermo.electrochemistry import h2_lhv
-        from ..thermo.constants import FARADAY_CONSTANT
-
         heat_release_rate = state.current_density * (
             -h2_lhv(state.temperature) / (2 * FARADAY_CONSTANT) - state.cell_voltage
         )
