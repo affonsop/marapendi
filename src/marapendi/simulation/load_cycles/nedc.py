@@ -11,7 +11,7 @@ other than current density are constant throughout.
 
 Usage
 -----
->>> from marapendi.simulation.nedc import NEDCCycle
+>>> from marapendi.simulation.load_cycles.nedc import NEDCCycle
 >>> cycle = NEDCCycle(i_max=30_000.)        # 3.0 A cm⁻²
 >>> cycle.duration                           # 1181 s
 >>> sol = tr_model.solve(cell, cycle, t_span=(0, cycle.duration))

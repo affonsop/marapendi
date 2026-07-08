@@ -145,7 +145,7 @@ class TestImplicitModelSanity:
         assert T_OP < float(np.atleast_1d(state.mea_temperature)[0]) < T_OP + 20
 
     def test_returns_cell_state(self, cell, implicit_model):
-        from marapendi.cell.state import CellState
+        from marapendi.simulation.state import CellState
         state = _solve(implicit_model, cell, _conditions(5e3))
         assert isinstance(state, CellState)
 
@@ -156,9 +156,9 @@ class TestImplicitModelSanity:
 
 class TestImplicitSelfConsistency:
     def test_mea_temperature_satisfies_heat_balance(self, cell, implicit_model):
-        from marapendi.cell.thermal import ThermalModel
-        from marapendi.thermo.electrochemistry import h2_lhv
-        from marapendi.thermo.constants import FARADAY_CONSTANT
+        from marapendi.models.thermal import ThermalModel
+        from marapendi.models.thermo.electrochemistry import h2_lhv
+        from marapendi.models.thermo.constants import FARADAY_CONSTANT
 
         state = _solve(implicit_model, cell, _conditions(5e3))
         thermal = ThermalModel()

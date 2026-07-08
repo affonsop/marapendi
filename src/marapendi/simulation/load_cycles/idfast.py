@@ -16,7 +16,7 @@ back to cold at t = 3725 s (end of temperature ramp-back).
 
 Usage
 -----
->>> from marapendi.simulation.idfast import IDFastCycle
+>>> from marapendi.simulation.load_cycles.idfast import IDFastCycle
 >>> cycle = IDFastCycle(
 ...     current_densities={'C0': 950., 'C1': 2470., 'C2': 5890.,
 ...                        'C3': 12730., 'C4': 17480.}

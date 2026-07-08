@@ -172,9 +172,9 @@ class TestWithImplicitSteadyState:
         assert float(np.atleast_1d(state.cell_voltage)[0]) > 0.4
 
     def test_mea_temperature_self_consistent(self, cell, imp_model):
-        from marapendi.thermo.electrochemistry import h2_lhv
-        from marapendi.thermo.constants import FARADAY_CONSTANT
-        from marapendi.cell.thermal import ThermalModel
+        from marapendi.models.thermo.electrochemistry import h2_lhv
+        from marapendi.models.thermo.constants import FARADAY_CONSTANT
+        from marapendi.models.thermal import ThermalModel
 
         state = _solve(cell, _conditions(5e3), imp_model)
         R_th = ThermalModel().heat_transfer_resistance(cell)
