@@ -12,10 +12,10 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ..thermo.constants import FARADAY_CONSTANT
-from ..thermo.electrochemistry import calculate_reversible_cell_voltage, STD_PRESSURE
-from ..thermo.gas import GasModel
-from ..thermo.water import water_molar_volume
+from .thermo.constants import FARADAY_CONSTANT
+from .thermo.electrochemistry import calculate_reversible_cell_voltage, STD_PRESSURE
+from .thermo.gas import GasModel
+from .thermo.water import water_molar_volume
 
 
 @dataclass

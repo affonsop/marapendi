@@ -40,7 +40,7 @@ in the empirical fit):
 
 .. code-block:: python
 
-    from marapendi.thermo.water import water_molar_volume
+    from marapendi.models.thermo.water import water_molar_volume
 
     T_ref = 353.15
     fv = ionomer.water_vol_fraction(lmbd, water_molar_volume(T_ref))
@@ -134,7 +134,7 @@ conductivity over a through-plane water-content profile.  For a uniform profile:
 .. note::
 
    The exact signature of ``proton_resistance`` depends on whether a
-   :class:`~marapendi.cell.state.MembraneState` is passed.  Consult
+   :class:`~marapendi.simulation.state.MembraneState` is passed.  Consult
    :class:`~marapendi.membrane.pem.PFSA` for the full interface.
 
 Capillary pressure vs saturation (GDL)
@@ -145,7 +145,7 @@ Leverett-J capillary pressure via the ``DarcyTransportModel``:
 
 .. code-block:: python
 
-    from marapendi.porous_layers.darcy import DarcyTransportModel
+    from marapendi.models.darcy import DarcyTransportModel
 
     liq = DarcyTransportModel(J_function_exponent=2)
     gdl = mrpd.GasDiffusionLayer(
@@ -174,11 +174,11 @@ Gas diffusion coefficient vs saturation
 -----------------------------------------
 
 Effective gas diffusivity decreases with liquid saturation.  Access it directly
-from the porous layer and a :class:`~marapendi.porous_layers.diffusion.PorousGasDiffusionModel`:
+from the porous layer and a :class:`~marapendi.models.diffusion.PorousGasDiffusionModel`:
 
 .. code-block:: python
 
-    from marapendi.porous_layers.diffusion import PorousGasDiffusionModel
+    from marapendi.models.diffusion import PorousGasDiffusionModel
 
     diff_model = PorousGasDiffusionModel()
     T, p = 353.15, 1.5e5
@@ -200,7 +200,7 @@ from the porous layer and a :class:`~marapendi.porous_layers.diffusion.PorousGas
 Electrochemical kinetics
 -------------------------
 
-:class:`~marapendi.thermo.electrochemistry.ElectrochemicalReaction` computes the
+:class:`~marapendi.models.thermo.electrochemistry.ElectrochemicalReaction` computes the
 ORR exchange current density as a function of temperature and O₂ partial
 pressure:
 

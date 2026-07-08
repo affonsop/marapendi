@@ -18,7 +18,7 @@ Usage
 """
 from __future__ import annotations
 
-from .conditions import DynamicSideConditions
+from ..conditions import DynamicSideConditions
 from .load_cycles import LoadCycle, PiecewiseProfile
 
 # ── FC-DLC step table ──────────────────────────────────────────────────────────

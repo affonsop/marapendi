@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 import marapendi as mrpd
-from marapendi.cell.state import LayerState, FlowChannelState
+from marapendi.simulation.state import LayerState, FlowChannelState
 
 
 def _layer(temperature=353.15, pressure=1e5, o2=0.21, h2=0., rh=0.):

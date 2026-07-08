@@ -3,7 +3,7 @@ Electrolyte solution base class with thermophysical property correlations.
 """
 from dataclasses import dataclass, field
 import numpy as np
-from ..thermo.water import water_saturation_pressure, water_surface_tension
+from ..models.thermo.water import water_saturation_pressure, water_surface_tension
 
 
 @dataclass

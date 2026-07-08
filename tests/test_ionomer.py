@@ -25,7 +25,7 @@ class TestIonomerBase:
         assert np.isclose(pfsa.dry_concentration, expected)
 
     def test_water_vol_fraction_increases_with_content(self, pfsa):
-        from marapendi.thermo.water import water_molar_volume
+        from marapendi.models.thermo.water import water_molar_volume
         fv_low = pfsa.water_vol_fraction(5, water_molar_volume(353.15))
         fv_high = pfsa.water_vol_fraction(20, water_molar_volume(353.15))
         assert fv_high > fv_low

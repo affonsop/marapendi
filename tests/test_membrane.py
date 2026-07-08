@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 import marapendi as mrpd
-from marapendi.thermo.water import water_molar_volume
+from marapendi.models.thermo.water import water_molar_volume
 
 
 @pytest.fixture

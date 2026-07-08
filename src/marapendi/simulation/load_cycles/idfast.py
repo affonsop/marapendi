@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .conditions import DynamicSideConditions
+from ..conditions import DynamicSideConditions
 from .load_cycles import LoadCycle, PiecewiseProfile
 
 # ── step tables ────────────────────────────────────────────────────────────────

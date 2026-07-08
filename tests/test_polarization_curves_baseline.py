@@ -208,7 +208,7 @@ def create_fuel_cell(params: dict) -> mrpd.FuelCell:
     )
 
     return mrpd.FuelCell(
-        electrical_resistance=params['elec-resistance'],
+        electric_resistance=params['elec-resistance'],
         area=CELL_AREA,
         ca=mrpd.FuelCellSide(
             cl=mrpd.PtCCatalystLayer(
@@ -234,7 +234,6 @@ def create_fuel_cell(params: dict) -> mrpd.FuelCell:
                 ),
             ),
             gdl=gdl['ca'],
-            has_mpl=False,
             ch=gfc['ca'],
             thermal_contact_resistance=params['tcr'],
         ),
@@ -256,7 +255,6 @@ def create_fuel_cell(params: dict) -> mrpd.FuelCell:
                     water_saturation_exponent=1.5,
                 ),
             ),
-            has_mpl=False,
             gdl=gdl['an'],
             ch=gfc['an'],
             thermal_contact_resistance=params['tcr'],

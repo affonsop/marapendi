@@ -2,15 +2,15 @@ Extending models by inheritance
 ================================
 
 **marapendi** is designed around composable strategy objects:
-:class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel` owns a
+:class:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel` owns a
 ``voltage_model``, a ``thermal_model``, a ``water_balance_model``, and a
 ``gas_transport_model``.  Any of these can be replaced by a subclass.  The cell
 solver itself can also be subclassed to add post-processing steps or to change
 the iteration logic.
 
 The reference for inheritance patterns is
-:class:`~marapendi.cell.implicit_steady_state.ImplicitSteadyStateModel`, which
-extends :class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel`
+:class:`~marapendi.models.base.implicit_steady_state.ImplicitSteadyStateModel`, which
+extends :class:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel`
 by overriding only ``solve`` and leaving everything else unchanged.
 
 Pattern 1 — custom ionomer isotherm
@@ -46,23 +46,23 @@ polynomial fit:
    The base class
    :meth:`~marapendi.membrane.pem.PFSAIonomer.fit_rh_piecewise_linear` calls
    ``vapor_equilibrium_water_content`` to fit the PWL approximation used by
-   :class:`~marapendi.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise`.
+   :class:`~marapendi.models.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise`.
    If you subclass ``vapor_equilibrium_water_content``, the PWL fit is
    re-computed automatically.
 
 Pattern 2 — custom kinetics (VoltageModel)
 -------------------------------------------
 
-:class:`~marapendi.cell.voltage.VoltageModel` computes the activation
+:class:`~marapendi.models.voltage.VoltageModel` computes the activation
 overpotential, ohmic overpotential, and cell voltage.  Subclass it to change the
 ORR kinetic expression while keeping the rest of the voltage model intact:
 
 .. code-block:: python
 
     from dataclasses import dataclass
-    from marapendi.cell.voltage import VoltageModel
-    from marapendi.thermo.electrochemistry import ElectrochemicalReaction
-    from marapendi.cell.explicit_steady_state import ExplicitSteadyStateModel
+    from marapendi.models.voltage import VoltageModel
+    from marapendi.models.thermo.electrochemistry import ElectrochemicalReaction
+    from marapendi.models.base.explicit_steady_state import ExplicitSteadyStateModel
     import numpy as np
 
     @dataclass
@@ -92,7 +92,7 @@ indicator) without touching the library source is to wrap ``solve``:
 .. code-block:: python
 
     from dataclasses import dataclass
-    from marapendi.cell.explicit_steady_state import ExplicitSteadyStateModel
+    from marapendi.models.base.explicit_steady_state import ExplicitSteadyStateModel
 
     @dataclass
     class DiagnosticModel(ExplicitSteadyStateModel):
@@ -111,14 +111,14 @@ indicator) without touching the library source is to wrap ``solve``:
 Pattern 4 — custom thermal model
 ----------------------------------
 
-:class:`~marapendi.cell.thermal.ThermalModel` computes the MEA temperature from
+:class:`~marapendi.models.thermal.ThermalModel` computes the MEA temperature from
 the thermal resistance and heat release.  Subclass it to change the boundary
 conditions — for example, to include convective cooling by the coolant channel:
 
 .. code-block:: python
 
     from dataclasses import dataclass
-    from marapendi.cell.thermal import ThermalModel
+    from marapendi.models.thermal import ThermalModel
 
     @dataclass
     class CoolantThermalModel(ThermalModel):
@@ -147,16 +147,16 @@ conditions — for example, to include convective cooling by the coolant channel
 Pattern 5 — subclassing ImplicitSteadyStateModel
 --------------------------------------------------
 
-:class:`~marapendi.cell.implicit_steady_state.ImplicitSteadyStateModel` is
+:class:`~marapendi.models.base.implicit_steady_state.ImplicitSteadyStateModel` is
 itself a subclass of
-:class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel` and
+:class:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel` and
 overrides only ``solve``.  You can further subclass it while keeping the implicit
 temperature–voltage iteration:
 
 .. code-block:: python
 
     from dataclasses import dataclass
-    from marapendi.cell.implicit_steady_state import ImplicitSteadyStateModel
+    from marapendi.models.base.implicit_steady_state import ImplicitSteadyStateModel
 
     @dataclass
     class ImplicitWithHFR(ImplicitSteadyStateModel):

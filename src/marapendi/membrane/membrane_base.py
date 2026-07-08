@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from marapendi.thermo.water import water_molar_volume
+from marapendi.models.thermo.water import water_molar_volume
 from .ionomer_base import Ionomer
 
 

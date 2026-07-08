@@ -8,6 +8,7 @@ Practical how-to guides for the most common tasks in **marapendi**.
 
    polarization_curve
    time_series
+   load_cycles
    extending_models
    calibration
    correlations

@@ -9,7 +9,7 @@ to the instantaneous :class:`CellConditions`.
 """
 import numpy as np
 
-from .conditions import (
+from ..conditions import (
     CellConditions,
     DynamicSideConditions, _eval_field, _psat,
 )

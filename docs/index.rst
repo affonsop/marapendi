@@ -8,10 +8,15 @@ release targets PEM fuel cells; AEM electrolyzer support is planned for a future
 Philosophy
 ----------
 
+The goal of **marapendi** is to provide the basis for the implementation of 0D (and up to 1D)
+physics-based models of PEM/AEM fuel cells and electrolyzers. For that, marapendi is structured and
+written in a way to make the implementation of models and sub-models, and their use for simulation and 
+parameter estimation easy. 
+
 **marapendi** separates the *description* of a cell from the *calculations*
 performed on it:
 
-``components`` (:mod:`marapendi.cell`, :mod:`marapendi.porous_layers`, :mod:`marapendi.membrane`, :mod:`marapendi.channel`)
+``components`` (:mod:`marapendi.cell`, :mod:`marapendi.porous_layers`, :mod:`marapendi.membrane`, :mod:`marapendi.channel`, :mod:`marapendi.electrolyte`)
     Dataclasses holding the static, measurable properties of a cell's
     components (geometry, porosity, permeability, ionomer parameters,
     catalyst loading, ...), together with the correlation models that turn
@@ -21,25 +26,32 @@ performed on it:
     gas diffusion layer, optional microporous layer and flow channel) and a
     :class:`~marapendi.membrane.membrane_base.Membrane`.
 
-``state`` (:mod:`marapendi.cell.state`)
+``state`` (:mod:`marapendi.simulation.state`)
     Dataclasses mirroring the shape of :class:`~marapendi.cell.fuelcell.FuelCell`
     but holding the *physical variables* (temperature, pressure, gas composition,
     saturation, water content, fluxes, ...) at one operating point. State objects
     are pure data: no physics lives here.
 
-``models`` (:mod:`marapendi.cell.explicit_steady_state`, :mod:`marapendi.cell.implicit_steady_state`, :mod:`marapendi.cell.transient`, :mod:`marapendi.water_balance`)
+``models`` (:mod:`marapendi.models`)
     Orchestration classes that combine a :class:`~marapendi.cell.fuelcell.FuelCell`
-    and a :class:`~marapendi.cell.state.CellState` to compute the cell's behaviour —
-    membrane water balance, gas transport, voltage and thermal sub-models.
-    :class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel` and
-    :class:`~marapendi.cell.implicit_steady_state.ImplicitSteadyStateModel` provide
-    steady-state evaluation; :class:`~marapendi.cell.transient.TransientModel`
-    integrates the coupled MEA-temperature and water-profile ODEs.
+    and a :class:`~marapendi.simulation.state.CellState` to compute the cell's
+    behaviour. ``models.base`` holds the top-level solvers —
+    :class:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel` and
+    :class:`~marapendi.models.base.implicit_steady_state.ImplicitSteadyStateModel`
+    for steady-state evaluation, :class:`~marapendi.models.base.transient.TransientModel`
+    for the coupled MEA-temperature/water-profile ODEs — while
+    :mod:`~marapendi.models.thermal`, :mod:`~marapendi.models.voltage`,
+    :mod:`~marapendi.models.gas_transport_resistance`, ``models.water_balance``,
+    :mod:`~marapendi.models.darcy` and :mod:`~marapendi.models.diffusion` provide the
+    thermal, voltage, gas-transport, membrane water-balance and two-phase-transport
+    sub-models each solver is built from.
 
-``correlations`` (:mod:`marapendi.thermo`, :mod:`marapendi.simulation`)
+``correlations`` (:mod:`marapendi.models.thermo`, :mod:`marapendi.simulation`)
     Stateless physics building blocks (water thermodynamics, electrochemical
     kinetics, gas mixture properties, operating conditions) used by the
-    components and models above.
+    components and models above. :mod:`marapendi.simulation` also holds
+    :class:`~marapendi.simulation.load_cycles.LoadCycle` and the standardised
+    ID-FAST/FC-DLC driving cycles used to drive the transient model in time.
 
 ``estimation`` (:mod:`marapendi.estimation`)
     :class:`~marapendi.estimation.polarization_curve_calibration.SteadyStatePolarizationCurveCalibration`
@@ -57,6 +69,12 @@ description of the cell model.
    :caption: User Guide
 
    user_guide/index
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Science
+
+   science/index
 
 .. toctree::
    :maxdepth: 2

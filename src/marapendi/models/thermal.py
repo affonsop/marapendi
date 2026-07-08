@@ -10,10 +10,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .cell import Cell, CellSide
-from ..thermo.water import water_molar_volume, water_saturation_pressure
-from ..thermo.electrochemistry import h2_lhv
-from ..thermo.constants import FARADAY_CONSTANT
+from ..cell.cell import Cell, CellSide
+from .thermo.water import water_molar_volume, water_saturation_pressure
+from .thermo.electrochemistry import h2_lhv
+from .thermo.constants import FARADAY_CONSTANT
 
 @dataclass
 class ThermalModel:

@@ -50,7 +50,7 @@ def _make_cell():
 
     return mrpd.FuelCell(
         area=25e-4,
-        electrical_resistance=30e-7,
+        electric_resistance=30e-7,
         ca=mrpd.FuelCellSide(
             cl=ca_cl,
             gdl=mrpd.GasDiffusionLayer(
@@ -60,14 +60,12 @@ def _make_cell():
                 two_phase_transport_model=liq,
             ),
             ch=mrpd.FlowChannel(width=1e-3, height=1e-3, length=0.1, n_parallel=20, reactant='o2'),
-            has_mpl=False,
             thermal_contact_resistance=4e-4,
         ),
         an=mrpd.FuelCellSide(
             cl=mrpd.PtCCatalystLayer(thickness=5e-6, two_phase_transport_model=liq),
             gdl=gdl,
             ch=mrpd.FlowChannel(width=1e-3, height=1e-3, length=0.1, n_parallel=20, reactant='h2'),
-            has_mpl=False,
             thermal_contact_resistance=4e-4,
         ),
         membrane=mrpd.PFSA(
@@ -167,6 +165,6 @@ class TestPolarizationCurve:
         assert np.all(np.diff(V) < 0)
 
     def test_solve_returns_cell_state(self, cell, model):
-        from marapendi.cell.state import CellState
+        from marapendi.simulation.state import CellState
         state = _solve(cell, _conditions(5e3), model)
         assert isinstance(state, CellState)

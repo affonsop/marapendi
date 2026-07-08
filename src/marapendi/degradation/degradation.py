@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from numpy.typing import NDArray
 
-from ..thermo.constants import GAS_CONSTANT, FARADAY_CONSTANT
+from ..models.thermo.constants import GAS_CONSTANT, FARADAY_CONSTANT
 from ..tools import potential_activation
 from ..porous_layers.catalyst_layers import CatalystLayer
 from scipy.stats import lognorm, norm

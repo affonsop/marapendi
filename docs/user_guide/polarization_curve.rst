@@ -22,7 +22,7 @@ objects. Assemble the cell once and reuse it across many conditions.
 
     cell = mrpd.FuelCell(
         area=25e-4,                   # m²
-        electrical_resistance=30e-7,  # Ω m²
+        electric_resistance=30e-7,  # Ω m²
         ca=mrpd.FuelCellSide(
             cl=mrpd.PtCCatalystLayer(
                 ecsa=70e3, platinum_loading=0.4e-2, ionomer=ionomer,
@@ -106,20 +106,20 @@ Two-step solve
     ax.set_xlabel("Current density (A cm⁻²)")
     ax.set_ylabel("Cell voltage (V)")
 
-:meth:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel.set_initial_conditions`
-populates a :class:`~marapendi.cell.state.CellState` with starting values (equilibrium
+:meth:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel.set_initial_conditions`
+populates a :class:`~marapendi.simulation.state.CellState` with starting values (equilibrium
 water content at the inlet RH, analytical temperature estimate). ``solve`` updates it in
 place and returns the same object.
 
 Implicit model
 --------------
 
-:class:`~marapendi.cell.implicit_steady_state.ImplicitSteadyStateModel` iterates
+:class:`~marapendi.models.base.implicit_steady_state.ImplicitSteadyStateModel` iterates
 MEA temperature and cell voltage to self-consistency.  The API is identical:
 
 .. code-block:: python
 
-    from marapendi.cell.implicit_steady_state import ImplicitSteadyStateModel
+    from marapendi.models.base.implicit_steady_state import ImplicitSteadyStateModel
 
     imp = ImplicitSteadyStateModel()
     state_imp = imp.solve(cell, conditions,
@@ -132,7 +132,7 @@ calibration.
 Accessing state variables
 --------------------------
 
-The :class:`~marapendi.cell.state.CellState` mirrors the component tree.  After
+The :class:`~marapendi.simulation.state.CellState` mirrors the component tree.  After
 ``solve`` every field is populated:
 
 .. code-block:: python
@@ -220,14 +220,14 @@ Swapping the membrane water-balance model
 -----------------------------------------
 
 Both steady-state models use
-:class:`~marapendi.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise`
+:class:`~marapendi.models.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise`
 by default.  To use the first-order linear expansion from Affonso Nobrega et al.
 (2026):
 
 .. code-block:: python
 
-    from marapendi.water_balance.water_balance import WaterBalanceModel
-    from marapendi.water_balance.membrane import MembraneWaterBalanceModel
+    from marapendi.models.water_balance.water_balance import WaterBalanceModel
+    from marapendi.models.water_balance.membrane import MembraneWaterBalanceModel
 
     model = mrpd.ExplicitSteadyStateModel(
         water_balance_model=WaterBalanceModel(

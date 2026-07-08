@@ -13,7 +13,7 @@ from marapendi.estimation.polarization_curve_calibration import (
     build_rmse_stats_df,
 )
 from marapendi.estimation.parameters import Parameter, UnknownParameter
-from marapendi.cell.explicit_steady_state import ExplicitSteadyStateModel
+from marapendi.models.base.explicit_steady_state import ExplicitSteadyStateModel
 
 
 # ---------------------------------------------------------------------------
@@ -44,7 +44,7 @@ def _cell_creator(params):
     )
     return mrpd.FuelCell(
         area=25e-4,
-        electrical_resistance=params.get('elec-resistance', 30e-7),
+        electric_resistance=params.get('elec-resistance', 30e-7),
         ca=mrpd.FuelCellSide(
             cl=mrpd.PtCCatalystLayer(
                 ecsa=60e3, platinum_loading=0.4e-2, ionomer=ionomer,
@@ -64,7 +64,7 @@ def _cell_creator(params):
                 thermal_conductivity=0.5, two_phase_transport_model=liq,
             ),
             ch=mrpd.FlowChannel(width=1e-3, height=1e-3, length=0.1, n_parallel=20, reactant='o2'),
-            has_mpl=False, thermal_contact_resistance=4e-4,
+            thermal_contact_resistance=4e-4,
         ),
         an=mrpd.FuelCellSide(
             cl=mrpd.PtCCatalystLayer(
@@ -75,7 +75,7 @@ def _cell_creator(params):
                 thermal_conductivity=0.5, two_phase_transport_model=liq,
             ),
             ch=mrpd.FlowChannel(width=1e-3, height=1e-3, length=0.1, n_parallel=20, reactant='h2'),
-            has_mpl=False, thermal_contact_resistance=4e-4,
+            thermal_contact_resistance=4e-4,
         ),
         membrane=mrpd.PFSA(ionomer=ionomer, dry_thickness=25e-6),
     )

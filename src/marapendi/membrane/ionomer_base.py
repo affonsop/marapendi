@@ -26,8 +26,8 @@ import numpy as np
 from dataclasses import dataclass
 
 from ..tools import arrhenius_term
-from ..thermo.constants import FARADAY_CONSTANT, GAS_CONSTANT
-from ..thermo.water import water_density, water_molar_volume, water_molecular_weight
+from ..models.thermo.constants import FARADAY_CONSTANT, GAS_CONSTANT
+from ..models.thermo.water import water_density, water_molar_volume, water_molecular_weight
 
 
 @dataclass

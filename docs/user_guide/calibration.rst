@@ -127,7 +127,7 @@ calls it at each function evaluation.
         )
         return mrpd.FuelCell(
             area=25e-4,
-            electrical_resistance=params.get("elec-resistance", 30e-7),
+            electric_resistance=params.get("elec-resistance", 30e-7),
             ca=mrpd.FuelCellSide(
                 cl=mrpd.PtCCatalystLayer(
                     ecsa=70e3, platinum_loading=0.4e-2, ionomer=ionomer,

@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 import marapendi as mrpd
-from marapendi.cell.state import (
+from marapendi.simulation.state import (
     CellState, CellSideState, LayerState, CatalystLayerState,
     FlowChannelState, MembraneState,
 )

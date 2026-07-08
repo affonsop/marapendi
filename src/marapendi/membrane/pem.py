@@ -8,8 +8,8 @@ import numpy as np
 from dataclasses import dataclass, field
 
 from ..tools import arrhenius_term
-from ..thermo.constants import GAS_CONSTANT
-from ..thermo.water import water_molar_volume
+from ..models.thermo.constants import GAS_CONSTANT
+from ..models.thermo.water import water_molar_volume
 
 from .ionomer_base import Ionomer
 from .membrane_base import Membrane

@@ -17,11 +17,11 @@ from dataclasses import dataclass, field
 
 from ..thermo.constants import FARADAY_CONSTANT, GAS_CONSTANT
 from ..thermo.gas import GasModel, species_indexes
-from .thermal import ThermalModel
-from .gas_transport import GasTransportModel
-from .voltage import VoltageModel
+from ..thermal import ThermalModel
+from ..gas_transport_resistance import GasTransportModel
+from ..voltage import VoltageModel
 from ..water_balance.water_balance import WaterBalanceModel
-from .state import CellState, LayerState, CatalystLayerState
+from ...simulation.state import CellState, LayerState, CatalystLayerState
 
 
 @dataclass

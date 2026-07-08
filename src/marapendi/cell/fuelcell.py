@@ -33,16 +33,16 @@ from ..porous_layers.catalyst_layers import PtCCatalystLayer
 from ..channel.flow_channels import FlowChannel
 from ..membrane.membrane_base import Membrane
 from .cell import Cell, CellSide
-from .voltage import VoltageModel
-from .thermal import ThermalModel
+from ..models.voltage import VoltageModel
+from ..models.thermal import ThermalModel
 from ..electrolyte.electrolyte import ElectrolyteSolution
-from .explicit_steady_state import ExplicitSteadyStateModel
-from .implicit_steady_state import ImplicitSteadyStateModel
-from .state import (
+from ..models.base.explicit_steady_state import ExplicitSteadyStateModel
+from ..models.base.implicit_steady_state import ImplicitSteadyStateModel
+from ..simulation.state import (
     CellState, CellSideState, LayerState, CatalystLayerState,
     FlowChannelState, MembraneState,
 )
-from .state import GasState
+from ..simulation.state import GasState
 
 
 @dataclass

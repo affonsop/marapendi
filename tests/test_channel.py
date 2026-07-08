@@ -2,7 +2,7 @@
 import numpy as np
 import pytest
 import marapendi as mrpd
-from marapendi.cell.state import FlowChannelState
+from marapendi.simulation.state import FlowChannelState
 from marapendi.channel.gas_transport_resistance import BakerChannelGasResistanceModel
 
 

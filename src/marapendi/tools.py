@@ -4,7 +4,7 @@ General-purpose auxiliary functions shared across marapendi modules.
 
 import math
 import numpy as np
-from marapendi.thermo.constants import GAS_CONSTANT, FARADAY_CONSTANT
+from marapendi.models.thermo.constants import GAS_CONSTANT, FARADAY_CONSTANT
 
 
 def arrhenius_term(activation_energy, temperature, reference_temperature):

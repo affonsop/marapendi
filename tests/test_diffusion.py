@@ -8,8 +8,8 @@ Covers:
 import numpy as np
 import pytest
 import marapendi as mrpd
-from marapendi.cell.state import LayerState, CellSideState, FlowChannelState
-from marapendi.cell.gas_transport import GasTransportModel
+from marapendi.simulation.state import LayerState, CellSideState, FlowChannelState
+from marapendi.models.gas_transport_resistance import GasTransportModel
 
 
 # ---------------------------------------------------------------------------
@@ -142,7 +142,7 @@ class TestGasTransportModel:
             effective_gas_diffusion_ratio=0.15,
             pore_diameter=40e-9,
         )
-        side = mrpd.FuelCellSide(gdl=gdl, ch=ch, cl=cl, has_mpl=False)
+        side = mrpd.FuelCellSide(gdl=gdl, ch=ch, cl=cl)
 
         ch_state = FlowChannelState(temperature=353.15, pressure=1e5, inlet_gas_flow_rate=1e-5)
         mrpd.GasModel.set_composition(ch_state, 0.21, 0., 0.5, 1e5, 353.15)
@@ -150,7 +150,7 @@ class TestGasTransportModel:
         gdl_state = _make_layer_state(sat=0.1)
         cl_state = _make_layer_state(sat=0.0)
 
-        from marapendi.cell.state import CatalystLayerState
+        from marapendi.simulation.state import CatalystLayerState
         cl_state_full = CatalystLayerState(
             temperature=353.15, pressure=1e5,
             non_wetting_saturation=0.0, ionomer_water_content=8.0,
@@ -173,7 +173,7 @@ class TestGasTransportModel:
         assert R > 0
 
     def test_resistance_increases_with_saturation(self):
-        from marapendi.cell.state import CatalystLayerState
+        from marapendi.simulation.state import CatalystLayerState
         model = GasTransportModel()
         gdl_dry = _make_layer_state(sat=0.)
         gdl_wet = _make_layer_state(sat=0.5)

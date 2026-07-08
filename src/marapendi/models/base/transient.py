@@ -47,13 +47,13 @@ import numpy as np
 import types
 from dataclasses import dataclass, field
 
-from .thermal import ThermalModel
-from .gas_transport import GasTransportModel
-from .voltage import VoltageModel
+from ..thermal import ThermalModel
+from ..gas_transport_resistance import GasTransportModel
+from ..voltage import VoltageModel
 from .explicit_steady_state import ExplicitSteadyStateModel
 from ..water_balance.water_balance import WaterBalanceModel
 from ..water_balance.membrane_transient import MembraneWaterBalanceTransientModel
-from .state import CellState
+from ...simulation.state import CellState
 
 
 class _PiecewiseDenseOutput:
@@ -236,7 +236,7 @@ class TransientModel:
             * ``ca.water_flux``, ``ca.liquid_flux``, ``ca.membrane_water_flux``,
               ``ca.max_vapor_removal_flux``
         """
-        from ..simulation.conditions import SideConditions, CellConditions
+        from ...simulation.conditions import SideConditions, CellConditions
 
         t_eval = np.asarray(t_eval, dtype=float)
         x_eval = np.asarray(x_eval, dtype=float)

@@ -99,6 +99,7 @@ def plot_rmse_vs_complexity(
     figsize=(10, 4),
     xrotation=45,
     save_path=None,
+    plot_per_case=True, 
     dpi=300,
 ):
     """Plot train and test RMSE vs model complexity."""
@@ -117,12 +118,18 @@ def plot_rmse_vs_complexity(
     fig, ax = plt.subplots(1, 1, figsize=figsize)
     handles, labels = [], []
 
-    for k, case in enumerate(cv_results.fold_id.unique()):
-        case_df = test_df[test_df["case"] == case]
-        line, = ax.plot(case_df["n_params"], case_df["rmse"], f"sC{k}", markersize=5)
-        handles.append(line)
-        labels.append(f"{k+1}")
-
+    if plot_per_case: 
+        for k, case in enumerate(test_df.case.unique()):
+            case_df = test_df[test_df["case"] == case]
+            line, = ax.plot(case_df["n_params"], case_df["rmse"], f"sC{k}", markersize=5)
+            handles.append(line)
+            labels.append(f"{k+1}")
+    else: # per fold
+       for k, fold_id in enumerate(test_df.fold_id.unique()):
+            fold_df = test_df[test_df["fold_id"] == fold_id]
+            line, = ax.plot(fold_df["n_params"], fold_df["rmse"], f"sC{k}", markersize=5)
+            handles.append(line)
+            labels.append(f"{k+1}")
     agg_label = "Median" if use_median else "Average"
     agg_test = test_median if use_median else test_mean
     agg_train = train_median if use_median else train_mean
@@ -156,7 +163,7 @@ def plot_rmse_vs_complexity(
 
     leg1 = ax.legend(loc=0)
     fig.legend(handles=handles, labels=labels, loc="upper left",
-               bbox_to_anchor=(0.99, 0.9), fontsize=9, title="Condition")
+               bbox_to_anchor=(0.99, 0.9), fontsize=9, title="Case" if plot_per_case else "Fold")
     ax.add_artist(leg1)
 
     fig.tight_layout()
@@ -173,6 +180,7 @@ def plot_parameter_vs_complexity(
     figsize=(14, 12),
     save_path=None,
     dpi=300,
+    ref_values=None
 ):
     """Plot evolution of estimated parameters across complexity levels."""
     n_display = len(model.unknown_p_list)
@@ -197,8 +205,10 @@ def plot_parameter_vs_complexity(
             cv_results[['n_params', 'fold_id', p_key]].groupby('n_params').mean()[p_key] / p.factor,
             'dimgray', linewidth=1.1, label='Mean'
         )
-
-        ref = 0.99 * p.initial_guess / p.factor
+        if ref_values is None: 
+            ref = 0.99 * p.initial_guess / p.factor
+        else: 
+            ref = ref_values[p_key]  / p.factor
         axis.plot([1, model.n_unkown_p], [ref, ref],
                   linestyle='--', color='dimgray', linewidth=1.1, label='Reference')
 
@@ -233,6 +243,7 @@ def plot_cross_validation_curves(
     quantity_unit="V",
     x_label=r"$i$ (A/cm$^2$)",
     save_path=None,
+    figsize=(12, 10),
     dpi=300,
     uncertainty=0.1
 ):
@@ -243,7 +254,7 @@ def plot_cross_validation_curves(
     n_folds = len(cv_results.fold_id.unique())
 
     fig, ax = plt.subplots(
-        figsize=(12, 10),
+        figsize=figsize,
         nrows=n_folds,
         ncols=n_cases,
         sharex=True,
@@ -265,20 +276,20 @@ def plot_cross_validation_curves(
             x_exp = case_dataset['current-density']
 
 
-            ax[k, i].plot(x_sim, y_sim, f'-C{i}')
+            ax[k, i].plot(x_sim * 1e-4, y_sim, f'-C{i}')
 
             if uncertainty:  
-                ax[k, i].fill_between(x_sim, (1-uncertainty)*y_sim, 
+                ax[k, i].fill_between(x_sim * 1e-4, (1-uncertainty)*y_sim, 
                     (1+uncertainty)*y_sim, color=f'C{i}', alpha=0.3)
 
-            ax[k, i].plot(x_exp, y_exp, f'sC{i}', markersize=3.5,  alpha=0.5)
+            ax[k, i].plot(x_exp * 1e-4, y_exp, f'sC{i}', markersize=3.5,  alpha=0.5)
     
             if case in model.k_folds[fold_id]:
                 ax[k, i].set_facecolor('#f0f0f0')
 
             # Column titles
             if k == 0:
-                ax[0, i].set_title(f'Case {case}',
+                ax[0, i].set_title(f'Case {case:.0f}',
                     fontsize=9
                 )
 
@@ -289,8 +300,8 @@ def plot_cross_validation_curves(
                     f'{quantity_symbol} ({quantity_unit})'
                 )
 
-            if k == n_cases - 1:
-                ax[k, i].set_xlabel(x_label)
+            
+            ax[-1, i].set_xlabel(x_label)
 
     # ------------------------------------------------------------
     # Legend

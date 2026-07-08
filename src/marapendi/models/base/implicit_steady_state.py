@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from scipy.optimize import newton
 
 from .explicit_steady_state import ExplicitSteadyStateModel
-from .state import CellState
+from ...simulation.state import CellState
 
 
 @dataclass
@@ -87,6 +87,8 @@ class ImplicitSteadyStateModel(ExplicitSteadyStateModel):
         # Each entry of cell_voltage only affects the corresponding entry of
         # state (no cross-point coupling), so the Jacobian is diagonal — a
         # vectorised elementwise secant solve avoids a dense Jacobian.
-        cell_voltage = newton(_f, x0=cell_voltage_0, disp=False, tol=1e-3, rtol=1e-3)
-        _f(cell_voltage)
+        cell_voltage, converged, zero_der = newton(_f, full_output=True, 
+                                                   x0=cell_voltage_0, disp=False, 
+                                                   tol=1e-6, rtol=1e-6, maxiter=50)
+        _f(np.where(converged, cell_voltage, 0))
         return state

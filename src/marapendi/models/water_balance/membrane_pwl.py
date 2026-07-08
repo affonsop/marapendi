@@ -9,7 +9,7 @@ falls within the validity interval of that segment.
 """
 import numpy as np
 from dataclasses import dataclass
-from marapendi.thermo.gas import GasModel
+from marapendi.models.thermo.gas import GasModel
 from .membrane import MembraneWaterBalanceModel
 
 

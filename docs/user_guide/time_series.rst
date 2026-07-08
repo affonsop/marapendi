@@ -12,6 +12,17 @@ Two strategies are available for time-series data:
 
 Both strategies accept conditions defined directly from an experimental CSV log.
 
+.. note::
+
+   This guide builds the time-varying ``conditions`` callable by hand, which is
+   the right tool when you already have one specific measured log to replay.
+   If instead you want to *construct* a load profile from named steps, or
+   drive the cell with one of the standardised ID-FAST / FC-DLC (NEDC) cycles,
+   see :doc:`load_cycles` — it covers
+   :class:`~marapendi.simulation.load_cycles.LoadCycle`, which does the same
+   job as the hand-written callables below with vectorised evaluation and
+   automatic ODE-solver breakpoints at every step change.
+
 Loading conditions from a CSV file
 -----------------------------------
 
@@ -111,15 +122,15 @@ independently — no ODE, no iteration between steps:
 Transient simulation — constant conditions
 -------------------------------------------
 
-:class:`~marapendi.cell.transient.TransientModel` integrates the MEA-temperature
-ODE and the through-plane membrane water-content diffusion–convection PDE via
-:func:`scipy.integrate.solve_ivp`.  Pass a single
+:class:`~marapendi.models.base.transient.TransientModel` integrates the
+MEA-temperature ODE and the through-plane membrane water-content
+diffusion–convection PDE via :func:`scipy.integrate.solve_ivp`.  Pass a single
 :class:`~marapendi.simulation.conditions.CellConditions` for constant-load
 operation:
 
 .. code-block:: python
 
-    from marapendi.cell.transient import TransientModel
+    from marapendi.models.base.transient import TransientModel
 
     T = 353.15
     cond_0 = mrpd.CellConditions(
@@ -179,6 +190,17 @@ Pass a callable ``conditions(t)`` instead of a fixed
 The callable is called at each ODE evaluation step, so any channel — current,
 temperature, pressure, RH — can vary continuously.
 
+.. note::
+
+   A hand-written step function like the one above has a hard kink at
+   ``t = 0`` that the ODE solver cannot see coming. For a handful of steps
+   this is usually harmless, but for a cycle with many step changes (a
+   driving cycle, a multi-point test sequence) prefer
+   :class:`~marapendi.simulation.load_cycles.LoadCycle` (:doc:`load_cycles`):
+   it reports its own kink locations via ``discontinuity_times()``, which
+   ``TransientModel.solve`` uses to restart the integration cleanly at each
+   one instead of stepping over it.
+
 To interpolate test-bench log data into the transient conditions callable, build a
 set of ``np.interp`` wrappers:
 
@@ -211,13 +233,14 @@ Dense output and diagnostics
 
 With ``dense_output=True``, ``sol.sol(t)`` returns the state vector interpolated
 at any time.  Use
-:meth:`~marapendi.cell.transient.TransientModel.evaluate` to compute the full
-:class:`~marapendi.cell.state.CellState` diagnostics on a fine grid:
+:meth:`~marapendi.models.base.transient.TransientModel.evaluate` to
+compute the full :class:`~marapendi.simulation.state.CellState` diagnostics on a
+fine grid:
 
 .. code-block:: python
 
     t_eval = np.linspace(0, 600, 300)
-    diag = tr_model.evaluate(cell, conditions(600), t_eval,
+    diag = tr_model.evaluate(cell, conditions, t_eval,
                               x_eval=sol.sol(t_eval))
 
     # diag is a CellState; all fields are arrays of shape (300,)

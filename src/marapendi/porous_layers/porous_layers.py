@@ -3,13 +3,13 @@ Module providing classes to model porous layers in electrochemical cells.
 """
 from dataclasses import dataclass, field
 import numpy as np
-from ..thermo.constants import GAS_CONSTANT
+from ..models.thermo.constants import GAS_CONSTANT
 
-from ..thermo.gas import GasModel
-from ..cell.state import GasState
-from .diffusion import PorousGasDiffusionModel
-from .darcy import DarcyTransportModel
-from ..thermo.water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight
+from ..models.thermo.gas import GasModel
+from ..simulation.state import GasState
+from ..models.diffusion import PorousGasDiffusionModel
+from ..models.darcy import DarcyTransportModel
+from ..models.thermo.water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight
 
 @dataclass
 class PorousLayer():

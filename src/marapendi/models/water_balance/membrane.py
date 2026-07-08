@@ -13,11 +13,11 @@ Ferrara, A. et al. J. Power Sources 390, 197–207 (2018).
 """
 import numpy as np
 from dataclasses import dataclass, field
-from marapendi.thermo.constants import GAS_CONSTANT
-from marapendi.thermo.gas import GasModel
+from marapendi.models.thermo.constants import GAS_CONSTANT
+from marapendi.models.thermo.gas import GasModel
 from marapendi.tools import arrhenius_term
-from marapendi.thermo.water import water_molar_volume, water_dynamic_viscosity
-from ..cell.gas_transport import GasTransportModel
+from marapendi.models.thermo.water import water_molar_volume, water_dynamic_viscosity
+from ..gas_transport_resistance import GasTransportModel
 
 
 @dataclass

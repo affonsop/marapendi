@@ -10,7 +10,7 @@ coefficient.
 from dataclasses import dataclass
 import numpy as np
 from marapendi.tools import arrhenius_term
-from marapendi.thermo.constants import (
+from marapendi.models.thermo.constants import (
     GAS_CONSTANT,
     FARADAY_CONSTANT,
     STD_TEMPERATURE,

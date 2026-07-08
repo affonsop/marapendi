@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..thermo.gas import GasModel
+from ..models.thermo.gas import GasModel
 
 
 @dataclass

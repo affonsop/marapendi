@@ -14,7 +14,7 @@ from __future__ import annotations
 import numpy as np
 from dataclasses import dataclass
 
-from ..thermo.gas import GasModel, species_indexes
+from .thermo.gas import GasModel, species_indexes
 
 
 @dataclass

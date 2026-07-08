@@ -4,7 +4,7 @@ Module providing a Darcy transport model.
 """
 from dataclasses import dataclass
 import numpy as np
-from ..thermo.constants import GAS_CONSTANT
+from .thermo.constants import GAS_CONSTANT
 
 @dataclass
 class DarcyTransportModel:

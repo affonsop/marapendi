@@ -16,13 +16,13 @@ interface terms) is evaluated via :meth:`~PtCCatalystLayer.o2_ionomer_film_resis
 """
 from dataclasses import dataclass, field
 import numpy as np
-from ..thermo.constants import GAS_CONSTANT
+from ..models.thermo.constants import GAS_CONSTANT
 
-from ..thermo.electrochemistry import ElectrochemicalReaction 
+from ..models.thermo.electrochemistry import ElectrochemicalReaction 
 from ..membrane.ionomer_base import Ionomer
 from ..membrane.pem import PFSAIonomer
 from .porous_layers import PorousLayer
-from ..thermo.water import o2_water_diffusivity 
+from ..models.thermo.water import o2_water_diffusivity 
 
 @dataclass
 class CatalystLayer(PorousLayer):

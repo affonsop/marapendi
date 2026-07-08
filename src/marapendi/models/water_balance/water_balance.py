@@ -16,9 +16,9 @@ import numpy as np
 from dataclasses import dataclass, field
 from ..thermo.constants import GAS_CONSTANT
 from ..thermo.gas import GasModel
-from ..tools import arrhenius_term
+from ...tools import arrhenius_term
 from ..thermo.water import water_molar_volume, water_dynamic_viscosity
-from ..cell.gas_transport import GasTransportModel
+from ..gas_transport_resistance import GasTransportModel
 from .membrane import * 
 from .membrane_pwl import *
 
@@ -222,7 +222,7 @@ class WaterBalanceModel:
         Returns a 2-element list ``[dsrelax_ca_dt, dsrelax_an_dt]``.
         Requires ``state.*.s_relax`` and ``state.*.rh_at_cl_without_crossover`` to be set.
         """
-        from ..tools import arrhenius_term
+        from ...tools import arrhenius_term
         from ..thermo.constants import GAS_CONSTANT
 
         result = []

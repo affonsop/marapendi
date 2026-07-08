@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 from ..simulation.conditions import CellConditions, SideConditions
-from ..cell.explicit_steady_state import ExplicitSteadyStateModel
+from ..models.base.explicit_steady_state import ExplicitSteadyStateModel
 from .base_calibration import BaseModelCalibration
 
 
