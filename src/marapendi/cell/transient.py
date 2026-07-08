@@ -44,6 +44,7 @@ Goshtasbi, A. et al. J. Electrochem. Soc. 167, 024518 (2020).
 from __future__ import annotations
 
 import numpy as np
+import types
 from dataclasses import dataclass, field
 
 from .thermal import ThermalModel
@@ -53,6 +54,47 @@ from .explicit_steady_state import ExplicitSteadyStateModel
 from ..water_balance.water_balance import WaterBalanceModel
 from ..water_balance.membrane_transient import MembraneWaterBalanceTransientModel
 from .state import CellState
+
+
+class _PiecewiseDenseOutput:
+    """Dense-output callable stitching together per-segment ``OdeSolution`` interpolants."""
+
+    def __init__(self, segments):
+        self.t_min = segments[0].t[0]
+        self.t_max = segments[-1].t[-1]
+        self._segment_ends = np.array([seg.t[-1] for seg in segments])
+        self._interpolants = [seg.sol for seg in segments]
+
+    def __call__(self, t):
+        t_arr = np.atleast_1d(np.asarray(t, dtype=float))
+        scalar = np.ndim(t) == 0
+        idx = np.clip(np.searchsorted(self._segment_ends, t_arr, side='left'),
+                      0, len(self._interpolants) - 1)
+        n_states = self._interpolants[0](self.t_min).shape[0]
+        out = np.empty((n_states, t_arr.size))
+        for i in np.unique(idx):
+            mask = idx == i
+            out[:, mask] = self._interpolants[i](t_arr[mask])
+        return out[:, 0] if scalar else out
+
+
+def _stitch_solutions(segments):
+    """Merge consecutive :func:`~scipy.integrate.solve_ivp` results from :meth:`TransientModel.solve`'s
+    per-breakpoint sub-intervals into a single result with the same shape as a one-shot solve."""
+    t = np.concatenate([seg.t for seg in segments[1:]])
+    y = np.concatenate([seg.y for seg in segments[1:]], axis=1)
+    success = all(seg.success for seg in segments)
+    failed = next((seg for seg in segments if not seg.success), None)
+
+    return types.SimpleNamespace(
+        t=t, y=y, success=success,
+        status=failed.status if failed is not None else segments[-1].status,
+        message=failed.message if failed is not None else segments[-1].message,
+        nfev=sum(seg.nfev for seg in segments),
+        njev=sum(seg.njev for seg in segments),
+        nlu=sum(seg.nlu for seg in segments),
+        sol=_PiecewiseDenseOutput(segments) if all(seg.sol is not None for seg in segments) else None,
+    )
 
 
 @dataclass
@@ -254,7 +296,7 @@ class TransientModel:
         return state
 
     def solve(self, cell, cell_conditions, t_span, x0=None,
-              compute_diagnostics=True, **kwargs):
+              compute_diagnostics=True, breakpoints=None, **kwargs):
         """Integrate the transient ODE over *t_span*.
 
         Parameters
@@ -273,9 +315,19 @@ class TransientModel:
             and the result is stored as ``sol.diagnostics``.  Set to ``False``
             to skip the post-processing step (e.g. when only ODE trajectories
             are needed).
+        breakpoints : array_like, optional
+            Interior times where *cell_conditions* is non-smooth (e.g. a
+            load-cycle step change).  The solver's local error estimate is
+            unreliable across such a kink, so the integration is split into
+            one :func:`~scipy.integrate.solve_ivp` call per sub-interval,
+            restarting cleanly at each breakpoint instead of risking a step
+            that straddles it undetected.  When omitted (default), these are
+            taken from ``cell_conditions.discontinuity_times()`` if that
+            method exists (e.g. :class:`~marapendi.simulation.load_cycles.LoadCycle`);
+            pass ``breakpoints=[]`` to disable this.
         **kwargs
             Forwarded to :func:`scipy.integrate.solve_ivp`.  Defaults:
-            ``method='Radau'``, ``rtol=1e-3``, ``atol=1e-5``.
+            ``method='BDF'``, ``max_step=10``, ``rtol=1e-3``, ``atol=1e-5``.
 
         Returns
         -------
@@ -295,16 +347,29 @@ class TransientModel:
             cond0 = cell_conditions(t_span[0]) if callable(cell_conditions) else cell_conditions
             _, x0 = self.set_initial_conditions(cell, cond0)
 
-        kwargs.setdefault('method', 'Radau')
+        kwargs.setdefault('method', 'BDF')
+        kwargs.setdefault('max_step', 10)
         kwargs.setdefault('rtol', 1e-3)
         kwargs.setdefault('atol', 1e-5)
 
-        sol = solve_ivp(
-            lambda t, x: self.f_transient(t, x, cell, cell_conditions),
-            t_span,
-            np.asarray(x0, dtype=float),
-            **kwargs,
-        )
+        if breakpoints is None:
+            get_times = getattr(cell_conditions, 'discontinuity_times', None)
+            breakpoints = get_times() if callable(get_times) else []
+
+        t_start, t_end = t_span
+        edges = [t_start, *sorted(t for t in breakpoints if t_start < t < t_end), t_end]
+
+        fun = lambda t, x: self.f_transient(t, x, cell, cell_conditions)
+        x_cur = np.asarray(x0, dtype=float)
+        segments = []
+        for seg_start, seg_end in zip(edges[:-1], edges[1:]):
+            segment = solve_ivp(fun, (seg_start, seg_end), x_cur, **kwargs)
+            segments.append(segment)
+            if not segment.success:
+                break
+            x_cur = segment.y[:, -1]
+
+        sol = segments[0] if len(segments) == 1 else _stitch_solutions(segments)
 
         if compute_diagnostics:
             sol.diagnostics = self.evaluate(cell, cell_conditions, sol.t, x_eval=sol.y)

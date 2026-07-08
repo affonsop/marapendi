@@ -318,6 +318,34 @@ class LoadCycle:
             time=t, 
         )
 
+    # ── integration hints ──────────────────────────────────────────────────────
+
+    def discontinuity_times(self) -> np.ndarray:
+        """Interior times (0 < t < duration) where any field's derivative is discontinuous.
+
+        Collected from every :class:`PiecewiseProfile` field of this cycle
+        (including nested ``ca``/``an`` side conditions). An ODE solver
+        integrating through one of these kinks can't rely on its local error
+        estimate — the smoothness assumption behind it is violated right at
+        the kink — so :meth:`~marapendi.cell.transient.TransientModel.solve`
+        uses these times to split the integration into per-segment pieces.
+        """
+        times: set[float] = set()
+
+        def _scan(obj):
+            if obj is None:
+                return
+            for value in vars(obj).values():
+                if isinstance(value, PiecewiseProfile):
+                    times.update(float(t) for t in value._t_ends)
+                elif isinstance(value, DynamicSideConditions):
+                    _scan(value)
+
+        _scan(self)
+        interior = np.array(sorted(t for t in times if 0. < t < self.duration))
+        # Round to merge near-duplicate breakpoints computed independently by different profiles.
+        return np.unique(np.round(interior, 6))
+
     # ── vectorised evaluation ──────────────────────────────────────────────────
 
     def get_input_vectors(self, t=None, n_cycles=None) -> dict:
