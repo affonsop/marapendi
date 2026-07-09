@@ -122,7 +122,14 @@ Known limitations
 - **Not real-time, not parallel.** Every derivative and output evaluation
   round-trips into Python and holds the GIL, so Rapid Accelerator, multicore,
   and Simulink Compiler/Coder targets are not supported — run in Normal or
-  plain Accelerator mode.
+  plain Accelerator mode. Measured on the 300 s validation scenario below,
+  the block runs about 4-5x slower wall-clock than calling
+  :meth:`~marapendi.models.base.transient.TransientModel.solve` directly in
+  Python — not because of MATLAB/Python marshalling overhead (~15% per
+  call), but because Simulink round-trips into Python from both
+  ``Derivatives`` and ``Outputs`` at nearly every solver stage, while
+  ``solve()`` only runs the full diagnostics pipeline once, vectorised, at
+  the end. See ``matlab/transient_pemfc/README.md`` for the numbers.
 - **Cell parameters are not a runtime signal.** The ``FuelCell`` is built
   once (in the S-Function's ``Start`` callback) from ``cellBuilderExpr`` and
   reused for every step, matching how

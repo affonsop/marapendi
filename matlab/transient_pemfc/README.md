@@ -108,6 +108,34 @@ code path through `_eval_state`).
   round-trips into Python and holds the GIL. Rapid Accelerator, multicore,
   and Simulink Compiler/Coder targets are not supported — run in Normal or
   plain Accelerator mode.
+
+  Measured on the 300 s step-current scenario from the validation section
+  below (`n_memb_mesh=5`, `ode15s`/`BDF`, both `rtol=1e-3`, MATLAB R2025a,
+  Python 3.13, mean of 5 warmed-up runs):
+
+  | | time |
+  |---|---|
+  | `TransientModel.solve()` in Python | 96 ms (137 `f_transient` evaluations) |
+  | `sim('TransientPEMFC')` in Simulink | 452 ms |
+  | — of which `InitFcn` (`pyenv_setup`+`create_buses`, once per `sim()` call) | 52 ms |
+
+  So the block is roughly **4-5x slower wall-clock** than calling
+  `TransientModel.solve()` directly, for a run that only takes ~0.1-0.5 s
+  either way. Isolating a single `derivative()` round trip shows this is
+  *not* dominated by MATLAB↔Python marshalling: one call via MATLAB's `py.`
+  interface takes ~0.60 ms, against ~0.52 ms for the equivalent bare
+  `model.f_transient(...)` call in Python — about 15% overhead per call.
+  The real cost is call *count*: `TransientModel.solve()` calls
+  `f_transient` at every internal solver stage but only calls the full
+  diagnostics pipeline (`evaluate()`) **once**, vectorised, over the
+  accepted output points; the Simulink block instead round-trips into
+  Python from both `Derivatives` *and* `Outputs` at (essentially) every
+  solver stage, each `Outputs` call running the same full physics pipeline
+  as `evaluate()`. That difference in Python-call count, not the interface
+  overhead itself, is what makes the block slower — expect it to scale
+  roughly with solver step count, so tightening `RelTol`/`MaxStep` or using
+  a stiff long-horizon load cycle will cost proportionally more than the
+  same change would in Python.
 - **Fixed mesh size at build time.** `n_memb_mesh` sizes the S-Function's
   continuous-state vector and the Bus Selector/Demux/Bus Creator wiring, so
   changing it means re-running `build_transient_block` (which calls
