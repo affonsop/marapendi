@@ -121,21 +121,31 @@ code path through `_eval_state`).
 
   So the block is roughly **4-5x slower wall-clock** than calling
   `TransientModel.solve()` directly, for a run that only takes ~0.1-0.5 s
-  either way. Isolating a single `derivative()` round trip shows this is
-  *not* dominated by MATLAB↔Python marshalling: one call via MATLAB's `py.`
-  interface takes ~0.60 ms, against ~0.52 ms for the equivalent bare
-  `model.f_transient(...)` call in Python — about 15% overhead per call.
-  The real cost is call *count*: `TransientModel.solve()` calls
-  `f_transient` at every internal solver stage but only calls the full
-  diagnostics pipeline (`evaluate()`) **once**, vectorised, over the
-  accepted output points; the Simulink block instead round-trips into
-  Python from both `Derivatives` *and* `Outputs` at (essentially) every
-  solver stage, each `Outputs` call running the same full physics pipeline
-  as `evaluate()`. That difference in Python-call count, not the interface
-  overhead itself, is what makes the block slower — expect it to scale
-  roughly with solver step count, so tightening `RelTol`/`MaxStep` or using
-  a stiff long-horizon load cycle will cost proportionally more than the
-  same change would in Python.
+  either way. This is **not** the solver being intrinsically more expensive,
+  and **not** MATLAB↔Python marshalling overhead — both are minor
+  contributors:
+
+  - Solver cost is comparable: instrumenting the S-Function to count calls
+    over the same run gives **128** `Derivatives` evaluations for
+    `ode15s`/`RelTol=1e-3`, close to Python `BDF`'s **137** `f_transient`
+    evaluations at the same `rtol`.
+  - Marshalling overhead per call is modest: a single `derivative()` round
+    trip via MATLAB's `py.` interface takes ~0.60 ms, against ~0.52 ms for
+    the equivalent bare `model.f_transient(...)` call in Python — about 15%.
+
+  The dominant cost is call *count*, specifically from `Outputs`:
+  `TransientModel.solve()` calls the full diagnostics pipeline
+  (`evaluate()`) **once**, vectorised, over the accepted output points,
+  while Simulink calls the block's `Outputs` method — which round-trips
+  into Python and runs that same full pipeline — separately at **206**
+  points over the same run. Total Python round trips: **334** in Simulink
+  (128 `Derivatives` + 206 `Outputs`) vs. **138** in Python (137
+  `f_transient` + 1 vectorised `evaluate()`) — a ~2.4x gap in call count
+  that, combined with `Outputs` being pricier than `Derivatives` (it runs
+  the whole physics pipeline, not just the ODE right-hand side), accounts
+  for most of the wall-clock difference. Expect cost to scale with solver
+  step count on both sides, but Simulink pays it twice per step where
+  Python pays it once total.
 - **Fixed mesh size at build time.** `n_memb_mesh` sizes the S-Function's
   continuous-state vector and the Bus Selector/Demux/Bus Creator wiring, so
   changing it means re-running `build_transient_block` (which calls
