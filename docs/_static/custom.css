@@ -1,9 +1,9 @@
 /* Constrain the navbar logo height */
 .navbar-brand img {
-    max-height: 40px;
+    max-height: 100px;
     width: auto;
 }
 
 .bd-header-article .bd-logo img {
-    max-height: 40px;
+    max-height: 100px;
 }
