@@ -34,9 +34,17 @@ TransientPEMFC_core -> x (raw ODE state vector, plain port, no bus needed)
 
 `transient_pemfc_sfun.m` itself calls
 `marapendi.interop.simulink_bridge.derivative()`/`.diagnostics()` each step;
-it caches the `FuelCell` Python object handle in a Dwork-indexed registry
-(`transient_pemfc_registry.m`) since Dwork vectors can only hold numeric
-data, not a `py.object`.
+it caches the `FuelCell` Python object handle (and the last computed
+`CellState`) in a Dwork-indexed registry (`transient_pemfc_registry.m`)
+since Dwork vectors can only hold numeric data, not a `py.object` or struct.
+
+`Outputs` only calls `diagnostics()` on **major time steps** — Simulink's
+standard pattern for expensive output blocks
+(`block.IsMajorTimeStep`). Minor time steps, which the variable-step solver
+uses internally for error estimation/interpolation and which are not part
+of the reported trajectory, reuse the last computed `CellState` from the
+registry instead of paying another Python round trip. See the performance
+numbers below.
 
 ## Files
 
@@ -116,11 +124,11 @@ code path through `_eval_state`).
   | | time |
   |---|---|
   | `TransientModel.solve()` in Python | 96 ms (137 `f_transient` evaluations) |
-  | `sim('TransientPEMFC')` in Simulink | 452 ms |
+  | `sim('TransientPEMFC')` in Simulink | 326 ms |
   | — of which `InitFcn` (`pyenv_setup`+`create_buses`, once per `sim()` call) | 52 ms |
 
-  So the block is roughly **4-5x slower wall-clock** than calling
-  `TransientModel.solve()` directly, for a run that only takes ~0.1-0.5 s
+  So the block is roughly **3.4x slower wall-clock** than calling
+  `TransientModel.solve()` directly, for a run that only takes ~0.1-0.3 s
   either way. This is **not** the solver being intrinsically more expensive,
   and **not** MATLAB↔Python marshalling overhead — both are minor
   contributors:
@@ -133,19 +141,24 @@ code path through `_eval_state`).
     trip via MATLAB's `py.` interface takes ~0.60 ms, against ~0.52 ms for
     the equivalent bare `model.f_transient(...)` call in Python — about 15%.
 
-  The dominant cost is call *count*, specifically from `Outputs`:
-  `TransientModel.solve()` calls the full diagnostics pipeline
-  (`evaluate()`) **once**, vectorised, over the accepted output points,
-  while Simulink calls the block's `Outputs` method — which round-trips
-  into Python and runs that same full pipeline — separately at **206**
-  points over the same run. Total Python round trips: **334** in Simulink
-  (128 `Derivatives` + 206 `Outputs`) vs. **138** in Python (137
-  `f_transient` + 1 vectorised `evaluate()`) — a ~2.4x gap in call count
-  that, combined with `Outputs` being pricier than `Derivatives` (it runs
-  the whole physics pipeline, not just the ODE right-hand side), accounts
-  for most of the wall-clock difference. Expect cost to scale with solver
-  step count on both sides, but Simulink pays it twice per step where
-  Python pays it once total.
+  The dominant cost is call *count*, specifically from `Outputs`, and the
+  block already applies the standard fix for it: `TransientModel.solve()`
+  calls the full diagnostics pipeline (`evaluate()`) **once**, vectorised,
+  over the accepted output points, while a naive Simulink S-Function would
+  call the block's `Outputs` method — which round-trips into Python and
+  runs that same full pipeline — at every major *and minor* solver step.
+  `Outputs` here checks `block.IsMajorTimeStep` and reuses the cached
+  `CellState` on minor steps (used internally for error
+  estimation/interpolation, not part of the reported trajectory) instead of
+  calling Python again. That cuts `Outputs`' Python round trips from **206**
+  (every call) to **79** (major steps only) on this scenario — total Python
+  round trips **207** (128 `Derivatives` + 79 `Outputs`) vs. **138** in
+  Python (137 `f_transient` + 1 vectorised `evaluate()`), and wall time from
+  452 ms down to 326 ms. The remaining ~1.5x call-count gap (207 vs. 138) is
+  inherent to the architecture — Simulink evaluates `Outputs` once per major
+  step in addition to `Derivatives`, where `TransientModel.solve()` defers
+  all diagnostics to one vectorised pass at the end — so expect cost to keep
+  scaling with major-step count, not internal solver-stage count.
 - **Fixed mesh size at build time.** `n_memb_mesh` sizes the S-Function's
   continuous-state vector and the Bus Selector/Demux/Bus Creator wiring, so
   changing it means re-running `build_transient_block` (which calls

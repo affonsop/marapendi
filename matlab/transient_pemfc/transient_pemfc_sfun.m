@@ -27,9 +27,14 @@ function transient_pemfc_sfun(block)
 %                            (compute one with marapendi.interop.simulink_bridge.
 %                            initial_state from Python, or via py. from MATLAB)
 %
-%   Limitation: every derivative/output evaluation round-trips into Python
-%   and holds the GIL, so this block does not support Rapid Accelerator or
-%   multicore execution. See matlab/transient_pemfc/README.md.
+%   Limitation: every derivative evaluation, and every *major-time-step*
+%   output evaluation, round-trips into Python and holds the GIL, so this
+%   block does not support Rapid Accelerator or multicore execution.
+%   Outputs are only recomputed on major time steps (Simulink's standard
+%   pattern for expensive output blocks, via block.IsMajorTimeStep) — minor
+%   steps (used internally by the variable-step solver for error estimation,
+%   not part of the reported trajectory) reuse the last computed CellState
+%   without calling Python. See matlab/transient_pemfc/README.md.
 
     setup(block);
 end
@@ -95,8 +100,11 @@ end
 
 function Start(block)
     cellBuilderExpr = char(block.DialogPrm(2).Data);
-    pyCell = call_python_builder(cellBuilderExpr);
-    block.Dwork(1).Data = transient_pemfc_registry('store', pyCell);
+    entry = struct( ...
+        'pyCell', call_python_builder(cellBuilderExpr), ...
+        'scalarVec', [], ...
+        'profileVec', []);
+    block.Dwork(1).Data = transient_pemfc_registry('store', entry);
 end
 
 function InitializeConditions(block)
@@ -106,23 +114,34 @@ end
 
 function Derivatives(block)
     n = double(block.DialogPrm(1).Data);
-    pyCell = transient_pemfc_registry('get', block.Dwork(1).Data);
+    entry = transient_pemfc_registry('get', block.Dwork(1).Data);
     x = block.ContStates.Data;
     condDict = vec2conddict(block.InputPort(1).Data);
     dxdt = py.marapendi.interop.simulink_bridge.derivative( ...
-        pyCell, int32(n), block.CurrentTime, py.list(x(:)'), condDict);
+        entry.pyCell, int32(n), block.CurrentTime, py.list(x(:)'), condDict);
     block.Derivatives.Data = pylist2mat(dxdt);
 end
 
 function Outputs(block)
-    n = double(block.DialogPrm(1).Data);
-    pyCell = transient_pemfc_registry('get', block.Dwork(1).Data);
+    id = block.Dwork(1).Data;
+    entry = transient_pemfc_registry('get', id);
     x = block.ContStates.Data;
-    condDict = vec2conddict(block.InputPort(1).Data);
-    diagDict = py.marapendi.interop.simulink_bridge.diagnostics( ...
-        pyCell, int32(n), block.CurrentTime, py.list(x(:)'), condDict);
-    block.OutputPort(1).Data = diagdict2scalarvec(diagDict);
-    block.OutputPort(2).Data = pylist2mat(diagDict{'membrane_water_content_profile'});
+
+    if block.IsMajorTimeStep || isempty(entry.scalarVec)
+        % Minor time steps (used internally by the variable-step solver for
+        % error estimation/interpolation) are not part of the reported
+        % trajectory, so only pay the Python round trip on major steps.
+        n = double(block.DialogPrm(1).Data);
+        condDict = vec2conddict(block.InputPort(1).Data);
+        diagDict = py.marapendi.interop.simulink_bridge.diagnostics( ...
+            entry.pyCell, int32(n), block.CurrentTime, py.list(x(:)'), condDict);
+        entry.scalarVec = diagdict2scalarvec(diagDict);
+        entry.profileVec = pylist2mat(diagDict{'membrane_water_content_profile'});
+        transient_pemfc_registry('set', id, entry);
+    end
+
+    block.OutputPort(1).Data = entry.scalarVec;
+    block.OutputPort(2).Data = entry.profileVec;
     block.OutputPort(3).Data = x;
 end
 
