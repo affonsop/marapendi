@@ -168,7 +168,7 @@ class TransientModel:
         x0 = np.concatenate([[T0 / self.norm_factors[0]], lmbd0 / self.norm_factors[1]])
         return state, x0
 
-    def f_transient(self, t, x, cell, cell_conditions) -> np.ndarray:
+    def f_transient(self, t, x, cell, cell_conditions, return_state=False) -> np.ndarray:
         """ODE right-hand side for :func:`scipy.integrate.solve_ivp`.
 
         Parameters
@@ -180,13 +180,23 @@ class TransientModel:
             at each finite-volume node.
         cell : FuelCell
         cell_conditions : CellConditions or callable(t) -> CellConditions
-        state : CellState 
-            Avoids instatiating a new CellState object at each time step.
+        return_state : bool, optional
+            When ``True``, also return the :class:`~marapendi.simulation.state.CellState`
+            computed internally for this ``(t, x)`` — the same one
+            :meth:`evaluate` would recompute from scratch for the same point.
+            Useful for callers (e.g. a Simulink S-Function) that need
+            diagnostics at every integration step and want to avoid a
+            second, redundant physics pass; :func:`scipy.integrate.solve_ivp`
+            itself has no hook for this, which is why :meth:`solve` still
+            calls :meth:`evaluate` separately after integration.
+
         Returns
         -------
         np.ndarray, shape (1 + n_memb_mesh,)
             Rate of change of MEA temperature followed by rate of change of
             water content at each membrane node.
+        state : CellState, optional
+            Only returned when ``return_state=True``, as ``(dxdt, state)``.
         """
         n = self.n_memb_mesh
         T_mea = float(x[0] * self.norm_factors[0])
@@ -201,7 +211,14 @@ class TransientModel:
             cell, state, n
         )
 
-        return np.concatenate([[float(dTdt) / self.norm_factors[0]], np.asarray(dlambdadt / self.norm_factors[1]).ravel()])
+        dxdt = np.concatenate([[float(dTdt) / self.norm_factors[0]], np.asarray(dlambdadt / self.norm_factors[1]).ravel()])
+
+        if return_state:
+            # Matches what evaluate() adds on top of _eval_state for the same point.
+            state.hfr = self.voltage_model.high_frequency_resistance(cell, state)
+            return dxdt, state
+
+        return dxdt
 
     def evaluate(self, cell, cell_conditions, t_eval, x_eval) -> CellState:
         """Compute model diagnostics from ODE states at given time points.

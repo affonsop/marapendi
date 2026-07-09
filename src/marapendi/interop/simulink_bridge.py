@@ -147,41 +147,68 @@ def derivative(cell: FuelCell, n_memb_mesh: int, t: float, x: list, cond: dict) 
     return np.asarray(dxdt, dtype=float).tolist()
 
 
+def _s(v):
+    return float(np.atleast_1d(v)[0]) if v is not None else float('nan')
+
+
+def _state_to_dict(state) -> dict:
+    """Flatten a scalar :class:`~marapendi.simulation.state.CellState` — the
+    same field list ``diagnostics()`` and ``step()`` both return, so the
+    Simulink side (``state_scalar_field_order.m``) only has one shape to match."""
+    return {
+        'cell_voltage': _s(state.cell_voltage),
+        'mea_temperature': _s(state.mea_temperature),
+        'thermal_resistance': _s(state.thermal_resistance),
+        'hfr': _s(state.hfr),
+        'E_rev': _s(state.E_rev),
+        'eta_act': _s(state.eta_act),
+        'eta_ohm': _s(state.eta_ohm),
+        'crossover_current': _s(state.crossover_current),
+        'membrane_water_content': _s(state.membrane.water_content),
+        'membrane_water_content_profile': np.asarray(state.membrane.water_content_profile, dtype=float).reshape(-1).tolist(),
+        'membrane_water_flux': _s(state.membrane.water_flux),
+        'membrane_h2_permeation_flux': _s(state.membrane.h2_permeation_flux),
+        'membrane_proton_resistance': _s(state.membrane.proton_resistance),
+        'ca_cl_ionomer_water_content': _s(state.ca.cl.ionomer_water_content),
+        'ca_cl_liquid_saturation': _s(state.ca.cl.liquid_saturation),
+        'ca_cl_proton_resistance': _s(state.ca.cl.proton_resistance),
+        'ca_water_flux': _s(state.ca.water_flux),
+        'ca_liquid_flux': _s(state.ca.liquid_flux),
+        'ca_membrane_water_flux': _s(state.ca.membrane_water_flux),
+        'ca_h2ov_transport_resistance': _s(state.ca.h2ov_transport_resistance),
+        'an_cl_ionomer_water_content': _s(state.an.cl.ionomer_water_content),
+        'an_cl_liquid_saturation': _s(state.an.cl.liquid_saturation),
+        'an_cl_proton_resistance': _s(state.an.cl.proton_resistance),
+        'an_water_flux': _s(state.an.water_flux),
+        'an_liquid_flux': _s(state.an.liquid_flux),
+        'an_membrane_water_flux': _s(state.an.membrane_water_flux),
+        'an_h2ov_transport_resistance': _s(state.an.h2ov_transport_resistance),
+    }
+
+
 def diagnostics(cell: FuelCell, n_memb_mesh: int, t: float, x: list, cond: dict) -> dict:
     """Flattened :class:`~marapendi.simulation.state.CellState` at (*t*, *x*) — mirrors ``evaluate``."""
     model = _get_model(n_memb_mesh)
     x_arr = np.asarray(x, dtype=float).reshape(-1, 1)
     state = model.evaluate(cell, _cell_conditions(cond), np.array([float(t)]), x_arr)
+    return _state_to_dict(state)
 
-    def s(v):
-        return float(np.atleast_1d(v)[0]) if v is not None else float('nan')
 
-    return {
-        'cell_voltage': s(state.cell_voltage),
-        'mea_temperature': s(state.mea_temperature),
-        'thermal_resistance': s(state.thermal_resistance),
-        'hfr': s(state.hfr),
-        'E_rev': s(state.E_rev),
-        'eta_act': s(state.eta_act),
-        'eta_ohm': s(state.eta_ohm),
-        'crossover_current': s(state.crossover_current),
-        'membrane_water_content': s(state.membrane.water_content),
-        'membrane_water_content_profile': np.asarray(state.membrane.water_content_profile, dtype=float).reshape(-1).tolist(),
-        'membrane_water_flux': s(state.membrane.water_flux),
-        'membrane_h2_permeation_flux': s(state.membrane.h2_permeation_flux),
-        'membrane_proton_resistance': s(state.membrane.proton_resistance),
-        'ca_cl_ionomer_water_content': s(state.ca.cl.ionomer_water_content),
-        'ca_cl_liquid_saturation': s(state.ca.cl.liquid_saturation),
-        'ca_cl_proton_resistance': s(state.ca.cl.proton_resistance),
-        'ca_water_flux': s(state.ca.water_flux),
-        'ca_liquid_flux': s(state.ca.liquid_flux),
-        'ca_membrane_water_flux': s(state.ca.membrane_water_flux),
-        'ca_h2ov_transport_resistance': s(state.ca.h2ov_transport_resistance),
-        'an_cl_ionomer_water_content': s(state.an.cl.ionomer_water_content),
-        'an_cl_liquid_saturation': s(state.an.cl.liquid_saturation),
-        'an_cl_proton_resistance': s(state.an.cl.proton_resistance),
-        'an_water_flux': s(state.an.water_flux),
-        'an_liquid_flux': s(state.an.liquid_flux),
-        'an_membrane_water_flux': s(state.an.membrane_water_flux),
-        'an_h2ov_transport_resistance': s(state.an.h2ov_transport_resistance),
-    }
+def step(cell: FuelCell, n_memb_mesh: int, t: float, x: list, cond: dict) -> dict:
+    """``derivative()`` and ``diagnostics()`` combined into a single Python
+    round trip and a single physics pass, via
+    :meth:`~marapendi.models.base.transient.TransientModel.f_transient`'s
+    ``return_state=True``. Returns ``{'dxdt': [...], **diagnostics_fields}``.
+    Intended for callers (e.g. a Simulink S-Function) that need both the ODE
+    right-hand side and diagnostics at the same point and want to avoid
+    computing the physics twice — ``TransientModel.solve()`` itself still
+    calls ``evaluate()`` separately after integration, since
+    :func:`scipy.integrate.solve_ivp` has no hook to carry state out of the
+    right-hand-side function.
+    """
+    model = _get_model(n_memb_mesh)
+    dxdt, state = model.f_transient(
+        float(t), np.asarray(x, dtype=float), cell, _cell_conditions(cond), return_state=True)
+    out = _state_to_dict(state)
+    out['dxdt'] = np.asarray(dxdt, dtype=float).tolist()
+    return out

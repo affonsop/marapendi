@@ -159,6 +159,23 @@ code path through `_eval_state`).
   step in addition to `Derivatives`, where `TransientModel.solve()` defers
   all diagnostics to one vectorised pass at the end — so expect cost to keep
   scaling with major-step count, not internal solver-stage count.
+
+  **A tempting further idea that doesn't pay off here:** `f_transient` has a
+  `return_state=True` option (and `simulink_bridge.step()` exposes it) that
+  returns the full `CellState` computed internally alongside `dxdt`, so
+  `Derivatives` and `Outputs` could in principle share one physics pass
+  instead of two. It was tried and measured: caching that state and reusing
+  it in `Outputs` when `(t, x)` matches the last `Derivatives` call gave
+  **0/79 cache hits** against `ode15s` on this scenario. Instrumenting
+  showed why — `t` always matches exactly, but `x` almost never does (the
+  gap ranged ~1e-8 to ~5e-3), because the solver's last `Derivatives` call
+  is at the corrector's final Newton iterate, not the converged state
+  `Outputs` reports. `return_state`/`step()` are kept in the model and
+  bridge as a reusable capability (e.g. for a fixed-step or custom
+  integration harness where the caller controls exactly when `(t, x)`
+  repeats), but the S-Function itself calls plain `derivative()`/
+  `diagnostics()`, since caching bought no round-trip reduction here and
+  would only add complexity.
 - **Fixed mesh size at build time.** `n_memb_mesh` sizes the S-Function's
   continuous-state vector and the Bus Selector/Demux/Bus Creator wiring, so
   changing it means re-running `build_transient_block` (which calls
