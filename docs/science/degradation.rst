@@ -2,9 +2,8 @@ Degradation
 ===============
 
 :mod:`marapendi.degradation.degradation` models electrochemical Pt
-electrochemical-surface-area (ECSA) loss following Darling & Meyers, *J.
-Electrochem. Soc.* **150**, A1523 (2003) and Schneider et al., *J.
-Electrochem. Soc.* **166**, F322–F333 (2019). Platinum dissolution
+electrochemical-surface-area (ECSA) loss following Darling & Meyers (2003)
+and Schneider et al. (2019). Platinum dissolution
 (:class:`~marapendi.degradation.degradation.PlatinumDissolution`) follows a
 Butler–Volmer-type rate law referenced to a particle-size-dependent
 equilibrium potential with a Gibbs–Thomson correction
@@ -38,5 +37,13 @@ Pt-band formation (since explicit diffusivity/band-distance data are not
 available in Schneider et al. 2019, a characteristic time of ≈3 was
 back-fitted from their Figure 9).
 
-Active-site density for the oxide-coverage balance assumes 210 µC/cm² of Pt
-in the hydrogen-adsorption region, also from Schneider et al. (2019).
+Active-site density for the oxide-coverage balance assumes
+:math:`210\ \mathrm{\mu C/cm^2}` of Pt in the hydrogen-adsorption region,
+also from Schneider et al. (2019).
+
+References
+--------------
+
+Darling, R. M. & Meyers, J. P. *J. Electrochem. Soc.* **150**, A1523 (2003).
+
+Schneider, P. et al. *J. Electrochem. Soc.* **166**, F322–F333 (2019).

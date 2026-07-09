@@ -6,8 +6,7 @@ solves the steady 1D diffusion + electroosmotic-drag (EOD) problem across the
 membrane thickness analytically, giving the water-content profile
 :math:`\lambda(\xi)` where :math:`\xi \in [0, 1]` is the normalised
 through-plane coordinate (:math:`\xi = 0` at the anode interface,
-:math:`\xi = 1` at the cathode interface), following Ferrara et al., *J.
-Power Sources* **390**, 197–207 (2018).
+:math:`\xi = 1` at the cathode interface), following Ferrara et al. (2018).
 :class:`~marapendi.models.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise`
 (the default used by both steady-state models) is the same solution with the
 piecewise-linear isotherm from :doc:`membrane_correlations` substituted in as
@@ -93,3 +92,8 @@ in :doc:`cell_voltage`.
 
 See :doc:`transient_model` for how this same physics is re-used — with a
 *prescribed* rather than solved-for profile — during transient integration.
+
+References
+--------------
+
+Ferrara, A. et al. *J. Power Sources* **390**, 197–207 (2018).

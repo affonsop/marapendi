@@ -20,8 +20,7 @@ length/width, ``channel_land_ratio`` the channel-to-land width ratio,
 :math:`n_\mathrm{ch}` the number of parallel channels, and :math:`\dot V` the
 volumetric flow rate.
 
-An alternative empirical form follows Baker et al., *J. Electrochem. Soc.*
-**156**, B991 (2009)
+An alternative empirical form follows Baker et al. (2009)
 (:class:`~marapendi.channel.gas_transport_resistance.BakerChannelGasResistanceModel`),
 replacing :math:`d_h/Sh` with :math:`A_\mathrm{ch}\times(\text{channel
 half-width})` and the convective term with a length/half-width correlation
@@ -32,3 +31,8 @@ R_\mathrm{conv}^\mathrm{ch}` is one term in the total end-to-end species
 transport resistance assembled in :doc:`gas_transport` — in series with the
 porous-layer resistances, and (for O₂) the ionomer-film resistance from
 :doc:`catalyst_layer`.
+
+References
+--------------
+
+Baker, D. R. et al. *J. Electrochem. Soc.* **156**, B991 (2009).

@@ -11,8 +11,7 @@ squared residual between simulated and measured voltage/HFR,
         \left(y_\mathrm{exp}^{(k)} - y_\mathrm{sim}^{(k)}(p(\theta))\right)^2,
 
 using :func:`scipy.optimize.differential_evolution` in a normalised parameter
-space :math:`\theta`, following the methodology of Goshtasbi et al., *J.
-Electrochem. Soc.* **167**, 024518 (2020).
+space :math:`\theta`, following the methodology of Goshtasbi et al. (2020).
 
 Parameter normalisation
 ----------------------------
@@ -56,8 +55,7 @@ Identifiability ranking
 ----------------------------
 
 Parameters are ranked by how independently they affect the simulated output,
-following Goshtasbi et al. (2020) and Lund & Foss, *Comput. Chem. Eng.*
-**32**, 2338 (2008)
+following Goshtasbi et al. (2020) and Lund & Foss (2008)
 (:meth:`~marapendi.estimation.base_calibration.BaseModelCalibration.get_smallest_hessian_eigenvalues`).
 The (median) sensitivity matrix :math:`S \in \mathbb{R}^{n_p \times n_\mathrm{cases}}`
 is QR-decomposed with column pivoting,
@@ -88,6 +86,16 @@ mean cross-validated RMSE —
     n^\ast = \min\left\{ n : \overline{\mathrm{RMSE}}_n \le
         \overline{\mathrm{RMSE}}_{n_\mathrm{best}} + \mathrm{SE}_{n_\mathrm{best}} \right\}
 
-— following Hastie, Tibshirani & Friedman, *The Elements of Statistical
-Learning*, §7.3 (:func:`~marapendi.estimation.polarization_curve_calibration.optimal_n_1se`).
+— following Hastie et al. (2009), §7.3
+(:func:`~marapendi.estimation.polarization_curve_calibration.optimal_n_1se`).
 See :doc:`../user_guide/calibration` for the full pipeline in practice.
+
+References
+--------------
+
+Goshtasbi, A. et al. *J. Electrochem. Soc.* **167**, 024518 (2020).
+
+Lund, B. F. & Foss, B. A. *Comput. Chem. Eng.* **32**, 2338 (2008).
+
+Hastie, T., Tibshirani, R. & Friedman, J. *The Elements of Statistical
+Learning*, 2nd ed., Springer (2009).

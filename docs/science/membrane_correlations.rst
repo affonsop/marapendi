@@ -20,11 +20,9 @@ Equilibrium sorption isotherm
 -----------------------------------
 
 The reference equilibrium sorption isotherm :math:`\lambda_\mathrm{eq}(\mathrm{RH},
-T)` is the cubic polynomial of Springer et al., *J. Electrochem. Soc.*
-**138**, 2334 (1991)
+T)` is the cubic polynomial of Springer et al. (1991)
 (:meth:`~marapendi.membrane.pem.PFSAIonomer.vapor_equilibrium_water_content`),
-with the temperature-dependent correction of Goshtasbi et al., *J.
-Electrochem. Soc.* **166**, F3154 (2019).
+with the temperature-dependent correction of Goshtasbi et al. (2019).
 
 Piecewise-linear fit
 --------------------------
@@ -41,6 +39,15 @@ Because :math:`\lambda_\mathrm{eq}(\mathrm{RH})` is then linear in
 :math:`\mathrm{RH}` on the active segment, the whole non-dimensional membrane
 system in :doc:`water_balance` stays linear in the unknown boundary water
 content — this closed-form piecewise-linear treatment is one of the
-contributions described in Affonso Nobrega et al., *J. Electrochem. Soc.*
-**173**, 114503 (2026), and is what :doc:`../user_guide/polarization_curve`
-refers to as the "first-order linear expansion."
+contributions described in Affonso Nobrega et al. (2026), and is what
+:doc:`../user_guide/polarization_curve` refers to as the "first-order linear
+expansion."
+
+References
+--------------
+
+Springer, T. E. et al. *J. Electrochem. Soc.* **138**, 2334 (1991).
+
+Goshtasbi, A. et al. *J. Electrochem. Soc.* **166**, F3154 (2019).
+
+Affonso Nobrega, P. et al. *J. Electrochem. Soc.* **173**, 114503 (2026).
