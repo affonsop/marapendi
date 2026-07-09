@@ -18,9 +18,9 @@ respect to the version in this paper.
 
    cell_voltage
    heat_transfer
+   water_balance
    two_phase_flow
    membrane_correlations
-   water_balance
    catalyst_layer
    orr_kinetics
    flow_channels

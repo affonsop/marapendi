@@ -14,7 +14,24 @@ of a water-content-dependent term
 (:meth:`~marapendi.membrane.pem.PFSAIonomer.proton_conductivity`), giving the
 :math:`\sigma_\mathrm{ion}(\lambda, T)` used both for the through-plane
 membrane resistance and for the catalyst-layer ionomer resistance in
-:doc:`catalyst_layer`.
+:doc:`catalyst_layer`. The same functional form is used for the membrane and
+the catalyst-layer ionomer film, following Kusoglu and Weber (2017):
+
+.. math::
+
+    \sigma_{mb/ion} = \xi_\sigma^{mb/ion}\, \sigma_0\, (f_v - f_0)^{n_\sigma^{mb/ion}}
+        \exp\!\left[\frac{E_{act,\sigma}^{mb/ion}}{R}
+        \left(\frac{1}{T_\mathrm{ref}} - \frac{1}{T}\right)\right],
+
+where :math:`f_v` is the water volume fraction in the ionomer
+(:meth:`~marapendi.membrane.ionomer_base.Ionomer.water_vol_fraction`) and
+:math:`f_0` the percolation threshold below which the ionomer does not
+conduct. Kusoglu and Weber report :math:`n = 1.0` for low-EW membranes and
+:math:`n = 1.5` for high-EW membranes such as Nafion (1100 EW), with an
+average :math:`f_0 = 0.10`; we adopt their high-EW prefactor :math:`\sigma_0 =
+\SI{50}{\siemens\per\meter}` and fit the correction factors
+:math:`\xi_\sigma^{mb}` and :math:`\xi_\sigma^{ion}` separately for the
+membrane and the catalyst-layer ionomer film.
 
 Equilibrium sorption isotherm
 -----------------------------------
@@ -49,5 +66,7 @@ References
 Springer, T. E. et al. *J. Electrochem. Soc.* **138**, 2334 (1991).
 
 Goshtasbi, A. et al. *J. Electrochem. Soc.* **166**, F3154 (2019).
+
+Kusoglu, A. and Weber, A. Z. *Chem. Rev.* **117**, 987 (2017).
 
 Affonso Nobrega, P. et al. *J. Electrochem. Soc.* **173**, 114503 (2026).

@@ -75,6 +75,12 @@ from the high-overpotential Tafel limit, and :doc:`catalyst_layer` for how
 the O₂ activity reaching the Pt surface already accounts for transport losses
 through the ionomer film.
 
+.. note:: 
+    Mass transport losses are accounted for by the use of the local oxygen 
+    partial pressure :math:`p^\mathrm{Pt}_{\mathrm{O_2}}` in the calculation 
+    of the reversible voltage and of the exchange current density. 
+
+
 Hydrogen crossover current
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -110,25 +116,99 @@ Arrhenius fit with a water-content-dependent term, also from Goshtasbi et al.
         + f_v(\lambda, T)\; 45\times10^{-15}\, e^{-18930\times10^{3}/(RT)}
         \quad \left[\mathrm{\frac{kmol}{m\,s\,Pa}}\right],
 
-where :math:`f_v(\lambda, T) = \lambda V_w(T) / (V_\mathrm{dry} + \lambda
-V_w(T))` is the water volume fraction in the ionomer
-(:meth:`~marapendi.membrane.ionomer_base.Ionomer.water_vol_fraction`):.
+where: 
+
+.. math::
+    
+    f_v(\lambda, T) = \frac{\lambda V_w(T)}
+    {V_\mathrm{dry} + \lambda V_w(T)}
+
+is the water volume fraction in the ionomer, calculated with 
+:meth:`~marapendi.membrane.ionomer_base.Ionomer.water_vol_fraction`.
 
 Ohmic overpotential
 ------------------------
 
-Voltage vs. heat release
------------------------------
+The ohmic overpotential is the sum of three specific resistances in series,
+scaled by the current density
+(:meth:`~marapendi.models.voltage.VoltageModel.ohmic_overpotential`):
 
-The gap between the LHV-equivalent (thermoneutral) voltage and the actual
-cell voltage is exactly the heat released at the MEA — see :doc:`heat_transfer`
-for how that heat release drives the MEA temperature, and :doc:`steady_state_model`
-for how :math:`V_\mathrm{cell}` and :math:`T_\mathrm{MEA}` are solved together
-(or one after the other, depending on the model).
+.. math::
+
+    \eta_\mathrm{ohm} = \left(r_\mathrm{el} + r_\mathrm{mb} + r^\mathrm{ca}_\mathrm{CL}\right) i,
+
+where :math:`r_\mathrm{el}` is the electric (electronic) resistance of the
+cell — a fitting parameter
+(:attr:`~marapendi.cell.cell.Cell.electric_resistance`); :math:`r_\mathrm{mb}`
+is the membrane proton resistance
+(:meth:`~marapendi.membrane.pem.PFSA.proton_resistance`, :doc:`membrane_correlations`);
+and :math:`r^\mathrm{ca}_\mathrm{CL}` is the cathode catalyst-layer proton
+resistance, following Neyerlin et al. (2007) as parameterised by Goshtasbi et
+al. (2020) (:doc:`catalyst_layer`). Together, :math:`r_\mathrm{el} +
+r_\mathrm{mb}` make up the high-frequency resistance
+(:meth:`~marapendi.models.voltage.VoltageModel.high_frequency_resistance`).
+
+The membrane resistance :math:`r_\mathrm{mb} = \delta_\mathrm{mb} /
+\sigma_\mathrm{mb}^\mathrm{avg}` uses the through-plane average conductivity
+:math:`\sigma_\mathrm{mb}^\mathrm{avg}`, which is calculated
+(:meth:`~marapendi.membrane.pem.PFSA.proton_conductivity`) as the harmonic
+mean of the local conductivity
+(:meth:`~marapendi.membrane.pem.PFSAIonomer.proton_conductivity`,
+:doc:`membrane_correlations`) over the membrane water-content profile from the
+:doc:`water_balance` solve.
+
+The cathode catalyst-layer proton resistance is given by
+(:meth:`~marapendi.porous_layers.catalyst_layers.CatalystLayer.effective_charge_resistance`):
+
+.. math::
+
+    r^\mathrm{ca}_\mathrm{CL} = r_\mathrm{CL}^\mathrm{ca,sheet} / (3 + \zeta),
+
+as proposed by Neyerlin et al. (2007), with :math:`\zeta` a parameter
+accounting for the cathode catalyst-layer utilization. The polynomial fit to
+the solution obtained by Neyerlin et al., provided by Goshtasbi et al. (2020),
+is adopted:
+
+.. math::
+
+    \zeta = -8.287\times10^{-3}\, \nu^2 + 7.184\times10^{-1}\, \nu - 2.072\times10^{-3},
+
+with :math:`\nu = i\, r_\mathrm{CL}^\mathrm{ca,sheet} / b` and :math:`b =
+2.303\, RT / \alpha F` the Tafel slope — even though, as noted by Goshtasbi et
+al., Neyerlin et al. obtained their results for simplified kinetics that does
+not account for Pt oxidation. The sheet proton resistance
+:math:`r_\mathrm{CL}^\mathrm{ca,sheet}`
+(:meth:`~marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_sheet_charge_resistance`)
+is determined as:
+
+.. math::
+
+    r_\mathrm{CL}^\mathrm{ca,sheet} = \frac{\delta_\mathrm{CL}}
+        {\left(\varepsilon_\mathrm{ion}/\tau_\mathrm{ion}\right)\,
+        \sigma_\mathrm{ion}(\lambda_\mathrm{ion,CL})}.
+
+See :doc:`catalyst_layer` for how this sheet resistance combines with the
+parallel electrolyte (liquid-filled) resistance when the catalyst layer is
+flooded. The ionomer water content :math:`\lambda_\mathrm{ion,CL})` is assumed equal to 
+the equilibrium water content at the catalyst layer (see :doc:`water_balance`).
+
+.. note:: 
+    The calculations of :math:`\sigma_\mathrm{mb}^\mathrm{avg}` and of :math:`r_\mathrm{CL}^\mathrm{ca,sheet}` 
+    differ from the ones
+    in Affonso Nóbrega et al. (2026), as they do not account for the effect of 
+    the liquid saturation in the catalyst layer. Indeed, we consider that there is too 
+    much uncertainty on how local water saturation in the
+    CL impact the hydration state of the membrane and ionomer thin layers, 
+    specially considering Schröeder's paradox. Therefore, we neglect the effect of 
+    liquid water in the catalyst layer for the sake of simplicity.
+
+
 
 References
 --------------
 
-Neyerlin, K. C. et al. *J. Electrochem. Soc.* **154**, B279 (2007).
+Affonso Nobrega, P. et al. *J. Electrochem. Soc.* **173**, 114503 (2026).
 
 Goshtasbi, A. et al. *J. Electrochem. Soc.* **167**, 024518 (2020).
+
+Neyerlin, K. C. et al. *J. Electrochem. Soc.* **154**, B279 (2007).
