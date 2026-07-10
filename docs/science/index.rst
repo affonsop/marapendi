@@ -1,4 +1,4 @@
-The science behind marapendi
+Science
 ================================
 
 This section explains the different models, the governing equations and

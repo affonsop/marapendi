@@ -12,7 +12,7 @@ in :doc:`two_phase_flow`
 
 .. math::
 
-    f(s) = \left[\max(1-s,\,10^{-6})\right]^{m}, \qquad
+    f(s) = \left[\max(1-s,\,10^{-6})\right]^{n_s}, \qquad
     L_\mathrm{eff} = \frac{\delta\,\tau}{\varepsilon\, f(s)},
 
 .. math::
@@ -23,7 +23,7 @@ in :doc:`two_phase_flow`
     D_\mathrm{Kn} = \frac{d_\mathrm{pore}}{3}
         \sqrt{\frac{8RT}{\pi\, M}},
 
-where :math:`m` = ``water_saturation_exponent``, :math:`\delta` the layer
+where :math:`n_s` = ``water_saturation_exponent``, :math:`\delta` the layer
 thickness, :math:`\tau` the tortuosity, :math:`d_\mathrm{pore}` the pore
 diameter, :math:`M` the species molecular weight, and :math:`D_{ij}` the
 binary molecular diffusivity.
@@ -31,13 +31,36 @@ binary molecular diffusivity.
 End-to-end transport resistance
 -------------------------------------
 
-:class:`~marapendi.models.gas_transport_resistance.GasTransportModel` sums the
-porous-layer resistances above with the channel resistance from
+:class:`~marapendi.models.gas_transport_resistance.GasTransportModel`
+(:meth:`~marapendi.models.gas_transport_resistance.GasTransportModel.gas_transport_resistance`)
+sums the porous-layer resistances above with the channel resistance from
 :doc:`flow_channels`, and — for O₂ only — the ionomer-film resistance from
-:doc:`catalyst_layer`, to give the total resistance between the channel and
-the reaction site for each species (O₂, H₂, H₂O). It then uses these
-resistances to back out the catalyst-layer gas composition from the
-channel-side composition and the local consumption/production rates,
-supplying the reactant activity :math:`a` used in :doc:`orr_kinetics` and the
-vapor concentration used by :doc:`water_balance` at the membrane/CL
-interface.
+:doc:`catalyst_layer`, to give the total resistance :math:`R_\mathrm{tot}`
+between the channel and the reaction site for each species (O₂, H₂, H₂O):
+
+.. math::
+
+    R_\mathrm{tot} = \sum_{k \,\in\, \mathrm{GDL,\,MPL,\,CL}} R_{\mathrm{diff},k}
+        + R_\mathrm{diff}^\mathrm{ch} + R_\mathrm{conv}^\mathrm{ch}
+        + ,R_\mathrm{\mathrm{O_2}, ion},
+
+where the last (ionomer-film) term is only added for O₂
+(:doc:`catalyst_layer`). Treating each species as a resistance network
+carrying its local consumption/production flux, the catalyst-layer
+concentration follows directly from the channel-side concentration
+(:meth:`~marapendi.models.gas_transport_resistance.GasTransportModel.calculate_gas_concentrations`):
+
+.. math::
+
+    c_\mathrm{CL,reactant} = c_\mathrm{CH,reactant}
+        - J_\mathrm{reactant}\, R_\mathrm{tot}, \qquad
+    c_{\mathrm{CL},v} = c_{\mathrm{CH},v}
+        + J_v\, R_{\mathrm{tot},v},
+
+with :math:`J` the local molar flux (consumption, taken positive for
+the reactant; production, for water vapor). The nitrogen concentration 
+is calculated by ensuring the gas pressure remains constant: 
+
+.. math:: 
+
+    x_\mathrm{N_2} = 1 - x_\mathrm{H_2} - x_\mathrm{O_2} - x_v

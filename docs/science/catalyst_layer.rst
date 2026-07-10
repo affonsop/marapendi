@@ -1,6 +1,73 @@
 Catalyst layer
 ==================
 
+Microstructure
+---------------------
+
+:class:`~marapendi.porous_layers.catalyst_layers.PtCCatalystLayer` derives an
+explicit Pt/C agglomerate microstructure from four inputs — platinum loading
+:math:`L_\mathrm{Pt}`, platinum weight percent in the catalyst powder,
+carbon-agglomerate radius :math:`r_\mathrm{C}`, and ionomer-to-carbon mass
+ratio :math:`\mathrm{IC}` — following Hao et al. (2015). Carbon and platinum
+volume fractions follow directly from the loadings and layer thickness
+:math:`\delta_\mathrm{CL}`; the dry ionomer volume fraction is then scaled up
+by the volumetric expansion due to water sorption
+(:meth:`~marapendi.membrane.ionomer_base.Ionomer.wet_expansion_factor`),
+computed once at construction and refreshed at every operating point by
+:meth:`~marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.set_ionomer_wet_properties`:
+
+.. math::
+
+    \varepsilon_\mathrm{C} = \frac{L_\mathrm{Pt}}{\delta_\mathrm{CL}\,\rho_\mathrm{C}}
+        \left(\frac{1}{\mathrm{Pt\ wt\%}} - 1\right), \qquad
+    \varepsilon_\mathrm{Pt} = \frac{L_\mathrm{Pt}}{\delta_\mathrm{CL}\,\rho_\mathrm{Pt}},
+
+.. math::
+
+    \varepsilon_\mathrm{ion} = \frac{\varepsilon_\mathrm{C}\,\rho_\mathrm{C}\,\mathrm{IC}}{\rho_\mathrm{ion}^\mathrm{dry}}
+        \left(1 + \lambda_\mathrm{ion}\,\frac{\bar V_w}{\bar V_\mathrm{ion}}\right).
+
+The resulting ionomer film thickness coating each carbon agglomerate,
+
+.. math::
+
+    \delta_\mathrm{ion} = r_\mathrm{C}\left[\left(\frac{\varepsilon_\mathrm{ion}}{\varepsilon_\mathrm{C}} + 1\right)^{1/3} - 1\right],
+
+and its specific surface area,
+
+.. math::
+
+    a_\mathrm{ion} = 4\pi(r_\mathrm{C} + \delta_\mathrm{ion})^2 N_\mathrm{C},
+
+with :math:`N_\mathrm{C}` the carbon-agglomerate number density, are the
+geometric inputs to the ionomer sheet resistance below and to the O₂
+ionomer-film resistance in `Local oxygen transport`_. The remaining pore
+volume fraction — used for the liquid- and gas-phase transport properties in
+:doc:`two_phase_flow` and :doc:`gas_transport` — closes the volume balance:
+
+.. math::
+
+    \varepsilon_\mathrm{CL} = 1 - \varepsilon_\mathrm{Pt} - \varepsilon_\mathrm{C} - \varepsilon_\mathrm{ion}.
+
+The ionomer film has its own, generally much lower, tortuosity than the bulk
+pore network, following Hao et al. (2016)
+(:meth:`~marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_tortuosity`):
+
+.. math::
+
+    \tau_\mathrm{ion} = \begin{cases}
+        0.0845\,(\varepsilon_\mathrm{ion} - 0.04)^{-1.17} & \varepsilon_\mathrm{ion} < 0.16, \\
+        1 & \varepsilon_\mathrm{ion} \geq 0.16.
+    \end{cases}
+
+The bulk pore network instead uses the standard Bruggeman relation between
+porosity and tortuosity, :math:`\varepsilon_\mathrm{CL}/\tau_\mathrm{CL} =
+\varepsilon_\mathrm{CL}^{1.5}` (Andersson et al., 2016) — the
+:attr:`~marapendi.porous_layers.porous_layers.PorousLayer.tortuosity`
+default in
+:meth:`~marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.set_ionomer_wet_properties`
+when no tortuosity is supplied explicitly.
+
 Charge transport
 ---------------------
 
@@ -62,3 +129,5 @@ Goshtasbi, A. et al. *J. Electrochem. Soc.* **167**, 024518 (2020).
 Hao, L. et al. *J. Electrochem. Soc.* **162**, F854 (2015).
 
 Hao, L. et al. *J. Electrochem. Soc.* **163**, F744 (2016).
+
+Andersson, M. et al. *Appl. Energy* **180**, 757 (2016).
