@@ -21,7 +21,7 @@ def _make_cell():
         thickness=200e-6,
         porosity=0.6,
         contact_angle=120.,
-        effective_gas_diffusion_ratio=0.3,
+        tortuosity=2.0,
         absolute_permeability=1e-12,
         thermal_conductivity=0.5,
         two_phase_transport_model=liq,
@@ -55,7 +55,7 @@ def _make_cell():
             cl=ca_cl,
             gdl=mrpd.GasDiffusionLayer(
                 thickness=200e-6,
-                effective_gas_diffusion_ratio=0.3,
+                tortuosity=2.0,
                 thermal_conductivity=0.5,
                 two_phase_transport_model=liq,
             ),

@@ -9,7 +9,6 @@ def pfsa():
     return mrpd.PFSAIonomer(
         dry_density=2004.,
         equivalent_weight=952.,
-        conductivity_correction=1.0,
         conductivity_exp=1.5,
     )
 

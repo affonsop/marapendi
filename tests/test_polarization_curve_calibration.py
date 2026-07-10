@@ -40,7 +40,7 @@ def _cell_creator(params):
     liq = mrpd.DarcyTransportModel(J_function_exponent=2)
     ionomer = mrpd.PFSAIonomer(
         equivalent_weight=params.get('memb-equiv-weight', 1100),
-        conductivity_correction=params.get('memb-cond-correction', 1.0),
+        reference_conductivity=50. * params.get('memb-cond-correction', 1.0),
     )
     return mrpd.FuelCell(
         area=25e-4,
@@ -60,7 +60,7 @@ def _cell_creator(params):
             ),
             gdl=mrpd.GasDiffusionLayer(
                 thickness=200e-6, porosity=0.6, contact_angle=120.,
-                effective_gas_diffusion_ratio=0.3, absolute_permeability=1e-12,
+                tortuosity=2.0, absolute_permeability=1e-12,
                 thermal_conductivity=0.5, two_phase_transport_model=liq,
             ),
             ch=mrpd.FlowChannel(width=1e-3, height=1e-3, length=0.1, n_parallel=20, reactant='o2'),
@@ -71,7 +71,7 @@ def _cell_creator(params):
                 thickness=5e-6, two_phase_transport_model=liq,
             ),
             gdl=mrpd.GasDiffusionLayer(
-                thickness=200e-6, effective_gas_diffusion_ratio=0.3,
+                thickness=200e-6, tortuosity=2.0,
                 thermal_conductivity=0.5, two_phase_transport_model=liq,
             ),
             ch=mrpd.FlowChannel(width=1e-3, height=1e-3, length=0.1, n_parallel=20, reactant='h2'),

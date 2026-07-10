@@ -19,6 +19,9 @@ from marapendi.models.gas_transport_resistance import GasTransportModel
 def _make_layer_state(temperature=353.15, pressure=1e5, o2=0.21, rh=0., sat=0.):
     state = LayerState(temperature=temperature, pressure=pressure)
     state.non_wetting_saturation = sat
+    state.diffusion_temp_and_pressure_correction = (
+        mrpd.GasModel.diffusion_temp_and_pressure_correction(temperature, pressure)
+    )
     mrpd.GasModel.set_composition(state, o2, 0., rh, pressure, temperature)
     return state
 
@@ -37,7 +40,7 @@ class TestPorousGasDiffusionModel:
         return mrpd.GasDiffusionLayer(
             thickness=200e-6,
             porosity=0.6,
-            effective_gas_diffusion_ratio=0.3,
+            tortuosity=2.0,
             pore_diameter=1e6,
         )
 
@@ -71,7 +74,7 @@ class TestPorousGasDiffusionModel:
 
     def test_knudsen_correction_matters_small_pore(self, model):
         # Small pore: Knudsen diffusivity is limiting
-        cl = mrpd.PtCCatalystLayer(pore_diameter=40e-9, thickness=10e-6, effective_gas_diffusion_ratio=0.15)
+        cl = mrpd.PtCCatalystLayer(pore_diameter=40e-9, thickness=10e-6, tortuosity=4.0)
         state = _make_layer_state()
         D = mrpd.GasModel.species_diffusion_coefficient(state, 'o2')
         R_mol = model.molecular_diffusion_resistance(cl, D, water_saturation=0.)
@@ -131,7 +134,7 @@ class TestGasTransportModel:
     def cell_side_and_state(self):
         gdl = mrpd.GasDiffusionLayer(
             thickness=200e-6,
-            effective_gas_diffusion_ratio=0.3,
+            tortuosity=2.0,
             transport_resistance_model=mrpd.PorousGasDiffusionModel(),
         )
         ch = mrpd.FlowChannel(
@@ -139,12 +142,15 @@ class TestGasTransportModel:
         )
         cl = mrpd.PtCCatalystLayer(
             thickness=10e-6,
-            effective_gas_diffusion_ratio=0.15,
+            tortuosity=4.0,
             pore_diameter=40e-9,
         )
         side = mrpd.FuelCellSide(gdl=gdl, ch=ch, cl=cl)
 
         ch_state = FlowChannelState(temperature=353.15, pressure=1e5, inlet_gas_flow_rate=1e-5)
+        ch_state.diffusion_temp_and_pressure_correction = (
+            mrpd.GasModel.diffusion_temp_and_pressure_correction(353.15, 1e5)
+        )
         mrpd.GasModel.set_composition(ch_state, 0.21, 0., 0.5, 1e5, 353.15)
 
         gdl_state = _make_layer_state(sat=0.1)
@@ -154,6 +160,9 @@ class TestGasTransportModel:
         cl_state_full = CatalystLayerState(
             temperature=353.15, pressure=1e5,
             non_wetting_saturation=0.0, ionomer_water_content=8.0,
+        )
+        cl_state_full.diffusion_temp_and_pressure_correction = (
+            mrpd.GasModel.diffusion_temp_and_pressure_correction(353.15, 1e5)
         )
         mrpd.GasModel.set_composition(cl_state_full, 0.21, 0., 0.5, 1e5, 353.15)
 
@@ -178,12 +187,18 @@ class TestGasTransportModel:
         gdl_dry = _make_layer_state(sat=0.)
         gdl_wet = _make_layer_state(sat=0.5)
         ch_state = FlowChannelState(temperature=353.15, pressure=1e5, inlet_gas_flow_rate=1e-5)
+        ch_state.diffusion_temp_and_pressure_correction = (
+            mrpd.GasModel.diffusion_temp_and_pressure_correction(353.15, 1e5)
+        )
         mrpd.GasModel.set_composition(ch_state, 0.21, 0., 0., 1e5, 353.15)
         cl_state = CatalystLayerState(temperature=353.15, pressure=1e5,
                                        non_wetting_saturation=0., ionomer_water_content=8.)
+        cl_state.diffusion_temp_and_pressure_correction = (
+            mrpd.GasModel.diffusion_temp_and_pressure_correction(353.15, 1e5)
+        )
         mrpd.GasModel.set_composition(cl_state, 0.21, 0., 0., 1e5, 353.15)
 
-        gdl = mrpd.GasDiffusionLayer(thickness=200e-6, effective_gas_diffusion_ratio=0.3)
+        gdl = mrpd.GasDiffusionLayer(thickness=200e-6, tortuosity=2.0)
         ch = mrpd.FlowChannel(width=1e-3, height=1e-3, length=0.1, n_parallel=10)
         cl = mrpd.PtCCatalystLayer(thickness=10e-6, pore_diameter=40e-9)
         side = mrpd.FuelCellSide(gdl=gdl, ch=ch, cl=cl)

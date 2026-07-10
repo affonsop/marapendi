@@ -24,7 +24,7 @@ def _make_cell():
     liq = mrpd.DarcyTransportModel(J_function_exponent=2)
     gdl = mrpd.GasDiffusionLayer(
         thickness=200e-6, porosity=0.6, contact_angle=120.,
-        effective_gas_diffusion_ratio=0.3, absolute_permeability=1e-12,
+        tortuosity=2.0, absolute_permeability=1e-12,
         thermal_conductivity=0.5, two_phase_transport_model=liq,
     )
     ca_cl = mrpd.PtCCatalystLayer(
@@ -44,7 +44,7 @@ def _make_cell():
         ca=mrpd.FuelCellSide(
             cl=ca_cl,
             gdl=mrpd.GasDiffusionLayer(
-                thickness=200e-6, effective_gas_diffusion_ratio=0.3,
+                thickness=200e-6, tortuosity=2.0,
                 thermal_conductivity=0.5, two_phase_transport_model=liq,
             ),
             ch=mrpd.FlowChannel(width=1e-3, height=1e-3, length=0.1, n_parallel=20, reactant='o2'),
@@ -89,7 +89,7 @@ def _conditions(i=I_OP, T=T_OP, p=1.5e5, rh=0.5):
 class TestTransientModelInit:
     def test_default_instantiation(self):
         model = TransientModel()
-        assert model.n_memb_mesh == 3
+        assert model.n_memb_mesh == 10
 
     def test_x0_shape(self):
         cell = _make_cell()
@@ -98,10 +98,11 @@ class TestTransientModelInit:
         assert x0.shape == (6,)  # 1 + n_memb_mesh
 
     def test_x0_temperature_above_stack(self):
+        """x0[0] is T_mea normalised by model.norm_factors[0] (see f_transient/evaluate)."""
         cell = _make_cell()
         model = TransientModel(n_memb_mesh=3)
         _, x0 = model.set_initial_conditions(cell, _conditions())
-        assert x0[0] > T_OP, "MEA temperature should exceed stack temperature"
+        assert x0[0] * model.norm_factors[0] > T_OP, "MEA temperature should exceed stack temperature"
 
     def test_x0_water_content_positive(self):
         cell = _make_cell()
@@ -135,16 +136,20 @@ class TestTransientRHS:
         model = TransientModel(n_memb_mesh=3)
         _, x0_ss = model.set_initial_conditions(cell, _conditions())
 
-        # Start from wrong temperature and flat lambda profile
-        x0_flat = np.concatenate([[T_OP], 8.0 * np.ones(3)])
+        # Start from wrong temperature and flat lambda profile (x0 is normalised
+        # by model.norm_factors, same convention as set_initial_conditions/f_transient)
+        x0_flat = np.concatenate([
+            [T_OP / model.norm_factors[0]],
+            (8.0 / model.norm_factors[1]) * np.ones(3),
+        ])
         sol = model.solve(cell, _conditions(), t_span=(0, 3 * 7200), x0=x0_flat)
         assert sol.status == 0
 
         # After long integration T and λ should settle (small residual)
         dxdt = model.f_transient(sol.t[-1], sol.y[:, -1], cell, _conditions())
         assert np.all(np.abs(dxdt) < 1e-4), f"|dx/dt| = {np.abs(dxdt)}"
-        # Temperature should reach the same fixed point as the SS initialisation
-        assert abs(sol.y[0, -1] - x0_ss[0]) < 1.0  # K
+        # Temperature should reach the same fixed point as the SS initialisation (in K)
+        assert abs((sol.y[0, -1] - x0_ss[0]) * model.norm_factors[0]) < 1.0  # K
 
 
 class TestTransientPhysics:
@@ -188,7 +193,8 @@ class TestTransientPhysics:
         # A tolerance of 20 mV covers discretisation + convergence residual differences
         ss_state_final = ss_model.set_initial_conditions(cell, cond)
         # Approximate: check the transient T is within 1 K and lambda close within 1
-        assert abs(sol.y[0, -1] - float(ss_state.mea_temperature)) < 1.0
+        # (sol.y[0] is T_mea normalised by model.norm_factors[0])
+        assert abs(sol.y[0, -1] * model.norm_factors[0] - float(ss_state.mea_temperature)) < 1.0
 
     def test_step_change_dynamics(self):
         """A current step causes a monotonic approach in MEA temperature."""

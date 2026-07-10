@@ -21,7 +21,7 @@ def _make_cell():
     liq = mrpd.DarcyTransportModel(J_function_exponent=2)
     gdl = mrpd.GasDiffusionLayer(
         thickness=200e-6, porosity=0.6, contact_angle=120.,
-        effective_gas_diffusion_ratio=0.3, absolute_permeability=1e-12,
+        tortuosity=2.0, absolute_permeability=1e-12,
         thermal_conductivity=0.5, two_phase_transport_model=liq,
     )
     ca_cl = mrpd.PtCCatalystLayer(
@@ -41,7 +41,7 @@ def _make_cell():
         ca=mrpd.FuelCellSide(
             cl=ca_cl,
             gdl=mrpd.GasDiffusionLayer(
-                thickness=200e-6, effective_gas_diffusion_ratio=0.3,
+                thickness=200e-6, tortuosity=2.0,
                 thermal_conductivity=0.5, two_phase_transport_model=liq,
             ),
             ch=mrpd.FlowChannel(width=1e-3, height=1e-3, length=0.1, n_parallel=20, reactant='o2'),

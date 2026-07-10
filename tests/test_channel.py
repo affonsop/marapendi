@@ -9,6 +9,9 @@ from marapendi.channel.gas_transport_resistance import BakerChannelGasResistance
 def _channel_state(temperature=353.15, pressure=1e5, o2=0.21, rh=0., flow_rate=1e-6):
     state = FlowChannelState(temperature=temperature, pressure=pressure,
                               inlet_gas_flow_rate=flow_rate)
+    state.diffusion_temp_and_pressure_correction = (
+        mrpd.GasModel.diffusion_temp_and_pressure_correction(temperature, pressure)
+    )
     mrpd.GasModel.set_composition(state, o2, 0., rh, pressure, temperature)
     return state
 

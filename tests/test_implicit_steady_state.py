@@ -24,7 +24,7 @@ def _make_cell():
         thickness=200e-6,
         porosity=0.6,
         contact_angle=120.,
-        effective_gas_diffusion_ratio=0.3,
+        tortuosity=2.0,
         absolute_permeability=1e-12,
         thermal_conductivity=0.5,
         two_phase_transport_model=liq,
@@ -58,7 +58,7 @@ def _make_cell():
             cl=ca_cl,
             gdl=mrpd.GasDiffusionLayer(
                 thickness=200e-6,
-                effective_gas_diffusion_ratio=0.3,
+                tortuosity=2.0,
                 thermal_conductivity=0.5,
                 two_phase_transport_model=liq,
             ),
@@ -124,26 +124,21 @@ class TestImplicitModelSanity:
     def test_voltage_positive_at_low_current(self, cell, implicit_model):
         state = _solve(implicit_model, cell, _conditions(1e3))
         assert float(np.atleast_1d(state.cell_voltage)[0]) > 0.5
-
     def test_voltage_below_open_circuit(self, cell, implicit_model):
         state = _solve(implicit_model, cell, _conditions(1e3))
         assert float(np.atleast_1d(state.cell_voltage)[0]) < 1.23
-
     def test_voltage_decreases_with_current(self, cell, implicit_model):
         voltages = [
             float(np.atleast_1d(_solve(implicit_model, cell, _conditions(i)).cell_voltage)[0])
             for i in [1e3, 5e3, 1e4]
         ]
         assert voltages[0] > voltages[1] > voltages[2]
-
     def test_mea_temperature_above_stack(self, cell, implicit_model):
         state = _solve(implicit_model, cell, _conditions(5e3))
         assert float(np.atleast_1d(state.mea_temperature)[0]) > T_OP
-
     def test_mea_temperature_reasonable_range(self, cell, implicit_model):
         state = _solve(implicit_model, cell, _conditions(1e4))
         assert T_OP < float(np.atleast_1d(state.mea_temperature)[0]) < T_OP + 20
-
     def test_returns_cell_state(self, cell, implicit_model):
         from marapendi.simulation.state import CellState
         state = _solve(implicit_model, cell, _conditions(5e3))
@@ -184,7 +179,6 @@ class TestImplicitVsExplicit:
         V_exp = float(np.atleast_1d(_solve(explicit_model, cell, cond).cell_voltage)[0])
         V_imp = float(np.atleast_1d(_solve(implicit_model, cell, cond).cell_voltage)[0])
         assert abs(V_exp - V_imp) < 0.05
-
     def test_both_produce_monotone_curve(self, cell, implicit_model):
         voltages = [
             float(np.atleast_1d(_solve(implicit_model, cell, _conditions(i)).cell_voltage)[0])
@@ -201,7 +195,6 @@ class TestSequentialCalls:
     def test_repeated_calls_do_not_crash(self, cell, implicit_model):
         _solve(implicit_model, cell, _conditions(5e3))
         _solve(implicit_model, cell, _conditions(5e3))
-
     def test_shape_change_does_not_crash(self, cell, implicit_model):
         _solve(implicit_model, cell, _conditions(5e3))
         _solve(implicit_model, cell, _conditions(np.array([1e3, 5e3])))

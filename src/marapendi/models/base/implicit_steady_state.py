@@ -87,8 +87,16 @@ class ImplicitSteadyStateModel(ExplicitSteadyStateModel):
         # Each entry of cell_voltage only affects the corresponding entry of
         # state (no cross-point coupling), so the Jacobian is diagonal — a
         # vectorised elementwise secant solve avoids a dense Jacobian.
-        cell_voltage, converged, zero_der = newton(_f, full_output=True, 
-                                                   x0=cell_voltage_0, disp=False, 
-                                                   tol=1e-6, rtol=1e-6, maxiter=50)
+        newton_result = newton(_f, full_output=True,
+                               x0=cell_voltage_0, disp=False,
+                               tol=1e-6, rtol=1e-6, maxiter=50)
+        if len(newton_result) == 3:
+            # x0 with more than one element: (root, converged, zero_der) arrays.
+            cell_voltage, converged, zero_der = newton_result
+        else:
+            # scipy.optimize.newton returns (root, RootResults) instead of a
+            # 3-tuple when x0 has exactly one element.
+            cell_voltage, root_results = newton_result
+            converged = np.atleast_1d(root_results.converged)
         _f(np.where(converged, cell_voltage, 0))
         return state

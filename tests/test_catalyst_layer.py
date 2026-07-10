@@ -13,7 +13,7 @@ def cl():
                             catalyst_platinum_weight_percent=0.3,
                             carbon_agglomerate_radius=25e-9, 
                             ionomer=mrpd.PFSAIonomer(dry_density=2004, equivalent_weight=952,
-                                                                 conductivity_correction=1.3, conductivity_exp=1.5,
+                                                                 reference_conductivity=1.3 * 50., conductivity_exp=1.5,
                                                                  vapor_equilibrium_polynomial=[21.669, -27.692, 17.624, 0.688]),
                             reaction = mrpd.ElectrochemicalReaction(reference_exchange_current_density=2.47e-8 * 3e11 * 10e-6,
                                                                 activation_energy=67e6,

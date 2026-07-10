@@ -7,6 +7,10 @@ from marapendi.simulation.state import LayerState, FlowChannelState
 
 def _layer(temperature=353.15, pressure=1e5, o2=0.21, h2=0., rh=0.):
     state = LayerState(temperature=temperature, pressure=pressure)
+    state.RT = mrpd.GAS_CONSTANT * temperature
+    state.diffusion_temp_and_pressure_correction = (
+        mrpd.GasModel.diffusion_temp_and_pressure_correction(temperature, pressure)
+    )
     mrpd.GasModel.set_composition(state, o2, h2, rh, pressure, temperature)
     return state
 

@@ -12,7 +12,7 @@ def gdl():
         porosity=0.6,
         contact_angle=120.,
         absolute_permeability=1e-12,
-        effective_gas_diffusion_ratio=0.3,
+        tortuosity=2.0,
     )
 
 
@@ -26,9 +26,18 @@ def mpl():
     )
 
 
+def _set_dtpc(state, temperature=353.15, pressure=1e5):
+    """Set diffusion_temp_and_pressure_correction, normally computed by
+    PorousLayer.update_state_at_temperature() during a real solve."""
+    state.diffusion_temp_and_pressure_correction = (
+        mrpd.GasModel.diffusion_temp_and_pressure_correction(temperature, pressure)
+    )
+    return state
+
+
 @pytest.fixture
 def layer_state():
-    state = LayerState(temperature=353.15, pressure=1e5)
+    state = _set_dtpc(LayerState(temperature=353.15, pressure=1e5))
     mrpd.GasModel.set_composition(state, 0.21, 0., 0.5, 1e5, 353.15)
     state.non_wetting_saturation = 0.1
     return state
@@ -75,9 +84,9 @@ class TestPorousGasDiffusionModel:
         assert R > 0
 
     def test_resistance_increases_with_saturation(self, gdl):
-        s_low = LayerState(temperature=353.15, pressure=1e5)
+        s_low = _set_dtpc(LayerState(temperature=353.15, pressure=1e5))
         s_low.non_wetting_saturation = 0.0
-        s_high = LayerState(temperature=353.15, pressure=1e5)
+        s_high = _set_dtpc(LayerState(temperature=353.15, pressure=1e5))
         s_high.non_wetting_saturation = 0.5
         for s in (s_low, s_high):
             mrpd.GasModel.set_composition(s, 0.21, 0., 0., 1e5, 353.15)
@@ -87,9 +96,9 @@ class TestPorousGasDiffusionModel:
         assert R_high > R_low
 
     def test_resistance_thicker_layer_larger(self):
-        thin = mrpd.GasDiffusionLayer(thickness=100e-6, effective_gas_diffusion_ratio=0.3)
-        thick = mrpd.GasDiffusionLayer(thickness=300e-6, effective_gas_diffusion_ratio=0.3)
-        state = LayerState(temperature=353.15, pressure=1e5)
+        thin = mrpd.GasDiffusionLayer(thickness=100e-6, tortuosity=2.0)
+        thick = mrpd.GasDiffusionLayer(thickness=300e-6, tortuosity=2.0)
+        state = _set_dtpc(LayerState(temperature=353.15, pressure=1e5))
         state.non_wetting_saturation = 0.
         mrpd.GasModel.set_composition(state, 0.21, 0., 0., 1e5, 353.15)
         R_thin = thin.transport_resistance_model.gas_transport_resistance(thin, state, 'o2')

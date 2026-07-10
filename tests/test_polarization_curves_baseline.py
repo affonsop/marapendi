@@ -150,7 +150,8 @@ def create_fuel_cell(params: dict) -> mrpd.FuelCell:
             dry_density=2000.,
             conductivity_exp=params['memb-cond-exp'],
             conductivity_activation_energy=params['memb-E-act-cond'],
-            conductivity_correction=params['memb-cond-correction'],
+            # conductivity_correction folded into reference_conductivity (default 50 S/m prefactor)
+            reference_conductivity=50. * params['memb-cond-correction'],
             reference_water_diffusivity=params['memb-water-diff'],
             reference_water_absorption_coefficient=params['memb-abs-constant'],
             water_diffusivity_activation_energy=params['E-act-memb-diff'],
@@ -177,7 +178,9 @@ def create_fuel_cell(params: dict) -> mrpd.FuelCell:
         side: mrpd.PorousLayer(
             thickness=params['gdl-thickness'],
             contact_angle=params['gdl-theta'],
-            effective_gas_diffusion_ratio=params['gdl-eff-diff-ratio'],
+            # effective_gas_diffusion_ratio replaced by explicit porosity/tortuosity:
+            # ratio ~= porosity / tortuosity
+            tortuosity=params['gdl-porosity'] / params['gdl-eff-diff-ratio'],
             absolute_permeability=params['gdl-abs-perm'],
             porosity=params['gdl-porosity'],
             thermal_conductivity=params['gdl-thermal-cond'],
@@ -202,7 +205,7 @@ def create_fuel_cell(params: dict) -> mrpd.FuelCell:
     }
 
     ionomer = mrpd.PFSAIonomer(
-        conductivity_correction=params['ionomer-cond-corr'],
+        reference_conductivity=50. * params['ionomer-cond-corr'],
         conductivity_exp=params['ionomer-cond-exp'],
         conductivity_activation_energy=params['ionomer-E-act-cond'],
     )
