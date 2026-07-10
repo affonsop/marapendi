@@ -50,21 +50,6 @@ class ThermalModel:
             state.heat_release = state.current_density * 0.7
         return state.temperature + state.heat_release * thermal_resistance
 
-    def calculate_heat_transport(self, cell, dynamic: bool = False) -> None:
-        """Compute heat transport parameters and write results onto *cell*.
-
-        Sets ``cell.thermal_resistance`` and ``cell.heat_release_rate``.
-        When *dynamic* is ``False``, also sets ``cell.mea_temperature_increase``
-        from the steady-state balance; when ``True``, skips that update so the
-        transient integrator can evolve the temperature independently.
-        """
-        thermal_resistance = self.heat_transfer_resistance(cell)
-        cell.heat_release_rate = (
-            -h2_lhv(cell.temperature) / (2 * FARADAY_CONSTANT) - cell.cell_voltage
-        ) * cell.current_density
-        if not dynamic:
-            cell.mea_temperature_increase = cell.heat_release_rate * thermal_resistance
-
     def temperature_rate_of_change(self, cell, state=None) -> float:
         """Compute dT/dt for the MEA temperature in a transient simulation.
 
@@ -79,6 +64,7 @@ class ThermalModel:
         heat_release_rate = state.current_density * (
             -h2_lhv(state.temperature) / (2 * FARADAY_CONSTANT) - state.cell_voltage
         )
+        state.heat_release = heat_release_rate
         return (
             heat_release_rate - state.mea_temperature_increase / state.thermal_resistance
         ) / cell.mea_surface_heat_capacity
