@@ -1,8 +1,10 @@
 function names = state_scalar_field_order()
-%STATE_SCALAR_FIELD_ORDER Fixed 26-entry order of the scalar CellState
+%STATE_SCALAR_FIELD_ORDER Fixed 27-entry order of the scalar CellState
 %   diagnostic fields (everything in CellStateBus except
-%   membrane_water_content_profile, which is a vector appended separately).
-%   Must match marapendi.interop.simulink_bridge.diagnostics()'s dict keys.
+%   membrane_water_content_profile, which is a vector appended separately,
+%   and the ca_outlet_*/an_outlet_* GasFlowState fields, which live in
+%   their own GasFlowStateBus outputs).
+%   Must match marapendi.interop.simulink_bridge.cell_diagnostics()'s dict keys.
 
     names = {
         'cell_voltage'
@@ -13,6 +15,7 @@ function names = state_scalar_field_order()
         'eta_act'
         'eta_ohm'
         'crossover_current'
+        'heat_release'
         'membrane_water_content'
         'membrane_water_flux'
         'membrane_h2_permeation_flux'

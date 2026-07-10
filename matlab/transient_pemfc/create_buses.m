@@ -2,12 +2,13 @@ function create_buses(n_memb_mesh)
 %CREATE_BUSES Define the Simulink.Bus objects used by the TransientPEMFC block.
 %
 %   create_buses(n_memb_mesh) creates (in the base workspace):
-%     - SideConditionsBus   : one side's inlet boundary conditions (mirrors
-%                              marapendi.simulation.conditions.SideConditions)
-%     - CellConditionsBus   : current_density, cell_temperature, ca, an
-%                              (mirrors marapendi.simulation.conditions.CellConditions)
-%     - CellStateBus        : flattened diagnostics (mirrors the dict returned
-%                              by marapendi.interop.simulink_bridge.diagnostics)
+%     - GasFlowStateBus : one GasFlowState (mirrors
+%                         marapendi.simulation.state.GasFlowState), used for
+%                         both the ca/an inlet inputs and the ca/an outlet outputs
+%     - CellStateBus    : flattened diagnostics (mirrors the dict returned
+%                         by marapendi.interop.simulink_bridge.cell_diagnostics,
+%                         minus the ca_outlet_*/an_outlet_* fields, which are
+%                         carried on their own GasFlowStateBus outputs instead)
 %
 %   n_memb_mesh sizes the membrane_water_content_profile field and must match
 %   the value baked into the S-Function mask.
@@ -16,27 +17,13 @@ function create_buses(n_memb_mesh)
         n_memb_mesh = 5;
     end
 
-    % ---- SideConditionsBus ------------------------------------------------
-    condFields = cond_field_order();
-    sideFields = strrep(condFields(startsWith(condFields, 'ca_')), 'ca_', '');
-    sideElems = local_scalar_elements(sideFields);
-    sideBus = Simulink.Bus;
-    sideBus.Elements = sideElems;
-    assignin('base', 'SideConditionsBus', sideBus);
-
-    % ---- CellConditionsBus -------------------------------------------------
-    condElems = [
-        local_scalar_elements({'current_density'; 'cell_temperature'})
-        local_bus_element('ca', 'SideConditionsBus')
-        local_bus_element('an', 'SideConditionsBus')
-    ];
-    condBus = Simulink.Bus;
-    condBus.Elements = condElems;
-    assignin('base', 'CellConditionsBus', condBus);
+    % ---- GasFlowStateBus ---------------------------------------------------
+    flowElems = local_scalar_elements(gasflow_field_order());
+    flowBus = Simulink.Bus;
+    flowBus.Elements = flowElems;
+    assignin('base', 'GasFlowStateBus', flowBus);
 
     % ---- CellStateBus --------------------------------------------------
-    % Scalar diagnostic fields, matching simulink_bridge.diagnostics() keys
-    % (all but membrane_water_content_profile, which is a vector).
     stateElems = local_scalar_elements(state_scalar_field_order());
 
     profileElem = Simulink.BusElement;
@@ -50,7 +37,7 @@ function create_buses(n_memb_mesh)
     stateBus.Elements = [stateElems; profileElem];
     assignin('base', 'CellStateBus', stateBus);
 
-    fprintf('create_buses: SideConditionsBus, CellConditionsBus, CellStateBus (n_memb_mesh=%d) in base workspace\n', n_memb_mesh);
+    fprintf('create_buses: GasFlowStateBus, CellStateBus (n_memb_mesh=%d) in base workspace\n', n_memb_mesh);
 end
 
 function elems = local_scalar_elements(names)
@@ -64,13 +51,4 @@ function elems = local_scalar_elements(names)
         e.SampleTime = -1;
         elems(k, 1) = e; %#ok<AGROW>
     end
-end
-
-function e = local_bus_element(name, busName)
-    e = Simulink.BusElement;
-    e.Name = name;
-    e.Dimensions = 1;
-    e.DataType = ['Bus: ' busName];
-    e.Complexity = 'real';
-    e.SampleTime = -1;
 end

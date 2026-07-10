@@ -25,3 +25,7 @@ examples/*.npz
 examples/figures/
 docs/_build/
 docs/auto_examples/
+
+# Simulink build artifacts
+*.slxc
+slprj/

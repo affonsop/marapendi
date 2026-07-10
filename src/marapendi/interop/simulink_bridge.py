@@ -22,16 +22,11 @@ from ..porous_layers.porous_layers import GasDiffusionLayer, MicroPorousLayer
 from ..porous_layers.catalyst_layers import PtCCatalystLayer
 from ..models.darcy import DarcyTransportModel
 from ..models.thermo.electrochemistry import ElectrochemicalReaction
+from ..models.thermo.gas import index_o2, index_n2, index_h2, index_h2ov
 from ..membrane.pem import PFSAIonomer, PFSA
-from ..simulation.conditions import CellConditions, SideConditions
+from ..simulation.conditions import CellConditions
+from ..simulation.state import GasFlowState
 from ..models.base.transient import TransientModel
-
-_SIDE_FIELDS = (
-    'inlet_temperature', 'inlet_pressure', 'outlet_pressure',
-    'dry_o2_mole_fraction', 'dry_h2_mole_fraction', 'inlet_relative_humidity',
-    'stoichiometry', 'inlet_liquid_saturation', 'inlet_liquid_flow_rate',
-    'inlet_gas_flow_rate', 'minimum_current_density_for_stoich',
-)
 
 _model_cache: dict[int, TransientModel] = {}
 
@@ -118,43 +113,14 @@ def _get_model(n_memb_mesh: int) -> TransientModel:
     return _model_cache[n_memb_mesh]
 
 
-def _side_conditions(prefix: str, cond: dict) -> SideConditions:
-    return SideConditions(**{
-        field: float(cond[f'{prefix}_{field}']) for field in _SIDE_FIELDS
-    })
-
-
-def _cell_conditions(cond: dict) -> CellConditions:
-    return CellConditions(
-        current_density=float(cond['current_density']),
-        cell_temperature=float(cond['cell_temperature']),
-        ca=_side_conditions('ca', cond),
-        an=_side_conditions('an', cond),
-    )
-
-
-def initial_state(cell: FuelCell, n_memb_mesh: int, cond: dict) -> list:
-    """Steady-state ODE initial condition, as a plain list (mirrors ``x0``)."""
-    model = _get_model(n_memb_mesh)
-    _, x0 = model.set_initial_conditions(cell, _cell_conditions(cond))
-    return x0.tolist()
-
-
-def derivative(cell: FuelCell, n_memb_mesh: int, t: float, x: list, cond: dict) -> list:
-    """ODE right-hand side at time *t*, state *x* — mirrors ``f_transient``."""
-    model = _get_model(n_memb_mesh)
-    dxdt = model.f_transient(float(t), np.asarray(x, dtype=float), cell, _cell_conditions(cond))
-    return np.asarray(dxdt, dtype=float).tolist()
-
-
 def _s(v):
     return float(np.atleast_1d(v)[0]) if v is not None else float('nan')
 
 
 def _state_to_dict(state) -> dict:
-    """Flatten a scalar :class:`~marapendi.simulation.state.CellState` — the
-    same field list ``diagnostics()`` and ``step()`` both return, so the
-    Simulink side (``state_scalar_field_order.m``) only has one shape to match."""
+    """Flatten a scalar :class:`~marapendi.simulation.state.CellState`, used
+    by ``cell_diagnostics()`` — so the Simulink side
+    (``state_scalar_field_order.m``) only has one shape to match."""
     return {
         'cell_voltage': _s(state.cell_voltage),
         'mea_temperature': _s(state.mea_temperature),
@@ -164,6 +130,7 @@ def _state_to_dict(state) -> dict:
         'eta_act': _s(state.eta_act),
         'eta_ohm': _s(state.eta_ohm),
         'crossover_current': _s(state.crossover_current),
+        'heat_release': _s(state.heat_release),
         'membrane_water_content': _s(state.membrane.water_content),
         'membrane_water_content_profile': np.asarray(state.membrane.water_content_profile, dtype=float).reshape(-1).tolist(),
         'membrane_water_flux': _s(state.membrane.water_flux),
@@ -186,29 +153,84 @@ def _state_to_dict(state) -> dict:
     }
 
 
-def diagnostics(cell: FuelCell, n_memb_mesh: int, t: float, x: list, cond: dict) -> dict:
-    """Flattened :class:`~marapendi.simulation.state.CellState` at (*t*, *x*) — mirrors ``evaluate``."""
+GASFLOW_FIELDS = ('temperature', 'pressure', 'o2', 'n2', 'h2', 'h2o', 'liquid')
+"""Flat field order for a :class:`~marapendi.simulation.state.GasFlowState`
+dict, mirrored by ``matlab/transient_pemfc/gasflow_field_order.m``."""
+
+
+def _gas_flow_state_from_dict(flow: dict) -> GasFlowState:
+    """Build a :class:`~marapendi.simulation.state.GasFlowState` from a flat
+    dict with keys :data:`GASFLOW_FIELDS` (species order O2, N2, H2, H2O,
+    matching :data:`~marapendi.models.thermo.gas.species_indexes`)."""
+    return GasFlowState(
+        temperature=float(flow['temperature']),
+        pressure=float(flow['pressure']),
+        gas_species_molar_flow_rates=np.array([
+            float(flow['o2']), float(flow['n2']), float(flow['h2']), float(flow['h2o']),
+        ]),
+        liquid_molar_flow_rate=float(flow['liquid']),
+    )
+
+
+def _gas_flow_state_to_dict(flow_state: GasFlowState, prefix: str) -> dict:
+    """Flatten a :class:`~marapendi.simulation.state.GasFlowState` into a
+    dict with keys ``{prefix}_<GASFLOW_FIELDS>``."""
+    X = flow_state.gas_species_molar_flow_rates
+    return {
+        f'{prefix}_temperature': _s(flow_state.temperature),
+        f'{prefix}_pressure': _s(flow_state.pressure),
+        f'{prefix}_o2': _s(X[index_o2]),
+        f'{prefix}_n2': _s(X[index_n2]),
+        f'{prefix}_h2': _s(X[index_h2]),
+        f'{prefix}_h2o': _s(X[index_h2ov]),
+        f'{prefix}_liquid': _s(flow_state.liquid_molar_flow_rate),
+    }
+
+
+def _cell_conditions_from_flows(ca_flow: dict, an_flow: dict,
+                                 current_density: float, cell_temperature: float) -> CellConditions:
+    return CellConditions(
+        current_density=float(current_density),
+        cell_temperature=float(cell_temperature),
+        ca=_gas_flow_state_from_dict(ca_flow).to_side_conditions(),
+        an=_gas_flow_state_from_dict(an_flow).to_side_conditions(),
+    )
+
+
+def cell_initial_state(cell: FuelCell, n_memb_mesh: int, ca_flow: dict, an_flow: dict,
+                        current_density: float, cell_temperature: float) -> list:
+    """Steady-state ODE initial condition from inlet ``GasFlowState`` dicts
+    + current density + cell temperature, as a plain list (mirrors ``x0``)."""
     model = _get_model(n_memb_mesh)
+    cond = _cell_conditions_from_flows(ca_flow, an_flow, current_density, cell_temperature)
+    _, x0 = model.set_initial_conditions(cell, cond)
+    return x0.tolist()
+
+
+def cell_derivative(cell: FuelCell, n_memb_mesh: int, t: float, x: list, ca_flow: dict, an_flow: dict,
+                     current_density: float, cell_temperature: float) -> list:
+    """ODE right-hand side at time *t*, state *x*, driven by inlet
+    ``GasFlowState`` dicts + current density + cell temperature — mirrors
+    :meth:`~marapendi.models.base.transient.TransientModel.f_transient`."""
+    model = _get_model(n_memb_mesh)
+    cond = _cell_conditions_from_flows(ca_flow, an_flow, current_density, cell_temperature)
+    dxdt = model.f_transient(float(t), np.asarray(x, dtype=float), cell, cond)
+    return np.asarray(dxdt, dtype=float).tolist()
+
+
+def cell_diagnostics(cell: FuelCell, n_memb_mesh: int, t: float, x: list, ca_flow: dict, an_flow: dict,
+                      current_density: float, cell_temperature: float) -> dict:
+    """Flattened :class:`~marapendi.simulation.state.CellState` at (*t*, *x*),
+    driven by inlet ``GasFlowState`` dicts + current density + cell
+    temperature — mirrors :meth:`~marapendi.models.base.transient.TransientModel.evaluate`,
+    plus the outlet ``GasFlowState``s (``ca_outlet_*``/``an_outlet_*`` keys,
+    see :data:`GASFLOW_FIELDS`) computed by
+    :func:`~marapendi.simulation.state.set_gas_flow_states`'s mass balance."""
+    model = _get_model(n_memb_mesh)
+    cond = _cell_conditions_from_flows(ca_flow, an_flow, current_density, cell_temperature)
     x_arr = np.asarray(x, dtype=float).reshape(-1, 1)
-    state = model.evaluate(cell, _cell_conditions(cond), np.array([float(t)]), x_arr)
-    return _state_to_dict(state)
-
-
-def step(cell: FuelCell, n_memb_mesh: int, t: float, x: list, cond: dict) -> dict:
-    """``derivative()`` and ``diagnostics()`` combined into a single Python
-    round trip and a single physics pass, via
-    :meth:`~marapendi.models.base.transient.TransientModel.f_transient`'s
-    ``return_state=True``. Returns ``{'dxdt': [...], **diagnostics_fields}``.
-    Intended for callers (e.g. a Simulink S-Function) that need both the ODE
-    right-hand side and diagnostics at the same point and want to avoid
-    computing the physics twice — ``TransientModel.solve()`` itself still
-    calls ``evaluate()`` separately after integration, since
-    :func:`scipy.integrate.solve_ivp` has no hook to carry state out of the
-    right-hand-side function.
-    """
-    model = _get_model(n_memb_mesh)
-    dxdt, state = model.f_transient(
-        float(t), np.asarray(x, dtype=float), cell, _cell_conditions(cond), return_state=True)
+    state = model.evaluate(cell, cond, np.array([float(t)]), x_arr)
     out = _state_to_dict(state)
-    out['dxdt'] = np.asarray(dxdt, dtype=float).tolist()
+    out.update(_gas_flow_state_to_dict(state.ca.outlet_gas_flow_state, 'ca_outlet'))
+    out.update(_gas_flow_state_to_dict(state.an.outlet_gas_flow_state, 'an_outlet'))
     return out
