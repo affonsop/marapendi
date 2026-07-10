@@ -53,7 +53,7 @@ from ..voltage import VoltageModel
 from .explicit_steady_state import ExplicitSteadyStateModel
 from ..water_balance.water_balance import WaterBalanceModel
 from ..water_balance.membrane_transient import MembraneWaterBalanceTransientModel
-from ...simulation.state import CellState
+from ...simulation.state import CellState, set_gas_flow_states
 
 
 class _PiecewiseDenseOutput:
@@ -310,6 +310,8 @@ class TransientModel:
 
         state = self._eval_state(cell, cond_all, T_mea_arr, water_profile)
         state.hfr = self.voltage_model.high_frequency_resistance(cell, state)
+        # Sets state.heat_release as a side effect (dT/dt itself is not used here).
+        self.thermal_model.temperature_rate_of_change(cell, state)
         return state
 
     def solve(self, cell, cell_conditions, t_span, x0=None,
@@ -443,5 +445,8 @@ class TransientModel:
         state.an.h2ov_transport_resistance = gtr.gas_transport_resistance(cell.an, state.an, 'h2o')
         gtr.calculate_gas_concentrations(cell, state)
         self.voltage_model.compute_cell_voltage(cell, state)
+
+        set_gas_flow_states(cell, cell.ca, state.ca, cond.ca, cond.cell_temperature)
+        set_gas_flow_states(cell, cell.an, state.an, cond.an, cond.cell_temperature)
 
         return state

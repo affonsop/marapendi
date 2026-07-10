@@ -19,7 +19,6 @@ from __future__ import annotations
 import numpy as np
 
 from .water import water_saturation_pressure
-from ...simulation.state import GasState  # noqa: F401  defined there, re-exported for convenience
 
 species_list = ('o2', 'n2', 'h2', 'h2o')
 species_indexes = dict(zip(species_list, range(4)))
