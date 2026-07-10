@@ -31,6 +31,10 @@ conditions.
   global optimisation, with k-fold cross-validation and automatic model-complexity selection
 - **Clean component/state separation** — static cell parameters and runtime state are
   kept strictly separate, making the data flow explicit
+- **MATLAB/Simulink block** — `TransientPEMFC` (`matlab/transient_pemfc/`) drives
+  `TransientModel` from Simulink, calling the live Python source at every solver
+  step; cell parameters can be supplied as a dotted Python builder path or a plain
+  MATLAB struct (see `matlab/transient_pemfc/README.md`)
 
 ## Installation
 
@@ -61,7 +65,7 @@ liq = mrpd.DarcyTransportModel(J_function_exponent=2)
 
 cell = mrpd.FuelCell(
     area=25e-4,
-    electrical_resistance=30e-7,
+    electric_resistance=30e-7,
     ca=mrpd.FuelCellSide(
         cl=mrpd.PtCCatalystLayer(
             ecsa=70e3, platinum_loading=0.4e-2, ionomer=mrpd.PFSAIonomer(),
@@ -75,21 +79,21 @@ cell = mrpd.FuelCell(
         ),
         gdl=mrpd.GasDiffusionLayer(
             thickness=200e-6, porosity=0.6, contact_angle=120.,
-            effective_gas_diffusion_ratio=0.3, absolute_permeability=1e-12,
+            tortuosity=2.0, absolute_permeability=1e-12,
             thermal_conductivity=0.5, two_phase_transport_model=liq,
         ),
         ch=mrpd.FlowChannel(width=1e-3, height=1e-3, length=0.1, n_parallel=20, reactant='o2'),
-        has_mpl=False, thermal_contact_resistance=4e-4,
+        thermal_contact_resistance=4e-4,
     ),
     an=mrpd.FuelCellSide(
         cl=mrpd.PtCCatalystLayer(thickness=5e-6, two_phase_transport_model=liq),
         gdl=mrpd.GasDiffusionLayer(
             thickness=200e-6, porosity=0.6, contact_angle=120.,
-            effective_gas_diffusion_ratio=0.3, absolute_permeability=1e-12,
+            tortuosity=2.0, absolute_permeability=1e-12,
             thermal_conductivity=0.5, two_phase_transport_model=liq,
         ),
         ch=mrpd.FlowChannel(width=1e-3, height=1e-3, length=0.1, n_parallel=20, reactant='h2'),
-        has_mpl=False, thermal_contact_resistance=4e-4,
+        thermal_contact_resistance=4e-4,
     ),
     membrane=mrpd.PFSA(
         ionomer=mrpd.PFSAIonomer(equivalent_weight=1100, dry_density=1980),
@@ -125,7 +129,7 @@ state = imp_model.set_initial_conditions(cell, conditions)
 state = imp_model.solve(cell, conditions, state)
 
 # --- Transient model (time-varying conditions) ---
-from marapendi.cell.transient import TransientModel
+from marapendi.models.base.transient import TransientModel
 
 cond_0 = mrpd.CellConditions(          # single operating point for initial conditions
     current_density=np.atleast_1d(1e4),
@@ -157,30 +161,39 @@ sol = tr_model.solve(cell, conditions_t, t_span=(0, 3600))
 
 ```
 src/marapendi/
-├── cell/          # FuelCell and all physics models
-│   ├── fuelcell.py              # FuelCell, FuelCellSide
-│   ├── state.py                 # CellState, CellSideState, LayerState, …
-│   ├── explicit_steady_state.py # ExplicitSteadyStateModel
-│   ├── implicit_steady_state.py # ImplicitSteadyStateModel (self-consistent T_MEA)
-│   ├── transient.py             # TransientModel (ODE for T_MEA + membrane water profile)
-│   ├── voltage.py               # VoltageModel
-│   └── thermal.py               # ThermalModel
+├── cell/          # Component tree (no physics)
+│   ├── cell.py                   # Cell, CellSide (base classes)
+│   └── fuelcell.py                # FuelCell, FuelCellSide
+├── simulation/    # Runtime state and operating conditions (pure data)
+│   ├── state.py                   # CellState, CellSideState, LayerState, GasFlowState, …
+│   ├── conditions.py              # CellConditions, SideConditions
+│   └── load_cycles/               # LoadCycle, standardised ID-FAST/FC-DLC driving cycles
+├── models/        # Physics: orchestration + sub-models
+│   ├── base/
+│   │   ├── explicit_steady_state.py # ExplicitSteadyStateModel
+│   │   ├── implicit_steady_state.py # ImplicitSteadyStateModel (self-consistent T_MEA)
+│   │   └── transient.py             # TransientModel (ODE for T_MEA + membrane water profile)
+│   ├── water_balance/
+│   │   ├── water_balance.py         # WaterBalanceModel (orchestration)
+│   │   ├── membrane_pwl.py          # MembraneWaterBalanceModelPiecewise (default)
+│   │   └── membrane.py              # MembraneWaterBalanceModel (Affonso Nobrega et al. 2026)
+│   ├── thermo/                      # GasState, GasModel, water properties, constants
+│   ├── thermal.py                   # ThermalModel
+│   ├── voltage.py                   # VoltageModel
+│   ├── darcy.py                     # DarcyTransportModel (two-phase liquid water)
+│   ├── diffusion.py                 # PorousGasDiffusionModel (Fickian + Knudsen)
+│   └── gas_transport_resistance.py  # GasTransportModel (channel-to-CL resistance network)
 ├── membrane/      # Membrane and ionomer materials
-│   ├── ionomer_base.py          # Ionomer (abstract base class)
-│   ├── pem.py                   # PFSAIonomer, PFSA, NafionD2020
-│   ├── aem.py                   # PAPIonomer, AEM, PAP85
-│   └── membrane_base.py         # Membrane (composes an Ionomer instance)
-├── water_balance/ # Membrane water balance models
-│   ├── water_balance.py         # WaterBalanceModel (orchestration)
-│   ├── membrane_pwl.py          # MembraneWaterBalanceModelPiecewise (default)
-│   └── membrane.py              # MembraneWaterBalanceModel (Affonso Nobrega et al. 2026)
-├── porous_layers/ # GasDiffusionLayer, MicroPorousLayer, CatalystLayer, …
+│   ├── ionomer_base.py            # Ionomer (abstract base class)
+│   ├── pem.py                     # PFSAIonomer, PFSA, NafionD2020
+│   ├── aem.py                     # PAPIonomer, AEM, PAP85
+│   └── membrane_base.py           # Membrane (composes an Ionomer instance)
+├── porous_layers/ # GasDiffusionLayer, MicroPorousLayer, PtCCatalystLayer, …
 ├── channel/       # FlowChannel, ChannelGasResistanceModel, BakerChannelGasResistanceModel
-├── thermo/        # GasState, GasModel, water properties, constants
 ├── electrolyte/   # ElectrolyteSolution, KOHSolution
 ├── degradation/   # PtDissolution, PlatinumOxideFormation
-├── simulation/    # CellConditions, SideConditions, LoadCycle
-└── estimation/    # BaseModelCalibration, SteadyStatePolarizationCurveCalibration, Parameter
+├── estimation/    # BaseModelCalibration, SteadyStatePolarizationCurveCalibration, Parameter
+└── interop/       # simulink_bridge.py — thin adapter for the MATLAB Simulink block
 ```
 
 ## Example notebooks
@@ -194,6 +207,18 @@ src/marapendi/
 | [examples/05_multi_condition_comparison.ipynb](examples/05_multi_condition_comparison.ipynb) | Simulate and compare polarization curves across multiple experimental conditions |
 | [examples/06_picewise_linear_approximation_water_conent.ipynb](examples/06_picewise_linear_approximation_water_conent.ipynb) | Compare the piecewise-linear (standard) and paper-model (Affonso Nobrega et al. 2026) membrane water balance models |
 | [examples/07_parameter_estimation.ipynb](examples/07_parameter_estimation.ipynb) | Fit kinetic and transport parameters to multi-condition experimental data; k-fold cross-validation and complexity selection |
+
+The same workflows are also available as Sphinx-Gallery scripts
+(`examples/plot_01_polarization_curve.py` … `plot_09_membrane_correlations.py`),
+rendered with their output plots at `docs/auto_examples/` when the docs are built.
+
+## MATLAB / Simulink
+
+`matlab/transient_pemfc/` builds a `TransientPEMFC` Simulink block that calls
+`TransientModel` directly through MATLAB's `py.` interface — no physics is
+re-implemented in MATLAB, so the block always reflects whatever is on disk in
+`src/marapendi/`. See `matlab/transient_pemfc/README.md` and the
+[Simulink block guide](docs/user_guide/simulink_block.rst) for setup and usage.
 
 ## Running the tests
 
@@ -210,6 +235,11 @@ cd docs
 make html
 open _build/html/index.html
 ```
+
+Start at [`docs/installation.rst`](docs/installation.rst) for a runnable
+quick-start snippet, [`docs/user_guide/`](docs/user_guide) for task-oriented
+guides, and [`docs/science/`](docs/science) for the governing equations and
+literature references behind every model.
 
 ## Reference
 
