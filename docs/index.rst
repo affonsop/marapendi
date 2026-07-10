@@ -64,6 +64,21 @@ described in Affonso Nobrega et al., *J. Electrochem. Soc.* **173**, 114503
 (2026), to which this documentation defers for the physical and mathematical
 description of the cell model.
 
+``interop`` (:mod:`marapendi.interop`)
+    A thin adapter (:mod:`marapendi.interop.simulink_bridge`) exposing
+    :class:`~marapendi.models.base.transient.TransientModel` to MATLAB through
+    plain scalars, lists, and dicts. It backs the ``TransientPEMFC`` Simulink
+    block (``matlab/transient_pemfc/``, see :doc:`user_guide/simulink_block`),
+    which calls the live Python model at every solver step — no physics is
+    re-implemented in MATLAB, and cell parameters can be supplied either as a
+    dotted Python builder path or as a plain MATLAB struct.
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Getting started
+
+   installation
+
 .. toctree::
    :maxdepth: 2
    :caption: User Guide
