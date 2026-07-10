@@ -21,7 +21,7 @@ from ..thermal import ThermalModel
 from ..gas_transport_resistance import GasTransportModel
 from ..voltage import VoltageModel
 from ..water_balance.water_balance import WaterBalanceModel
-from ...simulation.state import CellState, LayerState, CatalystLayerState
+from ...simulation.state import CellState, LayerState, CatalystLayerState, GasFlowState
 
 
 @dataclass
@@ -123,7 +123,62 @@ class ExplicitSteadyStateModel:
         )
         self.gas_transport_model.calculate_gas_concentrations(cell, state)
         self.voltage_model.compute_cell_voltage(cell, state)
+
+        for cell_side, side_state, conditions in zip(
+            cell.sides, state.sides, (cell_conditions.ca, cell_conditions.an)
+        ):
+            self.set_gas_flow_states(cell, cell_side, side_state, conditions, cell_conditions.cell_temperature)
+
         return state
+
+    def set_gas_flow_states(self, cell, cell_side, side_state, side_conditions,
+                             stack_temperature: float) -> None:
+        """Populate ``side_state.inlet_gas_flow_state``/``outlet_gas_flow_state``.
+
+        Call once ``side_state.reactant_consumption``/``h2o_production`` (set by
+        :meth:`_set_consumption_production`) and ``side_state.vapor_flux``/``liquid_flux``
+        (set by :meth:`~marapendi.models.water_balance.water_balance.WaterBalanceModel.update_cell_side_water_fluxes`,
+        itself called from ``calculate_water_transport``) are available — i.e.
+        after :meth:`~marapendi.models.water_balance.water_balance.WaterBalanceModel.calculate_water_transport`
+        has run. Also called by :class:`~marapendi.models.base.transient.TransientModel`
+        through its internal :class:`ExplicitSteadyStateModel` instance.
+
+        ``GasFlowState`` models a single operating point (its fields are plain
+        floats, not arrays), so this is a no-op — leaving both fields ``None`` —
+        when *side_state* comes from a vectorised solve (e.g. a polarization
+        curve with an array-valued ``current_density``). Call once per scalar
+        operating point to get flow states.
+
+        Parameters
+        ----------
+        cell : FuelCell
+        cell_side : FuelCellSide
+            ``cell.ca`` or ``cell.an`` — used for ``cell_side.ch.reactant``.
+        side_state : CellSideState
+            ``state.ca`` or ``state.an``. Modified in place.
+        side_conditions : SideConditions
+        stack_temperature : float
+            ``cell_conditions.cell_temperature``.
+        """
+        if np.size(side_state.reactant_consumption) != 1:
+            return
+
+        reactant = cell_side.ch.reactant
+        n_electrons = 4 if cell_side is cell.ca else 2
+        minimal_reactant_consumption = side_conditions.minimum_current_density_for_stoich / (n_electrons * FARADAY_CONSTANT)
+        reactant_consumption = float(np.asarray(side_state.reactant_consumption).reshape(()))
+        stack_temperature = float(np.asarray(stack_temperature).reshape(()))
+
+        side_state.inlet_gas_flow_state = GasFlowState.from_side_conditions(
+            side_conditions, stack_temperature, reactant,
+            reactant_consumption, minimal_reactant_consumption, cell.area,
+        )
+        side_state.outlet_gas_flow_state = side_state.inlet_gas_flow_state.consume(
+            reactant, reactant_consumption,
+            float(np.asarray(side_state.vapor_flux).reshape(())),
+            float(np.asarray(side_state.liquid_flux).reshape(())),
+            cell.area,
+        )
 
     # ------------------------------------------------------------------
     # Internal helpers (also called by FuelCell for legacy support)

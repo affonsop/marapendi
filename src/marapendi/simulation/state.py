@@ -17,7 +17,7 @@ from types import SimpleNamespace as _SimpleNamespace
 
 import numpy as np
 from .conditions import SideConditions
-from ..models.thermo.constants import GAS_CONSTANT, FARADAY_CONSTANT 
+from ..models.thermo.constants import GAS_CONSTANT
 from ..models.thermo.gas import *
 from ..models.thermo.water import water_molar_volume
 
@@ -341,57 +341,6 @@ class CellSideState:
     def layers(self) -> list[LayerState]:
         """All layer states, channel to CL order, including MPL if present."""
         return [layer for layer in (self.ch, self.gdl, self.mpl, self.cl) if layer is not None]
-
-
-def set_gas_flow_states(cell, cell_side, side_state: CellSideState, side_conditions: SideConditions,
-                         stack_temperature: float) -> None:
-    """Populate ``side_state.inlet_gas_flow_state``/``outlet_gas_flow_state``.
-
-    Call once ``side_state.reactant_consumption``/``h2o_production`` (set by
-    :meth:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel._set_consumption_production`)
-    and ``side_state.vapor_flux``/``liquid_flux`` (set by
-    :meth:`~marapendi.models.water_balance.water_balance.WaterBalanceModel.update_cell_side_water_fluxes`,
-    itself called from ``calculate_water_transport``) are available — i.e.
-    after :meth:`~marapendi.models.water_balance.water_balance.WaterBalanceModel.calculate_water_transport`
-    has run. Used by both :class:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel`
-    and :class:`~marapendi.models.base.transient.TransientModel`.
-
-    ``GasFlowState`` models a single operating point (its fields are plain
-    floats, not arrays), so this is a no-op — leaving both fields ``None`` —
-    when *side_state* comes from a vectorised solve (e.g. a polarization
-    curve with an array-valued ``current_density``). Call once per scalar
-    operating point to get flow states.
-
-    Parameters
-    ----------
-    cell : FuelCell
-    cell_side : FuelCellSide
-        ``cell.ca`` or ``cell.an`` — used for ``cell_side.ch.reactant``.
-    side_state : CellSideState
-        ``state.ca`` or ``state.an``. Modified in place.
-    side_conditions : SideConditions
-    stack_temperature : float
-        ``cell_conditions.cell_temperature``.
-    """
-    if np.size(side_state.reactant_consumption) != 1:
-        return
-
-    reactant = cell_side.ch.reactant
-    n_electrons = 4 if cell_side is cell.ca else 2
-    minimal_reactant_consumption = side_conditions.minimum_current_density_for_stoich / (n_electrons * FARADAY_CONSTANT)
-    reactant_consumption = float(np.asarray(side_state.reactant_consumption).reshape(()))
-    stack_temperature = float(np.asarray(stack_temperature).reshape(()))
-
-    side_state.inlet_gas_flow_state = GasFlowState.from_side_conditions(
-        side_conditions, stack_temperature, reactant,
-        reactant_consumption, minimal_reactant_consumption, cell.area,
-    )
-    side_state.outlet_gas_flow_state = side_state.inlet_gas_flow_state.consume(
-        reactant, reactant_consumption,
-        float(np.asarray(side_state.vapor_flux).reshape(())),
-        float(np.asarray(side_state.liquid_flux).reshape(())),
-        cell.area,
-    )
 
 
 @dataclass

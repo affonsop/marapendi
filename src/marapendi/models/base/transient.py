@@ -53,7 +53,7 @@ from ..voltage import VoltageModel
 from .explicit_steady_state import ExplicitSteadyStateModel
 from ..water_balance.water_balance import WaterBalanceModel
 from ..water_balance.membrane_transient import MembraneWaterBalanceTransientModel
-from ...simulation.state import CellState, set_gas_flow_states
+from ...simulation.state import CellState
 
 
 class _PiecewiseDenseOutput:
@@ -446,7 +446,7 @@ class TransientModel:
         gtr.calculate_gas_concentrations(cell, state)
         self.voltage_model.compute_cell_voltage(cell, state)
 
-        set_gas_flow_states(cell, cell.ca, state.ca, cond.ca, cond.cell_temperature)
-        set_gas_flow_states(cell, cell.an, state.an, cond.an, cond.cell_temperature)
+        self._ss_model.set_gas_flow_states(cell, cell.ca, state.ca, cond.ca, cond.cell_temperature)
+        self._ss_model.set_gas_flow_states(cell, cell.an, state.an, cond.an, cond.cell_temperature)
 
         return state
