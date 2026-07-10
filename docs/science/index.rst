@@ -18,6 +18,7 @@ respect to the version in this paper.
 
    cell_voltage
    heat_transfer
+   water
    water_balance
    two_phase_flow
    membrane_correlations
