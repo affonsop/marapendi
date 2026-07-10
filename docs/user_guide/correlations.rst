@@ -6,6 +6,15 @@ relevant component or ionomer object, so it can be called directly without
 running the full simulation.  This lets you plot and verify correlations against
 literature data or your own measurements before setting up a simulation.
 
+.. seealso::
+
+   The derivations and literature references behind these correlations are
+   documented in :doc:`/science/membrane_correlations`, :doc:`/science/two_phase_flow`,
+   :doc:`/science/gas_transport`, and :doc:`/science/orr_kinetics`.
+   :doc:`/auto_examples/plot_09_membrane_correlations` reproduces the
+   membrane/ionomer plots below (and a few more) for several temperatures in
+   one figure.
+
 Membrane conductivity vs water content
 ---------------------------------------
 
@@ -74,7 +83,9 @@ evaluates the cubic polynomial from Springer et al. (1991):
     ax.grid(True, alpha=0.3)
 
 Compare the piecewise-linear approximation used by the standard water-balance
-model against the cubic polynomial:
+model against the cubic polynomial (see :doc:`/auto_examples/plot_07_pwl_membrane`
+for a more complete version of this comparison, including the resulting
+polarization curve):
 
 .. code-block:: python
 
@@ -106,7 +117,14 @@ Membrane through-plane proton resistance
 -----------------------------------------
 
 :meth:`~marapendi.membrane.pem.PFSA.proton_resistance` integrates the local
-conductivity over a through-plane water-content profile.  For a uniform profile:
+conductivity over a through-plane water-content profile read from a
+:class:`~marapendi.simulation.state.MembraneState`-like object (as populated
+by :doc:`/science/water_balance` during a solve). To verify the underlying
+conductivity correlation in isolation for a *uniform* water content, it is
+simpler to call
+:meth:`~marapendi.membrane.pem.PFSAIonomer.proton_conductivity` directly and
+divide the membrane thickness by it (see :doc:`/science/membrane_correlations`
+for the equation):
 
 .. code-block:: python
 
@@ -115,14 +133,8 @@ conductivity over a through-plane water-content profile.  For a uniform profile:
     lmbd_vals = np.linspace(3, 20, 50)
     T = 353.15
 
-    R_proton = np.array([
-        membrane.proton_resistance(
-            state=None,   # not needed for uniform profile
-            water_content=lmbd_val,
-            temperature=T,
-        )
-        for lmbd_val in lmbd_vals
-    ])
+    sigma = ionomer.proton_conductivity(lmbd_vals, T)
+    R_proton = membrane.dry_thickness / sigma
 
     fig, ax = plt.subplots(figsize=(6, 4))
     ax.plot(lmbd_vals, R_proton * 1e4, "C1-")
@@ -133,68 +145,68 @@ conductivity over a through-plane water-content profile.  For a uniform profile:
 
 .. note::
 
-   The exact signature of ``proton_resistance`` depends on whether a
-   :class:`~marapendi.simulation.state.MembraneState` is passed.  Consult
-   :class:`~marapendi.membrane.pem.PFSA` for the full interface.
+   ``proton_resistance`` itself takes a full state object exposing
+   ``water_content_profile``/``temperature`` (and optionally
+   ``water_saturation`` to blend in the liquid-equilibrated conductivity —
+   see the "Liquid-equilibrated water content" correlation in
+   :doc:`/science/membrane_correlations`); it is normally called by
+   :doc:`/science/water_balance`'s solve pipeline rather than directly.
 
 Capillary pressure vs saturation (GDL)
 ----------------------------------------
 
-:class:`~marapendi.porous_layers.porous_layers.GasDiffusionLayer` provides
-Leverett-J capillary pressure via the ``DarcyTransportModel``:
+:class:`~marapendi.models.darcy.DarcyTransportModel` relates capillary
+pressure and non-wetting (liquid water) saturation through a power-law
+J-function; the layer's breakthrough pressure
+(:attr:`~marapendi.porous_layers.porous_layers.PorousLayer.breakthrough_pressure`,
+derived from its geometry) sets the scale — see :doc:`/science/two_phase_flow`
+for the full derivation:
 
 .. code-block:: python
 
     from marapendi.models.darcy import DarcyTransportModel
 
-    liq = DarcyTransportModel(J_function_exponent=2)
+    liq = DarcyTransportModel(J_function_exponent=0.4)
     gdl = mrpd.GasDiffusionLayer(
         thickness=200e-6, porosity=0.6, contact_angle=120.,
-        effective_gas_diffusion_ratio=0.3, absolute_permeability=1e-12,
+        absolute_permeability=1e-12, tortuosity=1.5,
         thermal_conductivity=0.5, two_phase_transport_model=liq,
     )
 
-    T = 353.15
     s_arr = np.linspace(0.001, 0.5, 200)
 
-    # Capillary pressure at each saturation
-    pc = np.array([
-        gdl.two_phase_transport_model.capillary_pressure(gdl, s, T)
-        for s in s_arr
-    ])
+    # Capillary pressure at each saturation (gdl itself provides breakthrough_pressure)
+    pc = liq.capillary_pressure_from_saturation(gdl, s_arr)
 
     fig, ax = plt.subplots(figsize=(6, 4))
     ax.semilogy(s_arr, pc / 1e3)
     ax.set_xlabel("Liquid saturation s")
     ax.set_ylabel("Capillary pressure (kPa)")
-    ax.set_title(f"Leverett-J capillary pressure (θ = {gdl.contact_angle}°)")
+    ax.set_title(f"Capillary pressure J-function (θ = {gdl.contact_angle}°)")
     ax.grid(True, which="both", alpha=0.3)
 
-Gas diffusion coefficient vs saturation
+Gas diffusion resistance vs saturation
 -----------------------------------------
 
-Effective gas diffusivity decreases with liquid saturation.  Access it directly
-from the porous layer and a :class:`~marapendi.models.diffusion.PorousGasDiffusionModel`:
+Effective gas diffusion resistance increases with liquid saturation through
+the ``water_saturation_correction`` factor :math:`f(s)` — see
+:doc:`/science/gas_transport` for the full porous-layer diffusion model
+(molecular + Knudsen, in series):
 
 .. code-block:: python
 
     from marapendi.models.diffusion import PorousGasDiffusionModel
 
-    diff_model = PorousGasDiffusionModel()
-    T, p = 353.15, 1.5e5
+    diff_model = PorousGasDiffusionModel(water_saturation_exponent=3.0)
 
-    # Binary diffusivity of O2 in N2 (m²/s) at various saturations
     s_arr = np.linspace(0, 0.4, 100)
-    D_eff = np.array([
-        diff_model.effective_binary_diffusivity(gdl, "o2", "n2", T, p, saturation=s)
-        for s in s_arr
-    ])
+    f_s = diff_model.water_saturation_correction(s_arr)
 
     fig, ax = plt.subplots(figsize=(6, 4))
-    ax.plot(s_arr, D_eff * 1e4, "C0-")
+    ax.plot(s_arr, f_s, "C0-")
     ax.set_xlabel("Liquid saturation s")
-    ax.set_ylabel("D_eff(O₂–N₂) (cm²/s)")
-    ax.set_title("Effective diffusivity in GDL vs liquid saturation")
+    ax.set_ylabel(r"$f(s) = [\max(1-s,\,10^{-6})]^{n_s}$")
+    ax.set_title("Diffusivity correction factor vs liquid saturation")
     ax.grid(True, alpha=0.3)
 
 Electrochemical kinetics
@@ -202,7 +214,8 @@ Electrochemical kinetics
 
 :class:`~marapendi.models.thermo.electrochemistry.ElectrochemicalReaction` computes the
 ORR exchange current density as a function of temperature and O₂ partial
-pressure:
+pressure (see :doc:`/science/orr_kinetics` for the Neyerlin et al. (2006)
+correlation and the Tafel activation overpotential built on top of it):
 
 .. code-block:: python
 

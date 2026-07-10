@@ -5,6 +5,18 @@ This guide covers the full workflow for a single steady-state simulation:
 assembling the cell, defining operating conditions, running the solver, and
 inspecting every variable in the output state.
 
+.. seealso::
+
+   The physics implemented by each model referenced here is documented in
+   :doc:`/science/index` — in particular :doc:`/science/water_balance` (membrane
+   water transport), :doc:`/science/membrane_correlations` (ionomer
+   correlations), :doc:`/science/two_phase_flow` and :doc:`/science/gas_transport`
+   (liquid water and species transport), :doc:`/science/catalyst_layer`, and
+   :doc:`/science/cell_voltage`.
+   :doc:`/auto_examples/plot_01_polarization_curve` is the runnable version of
+   the cell assembled below; :doc:`/auto_examples/plot_07_pwl_membrane`
+   compares the two water-balance models mentioned at the end of this page.
+
 Cell assembly
 -------------
 
@@ -221,8 +233,11 @@ Swapping the membrane water-balance model
 
 Both steady-state models use
 :class:`~marapendi.models.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise`
-by default.  To use the first-order linear expansion from Affonso Nobrega et al.
-(2026):
+by default — the piecewise-linear isotherm closure described in
+:doc:`/science/membrane_correlations`.  To use the first-order linear
+expansion from Affonso Nobrega et al. (2026) instead (see
+:doc:`/science/water_balance` for the derivation of both closures, and
+:doc:`/auto_examples/plot_07_pwl_membrane` for a side-by-side comparison):
 
 .. code-block:: python
 

@@ -42,7 +42,7 @@ between the channel and the reaction site for each species (O₂, H₂, H₂O):
 
     R_\mathrm{tot} = \sum_{k \,\in\, \mathrm{GDL,\,MPL,\,CL}} R_{\mathrm{diff},k}
         + R_\mathrm{diff}^\mathrm{ch} + R_\mathrm{conv}^\mathrm{ch}
-        + ,R_\mathrm{\mathrm{O_2}, ion},
+        + \delta_{\mathrm{O_2}}\,R_\mathrm{ion},
 
 where the last (ionomer-film) term is only added for O₂
 (:doc:`catalyst_layer`). Treating each species as a resistance network

@@ -7,6 +7,14 @@ HFR data.  This guide walks through the full pipeline: defining data, choosing
 parameters, running the optimiser, cross-validating, and selecting model
 complexity with the 1-SE rule.
 
+.. seealso::
+
+   :doc:`/science/parameter_estimation` derives the weighted cost function,
+   the sensitivity/co-linearity measures, and the successive-orthogonalization
+   identifiability ranking used below, following Affonso Nobrega et al.
+   (2026) and Goshtasbi et al. (2020a,b). :doc:`/auto_examples/plot_06_parameter_estimation`
+   is a runnable, self-contained version of this pipeline on synthetic data.
+
 Data format
 -----------
 
