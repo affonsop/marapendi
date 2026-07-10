@@ -31,79 +31,172 @@ from ..models.base.transient import TransientModel
 _model_cache: dict[int, TransientModel] = {}
 
 
-def build_default_cell() -> FuelCell:
-    """Assemble the reference cell used in ``examples/plot_01_polarization_curve.py``.
+def default_cell_params() -> dict:
+    """Nested dict of every parameter :func:`build_cell_from_params` accepts,
+    with the same default values as the reference cell in
+    ``examples/plot_01_polarization_curve.py``.
 
-    Returns a fresh :class:`~marapendi.cell.fuelcell.FuelCell` instance; callers
-    that want a different cell should either edit this function or build their
-    own ``FuelCell`` in Python and hand it to the MATLAB block's mask.
+    From MATLAB, ``matlab/transient_pemfc/cell_params_template.m`` is the
+    struct-shaped mirror of this dict (copy it, edit the values, and point
+    the ``TransientPEMFC`` block's ``cellBuilderExpr`` mask parameter at your
+    copy — see ``call_python_builder.m``). Both are kept in sync by hand;
+    if you add a parameter to one, add it to the other.
     """
-    cell = FuelCell(area=25e-4, electric_resistance=10e-7)
+    return {
+        'area': 25e-4,
+        'electric_resistance': 10e-7,
+        'thermal_contact_resistance': 1e-4,
+        'channel': {
+            'width': 0.85e-3, 'height': 1e-3, 'length': 0.49, 'n_parallel': 3,
+            'sherwood': 3.66, 'B_ch': 1.2,
+        },
+        'gdl': {
+            'thickness': 117e-6 * 1.4, 'porosity': 0.65, 'tortuosity': 1.55,
+            'contact_angle': 110.0, 'absolute_permeability': 3e-12,
+            'thermal_conductivity': 1.2, 'relative_permeability_exponent': 3,
+            'volume_heat_capacity': 1.58e6,
+            'J_function_exponent': 0.4,  # shared by gdl/mpl/cl two-phase transport
+        },
+        'mpl': {
+            'thickness': 22e-6, 'porosity': 0.4, 'tortuosity': 3, 'pore_diameter': 500e-9,
+            'contact_angle': 130.0, 'absolute_permeability': 1e-12,
+            'thermal_conductivity': 0.144, 'relative_permeability_exponent': 3,
+            'volume_heat_capacity': 1.98e6,
+        },
+        'orr': {
+            'reference_exchange_current_density': 1e-3, 'reaction_order': 0.8,
+            'activation_energy': 42e6, 'reference_activity': 1e5,
+            'reference_temperature': 353.15, 'number_of_electrons': 2,
+            'charge_transfer_coeff': 0.5,
+        },
+        'ionomer': {
+            'equivalent_weight': 1100., 'dry_density': 1980.,
+            'reference_conductivity': 50., 'residual_conductivity': 0.3,
+            'conductivity_fv_threshold': 0.04, 'conductivity_exp': 1.5,
+            'reference_conductivity_temperature': 300.,
+            'conductivity_activation_energy': 10.540e6,
+            'reference_water_absorption_coefficient': 1e-5,
+            'reference_water_absorption_temperature': 303.15,
+            'water_absorption_activation_energy': 20e6,
+            'reference_water_diffusivity': 2e-10,
+            'reference_water_diffusivity_temperature': 300.,
+            'water_diffusivity_activation_energy': 20e6,
+            'vapor_equilibrium_polynomial': [36, -39.85, 17.18, 0.043],
+        },
+        'ca_cl': {
+            'ecsa': 40e3, 'platinum_loading': 0.5e-2, 'catalyst_platinum_weight_percent': 0.5,
+            'ionomer_to_carbon_ratio': 0.81, 'thickness': 10e-6, 'tortuosity': 3,
+            'thermal_conductivity': 0.18, 'pore_diameter': 140e-9,
+            'carbon_agglomerate_radius': 25e-9, 'absolute_permeability': 2e-13,
+            'contact_angle': 100.0, 'relative_permeability_exponent': 3,
+            'volume_heat_capacity': 1.56e6,
+        },
+        'an_cl': {
+            'platinum_loading': 0.1e-2, 'thickness': 7e-6,
+            'ionomer_to_carbon_ratio': 0.57, 'catalyst_platinum_weight_percent': 0.2,
+            'thermal_conductivity': 0.18, 'pore_diameter': 140e-9,
+            'absolute_permeability': 1e-13, 'contact_angle': 100.0,
+            'volume_heat_capacity': 1.56e6,
+        },
+        'membrane': {'dry_thickness': 15e-6},
+    }
 
-    liq = DarcyTransportModel(J_function_exponent=0.4)
+
+def _merge_cell_params(overrides: dict | None) -> dict:
+    """Shallow-merge *overrides* onto :func:`default_cell_params`, one level
+    into each top-level group (e.g. ``{'ca_cl': {'thickness': 12e-6}}``
+    overrides just that field, keeping the rest of ``ca_cl``'s defaults)."""
+    merged = {k: (dict(v) if isinstance(v, dict) else v) for k, v in default_cell_params().items()}
+    for key, value in (overrides or {}).items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = {**merged[key], **value}
+        else:
+            merged[key] = value
+    return merged
+
+
+def build_cell_from_params(params: dict | None = None) -> FuelCell:
+    """Assemble a :class:`~marapendi.cell.fuelcell.FuelCell` from a (possibly
+    partial) nested dict of parameters, filling in anything not given from
+    :func:`default_cell_params`.
+
+    This is what :func:`build_default_cell` calls with no overrides. Called
+    from MATLAB with a user-edited struct (see ``cell_params_template.m``)
+    converted to a nested ``py.dict`` by ``matstruct2pydict.m``.
+    """
+    p = _merge_cell_params(params)
+
+    cell = FuelCell(area=p['area'], electric_resistance=p['electric_resistance'])
+    liq = DarcyTransportModel(J_function_exponent=p['gdl']['J_function_exponent'])
 
     for side in cell.sides:
         side.ch = FlowChannel(
-            width=0.85e-3, height=1e-3, length=0.49, n_parallel=3,
+            width=p['channel']['width'], height=p['channel']['height'],
+            length=p['channel']['length'], n_parallel=p['channel']['n_parallel'],
             reactant="o2" if side is cell.ca else "h2",
-            transport_resistance_model=ChannelGasResistanceModel(sherwood=3.66, B_ch=1.2),
+            transport_resistance_model=ChannelGasResistanceModel(
+                sherwood=p['channel']['sherwood'], B_ch=p['channel']['B_ch']),
         )
-        side.thermal_contact_resistance = 1e-4
+        side.thermal_contact_resistance = p['thermal_contact_resistance']
         side.gdl = GasDiffusionLayer(
-            thickness=117e-6 * 1.4, porosity=0.65, tortuosity=1.55,
-            contact_angle=110.0, absolute_permeability=3e-12,
-            thermal_conductivity=1.2, two_phase_transport_model=liq,
-            relative_permeability_exponent=3, volume_heat_capacity=1.58e6,
+            thickness=p['gdl']['thickness'], porosity=p['gdl']['porosity'],
+            tortuosity=p['gdl']['tortuosity'], contact_angle=p['gdl']['contact_angle'],
+            absolute_permeability=p['gdl']['absolute_permeability'],
+            thermal_conductivity=p['gdl']['thermal_conductivity'],
+            two_phase_transport_model=liq,
+            relative_permeability_exponent=p['gdl']['relative_permeability_exponent'],
+            volume_heat_capacity=p['gdl']['volume_heat_capacity'],
         )
         side.mpl = MicroPorousLayer(
-            thickness=22e-6, porosity=0.4, tortuosity=3, pore_diameter=500e-9,
-            contact_angle=130.0, absolute_permeability=1e-12,
-            thermal_conductivity=0.144, two_phase_transport_model=liq,
-            relative_permeability_exponent=3, volume_heat_capacity=1.98e6,
+            thickness=p['mpl']['thickness'], porosity=p['mpl']['porosity'],
+            tortuosity=p['mpl']['tortuosity'], pore_diameter=p['mpl']['pore_diameter'],
+            contact_angle=p['mpl']['contact_angle'],
+            absolute_permeability=p['mpl']['absolute_permeability'],
+            thermal_conductivity=p['mpl']['thermal_conductivity'],
+            two_phase_transport_model=liq,
+            relative_permeability_exponent=p['mpl']['relative_permeability_exponent'],
+            volume_heat_capacity=p['mpl']['volume_heat_capacity'],
         )
 
-    orr = ElectrochemicalReaction(
-        reference_exchange_current_density=1e-3, reaction_order=0.8,
-        activation_energy=42e6, reference_activity=1e5,
-        reference_temperature=353.15, number_of_electrons=2,
-        charge_transfer_coeff=0.5,
-    )
-
-    nafion = PFSAIonomer(
-        equivalent_weight=1100., dry_density=1980,
-        reference_conductivity=50., residual_conductivity=0.3,
-        conductivity_fv_threshold=0.04, conductivity_exp=1.5,
-        reference_conductivity_temperature=300.,
-        conductivity_activation_energy=10.540e6,
-        reference_water_absorption_coefficient=1e-5,
-        reference_water_absorption_temperature=303.15,
-        water_absorption_activation_energy=20e6,
-        reference_water_diffusivity=2e-10,
-        reference_water_diffusivity_temperature=300.,
-        water_diffusivity_activation_energy=20e6,
-        vapor_equilibrium_polynomial=[36, -39.85, 17.18, 0.043],
-    )
+    orr = ElectrochemicalReaction(**p['orr'])
+    ionomer = PFSAIonomer(**p['ionomer'])
 
     cell.ca.cl = PtCCatalystLayer(
-        ecsa=40e3, platinum_loading=0.5e-2, catalyst_platinum_weight_percent=0.5,
-        ionomer_to_carbon_ratio=0.81, ionomer=nafion, reaction=orr,
-        thickness=10e-6, tortuosity=3, thermal_conductivity=0.18,
-        pore_diameter=140e-9, carbon_agglomerate_radius=25e-9,
-        absolute_permeability=2e-13, contact_angle=100.0,
-        two_phase_transport_model=liq, relative_permeability_exponent=3,
-        volume_heat_capacity=1.56e6,
+        ecsa=p['ca_cl']['ecsa'], platinum_loading=p['ca_cl']['platinum_loading'],
+        catalyst_platinum_weight_percent=p['ca_cl']['catalyst_platinum_weight_percent'],
+        ionomer_to_carbon_ratio=p['ca_cl']['ionomer_to_carbon_ratio'],
+        ionomer=ionomer, reaction=orr, thickness=p['ca_cl']['thickness'],
+        tortuosity=p['ca_cl']['tortuosity'], thermal_conductivity=p['ca_cl']['thermal_conductivity'],
+        pore_diameter=p['ca_cl']['pore_diameter'],
+        carbon_agglomerate_radius=p['ca_cl']['carbon_agglomerate_radius'],
+        absolute_permeability=p['ca_cl']['absolute_permeability'], contact_angle=p['ca_cl']['contact_angle'],
+        two_phase_transport_model=liq, relative_permeability_exponent=p['ca_cl']['relative_permeability_exponent'],
+        volume_heat_capacity=p['ca_cl']['volume_heat_capacity'],
     )
     cell.an.cl = PtCCatalystLayer(
-        platinum_loading=0.1e-2, ionomer=nafion, thickness=7e-6,
-        ionomer_to_carbon_ratio=0.57, catalyst_platinum_weight_percent=0.2,
-        thermal_conductivity=0.18, pore_diameter=140e-9,
-        absolute_permeability=1e-13, contact_angle=100.0,
-        two_phase_transport_model=liq, volume_heat_capacity=1.56e6,
+        platinum_loading=p['an_cl']['platinum_loading'], ionomer=ionomer,
+        thickness=p['an_cl']['thickness'], ionomer_to_carbon_ratio=p['an_cl']['ionomer_to_carbon_ratio'],
+        catalyst_platinum_weight_percent=p['an_cl']['catalyst_platinum_weight_percent'],
+        thermal_conductivity=p['an_cl']['thermal_conductivity'], pore_diameter=p['an_cl']['pore_diameter'],
+        absolute_permeability=p['an_cl']['absolute_permeability'], contact_angle=p['an_cl']['contact_angle'],
+        two_phase_transport_model=liq, volume_heat_capacity=p['an_cl']['volume_heat_capacity'],
     )
 
-    cell.membrane = PFSA(ionomer=nafion, dry_thickness=15e-6)
+    cell.membrane = PFSA(ionomer=ionomer, dry_thickness=p['membrane']['dry_thickness'])
 
     return cell
+
+
+def build_default_cell() -> FuelCell:
+    """Assemble the reference cell used in ``examples/plot_01_polarization_curve.py``.
+
+    Returns a fresh :class:`~marapendi.cell.fuelcell.FuelCell` instance built
+    from :func:`default_cell_params`'s defaults, i.e. ``build_cell_from_params()``
+    with no overrides. Callers that want a different cell should use
+    :func:`build_cell_from_params` (from MATLAB: copy and edit
+    ``cell_params_template.m``) rather than editing this function in place.
+    """
+    return build_cell_from_params()
 
 
 def _get_model(n_memb_mesh: int) -> TransientModel:
@@ -225,7 +318,8 @@ def cell_diagnostics(cell: FuelCell, n_memb_mesh: int, t: float, x: list, ca_flo
     temperature — mirrors :meth:`~marapendi.models.base.transient.TransientModel.evaluate`,
     plus the outlet ``GasFlowState``s (``ca_outlet_*``/``an_outlet_*`` keys,
     see :data:`GASFLOW_FIELDS`) computed by
-    :func:`~marapendi.simulation.state.set_gas_flow_states`'s mass balance."""
+    :meth:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel.set_gas_flow_states`'s
+    mass balance."""
     model = _get_model(n_memb_mesh)
     cond = _cell_conditions_from_flows(ca_flow, an_flow, current_density, cell_temperature)
     x_arr = np.asarray(x, dtype=float).reshape(-1, 1)

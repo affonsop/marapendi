@@ -48,11 +48,17 @@ below floating-point display precision at the operating points tested).
   - `n_memb_mesh` — membrane finite-volume node count. Changing it requires
     re-running `build_transient_block` (which rebuilds the buses and the
     Bus Selector/Demux/Bus Creator wiring to match), not just editing the mask.
-  - `cellBuilderExpr` — dotted path to a zero-argument Python function
-    returning a `FuelCell`. Defaults to
+  - `cellBuilderExpr` — either a dotted path to a zero-argument Python
+    function returning a `FuelCell` (default:
     `marapendi.interop.simulink_bridge.build_default_cell`, the same cell
-    assembled in `examples/plot_01_polarization_curve.py`. Point this at
-    your own builder function to simulate a different cell.
+    assembled in `examples/plot_01_polarization_curve.py`), or the name of a
+    MATLAB function (no `.`, so `call_python_builder.m` can tell the two
+    apart) returning a struct of cell parameters. For the latter, copy
+    `cell_params_template.m` (e.g. to `my_cell_params.m`), edit the values,
+    and set `cellBuilderExpr` to `'my_cell_params'` — no Python editing
+    needed to change geometry/material parameters. See
+    `default_cell_params()` in `simulink_bridge.py` for the full field list;
+    the two are kept in sync by hand.
   - `x0` — initial ODE state. `build_transient_block.m` computes one for a
     nominal operating point automatically; override it for a different
     starting condition using
@@ -120,7 +126,11 @@ numbers below.
 - `transient_pemfc_sfun.m` — the Level-2 MATLAB S-Function core.
 - `transient_pemfc_registry.m` — id -> `py.object`/cache store.
 - `vec2flowdict.m`, `diagdict2flowvec.m`, `diagdict2scalarvec.m`,
-  `pylist2mat.m`, `call_python_builder.m` — marshalling helpers.
+  `pylist2mat.m`, `matstruct2pydict.m`, `call_python_builder.m` — marshalling
+  helpers.
+- `cell_params_template.m` — struct-shaped mirror of `default_cell_params()`
+  in `simulink_bridge.py`; copy and edit to define a cell entirely from
+  MATLAB, without touching Python. See `cellBuilderExpr` below.
 - `build_transient_block.m` — programmatic model builder; running it
   produces `TransientPEMFC.slx`.
 - `build_example_transient_pemfc.m` — builds `example_transient_pemfc.slx`,
@@ -208,7 +218,8 @@ in `src/marapendi/models/thermal.py`.
 - **Cell parameters are not a runtime signal.** `FuelCell` geometry/materials
   are built once (`Start` callback) from `cellBuilderExpr` and reused for
   every step, matching how `TransientModel` treats `cell` in Python. To sweep
-  cell parameters, point `cellBuilderExpr` at a different builder function
+  cell parameters, point `cellBuilderExpr` at a different builder — either a
+  MATLAB struct function (copy `cell_params_template.m`) or a Python one —
   and rebuild.
 
 ## Validating a change

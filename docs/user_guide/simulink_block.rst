@@ -64,7 +64,7 @@ kept in an id-indexed registry instead, ``transient_pemfc_registry.m``).
 This relies on :class:`~marapendi.models.base.transient.TransientModel`
 populating ``state.ca.outlet_gas_flow_state``/``state.an.outlet_gas_flow_state``
 (and the same for ``an``) and ``state.heat_release`` automatically — see
-:func:`~marapendi.simulation.state.set_gas_flow_states` and
+:meth:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel.set_gas_flow_states` and
 :class:`~marapendi.simulation.state.GasFlowState` for how that mass balance
 works, and ``tests/test_gas_flow_state.py`` for how it's validated
 (Faraday's law, water stoichiometry, N2 inertness) directly in Python.
@@ -148,11 +148,18 @@ Block interface
   - ``n_memb_mesh`` — membrane finite-volume node count. Changing it requires
     re-running ``build_transient_block`` (which rebuilds the buses and the
     Bus Selector/Demux/Bus Creator wiring to match), not just editing the mask.
-  - ``cellBuilderExpr`` — dotted path to a zero-argument Python function
-    returning a :class:`~marapendi.cell.fuelcell.FuelCell`. Defaults to
-    ``marapendi.interop.simulink_bridge.build_default_cell``, the same cell
-    assembled in :doc:`../auto_examples/plot_01_polarization_curve`. Point
-    this at your own builder function to simulate a different cell.
+  - ``cellBuilderExpr`` — either a dotted path to a zero-argument Python
+    function returning a :class:`~marapendi.cell.fuelcell.FuelCell`
+    (default: ``marapendi.interop.simulink_bridge.build_default_cell``, the
+    same cell assembled in :doc:`../auto_examples/plot_01_polarization_curve`),
+    or the name of a MATLAB function (no ``.``) returning a struct of cell
+    parameters — no Python editing required to change geometry/materials.
+    For the latter, copy ``matlab/transient_pemfc/cell_params_template.m``
+    (e.g. to ``my_cell_params.m``), edit the values, and set
+    ``cellBuilderExpr`` to ``'my_cell_params'``. The struct fields/defaults
+    mirror :func:`~marapendi.interop.simulink_bridge.default_cell_params`,
+    and ``call_python_builder.m`` dispatches on whether the string contains
+    a ``.`` to tell the two forms apart.
   - ``x0`` — initial ODE state. ``build_transient_block.m`` computes one for a
     nominal operating point automatically; override it for a different
     starting condition using

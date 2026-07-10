@@ -164,7 +164,9 @@ function build_transient_block(pythonExe)
         'in the marapendi Python package; this block always calls the live model.']);
 
     addMaskParam(mask, 'n_memb_mesh', 'edit', 'Membrane mesh nodes (n_memb_mesh)', num2str(n_memb_mesh));
-    addMaskParam(mask, 'cellBuilderExpr', 'edit', 'Python cell-builder function (dotted path)', ['''' cellBuilderExpr '''']);
+    addMaskParam(mask, 'cellBuilderExpr', 'edit', ...
+        'Cell builder: dotted Python path, or MATLAB struct function name (see cell_params_template.m)', ...
+        ['''' cellBuilderExpr '''']);
     addMaskParam(mask, 'x0', 'edit', 'Initial ODE state x0 (1 x n_memb_mesh+1)', mat2str(x0));
 
     set_param(modelName, 'InitFcn', sprintf('pyenv_setup(); create_buses(%d);', n_memb_mesh));
