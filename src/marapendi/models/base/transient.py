@@ -211,7 +211,7 @@ class TransientModel:
             cell, state, n
         )
 
-        dxdt = np.concatenate([[float(dTdt) / self.norm_factors[0]], np.asarray(dlambdadt / self.norm_factors[1]).ravel()])
+        dxdt = np.concatenate([[np.asarray(dTdt).item() / self.norm_factors[0]], np.asarray(dlambdadt / self.norm_factors[1]).ravel()])
 
         if return_state:
             # Matches what evaluate() adds on top of _eval_state for the same point.

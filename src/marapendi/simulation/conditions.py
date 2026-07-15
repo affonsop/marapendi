@@ -220,7 +220,10 @@ class DynamicSideConditions:
             rh = _g(self.inlet_relative_humidity)
         elif self.dew_point_temperature is not None:
             T_dew = _g(self.dew_point_temperature)
-            rh = float(_psat(T_dew) / _psat(T_gas))
+            # Keep as an array like the other fields from _g(); with numpy
+            # >=2.5, float() on a shape-(1,) array raises TypeError, and a
+            # scalar cast here would also silently break multi-point t.
+            rh = _psat(T_dew) / _psat(T_gas)
         else:
             rh = 0.
 
