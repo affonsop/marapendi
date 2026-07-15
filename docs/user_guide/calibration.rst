@@ -121,7 +121,7 @@ Cell creator
 ------------
 
 The ``cell_creator`` callable receives the full parameter dict (known + unknown)
-and returns a fresh :class:`~marapendi.cell.fuelcell.FuelCell`.  The optimiser
+and returns a fresh :class:`~marapendi.components.cell.fuelcell.FuelCell`.  The optimiser
 calls it at each function evaluation.
 
 .. code-block:: python

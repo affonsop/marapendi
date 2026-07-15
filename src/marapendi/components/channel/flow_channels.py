@@ -10,7 +10,7 @@ from .gas_transport_resistance import ChannelGasResistanceModel  # noqa: F401
 class FlowChannel(PorousLayer):
     """Flow channel geometry and state of a single fuel-cell side.
 
-    Inherits porous-layer geometry from :class:`~marapendi.porous_layers.PorousLayer`
+    Inherits porous-layer geometry from :class:`~marapendi.components.porous_layers.porous_layers.PorousLayer`
     so that it can be used in the same gas-transport pipeline.
 
     Attributes

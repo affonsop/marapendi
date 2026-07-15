@@ -3,8 +3,8 @@
 Implicit vs explicit steady-state model
 *******************************
 
-Both :class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel`
-and :class:`~marapendi.cell.implicit_steady_state.ImplicitSteadyStateModel`
+Both :class:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel`
+and :class:`~marapendi.models.base.implicit_steady_state.ImplicitSteadyStateModel`
 compute a steady-state polarization curve from the same cell and conditions,
 but differ in how MEA temperature is determined:
 

@@ -16,7 +16,7 @@ by overriding only ``solve`` and leaving everything else unchanged.
 Pattern 1 — custom ionomer isotherm
 --------------------------------------
 
-Override :meth:`~marapendi.membrane.pem.PFSAIonomer.vapor_equilibrium_water_content`
+Override :meth:`~marapendi.components.membrane.pem.PFSAIonomer.vapor_equilibrium_water_content`
 to supply a different λ(RH) relationship, for example a temperature-dependent
 polynomial fit:
 
@@ -44,7 +44,7 @@ polynomial fit:
 .. note::
 
    The base class
-   :meth:`~marapendi.membrane.pem.PFSAIonomer.fit_rh_piecewise_linear` calls
+   :meth:`~marapendi.components.membrane.pem.PFSAIonomer.fit_rh_piecewise_linear` calls
    ``vapor_equilibrium_water_content`` to fit the PWL approximation used by
    :class:`~marapendi.models.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise`.
    If you subclass ``vapor_equilibrium_water_content``, the PWL fit is

@@ -7,24 +7,24 @@ both. Every sub-model is an ordinary Python class, so the framework is meant
 to be subclassed rather than configured — see :doc:`user_guide/extending_models`
 for how to override a single correlation or swap a whole sub-model.
 
-``components`` (:mod:`marapendi.cell`, :mod:`marapendi.porous_layers`, :mod:`marapendi.membrane`, :mod:`marapendi.channel`, :mod:`marapendi.electrolyte`)
+``components`` (:mod:`marapendi.components.cell`, :mod:`marapendi.components.porous_layers`, :mod:`marapendi.components.membrane`, :mod:`marapendi.components.channel`, :mod:`marapendi.components.electrolyte`)
     Dataclasses holding the static, measurable properties of a cell's
     components (geometry, porosity, permeability, ionomer parameters,
     catalyst loading, ...), together with the correlation models that turn
     these properties into transport and electrochemical quantities. A
-    :class:`~marapendi.cell.fuelcell.FuelCell` assembles a cathode and anode
-    :class:`~marapendi.cell.fuelcell.FuelCellSide` (each with a catalyst layer,
+    :class:`~marapendi.components.cell.fuelcell.FuelCell` assembles a cathode and anode
+    :class:`~marapendi.components.cell.fuelcell.FuelCellSide` (each with a catalyst layer,
     gas diffusion layer, optional microporous layer and flow channel) and a
-    :class:`~marapendi.membrane.membrane_base.Membrane`.
+    :class:`~marapendi.components.membrane.membrane_base.Membrane`.
 
 ``state`` (:mod:`marapendi.simulation.state`)
-    Dataclasses mirroring the shape of :class:`~marapendi.cell.fuelcell.FuelCell`
+    Dataclasses mirroring the shape of :class:`~marapendi.components.cell.fuelcell.FuelCell`
     but holding the *physical variables* (temperature, pressure, gas composition,
     saturation, water content, fluxes, ...) at one operating point. State objects
     are pure data: no physics lives here.
 
 ``models`` (:mod:`marapendi.models`)
-    Orchestration classes that combine a :class:`~marapendi.cell.fuelcell.FuelCell`
+    Orchestration classes that combine a :class:`~marapendi.components.cell.fuelcell.FuelCell`
     and a :class:`~marapendi.simulation.state.CellState` to compute the cell's
     behaviour. ``models.base`` holds the top-level solvers —
     :class:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel` and

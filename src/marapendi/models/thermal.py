@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..cell.cell import Cell, CellSide
+from ..components.cell.cell import Cell, CellSide
 from .thermo.water import water_molar_volume, water_saturation_pressure
 from .thermo.electrochemistry import h2_lhv
 from .thermo.constants import FARADAY_CONSTANT
@@ -74,7 +74,7 @@ class ThermalModel:
 
         Also recomputes ``RT``, ``breakthrough_pressure``, and
         ``saturation_flow_resistance`` on the CL layer states at the MEA
-        temperature via :meth:`~marapendi.porous_layers.PorousLayer.update_state_at_temperature`.
+        temperature via :meth:`~marapendi.components.porous_layers.porous_layers.PorousLayer.update_state_at_temperature`.
         """
         state.mea_temperature = mea_temperature
         state.mea_temperature_increase = mea_temperature - state.temperature

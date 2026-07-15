@@ -23,7 +23,7 @@ calibration would use larger values.
 # ------------
 #
 # ``cell_creator`` receives the current parameter dict and returns a
-# :class:`~marapendi.cell.fuelcell.FuelCell`.  Six parameters spanning
+# :class:`~marapendi.components.cell.fuelcell.FuelCell`.  Six parameters spanning
 # kinetics, transport, and membrane properties are exposed for estimation;
 # everything else is held fixed.
 
@@ -167,7 +167,7 @@ conditions_df = pd.DataFrame({
 # -----------------------
 #
 # Build a cell at a chosen "true" parameter set, run it through
-# :class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel` at
+# :class:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel` at
 # the current densities in ``_I`` for each case, and add 10 % relative random
 # noise to voltage and HFR to emulate test-bench measurement scatter.
 

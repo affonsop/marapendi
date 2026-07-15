@@ -17,11 +17,11 @@ high-frequency resistance, and individual loss contributions.
 # Cell assembly
 # =============
 #
-# The cell component details is defined in :class:`~marapendi.cell.fuelcell.FuelCell`. 
-# It contains two :class:`~marapendi.cell.cell.CellSide` objects and a 
-# :class:`~marapendi.membrane.pem.PFSA` membrane. 
-# When :class:`~marapendi.cell.fuelcell.FuelCell` is initialized, the cell :attr:`~marapendi.cell.fuelcell.FuelCell.area`
-# and the lumped specific :attr:`~marapendi.cell.fuelcell.FuelCell.electric_resistance` are defined. 
+# The cell component details is defined in :class:`~marapendi.components.cell.fuelcell.FuelCell`. 
+# It contains two :class:`~marapendi.components.cell.cell.CellSide` objects and a 
+# :class:`~marapendi.components.membrane.pem.PFSA` membrane. 
+# When :class:`~marapendi.components.cell.fuelcell.FuelCell` is initialized, the cell :attr:`~marapendi.components.cell.fuelcell.FuelCell.area`
+# and the lumped specific :attr:`~marapendi.components.cell.fuelcell.FuelCell.electric_resistance` are defined. 
 #
 # .. attention::
 #
@@ -39,11 +39,11 @@ cell = mrpd.FuelCell(
 
 # %%
 # The anode and cathode each own a catalyst layer, a gas diffusion layer, and a
-# flow channel. Those can be defined after the :class:`~marapendi.cell.fuelcell.FuelCell` creation. 
+# flow channel. Those can be defined after the :class:`~marapendi.components.cell.fuelcell.FuelCell` creation. 
 # 
-# Each :class:`~marapendi.porous_layers.porous_layers.PorousLayer` requires a :attr:`~marapendi.porous_layers.porous_layers.PorousLayer.two_phase_transport_model`, defining a capillary
+# Each :class:`~marapendi.components.porous_layers.porous_layers.PorousLayer` requires a :attr:`~marapendi.components.porous_layers.porous_layers.PorousLayer.two_phase_transport_model`, defining a capillary
 # pressure saturation relation, and methods to calculate liquid water transport. 
-# Here we use the default :class:`~marapendi.porous_layers.darcy.DarcyTransportModel`.
+# Here we use the default :class:`~marapendi.models.darcy.DarcyTransportModel`.
 
 liq = mrpd.DarcyTransportModel(J_function_exponent=0.4)
 
@@ -52,7 +52,7 @@ liq = mrpd.DarcyTransportModel(J_function_exponent=0.4)
 # Flow channels
 # ------------- 
 #
-# :class:`~marapendi.channel.flow_channels.FlowChannel` describes the 
+# :class:`~marapendi.components.channel.flow_channels.FlowChannel` describes the 
 # geometry of the flowfield, with ``width``, ``height``, and ``length`` for 
 # one channel and ``n_parallel`` the number of parallel channels. 
 # ``reactant`` identifies which gas species is consumed (O2 at the cathode,
@@ -70,7 +70,7 @@ for side in cell.sides:
 # %%
 # .. tip::
 # 
-#   The :attr:`~marapendi.cell.fuelcell.FuelCell.sides` property iterates over
+#   The :attr:`~marapendi.components.cell.fuelcell.FuelCell.sides` property iterates over
 #   ``cell.ca`` and ``cell.an``, which is convenient when both sides share the
 #   same component geometry.
 
@@ -78,8 +78,8 @@ for side in cell.sides:
 # Gas diffusion layers
 # --------------------
 #
-# :class:`~marapendi.porous_layers.porous_layers.GasDiffusionLayer` is a
-# :class:`~marapendi.porous_layers.porous_layers.PorousLayer` with defaults
+# :class:`~marapendi.components.porous_layers.porous_layers.GasDiffusionLayer` is a
+# :class:`~marapendi.components.porous_layers.porous_layers.PorousLayer` with defaults
 # suitable for a carbon-fibre paper or woven GDL.
 for side in cell.sides:
     side.gdl = mrpd.GasDiffusionLayer(
@@ -109,8 +109,8 @@ for side in cell.sides:
 # %%
 # .. attention::
 #
-#    A :class:`~marapendi.porous_layers.porous_layers.MicroPorousLayer` can also be defined using the 
-#    :attr:`~marapendi.cell.cell.CellSide.mpl` attribute of :class:`~marapendi.cell.cell.CellSide.
+#    A :class:`~marapendi.components.porous_layers.porous_layers.MicroPorousLayer` can also be defined using the 
+#    :attr:`~marapendi.components.cell.cell.CellSide.mpl` attribute of :class:`~marapendi.components.cell.cell.CellSide.
 
 
 # %%
@@ -127,13 +127,13 @@ for side in cell.sides:
 # Cathode catalyst layer
 # ----------------------
 #
-# :class:`~marapendi.porous_layers.catalyst_layers.PtCCatalystLayer` describes
+# :class:`~marapendi.components.porous_layers.catalyst_layers.PtCCatalystLayer` describes
 # a carbon-supported platinum catalyst layer where ORR or HER take place.
 #
 # The electrochemical kinetics are encapsulated in
 # :class:`~marapendi.thermo.electrochemistry.ElectrochemicalReaction`.
 # 
-# :class:`~marapendi.membrane.pem.PFSAIonomer` characterises the ionomer material 
+# :class:`~marapendi.components.membrane.pem.PFSAIonomer` characterises the ionomer material 
 # used in the catalyst layers and/or the membrane.
 # Here we model Aquivion® (EW = 790 g/mol), a short-side-chain PFSA. For simplicity
 # we consider the same ionomer is used for the membrane and the CL.  
@@ -211,7 +211,7 @@ cell.an.cl = mrpd.PtCCatalystLayer(
 # Membrane
 # --------
 #
-# :class:`~marapendi.membrane.pem.PFSA` membrane combines an ionomer material
+# :class:`~marapendi.components.membrane.pem.PFSA` membrane combines an ionomer material
 # (already defined above) with the membrane geometry. 
 
 cell.membrane = mrpd.PFSA(ionomer=nafion, dry_thickness=15e-6)
@@ -264,7 +264,7 @@ conditions = mrpd.CellConditions(
 # Model definition and solution
 # ============================= 
 # 
-# Here we define an :class:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel` using default voltage, thermal, water balance and
+# Here we define an :class:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel` using default voltage, thermal, water balance and
 # gas transport submodels. Those use default implementations available in `marapendi`, but 
 # submodels can be easily changed by creating subclases derived from the original models. 
 
@@ -276,9 +276,9 @@ model = mrpd.ExplicitSteadyStateModel(
     )
 
 # %%
-# We need to initialize a state :class:`~marapendi.cell.state.CellState` object,
+# We need to initialize a state :class:`~marapendi.simulation.state.CellState` object,
 # which is used to solve the `model`. All the results are stored in the 
-# :class:`~marapendi.cell.state.CellState` returned by :attr:`marapendi`.
+# :class:`~marapendi.simulation.state.CellState` returned by :attr:`marapendi`.
 
 state = model.set_initial_conditions(cell, conditions)
 state = model.solve(cell, conditions, state)
@@ -289,8 +289,8 @@ state = model.solve(cell, conditions, state)
 # 
 # Polarization curve and HFR
 # --------------------------
-# We can verify the results for the polarization curve simulation by accessing :attr:`~marapendi.cell.state.CellState.cell_voltage` 
-# and :attr:`~marapendi.cell.state.CellState.hfr` attributes of :class:`~marapendi.cell.state.CellState`.  
+# We can verify the results for the polarization curve simulation by accessing :attr:`~marapendi.simulation.state.CellState.cell_voltage` 
+# and :attr:`~marapendi.simulation.state.CellState.hfr` attributes of :class:`~marapendi.simulation.state.CellState`.  
 
 fig, ax = plt.subplots(1, 1, figsize=(4,3))
 ax.plot(state.current_density * 1e-4, state.cell_voltage, "-", color="C0", label='$V_{cell}$')
@@ -314,7 +314,7 @@ fig.tight_layout()
 # %%
 # Internal variables
 # ------------------
-# Accessing different internal variables is also straightforward with the :class:`~marapendi.cell.state.CellState` object. 
+# Accessing different internal variables is also straightforward with the :class:`~marapendi.simulation.state.CellState` object. 
 
 fig, ax = plt.subplots(1, 1, figsize=(4,3))
 i_x = (2 * mrpd.FARADAY_CONSTANT) * state.membrane.h2_permeation_flux

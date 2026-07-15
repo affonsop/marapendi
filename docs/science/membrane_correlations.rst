@@ -18,7 +18,7 @@ Proton conductivity
 
 Membrane proton conductivity uses an Arrhenius temperature correction on top
 of a water-content-dependent term
-(:meth:`~marapendi.membrane.pem.PFSAIonomer.proton_conductivity`), giving the
+(:meth:`~marapendi.components.membrane.pem.PFSAIonomer.proton_conductivity`), giving the
 :math:`\sigma_\mathrm{ion}(\lambda, T)` used both for the through-plane
 membrane resistance and for the catalyst-layer ionomer resistance in
 :doc:`catalyst_layer`. The same functional form is used for the membrane and
@@ -31,7 +31,7 @@ the catalyst-layer ionomer film, following Kusoglu and Weber (2017):
         \left(\frac{1}{T_\mathrm{ref}} - \frac{1}{T}\right)\right],
 
 where :math:`f_v` is the water volume fraction in the ionomer
-(:meth:`~marapendi.membrane.ionomer_base.Ionomer.water_vol_fraction`) and
+(:meth:`~marapendi.components.membrane.ionomer_base.Ionomer.water_vol_fraction`) and
 :math:`f_0` the percolation threshold below which the ionomer does not
 conduct. Kusoglu and Weber report :math:`n = 1.0` for low-EW membranes and
 :math:`n = 1.5` for high-EW membranes such as Nafion (1100 EW), with an
@@ -44,16 +44,16 @@ Electroosmotic drag coefficient
 -----------------------------------
 
 The electroosmotic drag coefficient
-(:meth:`~marapendi.membrane.pem.PFSAIonomer.calculate_electroosmotic_drag_coefficient`,
+(:meth:`~marapendi.components.membrane.pem.PFSAIonomer.calculate_electroosmotic_drag_coefficient`,
 overriding the neutral, water-content-independent default of unity in
-:meth:`~marapendi.membrane.ionomer_base.Ionomer.calculate_electroosmotic_drag_coefficient`)
+:meth:`~marapendi.components.membrane.ionomer_base.Ionomer.calculate_electroosmotic_drag_coefficient`)
 is taken linear in both temperature and local water content:
 
 .. math::
 
     \xi_{EOD}(\lambda, T) = \frac{0.02\,T - 3.86}{22.5}\,\lambda.
 
-:meth:`~marapendi.membrane.ionomer_base.Ionomer.calculate_electroosmotic_drag_speed`
+:meth:`~marapendi.components.membrane.ionomer_base.Ionomer.calculate_electroosmotic_drag_speed`
 evaluates :math:`\xi_{EOD}` at :math:`\lambda = 1` to convert a current
 density into an electroosmotic drag speed,
 
@@ -70,8 +70,8 @@ Water diffusivity
 
 The adsorbed-water diffusivity in the ionomer follows an Arrhenius
 correction on a reference value defined at
-:attr:`~marapendi.membrane.pem.PFSAIonomer.reference_water_diffusivity_temperature`
-(:meth:`~marapendi.membrane.ionomer_base.Ionomer.calculate_water_diffusivity`):
+:attr:`~marapendi.components.membrane.pem.PFSAIonomer.reference_water_diffusivity_temperature`
+(:meth:`~marapendi.components.membrane.ionomer_base.Ionomer.calculate_water_diffusivity`):
 
 .. math::
 
@@ -80,9 +80,9 @@ correction on a reference value defined at
         \left(\frac{1}{T_\mathrm{ref}} - \frac{1}{T}\right)\right],
 
 with :math:`D_{w,\mathrm{ref}}` =
-:attr:`~marapendi.membrane.pem.PFSAIonomer.reference_water_diffusivity` and
+:attr:`~marapendi.components.membrane.pem.PFSAIonomer.reference_water_diffusivity` and
 activation energy
-:attr:`~marapendi.membrane.pem.PFSAIonomer.water_diffusivity_activation_energy`.
+:attr:`~marapendi.components.membrane.pem.PFSAIonomer.water_diffusivity_activation_energy`.
 This enters the non-dimensional Péclet and Biot numbers
 (:meth:`~marapendi.models.water_balance.membrane.MembraneWaterBalanceModel.calculate_peclet_number`,
 :meth:`~marapendi.models.water_balance.membrane.MembraneWaterBalanceModel.calculate_biot_number`)
@@ -92,7 +92,7 @@ Water absorption/desorption rate constant
 -------------------------------------------
 
 The interfacial water absorption/desorption rate constant
-(:meth:`~marapendi.membrane.ionomer_base.Ionomer.calculate_water_absorption_coefficient`)
+(:meth:`~marapendi.components.membrane.ionomer_base.Ionomer.calculate_water_absorption_coefficient`)
 follows the same Arrhenius form:
 
 .. math::
@@ -102,9 +102,9 @@ follows the same Arrhenius form:
         \left(\frac{1}{T_\mathrm{ref}} - \frac{1}{T}\right)\right],
 
 with :math:`k_{abs,\mathrm{ref}}` =
-:attr:`~marapendi.membrane.pem.PFSAIonomer.reference_water_absorption_coefficient`
+:attr:`~marapendi.components.membrane.pem.PFSAIonomer.reference_water_absorption_coefficient`
 and
-:attr:`~marapendi.membrane.pem.PFSAIonomer.water_absorption_activation_energy`,
+:attr:`~marapendi.components.membrane.pem.PFSAIonomer.water_absorption_activation_energy`,
 setting the Biot number that couples the membrane's boundary water content
 to its equilibrium value at each catalyst-layer interface.
 
@@ -112,7 +112,7 @@ Hydrogen permeability
 -----------------------------------
 
 Following Goshtasbi et al. (2020), H\ :sub:`2` permeability through the
-ionomer (:meth:`~marapendi.membrane.pem.PFSAIonomer.h2_permeability`) sums a
+ionomer (:meth:`~marapendi.components.membrane.pem.PFSAIonomer.h2_permeability`) sums a
 dry and a water-volume-fraction-weighted wet term, each with its own
 Arrhenius activation energy:
 
@@ -123,7 +123,7 @@ Arrhenius activation energy:
         \quad [\mathrm{kmol/m/s/Pa}],
 
 where :math:`f_v` is the water volume fraction
-(:meth:`~marapendi.membrane.ionomer_base.Ionomer.water_vol_fraction`). This
+(:meth:`~marapendi.components.membrane.ionomer_base.Ionomer.water_vol_fraction`). This
 sets the crossover current density subtracted from the Faradaic current in
 the cell-voltage model.
 
@@ -131,7 +131,7 @@ Oxygen permeability
 -----------------------------------
 
 The membrane-scale O\ :sub:`2` permeability
-(:meth:`~marapendi.membrane.pem.PFSAIonomer.o2_permeability`) follows the
+(:meth:`~marapendi.components.membrane.pem.PFSAIonomer.o2_permeability`) follows the
 same functional form, with its own fitted coefficients:
 
 .. math::
@@ -143,7 +143,7 @@ same functional form, with its own fitted coefficients:
 A separate, catalyst-layer-specific O\ :sub:`2` diffusivity through the thin
 ionomer film coating the carbon/Pt agglomerates — used for the ionomer-film
 transport resistance in :doc:`catalyst_layer` — is given by
-(:meth:`~marapendi.membrane.pem.PFSAIonomer.o2_film_diffusion_coefficient`):
+(:meth:`~marapendi.components.membrane.pem.PFSAIonomer.o2_film_diffusion_coefficient`):
 
 .. math::
 
@@ -151,16 +151,16 @@ transport resistance in :doc:`catalyst_layer` — is given by
         \exp\!\left[\frac{E_{act,D_{O_2}}}{R}
         \left(\frac{1}{353.15} - \frac{1}{T}\right)\right],
 
-with :attr:`~marapendi.membrane.pem.PFSAIonomer.hydrated_o2_diffusion`,
-:attr:`~marapendi.membrane.pem.PFSAIonomer.o2_diffusion_exponent` and
-:attr:`~marapendi.membrane.pem.PFSAIonomer.o2_diffusion_activation_energy`.
+with :attr:`~marapendi.components.membrane.pem.PFSAIonomer.hydrated_o2_diffusion`,
+:attr:`~marapendi.components.membrane.pem.PFSAIonomer.o2_diffusion_exponent` and
+:attr:`~marapendi.components.membrane.pem.PFSAIonomer.o2_diffusion_activation_energy`.
 
 Equilibrium sorption isotherm
 -----------------------------------
 
 The reference equilibrium sorption isotherm :math:`\lambda_\mathrm{eq}(\mathrm{RH})`
 is the cubic polynomial of Springer et al. (1991)
-(:meth:`~marapendi.membrane.pem.PFSAIonomer.vapor_equilibrium_water_content`),
+(:meth:`~marapendi.components.membrane.pem.PFSAIonomer.vapor_equilibrium_water_content`),
 with the temperature-dependent correction of Goshtasbi et al. (2019):
 
 .. math::
@@ -169,7 +169,7 @@ with the temperature-dependent correction of Goshtasbi et al. (2019):
         + a_2\,\mathrm{RH} + a_3,
 
 with fitted coefficients :math:`[a_0, a_1, a_2, a_3]` stored in
-:attr:`~marapendi.membrane.pem.PFSAIonomer.vapor_equilibrium_polynomial`
+:attr:`~marapendi.components.membrane.pem.PFSAIonomer.vapor_equilibrium_polynomial`
 (default ``[36, -39.85, 17.18, 0.043]``, from Springer et al. 1991). This
 cubic form is temperature-independent; it is also re-fit to a
 piecewise-linear approximation at construction time — see `Piecewise-linear
@@ -177,14 +177,14 @@ fit`_ below.
 
 For a membrane face in contact with liquid water rather than vapor, the
 equilibrium (Schroeder's paradox) water content
-(:meth:`~marapendi.membrane.pem.PFSAIonomer.liquid_equilibrium_water_content`)
+(:meth:`~marapendi.components.membrane.pem.PFSAIonomer.liquid_equilibrium_water_content`)
 uses the linear-in-temperature fit of Goshtasbi et al. (2020):
 
 .. math::
 
     \lambda_\mathrm{liq}(T) = 9.22 + 0.181\,(T - 273.15),\quad T\ \mathrm{in\ K},
 
-used e.g. by :meth:`~marapendi.membrane.pem.PFSA.proton_resistance` to blend
+used e.g. by :meth:`~marapendi.components.membrane.pem.PFSA.proton_resistance` to blend
 liquid- and vapor-equilibrated conductivities by local water saturation.
 
 Piecewise-linear fit
@@ -193,7 +193,7 @@ Piecewise-linear fit
 :class:`~marapendi.models.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise`
 (the default water-balance model) replaces this cubic isotherm with a
 piecewise-*linear* fit
-(:meth:`~marapendi.membrane.pem.PFSAIonomer.fit_rh_piecewise_linear`), selecting
+(:meth:`~marapendi.components.membrane.pem.PFSAIonomer.fit_rh_piecewise_linear`), selecting
 the active linear segment self-consistently — iterating down from the highest
 segment until the equilibrium water content falls inside that segment's
 validity range, guaranteed to converge in at most ``n_segments`` iterations.

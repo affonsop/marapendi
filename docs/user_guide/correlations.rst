@@ -18,7 +18,7 @@ literature data or your own measurements before setting up a simulation.
 Membrane conductivity vs water content
 ---------------------------------------
 
-:meth:`~marapendi.membrane.pem.PFSAIonomer.proton_conductivity` returns the
+:meth:`~marapendi.components.membrane.pem.PFSAIonomer.proton_conductivity` returns the
 proton conductivity in S/m as a function of the local water content and
 temperature:
 
@@ -64,7 +64,7 @@ in the empirical fit):
 Equilibrium isotherm λ(RH)
 ---------------------------
 
-:meth:`~marapendi.membrane.pem.PFSAIonomer.vapor_equilibrium_water_content`
+:meth:`~marapendi.components.membrane.pem.PFSAIonomer.vapor_equilibrium_water_content`
 evaluates the cubic polynomial from Springer et al. (1991):
 
 .. code-block:: python
@@ -116,13 +116,13 @@ polarization curve):
 Membrane through-plane proton resistance
 -----------------------------------------
 
-:meth:`~marapendi.membrane.pem.PFSA.proton_resistance` integrates the local
+:meth:`~marapendi.components.membrane.pem.PFSA.proton_resistance` integrates the local
 conductivity over a through-plane water-content profile read from a
 :class:`~marapendi.simulation.state.MembraneState`-like object (as populated
 by :doc:`/science/water_balance` during a solve). To verify the underlying
 conductivity correlation in isolation for a *uniform* water content, it is
 simpler to call
-:meth:`~marapendi.membrane.pem.PFSAIonomer.proton_conductivity` directly and
+:meth:`~marapendi.components.membrane.pem.PFSAIonomer.proton_conductivity` directly and
 divide the membrane thickness by it (see :doc:`/science/membrane_correlations`
 for the equation):
 
@@ -158,7 +158,7 @@ Capillary pressure vs saturation (GDL)
 :class:`~marapendi.models.darcy.DarcyTransportModel` relates capillary
 pressure and non-wetting (liquid water) saturation through a power-law
 J-function; the layer's breakthrough pressure
-(:attr:`~marapendi.porous_layers.porous_layers.PorousLayer.breakthrough_pressure`,
+(:attr:`~marapendi.components.porous_layers.porous_layers.PorousLayer.breakthrough_pressure`,
 derived from its geometry) sets the scale — see :doc:`/science/two_phase_flow`
 for the full derivation:
 

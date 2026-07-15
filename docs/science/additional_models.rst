@@ -8,9 +8,9 @@ for completeness.
 Anion-exchange membrane (AEM) correlations
 ------------------------------------------------
 
-:class:`~marapendi.membrane.aem.PAPIonomer` implements a poly(aryl
+:class:`~marapendi.components.membrane.aem.PAPIonomer` implements a poly(aryl
 piperidinium) (PAP-85) ionomer with an Arrhenius hydroxide conductivity
-(:meth:`~marapendi.membrane.aem.PAPIonomer.hydroxide_conductivity`):
+(:meth:`~marapendi.components.membrane.aem.PAPIonomer.hydroxide_conductivity`):
 
 .. math::
 
@@ -27,7 +27,7 @@ KOH electrolyte
 --------------------
 
 Aqueous KOH electrolyte density, ionic conductivity and surface tension
-(:mod:`marapendi.electrolyte.koh`) follow the correlations of Hodges et al.
+(:mod:`marapendi.components.electrolyte.koh`) follow the correlations of Hodges et al.
 (2023), parameterised by KOH molality and temperature.
 
 References

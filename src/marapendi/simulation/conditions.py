@@ -5,8 +5,8 @@ one side of the cell (cathode or anode).
 
 :class:`CellConditions` bundles ``current_density``, ``cell_temperature``, and
 one :class:`SideConditions` per side into a single object that is passed to
-:meth:`~marapendi.cell.ExplicitSteadyStateModel.set_initial_conditions` and
-:meth:`~marapendi.cell.ExplicitSteadyStateModel.solve`.
+:meth:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel.set_initial_conditions` and
+:meth:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel.solve`.
 
 :class:`OperatingConditions` is a backward-compatible alias for
 :class:`SideConditions`.  :class:`DynamicOperatingConditions` wraps
@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from ..electrolyte.electrolyte import ElectrolyteSolution
+from ..components.electrolyte.electrolyte import ElectrolyteSolution
 
 
 @dataclass
@@ -84,8 +84,8 @@ class CellConditions:
 
     Bundles the current density, stack temperature, and one
     :class:`SideConditions` per side into a single object for use with
-    :meth:`~marapendi.cell.ExplicitSteadyStateModel.set_initial_conditions`
-    and :meth:`~marapendi.cell.ExplicitSteadyStateModel.solve`.
+    :meth:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel.set_initial_conditions`
+    and :meth:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel.solve`.
 
     Attributes
     ----------

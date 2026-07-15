@@ -4,7 +4,7 @@ Cell components: assembly of layers into a fuel cell.
 A :class:`CellSide` groups the porous layers and flow channel of one
 electrode (anode or cathode). A :class:`Cell` combines a cathode
 :class:`CellSide`, an anode :class:`CellSide`, and a
-:class:`~marapendi.membrane.Membrane`.
+:class:`~marapendi.components.membrane.membrane_base.Membrane`.
 
 This module defines the dataclasses and the lists used to loop over their
 components. Orchestration of the calculations is left to

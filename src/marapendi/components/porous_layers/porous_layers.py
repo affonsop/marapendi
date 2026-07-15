@@ -3,13 +3,13 @@ Module providing classes to model porous layers in electrochemical cells.
 """
 from dataclasses import dataclass, field
 import numpy as np
-from ..models.thermo.constants import GAS_CONSTANT
+from ...models.thermo.constants import GAS_CONSTANT
 
-from ..models.thermo.gas import GasModel
-from ..simulation.state import GasState
-from ..models.diffusion import PorousGasDiffusionModel
-from ..models.darcy import DarcyTransportModel
-from ..models.thermo.water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight
+from ...models.thermo.gas import GasModel
+from ...simulation.state import GasState
+from ...models.diffusion import PorousGasDiffusionModel
+from ...models.darcy import DarcyTransportModel
+from ...models.thermo.water import water_kinematic_viscosity, water_surface_tension, water_molecular_weight
 
 @dataclass
 class PorousLayer():
@@ -20,7 +20,7 @@ class PorousLayer():
     Runtime temperature-dependent quantities (``RT``, ``breakthrough_pressure``,
     ``saturation_flow_resistance``) are computed by
     :meth:`update_state_at_temperature` and stored in the corresponding
-    :class:`~marapendi.cell.state.LayerState`.
+    :class:`~marapendi.simulation.state.LayerState`.
 
     Attributes
     ----------
@@ -111,9 +111,9 @@ class PorousLayer():
     def update_state_at_temperature(self, layer_state, temperature: float) -> None:
         """Write temperature-dependent capillary quantities into *layer_state*.
 
-        Called by :meth:`~marapendi.cell.explicit_steady_state.ExplicitSteadyStateModel.set_initial_state`
+        Called by :meth:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel.set_initial_conditions`
         for every layer at stack temperature, and by
-        :meth:`~marapendi.cell.thermal.ThermalModel.set_mea_temperature` for
+        :meth:`~marapendi.models.thermal.ThermalModel.set_mea_temperature` for
         catalyst layers at MEA temperature.  The component's own fields are
         not mutated.
 

@@ -1,10 +1,10 @@
 Cell
 ====
 
-:class:`~marapendi.cell.fuelcell.FuelCell` is the root of the component tree.
-It assembles a cathode and an anode :class:`~marapendi.cell.fuelcell.FuelCellSide`
+:class:`~marapendi.components.cell.fuelcell.FuelCell` is the root of the component tree.
+It assembles a cathode and an anode :class:`~marapendi.components.cell.fuelcell.FuelCellSide`
 (each owning a catalyst layer, GDL, optional MPL, and flow channel) and a
-:class:`~marapendi.membrane.membrane_base.Membrane`.  The cell object holds only
+:class:`~marapendi.components.membrane.membrane_base.Membrane`.  The cell object holds only
 geometry and material parameters — no physics.
 
 All physics are evaluated by a model object passed the cell at solve time::
@@ -14,18 +14,18 @@ All physics are evaluated by a model object passed the cell at solve time::
     state = model.solve(cell, conditions, state)
 
 The :class:`~marapendi.simulation.state.CellState` returned by ``solve`` mirrors the
-structure of :class:`~marapendi.cell.fuelcell.FuelCell` but holds runtime
+structure of :class:`~marapendi.components.cell.fuelcell.FuelCell` but holds runtime
 physical quantities (voltages, temperatures, transport resistances, water
 contents, saturation).
 
 FuelCell
 --------
 
-.. autoclass:: marapendi.cell.fuelcell.FuelCell
+.. autoclass:: marapendi.components.cell.fuelcell.FuelCell
    :members:
    :show-inheritance:
 
-.. autoclass:: marapendi.cell.fuelcell.FuelCellSide
+.. autoclass:: marapendi.components.cell.fuelcell.FuelCellSide
    :members:
    :show-inheritance:
 

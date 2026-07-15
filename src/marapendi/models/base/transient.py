@@ -225,9 +225,9 @@ class TransientModel:
 
         Runs the full physics pipeline (water balance, gas transport, voltage)
         once in vectorised form for all *n_t* time points and returns a
-        :class:`~marapendi.cell.state.CellState` whose array-valued fields
+        :class:`~marapendi.simulation.state.CellState` whose array-valued fields
         each have length *n_t* — matching the API of
-        :meth:`~marapendi.cell.ExplicitSteadyStateModel.solve`.
+        :meth:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel.solve`.
 
         Parameters
         ----------
@@ -356,7 +356,7 @@ class TransientModel:
             * ``sol.t`` — time points (s)
             * ``sol.y[0]`` — MEA temperature (K)
             * ``sol.y[1:]`` — membrane water-content profile
-            * ``sol.diagnostics`` — :class:`~marapendi.cell.state.CellState`
+            * ``sol.diagnostics`` — :class:`~marapendi.simulation.state.CellState`
               from :meth:`evaluate` at ``sol.t``
               (only present when ``compute_diagnostics=True``).
         """

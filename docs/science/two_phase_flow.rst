@@ -5,7 +5,7 @@ Two-phase flow
 the non-wetting phase driven by capillary pressure in the porous layers (GDL,
 MPL, CL). The entry (breakthrough) capillary pressure of a layer is set by its
 geometry
-(:meth:`~marapendi.porous_layers.porous_layers.PorousLayer._compute_breakthrough_pressure`):
+(:meth:`~marapendi.components.porous_layers.porous_layers.PorousLayer._compute_breakthrough_pressure`):
 
 .. math::
 
@@ -30,7 +30,7 @@ is obtained with Darcy's law:
     - \frac{\rho_l K_{abs}k_{rel}}{M_{w} \mu_l} \frac{dp_c}{dx}
 
 with :math:`k_{rel} = s^m`, :math:`m` = ``relative_permeability_exponent``
-(:attr:`~marapendi.porous_layers.porous_layers.PorousLayer.relative_permeability_exponent`),
+(:attr:`~marapendi.components.porous_layers.porous_layers.PorousLayer.relative_permeability_exponent`),
 so that we can write:
 
 .. math::
@@ -49,8 +49,8 @@ This saturation increment is what
 :meth:`~marapendi.models.darcy.DarcyTransportModel.calculate_non_wetting_saturation`
 evaluates at the layer's downstream face, using the lumped
 :math:`M_w \mu_l / (\rho_l K_{abs} p_b)` prefactor pre-computed as
-:attr:`~marapendi.porous_layers.porous_layers.PorousLayer.saturation_flow_resistance`
-(:meth:`~marapendi.porous_layers.porous_layers.PorousLayer.calculate_saturation_flow_resistance`).
+:attr:`~marapendi.components.porous_layers.porous_layers.PorousLayer.saturation_flow_resistance`
+(:meth:`~marapendi.components.porous_layers.porous_layers.PorousLayer.calculate_saturation_flow_resistance`).
 
 Capillary pressure continuity is enforced so that at the interface between adjacent
 layers :math:`k` and :math:`k-1`:

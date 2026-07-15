@@ -33,16 +33,16 @@ from ..porous_layers.catalyst_layers import PtCCatalystLayer
 from ..channel.flow_channels import FlowChannel
 from ..membrane.membrane_base import Membrane
 from .cell import Cell, CellSide
-from ..models.voltage import VoltageModel
-from ..models.thermal import ThermalModel
+from ...models.voltage import VoltageModel
+from ...models.thermal import ThermalModel
 from ..electrolyte.electrolyte import ElectrolyteSolution
-from ..models.base.explicit_steady_state import ExplicitSteadyStateModel
-from ..models.base.implicit_steady_state import ImplicitSteadyStateModel
-from ..simulation.state import (
+from ...models.base.explicit_steady_state import ExplicitSteadyStateModel
+from ...models.base.implicit_steady_state import ImplicitSteadyStateModel
+from ...simulation.state import (
     CellState, CellSideState, LayerState, CatalystLayerState,
     FlowChannelState, MembraneState,
 )
-from ..simulation.state import GasState
+from ...simulation.state import GasState
 
 
 @dataclass
@@ -111,7 +111,7 @@ class FuelCell(Cell):
     an : FuelCellSide
         Anode side.
     membrane : Membrane
-        Membrane component (e.g. :class:`~marapendi.membrane.pem.PFSA`).
+        Membrane component (e.g. :class:`~marapendi.components.membrane.pem.PFSA`).
     area : float
         Active cell area (m²).
     electric_resistance : float
@@ -276,4 +276,4 @@ class FuelCell(Cell):
         )
 
 
-from ..simulation.conditions import SideConditions, OperatingConditions, DynamicOperatingConditions  # noqa: F401
+from ...simulation.conditions import SideConditions, OperatingConditions, DynamicOperatingConditions  # noqa: F401

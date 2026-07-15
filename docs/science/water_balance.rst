@@ -17,7 +17,7 @@ non-equilibrium boundary conditions.
 
 The governing steady-state balance is a 1D diffusion–EOD equation for the
 membrane water content, with an EOD velocity
-:math:`u_d` (:meth:`~marapendi.membrane.membrane_base.Membrane.calculate_electroosmotic_drag_speed`)
+:math:`u_d` (:meth:`~marapendi.components.membrane.membrane_base.Membrane.calculate_electroosmotic_drag_speed`)
 that is proportional to current density:
 
 .. math::
@@ -32,9 +32,9 @@ with non-equilibrium sorption boundary conditions:
         = k_{abs}\left(\lambda - \lambda_{eq}\right)
 
 with :math:`k_{abs}` the water-absorption rate coefficient
-(:meth:`~marapendi.membrane.membrane_base.Membrane.calculate_water_absorption_coefficient`).
+(:meth:`~marapendi.components.membrane.membrane_base.Membrane.calculate_water_absorption_coefficient`).
 Membrane swelling is neglected. :math:`D_\lambda`
-(:meth:`~marapendi.membrane.membrane_base.Membrane.calculate_water_diffusivity`)
+(:meth:`~marapendi.components.membrane.membrane_base.Membrane.calculate_water_diffusivity`)
 and :math:`k_{abs}` are independent of the water content :math:`\lambda` but
 are corrected for temperature with an Arrhenius term (see
 :doc:`membrane_correlations`).
@@ -153,7 +153,7 @@ can be calculated. If the calculated water activity falls in the low-activity se
 :math:`\beta` are updated and the water balance is recalculated.
 
 A piecewise-linear fit of the equilibrium isotherm with 3 linear segments is automatically calculated at
-initialization by :class:`~marapendi.membrane.pem.PFSAIonomer`.
+initialization by :class:`~marapendi.components.membrane.pem.PFSAIonomer`.
 
 .. seealso::
 

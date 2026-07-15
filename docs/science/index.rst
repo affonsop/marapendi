@@ -9,8 +9,8 @@ respect to the version in this paper.
 .. note::
 
    This section documents the physics currently implemented for **PEM fuel
-   cells**; AEM electrolyzer support (see :mod:`marapendi.membrane.aem`,
-   :mod:`marapendi.electrolyte.koh`) is under active development — see
+   cells**; AEM electrolyzer support (see :mod:`marapendi.components.membrane.aem`,
+   :mod:`marapendi.components.electrolyte.koh`) is under active development — see
    :doc:`additional_models` for what is available so far.
 
 .. toctree::

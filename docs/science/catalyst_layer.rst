@@ -4,7 +4,7 @@ Catalyst layer
 Microstructure
 ---------------------
 
-:class:`~marapendi.porous_layers.catalyst_layers.PtCCatalystLayer` derives an
+:class:`~marapendi.components.porous_layers.catalyst_layers.PtCCatalystLayer` derives an
 explicit Pt/C agglomerate microstructure from four inputs — platinum loading
 :math:`L_\mathrm{Pt}`, platinum weight percent in the catalyst powder,
 carbon-agglomerate radius :math:`r_\mathrm{C}`, and ionomer-to-carbon mass
@@ -12,9 +12,9 @@ ratio :math:`\mathrm{IC}` — following Hao et al. (2015). Carbon and platinum
 volume fractions follow directly from the loadings and layer thickness
 :math:`\delta_\mathrm{CL}`; the dry ionomer volume fraction is then scaled up
 by the volumetric expansion due to water sorption
-(:meth:`~marapendi.membrane.ionomer_base.Ionomer.wet_expansion_factor`),
+(:meth:`~marapendi.components.membrane.ionomer_base.Ionomer.wet_expansion_factor`),
 computed once at construction and refreshed at every operating point by
-:meth:`~marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.set_ionomer_wet_properties`:
+:meth:`~marapendi.components.porous_layers.catalyst_layers.PtCCatalystLayer.set_ionomer_wet_properties`:
 
 .. math::
 
@@ -51,7 +51,7 @@ volume fraction — used for the liquid- and gas-phase transport properties in
 
 The ionomer film has its own, generally much lower, tortuosity than the bulk
 pore network, following Hao et al. (2016)
-(:meth:`~marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_tortuosity`):
+(:meth:`~marapendi.components.porous_layers.catalyst_layers.PtCCatalystLayer.ionomer_tortuosity`):
 
 .. math::
 
@@ -63,9 +63,9 @@ pore network, following Hao et al. (2016)
 The bulk pore network instead uses the standard Bruggeman relation between
 porosity and tortuosity, :math:`\varepsilon_\mathrm{CL}/\tau_\mathrm{CL} =
 \varepsilon_\mathrm{CL}^{1.5}` (Andersson et al., 2016) — the
-:attr:`~marapendi.porous_layers.porous_layers.PorousLayer.tortuosity`
+:attr:`~marapendi.components.porous_layers.porous_layers.PorousLayer.tortuosity`
 default in
-:meth:`~marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.set_ionomer_wet_properties`
+:meth:`~marapendi.components.porous_layers.catalyst_layers.PtCCatalystLayer.set_ionomer_wet_properties`
 when no tortuosity is supplied explicitly.
 
 Charge transport
@@ -73,7 +73,7 @@ Charge transport
 
 Ionomer (proton) charge transport through the catalyst-layer film follows a
 simple effective-medium resistance
-(:meth:`~marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_sheet_charge_resistance`):
+(:meth:`~marapendi.components.porous_layers.catalyst_layers.CatalystLayer.ionomer_sheet_charge_resistance`):
 
 .. math::
 
@@ -93,7 +93,7 @@ is :math:`R_\mathrm{sheet} = \left(1/R_\mathrm{ion} + 1/R_\mathrm{elyte}\right)^
 The *effective* charge resistance actually seen by the reaction accounts for
 the reaction-current distribution through the catalyst-layer depth, following
 Neyerlin et al. (2007) as parameterised by Goshtasbi et al. (2020)
-(:meth:`~marapendi.porous_layers.catalyst_layers.CatalystLayer.effective_charge_resistance`):
+(:meth:`~marapendi.components.porous_layers.catalyst_layers.CatalystLayer.effective_charge_resistance`):
 
 .. math::
 
@@ -110,7 +110,7 @@ Local oxygen transport
 
 Oxygen transport through the ionomer film covering the Pt/C agglomerates
 follows Hao et al. (2015, 2016)
-(:meth:`~marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.o2_ionomer_film_resistance`):
+(:meth:`~marapendi.components.porous_layers.catalyst_layers.PtCCatalystLayer.o2_ionomer_film_resistance`):
 Pt, carbon, ionomer and pore volume fractions are computed directly from the
 platinum loading, ionomer-to-carbon ratio and catalyst density, and the local
 O₂ transport resistance combines a bulk-film diffusion term with an

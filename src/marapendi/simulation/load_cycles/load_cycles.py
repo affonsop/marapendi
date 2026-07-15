@@ -207,7 +207,7 @@ class LoadCycle:
     :class:`PiecewiseProfile`, or a constant scalar; calling
     ``cycle(t)`` returns a :class:`CellConditions` snapshot, making
     any :class:`LoadCycle` directly usable as the *conditions* argument
-    of :meth:`~marapendi.cell.TransientModel.solve`.
+    of :meth:`~marapendi.models.base.transient.TransientModel.solve`.
 
     Parameters
     ----------
@@ -327,7 +327,7 @@ class LoadCycle:
         (including nested ``ca``/``an`` side conditions). An ODE solver
         integrating through one of these kinks can't rely on its local error
         estimate — the smoothness assumption behind it is violated right at
-        the kink — so :meth:`~marapendi.cell.transient.TransientModel.solve`
+        the kink — so :meth:`~marapendi.models.base.transient.TransientModel.solve`
         uses these times to split the integration into per-segment pieces.
         """
         times: set[float] = set()

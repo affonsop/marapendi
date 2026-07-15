@@ -93,7 +93,7 @@ permeation flux through the membrane expressed as an equivalent current:
 
 with the flux itself driven by the anode-to-cathode H₂ partial-pressure
 difference across the membrane
-(:meth:`~marapendi.membrane.membrane_base.Membrane.hydrogen_permeation_flux`):
+(:meth:`~marapendi.components.membrane.membrane_base.Membrane.hydrogen_permeation_flux`):
 
 .. math::
 
@@ -105,7 +105,7 @@ pressure driving force is the full anode H₂ partial pressure
 :math:`p_{\mathrm{H_2},\mathrm{an}}` since the cathode-side H₂ partial
 pressure is negligible in comparison. The membrane's H₂ permeability
 :math:`\Psi_{\mathrm{H_2},\mathrm{mb}}(\lambda, T)`
-(:meth:`~marapendi.membrane.pem.PFSAIonomer.h2_permeability`) is itself an
+(:meth:`~marapendi.components.membrane.pem.PFSAIonomer.h2_permeability`) is itself an
 Arrhenius fit with a water-content-dependent term, also from Goshtasbi et al.
 (2020):
 
@@ -124,7 +124,7 @@ where:
     {V_\mathrm{dry} + \lambda V_w(T)}
 
 is the water volume fraction in the ionomer, calculated with 
-:meth:`~marapendi.membrane.ionomer_base.Ionomer.water_vol_fraction`.
+:meth:`~marapendi.components.membrane.ionomer_base.Ionomer.water_vol_fraction`.
 
 Ohmic overpotential
 ------------------------
@@ -139,9 +139,9 @@ scaled by the current density
 
 where :math:`r_\mathrm{el}` is the electric (electronic) resistance of the
 cell — a fitting parameter
-(:attr:`~marapendi.cell.cell.Cell.electric_resistance`); :math:`r_\mathrm{mb}`
+(:attr:`~marapendi.components.cell.cell.Cell.electric_resistance`); :math:`r_\mathrm{mb}`
 is the membrane proton resistance
-(:meth:`~marapendi.membrane.pem.PFSA.proton_resistance`, :doc:`membrane_correlations`);
+(:meth:`~marapendi.components.membrane.pem.PFSA.proton_resistance`, :doc:`membrane_correlations`);
 and :math:`r^\mathrm{ca}_\mathrm{CL}` is the cathode catalyst-layer proton
 resistance, following Neyerlin et al. (2007) as parameterised by Goshtasbi et
 al. (2020) (:doc:`catalyst_layer`). Together, :math:`r_\mathrm{el} +
@@ -151,14 +151,14 @@ r_\mathrm{mb}` make up the high-frequency resistance
 The membrane resistance :math:`r_\mathrm{mb} = \delta_\mathrm{mb} /
 \sigma_\mathrm{mb}^\mathrm{avg}` uses the through-plane average conductivity
 :math:`\sigma_\mathrm{mb}^\mathrm{avg}`, which is calculated
-(:meth:`~marapendi.membrane.pem.PFSA.proton_conductivity`) as the harmonic
+(:meth:`~marapendi.components.membrane.pem.PFSA.proton_conductivity`) as the harmonic
 mean of the local conductivity
-(:meth:`~marapendi.membrane.pem.PFSAIonomer.proton_conductivity`,
+(:meth:`~marapendi.components.membrane.pem.PFSAIonomer.proton_conductivity`,
 :doc:`membrane_correlations`) over the membrane water-content profile from the
 :doc:`water_balance` solve.
 
 The cathode catalyst-layer proton resistance is given by
-(:meth:`~marapendi.porous_layers.catalyst_layers.CatalystLayer.effective_charge_resistance`):
+(:meth:`~marapendi.components.porous_layers.catalyst_layers.CatalystLayer.effective_charge_resistance`):
 
 .. math::
 
@@ -178,7 +178,7 @@ with :math:`\nu = i\, r_\mathrm{CL}^\mathrm{ca,sheet} / b` and :math:`b =
 al., Neyerlin et al. obtained their results for simplified kinetics that does
 not account for Pt oxidation. The sheet proton resistance
 :math:`r_\mathrm{CL}^\mathrm{ca,sheet}`
-(:meth:`~marapendi.porous_layers.catalyst_layers.CatalystLayer.ionomer_sheet_charge_resistance`)
+(:meth:`~marapendi.components.porous_layers.catalyst_layers.CatalystLayer.ionomer_sheet_charge_resistance`)
 is determined as:
 
 .. math::

@@ -17,7 +17,7 @@ from numpy.typing import NDArray
 
 from ..models.thermo.constants import GAS_CONSTANT, FARADAY_CONSTANT
 from ..tools import potential_activation
-from ..porous_layers.catalyst_layers import CatalystLayer
+from ..components.porous_layers.catalyst_layers import CatalystLayer
 from scipy.stats import lognorm, norm
 from scipy.interpolate import interp1d 
 from scipy.special import lambertw

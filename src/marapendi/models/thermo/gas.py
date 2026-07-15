@@ -167,7 +167,7 @@ class GasModel:
         """Species-independent Fick's law adjustment ``T^1.5 / P`` for :meth:`species_diffusion_coefficient`.
 
         Cached on ``state.diffusion_temp_and_pressure_correction`` by
-        :meth:`~marapendi.porous_layers.porous_layers.PorousLayer.update_state_at_temperature`,
+        :meth:`~marapendi.components.porous_layers.porous_layers.PorousLayer.update_state_at_temperature`,
         since up to 3 species share the same ``temperature``/``pressure`` per state.
         """
         # T**1.5 written as T * sqrt(T): np.sqrt dispatches faster than np.power

@@ -65,10 +65,10 @@ The molar volume
 (:func:`~marapendi.models.thermo.water.water_molar_volume`),
 :math:`\bar V_w(T) = M_w / \rho_w(T)`, is used throughout the ionomer water
 volume-fraction calculation
-(:meth:`~marapendi.membrane.ionomer_base.Ionomer.water_vol_fraction`, feeding
+(:meth:`~marapendi.components.membrane.ionomer_base.Ionomer.water_vol_fraction`, feeding
 the conductivity and permeability correlations in
 :doc:`membrane_correlations`), the wet ionomer expansion factor
-(:meth:`~marapendi.membrane.ionomer_base.Ionomer.wet_expansion_factor`, used
+(:meth:`~marapendi.components.membrane.ionomer_base.Ionomer.wet_expansion_factor`, used
 by :doc:`catalyst_layer`'s microstructure), and to convert liquid volumetric
 flow rates to molar flow rates in
 :class:`~marapendi.simulation.state.GasFlowState`.
@@ -89,7 +89,7 @@ with the kinematic viscosity
 (:func:`~marapendi.models.thermo.water.water_kinematic_viscosity`) simply
 :math:`\nu_l = \mu_l/\rho_w`. Both feed the Darcy liquid-water flux and
 breakthrough-pressure calculations of :doc:`two_phase_flow`
-(:meth:`~marapendi.porous_layers.porous_layers.PorousLayer.calculate_saturation_flow_resistance`).
+(:meth:`~marapendi.components.porous_layers.porous_layers.PorousLayer.calculate_saturation_flow_resistance`).
 
 Surface tension follows a linear fit
 (:func:`~marapendi.models.thermo.water.water_surface_tension`):
@@ -99,10 +99,10 @@ Surface tension follows a linear fit
     \gamma(T) = 0.076 - 1.677\times10^{-4}\,T_C \quad [\mathrm{N/m}],
 
 used directly in the breakthrough-pressure correlation
-(:meth:`~marapendi.porous_layers.porous_layers.PorousLayer._compute_breakthrough_pressure`,
+(:meth:`~marapendi.components.porous_layers.porous_layers.PorousLayer._compute_breakthrough_pressure`,
 see :doc:`two_phase_flow`) and in the electrolyte capillary/wetting
 calculations for alkaline layers
-(:mod:`marapendi.electrolyte.electrolyte`).
+(:mod:`marapendi.components.electrolyte.electrolyte`).
 
 Oxygen diffusivity in liquid water
 ------------------------------------
@@ -117,7 +117,7 @@ The O₂ diffusivity in bulk liquid water follows an Arrhenius-type fit to the
     \quad [\mathrm{m^2/s}],
 
 used by the catalyst-layer water-film term of the O₂ ionomer-film resistance
-(:meth:`~marapendi.porous_layers.catalyst_layers.PtCCatalystLayer.o2_ionomer_film_resistance`,
+(:meth:`~marapendi.components.porous_layers.catalyst_layers.PtCCatalystLayer.o2_ionomer_film_resistance`,
 see :doc:`catalyst_layer`) to account for the additional O₂ transport
 resistance through a liquid water film covering the agglomerates when the
 cathode catalyst layer is flooded.

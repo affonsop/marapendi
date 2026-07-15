@@ -149,7 +149,7 @@ Block interface
     re-running ``build_transient_block`` (which rebuilds the buses and the
     Bus Selector/Demux/Bus Creator wiring to match), not just editing the mask.
   - ``cellBuilderExpr`` — either a dotted path to a zero-argument Python
-    function returning a :class:`~marapendi.cell.fuelcell.FuelCell`
+    function returning a :class:`~marapendi.components.cell.fuelcell.FuelCell`
     (default: ``marapendi.interop.simulink_bridge.build_default_cell``, the
     same cell assembled in :doc:`../auto_examples/plot_01_polarization_curve`),
     or the name of a MATLAB function (no ``.``) returning a struct of cell

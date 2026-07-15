@@ -15,15 +15,15 @@ from __future__ import annotations
 
 import numpy as np
 
-from ..cell.fuelcell import FuelCell
-from ..channel.flow_channels import FlowChannel
-from ..channel.gas_transport_resistance import ChannelGasResistanceModel
-from ..porous_layers.porous_layers import GasDiffusionLayer, MicroPorousLayer
-from ..porous_layers.catalyst_layers import PtCCatalystLayer
+from ..components.cell.fuelcell import FuelCell
+from ..components.channel.flow_channels import FlowChannel
+from ..components.channel.gas_transport_resistance import ChannelGasResistanceModel
+from ..components.porous_layers.porous_layers import GasDiffusionLayer, MicroPorousLayer
+from ..components.porous_layers.catalyst_layers import PtCCatalystLayer
 from ..models.darcy import DarcyTransportModel
 from ..models.thermo.electrochemistry import ElectrochemicalReaction
 from ..models.thermo.gas import index_o2, index_n2, index_h2, index_h2ov
-from ..membrane.pem import PFSAIonomer, PFSA
+from ..components.membrane.pem import PFSAIonomer, PFSA
 from ..simulation.conditions import CellConditions
 from ..simulation.state import GasFlowState
 from ..models.base.transient import TransientModel
@@ -116,7 +116,7 @@ def _merge_cell_params(overrides: dict | None) -> dict:
 
 
 def build_cell_from_params(params: dict | None = None) -> FuelCell:
-    """Assemble a :class:`~marapendi.cell.fuelcell.FuelCell` from a (possibly
+    """Assemble a :class:`~marapendi.components.cell.fuelcell.FuelCell` from a (possibly
     partial) nested dict of parameters, filling in anything not given from
     :func:`default_cell_params`.
 
@@ -190,7 +190,7 @@ def build_cell_from_params(params: dict | None = None) -> FuelCell:
 def build_default_cell() -> FuelCell:
     """Assemble the reference cell used in ``examples/plot_01_polarization_curve.py``.
 
-    Returns a fresh :class:`~marapendi.cell.fuelcell.FuelCell` instance built
+    Returns a fresh :class:`~marapendi.components.cell.fuelcell.FuelCell` instance built
     from :func:`default_cell_params`'s defaults, i.e. ``build_cell_from_params()``
     with no overrides. Callers that want a different cell should use
     :func:`build_cell_from_params` (from MATLAB: copy and edit

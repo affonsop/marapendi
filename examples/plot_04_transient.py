@@ -3,7 +3,7 @@
 Transient simulation — ID-FAST driving cycle
 *************************************
 
-:class:`~marapendi.cell.transient.TransientModel` integrates coupled ODEs for
+:class:`~marapendi.models.base.transient.TransientModel` integrates coupled ODEs for
 MEA temperature and the membrane water content
 profile.
 

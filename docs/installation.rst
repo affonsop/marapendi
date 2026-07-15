@@ -1,4 +1,4 @@
-Installation and quick start
+Getting started
 =============================
 
 Requirements

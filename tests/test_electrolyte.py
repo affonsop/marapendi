@@ -1,6 +1,6 @@
 """Tests for electrolyte models."""
 import numpy as np
-from marapendi.electrolyte.koh import KOH_solution
+from marapendi.components.electrolyte.koh import KOH_solution
 
 
 def test_koh_density():

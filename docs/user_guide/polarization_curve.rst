@@ -20,7 +20,7 @@ inspecting every variable in the output state.
 Cell assembly
 -------------
 
-A :class:`~marapendi.cell.fuelcell.FuelCell` is a pure component tree — it
+A :class:`~marapendi.components.cell.fuelcell.FuelCell` is a pure component tree — it
 holds geometry and material parameters only; all physics lives in the model
 objects. Assemble the cell once and reuse it across many conditions.
 

@@ -31,9 +31,9 @@ thermal resistance can be calculated as
         + \frac{1}{R_\mathrm{th}^\mathrm{an}}\right)^{-1}
 
 where each side's resistance sums the through-plane resistance of its porous
-layers (:attr:`~marapendi.porous_layers.porous_layers.PorousLayer.thermal_resistance`)
+layers (:attr:`~marapendi.components.porous_layers.porous_layers.PorousLayer.thermal_resistance`)
 and its thermal contact resistance
-(:attr:`~marapendi.cell.cell.CellSide.thermal_contact_resistance`)
+(:attr:`~marapendi.components.cell.cell.CellSide.thermal_contact_resistance`)
 (:meth:`~marapendi.models.thermal.ThermalModel.side_heat_transfer_resistance`):
 
 .. math::

@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 from dataclasses import dataclass, field
 
-from ..tools import arrhenius_term
+from ...tools import arrhenius_term
 
 from .ionomer_base import Ionomer
 from .membrane_base import Membrane

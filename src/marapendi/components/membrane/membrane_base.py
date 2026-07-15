@@ -4,7 +4,7 @@ Membrane components: static physical properties and correlations.
 A :class:`Membrane` holds the geometric properties of the membrane (dry
 thickness) and delegates all transport correlations to a composed
 :class:`~marapendi.ionomer.Ionomer` instance.  Specialisations such as
-:class:`~marapendi.membrane.pem.PFSA` swap in a concrete ionomer subclass and
+:class:`~marapendi.components.membrane.pem.PFSA` swap in a concrete ionomer subclass and
 add membrane-specific sorption/conductivity correlations.
 
 The composition replaces the previous inheritance from

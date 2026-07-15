@@ -6,16 +6,16 @@ rather than merged:
 
 **Ionomer** — transport correlations for the polymer electrolyte phase, used by
 both the membrane and the catalyst layers.
-:class:`~marapendi.membrane.ionomer_base.Ionomer` is the abstract base;
-:class:`~marapendi.membrane.pem.PFSAIonomer` provides empirical fits for Nafion-type
+:class:`~marapendi.components.membrane.ionomer_base.Ionomer` is the abstract base;
+:class:`~marapendi.components.membrane.pem.PFSAIonomer` provides empirical fits for Nafion-type
 ionomers (proton conductivity, O₂ permeability, H₂ permeability, electroosmotic
 drag, and water diffusivity).
 
 **Membrane** — geometric properties (dry thickness) and water-balance correlations at
-the membrane level.  :class:`~marapendi.membrane.membrane_base.Membrane` delegates
+the membrane level.  :class:`~marapendi.components.membrane.membrane_base.Membrane` delegates
 transport correlations to its composed
-:attr:`~marapendi.membrane.membrane_base.Membrane.ionomer`.
-:class:`~marapendi.membrane.pem.PFSA` specialises to PFSA membranes and adds the
+:attr:`~marapendi.components.membrane.membrane_base.Membrane.ionomer`.
+:class:`~marapendi.components.membrane.pem.PFSA` specialises to PFSA membranes and adds the
 Springer et al. (1991) vapor-equilibrium isotherm and liquid equilibrium.
 
 **Water balance models** — solve the 1-D water-content profile across the membrane.
@@ -35,22 +35,22 @@ gas-transport resistances and liquid saturation.
 Ionomer
 -------
 
-.. autoclass:: marapendi.membrane.ionomer_base.Ionomer
+.. autoclass:: marapendi.components.membrane.ionomer_base.Ionomer
    :members:
    :show-inheritance:
 
-.. autoclass:: marapendi.membrane.pem.PFSAIonomer
+.. autoclass:: marapendi.components.membrane.pem.PFSAIonomer
    :members:
    :show-inheritance:
 
 Membrane
 --------
 
-.. autoclass:: marapendi.membrane.membrane_base.Membrane
+.. autoclass:: marapendi.components.membrane.membrane_base.Membrane
    :members:
    :show-inheritance:
 
-.. autoclass:: marapendi.membrane.pem.PFSA
+.. autoclass:: marapendi.components.membrane.pem.PFSA
    :members:
    :show-inheritance:
 

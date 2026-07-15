@@ -11,8 +11,8 @@ for the equilibrium water content at the catalyst-layer interfaces:
 * :class:`~marapendi.models.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise`
   — the **default** model. The equilibrium isotherm RH(λ) is replaced by a
   piecewise-linear regression, fit once at
-  :class:`~marapendi.membrane.pem.PFSAIonomer` construction time by
-  :meth:`~marapendi.membrane.pem.PFSAIonomer.fit_rh_piecewise_linear`. The
+  :class:`~marapendi.components.membrane.pem.PFSAIonomer` construction time by
+  :meth:`~marapendi.components.membrane.pem.PFSAIonomer.fit_rh_piecewise_linear`. The
   local slope of the active segment gives an equivalent transport resistance
   that is exact on that segment.
 
@@ -30,7 +30,7 @@ polarization curve, membrane water content, and HFR predicted by both models.
 # Isotherm fit
 # ============
 #
-# :class:`~marapendi.membrane.pem.PFSAIonomer` fits a piecewise-linear
+# :class:`~marapendi.components.membrane.pem.PFSAIonomer` fits a piecewise-linear
 # approximation of RH(λ) at ``__post_init__`` time. The fit is cached, so it
 # runs at most once per unique (polynomial, number of segments, temperature)
 # combination.

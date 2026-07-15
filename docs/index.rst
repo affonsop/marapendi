@@ -133,7 +133,7 @@ Acknowledgements
       :columns: 12 3 3 3
 
       .. image:: /_static/LOGO_MINES_Horizontal_bleu_fond_vierge.png
-         :height: 70px
+         :height: 130px
          :align: center
          :alt: Mines Paris - PSL logo
 
@@ -149,12 +149,12 @@ Acknowledgements
       :columns: 12 3 3 3
 
       .. image:: /_static/logo_france_2030.png
-         :height: 70px
+         :height: 100px
          :align: center
          :alt: France 2030 logo
 
       .. image:: /_static/logo_pepr_h2.png
-         :height: 70px
+         :height: 120px
          :align: center
          :alt: PEPR H2 logo
 
@@ -181,12 +181,12 @@ Acknowledgements
          :alt: MARINER project logo
 
       .. image:: /_static/chp_logo.png
-         :height: 70px
+         :height: 100px
          :align: center
          :alt: Clean Hydrogen Partnership logo
 
       .. image:: /_static/eu_cofunded_logo.png
-         :height: 70px
+         :height: 100px
          :align: center
          :alt: European Union logo
 

@@ -1,7 +1,7 @@
 Models
 ======
 
-Orchestration classes that combine a :class:`~marapendi.cell.fuelcell.FuelCell` and a
+Orchestration classes that combine a :class:`~marapendi.components.cell.fuelcell.FuelCell` and a
 :class:`~marapendi.simulation.state.CellState` to compute the cell's behaviour:
 membrane water balance, gas transport, voltage and thermal sub-models.
 

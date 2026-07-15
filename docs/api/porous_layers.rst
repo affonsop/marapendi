@@ -1,7 +1,7 @@
 Porous Layers
 =============
 
-:class:`~marapendi.porous_layers.porous_layers.PorousLayer` is the base class for
+:class:`~marapendi.components.porous_layers.porous_layers.PorousLayer` is the base class for
 all porous components in the electrode stack (GDL, MPL).  It holds static geometry
 (thickness, porosity, absolute permeability, contact angle) and delegates transport
 calculations to two pluggable model objects:
@@ -14,15 +14,15 @@ calculations to two pluggable model objects:
 Components
 ----------
 
-.. autoclass:: marapendi.porous_layers.porous_layers.PorousLayer
+.. autoclass:: marapendi.components.porous_layers.porous_layers.PorousLayer
    :members:
    :show-inheritance:
 
-.. autoclass:: marapendi.porous_layers.porous_layers.GasDiffusionLayer
+.. autoclass:: marapendi.components.porous_layers.porous_layers.GasDiffusionLayer
    :members:
    :show-inheritance:
 
-.. autoclass:: marapendi.porous_layers.porous_layers.MicroPorousLayer
+.. autoclass:: marapendi.components.porous_layers.porous_layers.MicroPorousLayer
    :members:
    :show-inheritance:
 

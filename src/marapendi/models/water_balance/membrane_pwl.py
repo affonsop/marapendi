@@ -3,7 +3,7 @@ Piecewise-linear membrane water balance model.
 
 Extends :class:`MembraneWaterBalanceModel` by replacing the polynomial sorption
 isotherm with the piecewise linear approximation fitted by
-:meth:`~marapendi.membrane.pem.PFSAIonomer.fit_rh_piecewise_linear`.  The active
+:meth:`~marapendi.components.membrane.pem.PFSAIonomer.fit_rh_piecewise_linear`.  The active
 linear segment is selected self-consistently so the equilibrium water content
 falls within the validity interval of that segment.
 """

@@ -4,7 +4,7 @@ Membrane and ionomer correlations
 ***************************************
 
 :doc:`/science/membrane_correlations` documents the stateless empirical
-correlations attached to :class:`~marapendi.membrane.pem.PFSAIonomer`
+correlations attached to :class:`~marapendi.components.membrane.pem.PFSAIonomer`
 (equilibrium sorption isotherm, proton conductivity, electroosmotic drag,
 water diffusivity/absorption, H\\ :sub:`2`/O\\ :sub:`2` permeability). This
 example evaluates each of them for a typical Nafion 1100 EW ionomer at
@@ -51,11 +51,11 @@ colors = ["C0", "C1", "C2", "C3"]
 # Equilibrium sorption isotherm
 # ==============================
 #
-# :meth:`~marapendi.membrane.pem.PFSAIonomer.vapor_equilibrium_water_content`
+# :meth:`~marapendi.components.membrane.pem.PFSAIonomer.vapor_equilibrium_water_content`
 # (Springer et al. 1991) does not depend on temperature by construction, so a
 # single curve covers all vapor-equilibrated conditions. The
 # liquid-equilibrated water content
-# (:meth:`~marapendi.membrane.pem.PFSAIonomer.liquid_equilibrium_water_content`,
+# (:meth:`~marapendi.components.membrane.pem.PFSAIonomer.liquid_equilibrium_water_content`,
 # Goshtasbi et al. 2020) does depend on temperature and is shown as dashed
 # horizontal markers at RH = 1 (Schroeder's paradox: liquid-equilibrated
 # uptake exceeds the RH -> 1 limit of the vapor isotherm).
@@ -77,7 +77,7 @@ ax.grid(True, alpha=0.4)
 # Proton conductivity
 # =====================
 #
-# :meth:`~marapendi.membrane.pem.PFSAIonomer.proton_conductivity` combines a
+# :meth:`~marapendi.components.membrane.pem.PFSAIonomer.proton_conductivity` combines a
 # water-volume-fraction power law with an Arrhenius temperature correction
 # (Kusoglu and Weber, 2017).
 
@@ -95,13 +95,13 @@ ax.grid(True, alpha=0.4)
 # Electroosmotic drag coefficient and H\ :sub:`2`/O\ :sub:`2` permeability
 # ===========================================================================
 #
-# :meth:`~marapendi.membrane.pem.PFSAIonomer.calculate_electroosmotic_drag_coefficient`
+# :meth:`~marapendi.components.membrane.pem.PFSAIonomer.calculate_electroosmotic_drag_coefficient`
 # is linear in both :math:`\lambda` and :math:`T`.
-# :meth:`~marapendi.membrane.pem.PFSAIonomer.h2_permeability` and
-# :meth:`~marapendi.membrane.pem.PFSAIonomer.o2_permeability` (Goshtasbi et
+# :meth:`~marapendi.components.membrane.pem.PFSAIonomer.h2_permeability` and
+# :meth:`~marapendi.components.membrane.pem.PFSAIonomer.o2_permeability` (Goshtasbi et
 # al., 2020) are shown together, in solid/dashed line style, against the
 # water volume fraction they actually depend on
-# (:meth:`~marapendi.membrane.ionomer_base.Ionomer.water_vol_fraction`).
+# (:meth:`~marapendi.components.membrane.ionomer_base.Ionomer.water_vol_fraction`).
 
 fig, ax = plt.subplots(1,1, figsize=(5, 4))
 for T, c in zip(temperatures, colors):
@@ -120,9 +120,9 @@ ax.grid(True, alpha=0.4)
 # Water diffusivity and absorption coefficient
 # ===============================================
 #
-# :meth:`~marapendi.membrane.ionomer_base.Ionomer.calculate_water_diffusivity`
+# :meth:`~marapendi.components.membrane.ionomer_base.Ionomer.calculate_water_diffusivity`
 # and
-# :meth:`~marapendi.membrane.ionomer_base.Ionomer.calculate_water_absorption_coefficient`
+# :meth:`~marapendi.components.membrane.ionomer_base.Ionomer.calculate_water_absorption_coefficient`
 # depend only on temperature (Arrhenius corrections on a reference value),
 # so they are plotted against T directly rather than water content.
 

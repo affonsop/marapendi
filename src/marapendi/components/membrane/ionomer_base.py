@@ -6,17 +6,17 @@ holds dry material properties (equivalent weight, density) and Arrhenius
 correlations for water diffusivity, water absorption, and electroosmotic
 drag.
 
-:class:`~marapendi.membrane.Membrane` *composes* an ``ionomer`` instance
+:class:`~marapendi.components.membrane.membrane_base.Membrane` *composes* an ``ionomer`` instance
 rather than inheriting from :class:`Ionomer`.  Membrane-level geometry
 (dry thickness, H₂ permeation) and water-balance models sit on
-:class:`~marapendi.membrane.Membrane`; ionomer correlations are accessed
+:class:`~marapendi.components.membrane.membrane_base.Membrane`; ionomer correlations are accessed
 via ``membrane.ionomer.<method>``, or through thin delegation helpers
-defined on :class:`~marapendi.membrane.Membrane`.
+defined on :class:`~marapendi.components.membrane.membrane_base.Membrane`.
 
-:class:`~marapendi.membrane.pem.PFSAIonomer` and
-:class:`~marapendi.membrane.aem.PAPIonomer` are concrete subclasses with
+:class:`~marapendi.components.membrane.pem.PFSAIonomer` and
+:class:`~marapendi.components.membrane.aem.PAPIonomer` are concrete subclasses with
 charge-transport correlations used by both membranes and catalyst layers.
-A :class:`~marapendi.porous_layers.CatalystLayer` holds an
+A :class:`~marapendi.components.porous_layers.catalyst_layers.CatalystLayer` holds an
 ``ionomer: Ionomer`` field directly — no separate ``CatalystLayerIonomer``
 subclass is required.
 """
@@ -25,9 +25,9 @@ from __future__ import annotations
 import numpy as np
 from dataclasses import dataclass
 
-from ..tools import arrhenius_term
-from ..models.thermo.constants import FARADAY_CONSTANT, GAS_CONSTANT
-from ..models.thermo.water import water_density, water_molar_volume, water_molecular_weight
+from ...tools import arrhenius_term
+from ...models.thermo.constants import FARADAY_CONSTANT, GAS_CONSTANT
+from ...models.thermo.water import water_density, water_molar_volume, water_molecular_weight
 
 
 @dataclass

@@ -105,7 +105,7 @@ class IDFastCycle(LoadCycle):
 
     Subclasses :class:`~marapendi.simulation.load_cycles.LoadCycle` and is
     callable as ``cycle(t) -> CellConditions``, so it can be passed directly
-    to :meth:`~marapendi.cell.TransientModel.solve`.
+    to :meth:`~marapendi.models.base.transient.TransientModel.solve`.
 
     All time-varying channels are represented internally as
     :class:`~marapendi.simulation.load_cycles.PiecewiseProfile` objects.

@@ -183,9 +183,18 @@ sol = tr_model.solve(cell, conditions_t, t_span=(0, 3600))
 
 ```
 src/marapendi/
-├── cell/          # Component tree (no physics)
-│   ├── cell.py                   # Cell, CellSide (base classes)
-│   └── fuelcell.py                # FuelCell, FuelCellSide
+├── components/    # Component tree (no physics) — geometry/material dataclasses
+│   ├── cell/
+│   │   ├── cell.py                # Cell, CellSide (base classes)
+│   │   └── fuelcell.py             # FuelCell, FuelCellSide
+│   ├── membrane/
+│   │   ├── ionomer_base.py         # Ionomer (abstract base class)
+│   │   ├── pem.py                  # PFSAIonomer, PFSA, NafionD2020
+│   │   ├── aem.py                  # PAPIonomer, AEM, PAP85
+│   │   └── membrane_base.py        # Membrane (composes an Ionomer instance)
+│   ├── porous_layers/  # GasDiffusionLayer, MicroPorousLayer, PtCCatalystLayer, …
+│   ├── channel/         # FlowChannel, ChannelGasResistanceModel, BakerChannelGasResistanceModel
+│   └── electrolyte/     # ElectrolyteSolution, KOHSolution
 ├── simulation/    # Runtime state and operating conditions (pure data)
 │   ├── state.py                   # CellState, CellSideState, LayerState, GasFlowState, …
 │   ├── conditions.py              # CellConditions, SideConditions
@@ -205,14 +214,6 @@ src/marapendi/
 │   ├── darcy.py                     # DarcyTransportModel (two-phase liquid water)
 │   ├── diffusion.py                 # PorousGasDiffusionModel (Fickian + Knudsen)
 │   └── gas_transport_resistance.py  # GasTransportModel (channel-to-CL resistance network)
-├── membrane/      # Membrane and ionomer materials
-│   ├── ionomer_base.py            # Ionomer (abstract base class)
-│   ├── pem.py                     # PFSAIonomer, PFSA, NafionD2020
-│   ├── aem.py                     # PAPIonomer, AEM, PAP85
-│   └── membrane_base.py           # Membrane (composes an Ionomer instance)
-├── porous_layers/ # GasDiffusionLayer, MicroPorousLayer, PtCCatalystLayer, …
-├── channel/       # FlowChannel, ChannelGasResistanceModel, BakerChannelGasResistanceModel
-├── electrolyte/   # ElectrolyteSolution, KOHSolution
 ├── degradation/   # PtDissolution, PlatinumOxideFormation
 ├── estimation/    # BaseModelCalibration, SteadyStatePolarizationCurveCalibration, Parameter
 └── interop/       # simulink_bridge.py — thin adapter for the MATLAB Simulink block
