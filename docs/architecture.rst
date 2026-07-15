@@ -17,11 +17,18 @@ for how to override a single correlation or swap a whole sub-model.
     gas diffusion layer, optional microporous layer and flow channel) and a
     :class:`~marapendi.components.membrane.membrane_base.Membrane`.
 
-``state`` (:mod:`marapendi.simulation.state`)
-    Dataclasses mirroring the shape of :class:`~marapendi.components.cell.fuelcell.FuelCell`
-    but holding the *physical variables* (temperature, pressure, gas composition,
-    saturation, water content, fluxes, ...) at one operating point. State objects
-    are pure data: no physics lives here.
+``simulation`` (:mod:`marapendi.simulation`)
+    Runtime data structures for one operating point.
+    :mod:`~marapendi.simulation.state` holds dataclasses mirroring the shape
+    of :class:`~marapendi.components.cell.fuelcell.FuelCell` but with the
+    *physical variables* (temperature, pressure, gas composition, saturation,
+    water content, fluxes, ...) instead — pure data, no physics.
+    :mod:`~marapendi.simulation.conditions` defines the operating-condition
+    inputs (:class:`~marapendi.simulation.conditions.CellConditions`,
+    :class:`~marapendi.simulation.conditions.SideConditions`), and
+    :mod:`~marapendi.simulation.load_cycles` holds
+    :class:`~marapendi.simulation.load_cycles.LoadCycle` and the standardised
+    ID-FAST/FC-DLC driving cycles used to drive the transient model in time.
 
 ``models`` (:mod:`marapendi.models`)
     Orchestration classes that combine a :class:`~marapendi.components.cell.fuelcell.FuelCell`
@@ -37,12 +44,9 @@ for how to override a single correlation or swap a whole sub-model.
     thermal, voltage, gas-transport, membrane water-balance and two-phase-transport
     sub-models each solver is built from.
 
-``correlations`` (:mod:`marapendi.models.thermo`, :mod:`marapendi.simulation`)
+``correlations`` (:mod:`marapendi.models.thermo`)
     Stateless physics building blocks (water thermodynamics, electrochemical
-    kinetics, gas mixture properties, operating conditions) used by the
-    components and models above. :mod:`marapendi.simulation` also holds
-    :class:`~marapendi.simulation.load_cycles.LoadCycle` and the standardised
-    ID-FAST/FC-DLC driving cycles used to drive the transient model in time.
+    kinetics, gas mixture properties) used by the components and models above.
 
 ``estimation`` (:mod:`marapendi.estimation`)
     :class:`~marapendi.estimation.polarization_curve_calibration.SteadyStatePolarizationCurveCalibration`
