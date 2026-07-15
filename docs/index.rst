@@ -1,5 +1,9 @@
-marapendi
-=========
+.. title:: marapendi
+
+.. image:: /_static/marapendi-full-bleu.png
+   :width: 600px
+   :align: center
+   :alt: marapendi logo
 
 **marapendi** is a Python framework for physics-based modelling of proton-exchange
 membrane (PEM) and anion-exchange membrane (AEM) electrochemical cells. The current
@@ -38,6 +42,8 @@ a simulation separate from both — every sub-model is an ordinary Python
 class, meant to be subclassed rather than configured. See :doc:`architecture`
 for the full breakdown of each subpackage.
 
+Table of contents
+-----------------
 .. toctree::
    :maxdepth: 2
    :caption: Getting started
