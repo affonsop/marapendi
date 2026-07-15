@@ -5,9 +5,12 @@
    :align: center
    :alt: marapendi logo
 
+About marapendi
+===============
 **marapendi** is a Python framework for physics-based modelling of proton-exchange
-membrane (PEM) and anion-exchange membrane (AEM) electrochemical cells. The current
-release targets PEM fuel cells; AEM electrolyzer support is planned for a future version.
+membrane (PEM) and anion-exchange membrane (AEM) electrochemical cells. 
+
+The current release targets PEM fuel cells; AEM electrolyzer support is planned for a future version.
 
 **marapendi** offers:
 
@@ -130,7 +133,8 @@ Acknowledgements
       :columns: 12 3 3 3
 
       .. image:: /_static/LOGO_MINES_Horizontal_bleu_fond_vierge.png
-         :width: 100%
+         :height: 70px
+         :align: center
          :alt: Mines Paris - PSL logo
 
    .. grid-item::
@@ -145,11 +149,13 @@ Acknowledgements
       :columns: 12 3 3 3
 
       .. image:: /_static/logo_france_2030.png
-         :width: 100%
+         :height: 70px
+         :align: center
          :alt: France 2030 logo
 
       .. image:: /_static/logo_pepr_h2.png
-         :width: 100%
+         :height: 70px
+         :align: center
          :alt: PEPR H2 logo
 
    .. grid-item::
@@ -170,15 +176,18 @@ Acknowledgements
       :columns: 12 3 3 3
 
       .. image:: /_static/mariner_logo.png
-         :width: 100%
+         :height: 70px
+         :align: center
          :alt: MARINER project logo
 
       .. image:: /_static/chp_logo.png
-         :width: 100%
+         :height: 70px
+         :align: center
          :alt: Clean Hydrogen Partnership logo
 
-      .. image:: /_static/eu_logo.png
-         :width: 100%
+      .. image:: /_static/eu_cofunded_logo.png
+         :height: 70px
+         :align: center
          :alt: European Union logo
 
    .. grid-item::
