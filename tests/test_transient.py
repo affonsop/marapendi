@@ -182,7 +182,7 @@ class TestTransientPhysics:
         ss_model = ExplicitSteadyStateModel()
         ss_state = ss_model.set_initial_conditions(cell, cond)
         ss_state = ss_model.solve(cell, cond, ss_state)
-        V_ss = float(ss_state.cell_voltage)
+        V_ss = np.asarray(ss_state.cell_voltage).item()
 
         # Transient asymptote (integrate 2 h)
         sol = model.solve(cell, cond, t_span=(0, 7200))
@@ -194,7 +194,7 @@ class TestTransientPhysics:
         ss_state_final = ss_model.set_initial_conditions(cell, cond)
         # Approximate: check the transient T is within 1 K and lambda close within 1
         # (sol.y[0] is T_mea normalised by model.norm_factors[0])
-        assert abs(sol.y[0, -1] * model.norm_factors[0] - float(ss_state.mea_temperature)) < 1.0
+        assert abs(sol.y[0, -1] * model.norm_factors[0] - np.asarray(ss_state.mea_temperature).item()) < 1.0
 
     def test_step_change_dynamics(self):
         """A current step causes a monotonic approach in MEA temperature."""
