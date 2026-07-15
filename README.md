@@ -11,6 +11,28 @@ in the porous layers. The transient solver integrates coupled ODEs for the MEA
 temperature and membrane water-content profile under time-varying operating
 conditions.
 
+**marapendi** offers:
+
+- The basis for the implementation of 0D (and up to 1D) physics-based models of
+  PEM/AEM fuel cells and electrolyzers.
+- Very fast steady-state and transient 0D cell models — low enough computational
+  cost to make sensitivity analysis, parameter estimation and cross-validation
+  practical.
+- An easy-to-use API for defining, calibrating and simulating cell models in a
+  few lines of code (see the [Quick start](#quick-start) below).
+- Pre-defined correlations and sub-models for heat transfer, reaction kinetics,
+  two-phase transport, membrane water balance, ohmic losses, and more (see
+  [`docs/science/`](docs/science)).
+- Straightforward extension to new models: sub-models are ordinary Python
+  classes, so overriding one correlation or swapping a whole sub-model is a
+  matter of subclassing.
+- Multiple runnable examples demonstrating **marapendi**'s capabilities (see
+  [Example notebooks](#example-notebooks) below).
+- Detailed documentation and openly readable, commented code, designed for
+  transparency and easy understanding.
+- A transient 0D model available as a MATLAB/Simulink S-function block (see
+  [MATLAB / Simulink](#matlab--simulink) below).
+
 ## Features
 
 - **PEM fuel cell** — polarization curves from first principles (Butler-Volmer kinetics,
