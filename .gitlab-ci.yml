@@ -1,3 +1,38 @@
+stages:
+  - build
+  - test
+  - deploy
+
+variables:
+  DOCKER_HOST: tcp://docker:2376
+  DOCKER_TLS_CERTDIR: "/certs"
+  DOCKER_TLS_VERIFY: 1
+  DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+
+build:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker build -f ci/Dockerfile -t marapendi:ci .
+    - docker save marapendi:ci -o marapendi-ci.tar
+  artifacts:
+    paths:
+      - marapendi-ci.tar
+    expire_in: 1 hour
+
+test:
+  stage: test
+  image: docker:latest
+  services:
+    - docker:dind
+  needs: ["build"]
+  script:
+    - docker load -i marapendi-ci.tar
+    - docker run marapendi:ci python -c "import marapendi; print('OK')"
+    - docker run marapendi:ci pytest --cov=marapendi
+
 pages:
   stage: deploy
   image: python:3.12-slim

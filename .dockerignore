@@ -1,0 +1,7 @@
+.git
+docs/_build
+docs/auto_examples
+**/__pycache__
+*.pyc
+.pytest_cache
+*.egg-info
