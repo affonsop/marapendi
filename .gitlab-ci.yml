@@ -4,10 +4,12 @@ stages:
   - deploy
 
 variables:
-  DOCKER_HOST: tcp://docker:2376
-  DOCKER_TLS_CERTDIR: "/certs"
-  DOCKER_TLS_VERIFY: 1
-  DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+  # Non-TLS dind: TLS would need the runner's config.toml to mount a shared
+  # /certs volume between the job and the docker:dind service, which this
+  # runner isn't set up for (docker build fails with
+  # "open /certs/client/ca.pem: no such file or directory" otherwise).
+  DOCKER_HOST: tcp://docker:2375
+  DOCKER_TLS_CERTDIR: ""
 
 build:
   stage: build
