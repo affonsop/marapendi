@@ -14,7 +14,7 @@ from __future__ import annotations
 import numpy as np
 from dataclasses import dataclass
 
-from .thermo.gas import GasModel, species_indexes
+from .thermo.gas import species_indexes
 
 
 @dataclass
@@ -90,20 +90,20 @@ class GasTransportModel:
             side_state.h2ov_transport_resistance = self.gas_transport_resistance(
                 cell_side, side_state, 'h2o',
             )
-            gas_concentration = GasModel.concentration(side_state.cl)
+            gas_concentration = side_state.cl.gas.concentration()
 
             side_state.cl.gas.X[..., species_indexes[reactant]] = np.maximum(
                 1e-12,
-                GasModel.species_concentration(side_state.ch, reactant)
+                side_state.ch.gas.species_concentration(reactant)
                 - side_state.reactant_consumption * side_state.reactant_transport_resistance,
             ) / gas_concentration
 
             side_state.cl.gas.X[..., species_indexes['h2o']] = np.where(
                 side_state.cl.liquid_saturation > 0,
-                GasModel.saturation_concentration(side_state.cl) / gas_concentration,
+                side_state.cl.gas.saturation_concentration() / gas_concentration,
                 np.maximum(
                     1e-12,
-                    GasModel.species_concentration(side_state.ch, 'h2o')
+                    side_state.ch.gas.species_concentration('h2o')
                     + side_state.vapor_flux * side_state.h2ov_transport_resistance,
                 ) / gas_concentration,
             )
@@ -118,6 +118,6 @@ class GasTransportModel:
     def max_water_vapor_removal(self, cell_side, side_state):
         """Maximum water vapor removal rate for *cell_side* (kmol/m²/s)."""
         return (
-            (GasModel.saturation_concentration(side_state.cl) - GasModel.vapor_concentration(side_state.ch))
+            (side_state.cl.gas.saturation_concentration() - side_state.ch.gas.vapor_concentration())
             / self.gas_transport_resistance(cell_side, side_state, 'h2o')
         )

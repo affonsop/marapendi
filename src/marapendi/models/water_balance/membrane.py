@@ -14,7 +14,6 @@ Ferrara, A. et al. J. Power Sources 390, 197–207 (2018).
 import numpy as np
 from dataclasses import dataclass, field
 from marapendi.models.thermo.constants import GAS_CONSTANT
-from marapendi.models.thermo.gas import GasModel
 from marapendi.tools import arrhenius_term
 from marapendi.models.thermo.water import water_molar_volume, water_dynamic_viscosity
 from ..gas_transport_resistance import GasTransportModel
@@ -90,8 +89,8 @@ class MembraneWaterBalanceModel:
     def estimate_equilibrium_water_contents(self, cell, state):
         """Estimate the CL equilibrium water content and its derivative for both sides.
 
-        Reads gas state from *state* via GasModel so that the saturation pressure
-        (already stored on each ``state.*.cl`` by :meth:`ThermalModel.set_mea_temperature`)
+        Reads gas state from ``state.*.cl.gas`` so that the saturation pressure
+        (already cached there by :meth:`ThermalModel.set_mea_temperature`)
         is reused without being recomputed.
 
         Parameters
@@ -107,9 +106,9 @@ class MembraneWaterBalanceModel:
 
         for side_state in state.sides:
             side_state.rh_at_cl_without_crossover = (
-                (GasModel.vapor_concentration(side_state.ch)
+                (side_state.ch.gas.vapor_concentration()
                  + side_state.h2o_production * side_state.h2ov_transport_resistance)
-                / GasModel.saturation_concentration(side_state.cl)
+                / side_state.cl.gas.saturation_concentration()
             )
             side_state.estimated_water_content = membrane.equilibrium_water_content(
                 side_state.rh_at_cl_without_crossover, membrane_temperature, side_state.s_relax,
@@ -143,7 +142,7 @@ class MembraneWaterBalanceModel:
         """Non-dimensional vapor resistance R_v* for one electrode side (Ferrara et al. 2018, eq. 13)."""
         return (
                 side_state.h2ov_transport_resistance
-                / (GasModel.saturation_concentration(side_state.cl) * memb_state.water_diffusion_resistance)
+                / (side_state.cl.gas.saturation_concentration() * memb_state.water_diffusion_resistance)
                 * side_state.estimated_water_content_derivative
             )
 

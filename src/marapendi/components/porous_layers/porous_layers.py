@@ -3,9 +3,7 @@ Module providing classes to model porous layers in electrochemical cells.
 """
 from dataclasses import dataclass, field
 import numpy as np
-from ...models.thermo.constants import GAS_CONSTANT
 
-from ...models.thermo.gas import GasModel
 from ...simulation.state import GasState
 from ...models.diffusion import PorousGasDiffusionModel
 from ...models.darcy import DarcyTransportModel
@@ -85,6 +83,8 @@ class PorousLayer():
     breakthrough_pressure: float = None
 
     def __post_init__(self):
+        self.gas.temperature = self.temperature
+        self.gas.pressure = self.pressure
         self.sqrt_abs_permeability_porosity = np.sqrt(self.absolute_permeability * self.porosity)
         self.cosinus_contact_angle = np.abs(np.cos(np.pi / 180 * self.contact_angle))
         if self.contact_angle < 90:
@@ -93,8 +93,6 @@ class PorousLayer():
         self._bp_from_geometry = self.breakthrough_pressure is None
         if self._bp_from_geometry:
             self.breakthrough_pressure = self._compute_breakthrough_pressure(self.temperature)
-        self.RT = GAS_CONSTANT * self.temperature
-        self.saturation_pressure = None
         self.saturation_flow_resistance = self.calculate_saturation_flow_resistance(self.temperature)
 
     # ------------------------------------------------------------------
@@ -120,19 +118,21 @@ class PorousLayer():
         Parameters
         ----------
         layer_state : LayerState
-            State object to populate.  Sets ``temperature``, ``RT``,
-            ``diffusion_temp_and_pressure_correction``,
-            ``breakthrough_pressure``, and ``saturation_flow_resistance``.
+            State object to populate.  Sets ``temperature`` (which also
+            updates the derived ``RT``/``diffusion_temp_and_pressure_correction``
+            properties on ``layer_state.gas``), ``breakthrough_pressure``,
+            and ``saturation_flow_resistance``.
             Requires ``layer_state.pressure`` to already be set.
         temperature : float
             Temperature at which to evaluate all temperature-dependent
             quantities (K).
         """
         layer_state.temperature = temperature
-        layer_state.RT = GAS_CONSTANT * temperature
-        layer_state.diffusion_temp_and_pressure_correction = (
-            GasModel.diffusion_temp_and_pressure_correction(temperature, layer_state.pressure)
-        )
+        # layer_state.gas may be reused across temperature transitions (e.g. in
+        # the transient ODE loop); reset the lazily-cached derived quantities
+        # so they recompute at the new temperature on next access.
+        layer_state.gas.saturation_pressure = None
+        layer_state.gas.diffusion_temp_and_pressure_correction = None
         layer_state.breakthrough_pressure = (
             self._compute_breakthrough_pressure(temperature)
             if self._bp_from_geometry
@@ -173,8 +173,8 @@ class PorousLayer():
             non_wetting_molecular_weight = water_molecular_weight
             non_wetting_surface_tension = water_surface_tension(temperature)
         elif self.non_wetting_phase == 'gas':
-            non_wetting_kinematic_viscosity = GasModel.mixture_kinematic_viscosity(self)
-            non_wetting_molecular_weight = GasModel.mixture_molecular_weight(self)
+            non_wetting_kinematic_viscosity = self.gas.mixture_kinematic_viscosity()
+            non_wetting_molecular_weight = self.gas.mixture_molecular_weight()
             non_wetting_surface_tension = (
                 water_surface_tension(temperature) if self.wetting_phase == 'water'
                 else electrolyte.surface_tension

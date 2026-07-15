@@ -9,7 +9,6 @@ falls within the validity interval of that segment.
 """
 import numpy as np
 from dataclasses import dataclass
-from marapendi.models.thermo.gas import GasModel
 from .membrane import MembraneWaterBalanceModel
 
 
@@ -35,9 +34,9 @@ class MembraneWaterBalanceModelPiecewise(MembraneWaterBalanceModel):
 
         for side_state in state.sides:
             side_state.rh_at_cl_without_crossover = (
-                (GasModel.vapor_concentration(side_state.ch)
+                (side_state.ch.gas.vapor_concentration()
                  + side_state.h2o_production * side_state.h2ov_transport_resistance)
-                / GasModel.saturation_concentration(side_state.cl)
+                / side_state.cl.gas.saturation_concentration()
             )
             side_state.estimated_water_content = membrane.ionomer.linear_water_content_from_rh(
                 side_state.rh_at_cl_without_crossover, side_state.pwl_interval)
@@ -46,7 +45,7 @@ class MembraneWaterBalanceModelPiecewise(MembraneWaterBalanceModel):
         # dλ/dRH = 1 / slope_k  (slope is dRH/dλ for the active segment)
         return (
             side_state.h2ov_transport_resistance
-            / (GasModel.saturation_concentration(side_state.cl) * memb_state.water_diffusion_resistance)
+            / (side_state.cl.gas.saturation_concentration() * memb_state.water_diffusion_resistance)
             / cell.membrane.ionomer.pwl_slopes[side_state.pwl_interval]
         )
 

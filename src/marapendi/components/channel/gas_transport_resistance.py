@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ...models.thermo.gas import GasModel
 
 
 @dataclass
@@ -44,7 +43,7 @@ class ChannelGasResistanceModel:
 
     def gas_transport_resistance(self, channel, state, species, volume_flow_rate=None):
         """Total gas transport resistance for *species* in *channel* (s/m)."""
-        diffusion_coeff = GasModel.species_diffusion_coefficient(state, species)
+        diffusion_coeff = state.gas.species_diffusion_coefficient(species)
         flow_rate = volume_flow_rate if volume_flow_rate is not None else state.inlet_gas_flow_rate
         return self.total_resistance(channel, diffusion_coeff, flow_rate)
 

@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 import marapendi as mrpd
 from marapendi.simulation.state import GasFlowState
-from marapendi.models.thermo.gas import GasModel, index_o2, index_n2, index_h2, index_h2ov
+from marapendi.models.thermo.gas import index_o2, index_n2, index_h2, index_h2ov
 from marapendi.models.thermo.water import water_molar_volume
 from marapendi.models.thermo.constants import FARADAY_CONSTANT
 from marapendi.models.base.explicit_steady_state import ExplicitSteadyStateModel
@@ -56,7 +56,7 @@ def _gas_flow_state_from_channel(ch_state, temperature) -> GasFlowState:
     """Build a GasFlowState carrying the same total inlet flow as an
     already-solved FlowChannelState (computed internally from a
     stoichiometry spec by ExplicitSteadyStateModel._set_flow_rates)."""
-    concentration = GasModel.concentration(ch_state)
+    concentration = ch_state.gas.concentration()
     total_gas_molar_flow_rate = ch_state.inlet_gas_flow_rate * concentration
     return GasFlowState(
         temperature=temperature,

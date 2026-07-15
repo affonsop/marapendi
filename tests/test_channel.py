@@ -9,10 +9,7 @@ from marapendi.components.channel.gas_transport_resistance import BakerChannelGa
 def _channel_state(temperature=353.15, pressure=1e5, o2=0.21, rh=0., flow_rate=1e-6):
     state = FlowChannelState(temperature=temperature, pressure=pressure,
                               inlet_gas_flow_rate=flow_rate)
-    state.diffusion_temp_and_pressure_correction = (
-        mrpd.GasModel.diffusion_temp_and_pressure_correction(temperature, pressure)
-    )
-    mrpd.GasModel.set_composition(state, o2, 0., rh, pressure, temperature)
+    state.gas.set_composition(o2, 0., rh, pressure, temperature)
     return state
 
 
@@ -75,7 +72,7 @@ class TestChannelGasResistanceModel:
 
     def test_molecular_diffusion_resistance_positive(self, square_channel):
         state = _channel_state()
-        D = mrpd.GasModel.species_diffusion_coefficient(state, 'o2')
+        D = state.gas.species_diffusion_coefficient('o2')
         R_diff = square_channel.transport_resistance_model.molecular_diffusion_resistance(
             square_channel, D,
         )
@@ -91,7 +88,7 @@ class TestChannelGasResistanceModel:
 class TestBakerChannelGasResistanceModel:
     def test_baker_diffusion_uses_half_width(self, baker_channel):
         state = _channel_state(temperature=353.15, pressure=1e5)
-        D = mrpd.GasModel.species_diffusion_coefficient(state, 'o2')
+        D = state.gas.species_diffusion_coefficient('o2')
         R_diff = baker_channel.transport_resistance_model.molecular_diffusion_resistance(
             baker_channel, D,
         )
@@ -101,7 +98,7 @@ class TestBakerChannelGasResistanceModel:
     def test_baker_total_resistance_matches_components(self, baker_channel):
         state = _channel_state(temperature=353.15, pressure=1e5)
         flow_rate = 5e-6
-        D = mrpd.GasModel.species_diffusion_coefficient(state, 'o2')
+        D = state.gas.species_diffusion_coefficient('o2')
         model = baker_channel.transport_resistance_model
         R_total = model.total_resistance(baker_channel, D, flow_rate)
         R_diff = model.molecular_diffusion_resistance(baker_channel, D)

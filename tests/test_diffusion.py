@@ -19,10 +19,7 @@ from marapendi.models.gas_transport_resistance import GasTransportModel
 def _make_layer_state(temperature=353.15, pressure=1e5, o2=0.21, rh=0., sat=0.):
     state = LayerState(temperature=temperature, pressure=pressure)
     state.non_wetting_saturation = sat
-    state.diffusion_temp_and_pressure_correction = (
-        mrpd.GasModel.diffusion_temp_and_pressure_correction(temperature, pressure)
-    )
-    mrpd.GasModel.set_composition(state, o2, 0., rh, pressure, temperature)
+    state.gas.set_composition(o2, 0., rh, pressure, temperature)
     return state
 
 
@@ -67,7 +64,7 @@ class TestPorousGasDiffusionModel:
     def test_knudsen_correction_negligible_large_pore(self, model, gdl):
         # pore_diameter=1e6 → Knudsen diffusivity >> molecular, so Knudsen term negligible
         state = _make_layer_state()
-        D = mrpd.GasModel.species_diffusion_coefficient(state, 'o2')
+        D = state.gas.species_diffusion_coefficient('o2')
         R_mol = model.molecular_diffusion_resistance(gdl, D, water_saturation=0.)
         R_total = model.gas_transport_resistance(gdl, state, 'o2')
         assert np.isclose(R_mol, R_total, rtol=1e-3)
@@ -76,7 +73,7 @@ class TestPorousGasDiffusionModel:
         # Small pore: Knudsen diffusivity is limiting
         cl = mrpd.PtCCatalystLayer(pore_diameter=40e-9, thickness=10e-6, tortuosity=4.0)
         state = _make_layer_state()
-        D = mrpd.GasModel.species_diffusion_coefficient(state, 'o2')
+        D = state.gas.species_diffusion_coefficient('o2')
         R_mol = model.molecular_diffusion_resistance(cl, D, water_saturation=0.)
         R_total = model.gas_transport_resistance(cl, state, 'o2')
         assert R_total > R_mol  # Knudsen adds to total resistance
@@ -148,10 +145,7 @@ class TestGasTransportModel:
         side = mrpd.FuelCellSide(gdl=gdl, ch=ch, cl=cl)
 
         ch_state = FlowChannelState(temperature=353.15, pressure=1e5, inlet_gas_flow_rate=1e-5)
-        ch_state.diffusion_temp_and_pressure_correction = (
-            mrpd.GasModel.diffusion_temp_and_pressure_correction(353.15, 1e5)
-        )
-        mrpd.GasModel.set_composition(ch_state, 0.21, 0., 0.5, 1e5, 353.15)
+        ch_state.gas.set_composition(0.21, 0., 0.5, 1e5, 353.15)
 
         gdl_state = _make_layer_state(sat=0.1)
         cl_state = _make_layer_state(sat=0.0)
@@ -161,10 +155,7 @@ class TestGasTransportModel:
             temperature=353.15, pressure=1e5,
             non_wetting_saturation=0.0, ionomer_water_content=8.0,
         )
-        cl_state_full.diffusion_temp_and_pressure_correction = (
-            mrpd.GasModel.diffusion_temp_and_pressure_correction(353.15, 1e5)
-        )
-        mrpd.GasModel.set_composition(cl_state_full, 0.21, 0., 0.5, 1e5, 353.15)
+        cl_state_full.gas.set_composition(0.21, 0., 0.5, 1e5, 353.15)
 
         side_state = CellSideState(cl=cl_state_full, gdl=gdl_state, ch=ch_state)
         return side, side_state
@@ -187,16 +178,10 @@ class TestGasTransportModel:
         gdl_dry = _make_layer_state(sat=0.)
         gdl_wet = _make_layer_state(sat=0.5)
         ch_state = FlowChannelState(temperature=353.15, pressure=1e5, inlet_gas_flow_rate=1e-5)
-        ch_state.diffusion_temp_and_pressure_correction = (
-            mrpd.GasModel.diffusion_temp_and_pressure_correction(353.15, 1e5)
-        )
-        mrpd.GasModel.set_composition(ch_state, 0.21, 0., 0., 1e5, 353.15)
+        ch_state.gas.set_composition(0.21, 0., 0., 1e5, 353.15)
         cl_state = CatalystLayerState(temperature=353.15, pressure=1e5,
                                        non_wetting_saturation=0., ionomer_water_content=8.)
-        cl_state.diffusion_temp_and_pressure_correction = (
-            mrpd.GasModel.diffusion_temp_and_pressure_correction(353.15, 1e5)
-        )
-        mrpd.GasModel.set_composition(cl_state, 0.21, 0., 0., 1e5, 353.15)
+        cl_state.gas.set_composition(0.21, 0., 0., 1e5, 353.15)
 
         gdl = mrpd.GasDiffusionLayer(thickness=200e-6, tortuosity=2.0)
         ch = mrpd.FlowChannel(width=1e-3, height=1e-3, length=0.1, n_parallel=10)

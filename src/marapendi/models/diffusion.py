@@ -5,7 +5,7 @@ Porous-media gas diffusion model with water saturation and Knudsen corrections.
 from dataclasses import dataclass
 import numpy as np
 from .thermo.constants import GAS_CONSTANT
-from .thermo.gas import GasModel, species_indexes, molecular_weights
+from .thermo.gas import species_indexes, molecular_weights
 
 _KNUDSEN_CONST = 8 * GAS_CONSTANT / np.pi  # folds the constant factors of the Knudsen formula
 
@@ -129,7 +129,7 @@ class PorousGasDiffusionModel:
         return self.total_diffusion_resistance(
             layer,
             state.temperature,
-            GasModel.species_diffusion_coefficient(state, species),
+            state.gas.species_diffusion_coefficient(species),
             molecular_weights[species_indexes[species]],
             state.non_wetting_saturation,
         )

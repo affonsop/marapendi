@@ -2,9 +2,9 @@
 Voltage model: reversible voltage, overpotentials and resulting cell voltage.
 
 :class:`VoltageModel` computes all voltage quantities for a fuel cell,
-reading gas-phase state via :class:`~marapendi.gas.GasModel` from the
-:class:`~marapendi.state.CellState` and reading static physics parameters
-from the component tree (``cell``).
+reading gas-phase state via :class:`~marapendi.simulation.state.GasState`
+methods from the :class:`~marapendi.simulation.state.CellState` and reading
+static physics parameters from the component tree (``cell``).
 """
 from __future__ import annotations
 
@@ -14,7 +14,6 @@ import numpy as np
 
 from .thermo.constants import FARADAY_CONSTANT
 from .thermo.electrochemistry import calculate_reversible_cell_voltage, STD_PRESSURE
-from .thermo.gas import GasModel
 from .thermo.water import water_molar_volume
 
 
@@ -23,8 +22,8 @@ class VoltageModel:
     """Stateless collection of voltage calculations for a fuel cell."""
 
     def reversible_cell_voltage(self, cell, state) -> float:
-        activity_o2 = GasModel.species_partial_pressure(state.ca.cl, 'o2') / STD_PRESSURE
-        activity_h2 = GasModel.species_partial_pressure(state.an.cl, 'h2') / STD_PRESSURE
+        activity_o2 = state.ca.cl.gas.species_partial_pressure('o2') / STD_PRESSURE
+        activity_h2 = state.an.cl.gas.species_partial_pressure('h2') / STD_PRESSURE
         return calculate_reversible_cell_voltage(
             state.ca.cl.temperature, activity_o2 ** 0.5 * activity_h2,
         )
@@ -32,13 +31,13 @@ class VoltageModel:
     def reversible_voltage_vs_RHE(self, cell, state) -> float:
         state.reversible_voltage = calculate_reversible_cell_voltage(
             state.ca.cl.temperature,
-            GasModel.species_partial_pressure(state.ca.cl, 'o2') / STD_PRESSURE,
+            state.ca.cl.gas.species_partial_pressure('o2') / STD_PRESSURE,
         )
         return state.reversible_voltage
 
     def activation_overpotential(self, cell, state, theta_PtO: float = 0) -> float:
         state.membrane.h2_permeation_flux = cell.membrane.hydrogen_permeation_flux(
-            GasModel.species_partial_pressure(state.an.cl, 'h2'),
+            state.an.cl.gas.species_partial_pressure('h2'),
             state.membrane.temperature,
             state.membrane.water_content,
         )
@@ -51,7 +50,7 @@ class VoltageModel:
             (state.current_density + state.crossover_current)
             / (cell.ca.cl.ecsa * cell.ca.cl.platinum_loading * (1 - theta_PtO)),
             state.ca.cl.temperature,
-            GasModel.species_partial_pressure(state.ca.cl, 'o2'),
+            state.ca.cl.gas.species_partial_pressure('o2'),
         )
         hor_overpotential = 0
         return orr_overpotential + omega_PtO_voltage_drop + hor_overpotential

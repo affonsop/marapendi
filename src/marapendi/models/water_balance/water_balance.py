@@ -15,7 +15,7 @@ Ferrara, A. et al. J. Power Sources 390, 197–207 (2018).
 import numpy as np
 from dataclasses import dataclass, field
 from ..thermo.constants import GAS_CONSTANT
-from ..thermo.gas import GasModel
+
 from ...tools import arrhenius_term
 from ..thermo.water import water_molar_volume, water_dynamic_viscosity
 from ..gas_transport_resistance import GasTransportModel
@@ -57,7 +57,7 @@ class WaterBalanceModel:
         channel (at the current saturation state of the CL).
         """
         side_state.max_vapor_removal_flux = (
-            (GasModel.saturation_concentration(side_state.cl) - GasModel.vapor_concentration(side_state.ch))
+            (side_state.cl.gas.saturation_concentration() - side_state.ch.gas.vapor_concentration())
             / side_state.h2ov_transport_resistance
         )
 

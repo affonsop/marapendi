@@ -191,8 +191,8 @@ layer equals the saturation concentration:
     J_{w,\max}^\mathrm{vap} = \frac{c_\mathrm{sat}(T_{\mathrm{MEA}}) - c_{v}(T_{st})}{R_v}
 
 with :math:`c_\mathrm{sat}` and :math:`c_v` the saturation and vapor concentrations
-(:meth:`~marapendi.models.thermo.gas.GasModel.saturation_concentration` and
-:meth:`~marapendi.models.thermo.gas.GasModel.vapor_concentration`) and :math:`R_v` the (dry)
+(:meth:`~marapendi.simulation.state.GasState.saturation_concentration` and
+:meth:`~marapendi.simulation.state.GasState.vapor_concentration`) and :math:`R_v` the (dry)
 vapor transport resistance between the catalyst layer and the channel. The liquid and vapor
 fluxes follow as:
 

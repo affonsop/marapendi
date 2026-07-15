@@ -15,8 +15,8 @@ from __future__ import annotations
 import numpy as np
 from dataclasses import dataclass, field
 
-from ..thermo.constants import FARADAY_CONSTANT, GAS_CONSTANT
-from ..thermo.gas import GasModel, species_indexes
+from ..thermo.constants import FARADAY_CONSTANT
+from ..thermo.gas import species_indexes
 from ..thermal import ThermalModel
 from ..gas_transport_resistance import GasTransportModel
 from ..voltage import VoltageModel
@@ -202,7 +202,6 @@ class ExplicitSteadyStateModel:
         for side, side_state in zip(cell.sides, state.sides):
             for layer_state in side_state.layers:
                 layer_state.temperature = stack_temperature
-                layer_state.RT = GAS_CONSTANT * stack_temperature
 
             side.cl.set_water_film_thickness(0)
             side_state.is_liquid_equilibrated = False
@@ -219,14 +218,11 @@ class ExplicitSteadyStateModel:
             for layer_state in side_state.layers:
                 layer_state.pressure = 0.5 * (conditions.inlet_pressure + conditions.outlet_pressure)
                 layer_state.gas.X = np.zeros((n, 4))
-                GasModel.set_composition(
-                    layer_state,
-                    conditions.dry_o2_mole_fraction,
+                layer_state.gas.set_composition(conditions.dry_o2_mole_fraction,
                     conditions.dry_h2_mole_fraction,
                     conditions.inlet_relative_humidity,
                     conditions.inlet_pressure,
-                    conditions.inlet_temperature,
-                )
+                    conditions.inlet_temperature,)
 
         self._set_flow_rates(cell, state, cathode_conditions, anode_conditions)
 
@@ -265,7 +261,7 @@ class ExplicitSteadyStateModel:
                 * cell.area
                 / (
                     side_state.ch.gas.X[..., species_indexes[cell_side.reactant]]
-                    * GasModel.concentration(side_state.ch)
+                    * side_state.ch.gas.concentration()
                 )
                 + conditions.inlet_gas_flow_rate
             )

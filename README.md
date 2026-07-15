@@ -196,7 +196,7 @@ src/marapendi/
 │   ├── channel/         # FlowChannel, ChannelGasResistanceModel, BakerChannelGasResistanceModel
 │   └── electrolyte/     # ElectrolyteSolution, KOHSolution
 ├── simulation/    # Runtime state and operating conditions (pure data)
-│   ├── state.py                   # CellState, CellSideState, LayerState, GasFlowState, …
+│   ├── state.py                   # CellState, CellSideState, LayerState, GasState, GasFlowState, …
 │   ├── conditions.py              # CellConditions, SideConditions
 │   └── load_cycles/               # LoadCycle, standardised ID-FAST/FC-DLC driving cycles
 ├── models/        # Physics: orchestration + sub-models
@@ -208,7 +208,7 @@ src/marapendi/
 │   │   ├── water_balance.py         # WaterBalanceModel (orchestration)
 │   │   ├── membrane_pwl.py          # MembraneWaterBalanceModelPiecewise (default)
 │   │   └── membrane.py              # MembraneWaterBalanceModel (Affonso Nobrega et al. 2026)
-│   ├── thermo/                      # GasState, GasModel, water properties, constants
+│   ├── thermo/                      # species/molecular-weight constants, water properties
 │   ├── thermal.py                   # ThermalModel
 │   ├── voltage.py                   # VoltageModel
 │   ├── darcy.py                     # DarcyTransportModel (two-phase liquid water)

@@ -12,47 +12,200 @@ everywhere.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from types import SimpleNamespace as _SimpleNamespace
+from dataclasses import dataclass, field, InitVar
 
 import numpy as np
 from .conditions import SideConditions
 from ..models.thermo.constants import GAS_CONSTANT
 from ..models.thermo.gas import *
-from ..models.thermo.water import water_molar_volume
+from ..models.thermo.gas import _horner5, _viscosity_polynomials, _FICK_PT_REFERENCE_FACTOR, species_list
+from ..models.thermo.water import water_molar_volume, water_saturation_pressure
 
 @dataclass
 class GasState:
-    """Composition of the gas mixture.
+    """Composition and thermodynamic state of a gas mixture, with the
+    correlations that depend on them (relative humidity, vapor pressure,
+    diffusion coefficients, kinematic viscosity, ...) attached as methods.
+
+    ``temperature``/``pressure`` are the gas's own — in principle distinct
+    from (though today always equal to) the temperature/pressure of the
+    surrounding :class:`LayerState`/:class:`FlowChannelState`, which expose
+    them as pass-through ``@property`` accessors onto ``self.gas``.
 
     Attributes
     ----------
     X : np.ndarray
         Mole fractions of (O2, N2, H2, H2O), in the order given by
-        :data:`~marapendi.thermo.gas.species_indexes`.
+        :data:`~marapendi.models.thermo.gas.species_indexes`.
+    temperature : float
+        Gas temperature (K).
+    pressure : float
+        Gas pressure (Pa).
     """
 
     X: np.ndarray = field(default_factory=lambda: np.array([1., 0., 0., 0.]))
+    temperature: float = None
+    pressure: float = None
+    _saturation_pressure: float = field(default=None, init=False, repr=False)
+    _diffusion_temp_and_pressure_correction: float = field(default=None, init=False, repr=False)
+
+    @property
+    def RT(self) -> float:
+        """``GAS_CONSTANT * temperature``."""
+        return GAS_CONSTANT * self.temperature
+
+    @property
+    def saturation_pressure(self) -> float:
+        """Saturation pressure of water at ``temperature`` (Pa), cached on first access."""
+        if self._saturation_pressure is None:
+            self._saturation_pressure = water_saturation_pressure(self.temperature)
+        return self._saturation_pressure
+
+    @saturation_pressure.setter
+    def saturation_pressure(self, value) -> None:
+        self._saturation_pressure = value
+
+    @property
+    def diffusion_temp_and_pressure_correction(self) -> float:
+        """Species-independent Fick's law adjustment ``T^1.5 / P`` for
+        :meth:`species_diffusion_coefficient`, cached on first access since
+        up to 3 species share the same ``temperature``/``pressure``.
+        """
+        if self._diffusion_temp_and_pressure_correction is None:
+            # T**1.5 written as T * sqrt(T): np.sqrt dispatches faster than np.power
+            # with a non-integer exponent, and this is on the transient ODE hot path.
+            self._diffusion_temp_and_pressure_correction = (
+                _FICK_PT_REFERENCE_FACTOR * self.temperature * np.sqrt(self.temperature) / self.pressure
+            )
+        return self._diffusion_temp_and_pressure_correction
+
+    @diffusion_temp_and_pressure_correction.setter
+    def diffusion_temp_and_pressure_correction(self, value) -> None:
+        self._diffusion_temp_and_pressure_correction = value
+
+    def set_composition(self, dry_o2_mole_fraction: float, dry_h2_mole_fraction: float,
+                         relative_humidity: float, inlet_pressure: float, inlet_temperature: float) -> None:
+        """Set ``self.X`` from a dry composition and relative humidity.
+
+        The water vapor mole fraction is fixed by the relative humidity at
+        the inlet conditions (``inlet_pressure``, ``inlet_temperature``),
+        which may differ from ``self.pressure``/``self.temperature``
+        (typically the average of the inlet and outlet conditions).
+        """
+        dry_mole_fractions = np.zeros_like(self.X)
+        dry_mole_fractions[..., index_o2] = dry_o2_mole_fraction
+        dry_mole_fractions[..., index_h2] = dry_h2_mole_fraction
+        dry_mole_fractions[..., index_n2] = 1 - dry_o2_mole_fraction - dry_h2_mole_fraction
+
+        inlet_saturation_pressure = water_saturation_pressure(inlet_temperature)
+        h2o_mole_fraction = relative_humidity * inlet_saturation_pressure / inlet_pressure
+        vapor_mole_fractions = np.zeros_like(self.X)
+        vapor_mole_fractions[..., index_h2ov] = h2o_mole_fraction
+
+        self.X = (
+            dry_mole_fractions * (1 - vapor_mole_fractions[..., index_h2ov, np.newaxis])
+            + vapor_mole_fractions
+        )
+
+    def species_mole_fraction(self, species: str) -> float:
+        """Mole fraction of ``species`` in the gas mixture."""
+        return self.X[..., species_indexes[species]]
+
+    def species_partial_pressure(self, species: str) -> float:
+        """Partial pressure of ``species`` (Pa)."""
+        return self.species_mole_fraction(species) * self.pressure
+
+    def species_concentration(self, species: str) -> float:
+        """Concentration of ``species`` (kmol/m^3)."""
+        return self.species_partial_pressure(species) / self.RT
+
+    def vapor_pressure(self) -> float:
+        """Partial pressure of water vapor (Pa)."""
+        return self.species_partial_pressure('h2o')
+
+    def vapor_concentration(self) -> float:
+        """Concentration of water vapor (kmol/m^3)."""
+        return self.species_concentration('h2o')
+
+    def saturation_concentration(self) -> float:
+        """Saturation concentration of water vapor (kmol/m^3)."""
+        return self.saturation_pressure / self.RT
+
+    def relative_humidity(self) -> float:
+        """Relative humidity (0 to 1)."""
+        return self.vapor_pressure() / self.saturation_pressure
+
+    def mixture_molecular_weight(self) -> float:
+        """Mean molecular weight of the gas mixture (kg/kmol)."""
+        return np.sum(molecular_weights * self.X, axis=-1)
+
+    def concentration(self) -> float:
+        """Total molar concentration of the gas mixture (kmol/m^3)."""
+        return self.pressure / self.RT
+
+    def density(self) -> float:
+        """Mass density of the gas mixture (kg/m^3)."""
+        return self.concentration() * self.mixture_molecular_weight()
+
+    def species_kinematic_viscosity(self, species: str) -> float:
+        """Kinematic viscosity of pure ``species`` at ``self.temperature`` (m^2/s)."""
+        log_temperature = np.log(self.temperature)
+        v = _horner5(_viscosity_polynomials[species], log_temperature)
+        return v * v * np.sqrt(self.temperature)
+
+    def mixture_kinematic_viscosity(self) -> float:
+        """Kinematic viscosity of the gas mixture (m^2/s), as a mole-weighted average."""
+        species_kinematic_viscosities = np.array(
+            [self.species_kinematic_viscosity(species) for species in species_list],
+        ).transpose()
+        return (
+            np.sum(self.X * species_kinematic_viscosities * molecular_weights, axis=-1)
+            / self.mixture_molecular_weight()
+        )
+
+    def species_diffusion_coefficient(self, species: str) -> float:
+        """Binary diffusion coefficient of ``species`` in the gas mixture (m^2/s).
+
+        Uses empirical correlations based on reference values adjusted for
+        temperature and pressure. Data from Vetter and Schumacher (2019).
+
+        References
+        ----------
+        Vetter, R. & Schumacher, J. O. Comput. Phys. Commun. 234, 223-234 (2019).
+        """
+        if species == 'o2':
+            reference_diffusion_coefficient = 0.28e-4
+        elif species == 'h2':
+            reference_diffusion_coefficient = 1.24e-4
+        elif species == 'h2o':
+            # If H2 is present, assume H2-H2O; else O2-H2O
+            if np.max(self.species_mole_fraction('h2')) > 0:
+                reference_diffusion_coefficient = 1.24e-4
+            else:
+                reference_diffusion_coefficient = 0.36e-4
+
+        return reference_diffusion_coefficient * self.diffusion_temp_and_pressure_correction
 
 
 @dataclass
 class LayerState:
-    """State of a single porous layer (GDL, MPL, catalyst layer, ...)."""
+    """State of a single porous layer (GDL, MPL, catalyst layer, ...).
+
+    ``temperature``/``pressure``/``RT``/``saturation_pressure``/
+    ``diffusion_temp_and_pressure_correction`` are pass-through properties
+    onto :attr:`gas` (see :class:`GasState`) rather than independent fields,
+    so the gas state stays the single source of truth. ``temperature``/
+    ``pressure`` remain accepted as constructor keywords for convenience
+    (``LayerState(temperature=..., pressure=...)``).
+    """
 
     gas: GasState = field(default_factory=GasState)
-    temperature: float = None
-    pressure: float = None
-    saturation_pressure: float = None
-    surface_tension: float = None
-    kinematic_viscosity: float = None
-    density: float = None
-    relative_humidity: float = None
+    temperature: InitVar[float] = None
+    pressure: InitVar[float] = None
     liquid_saturation: float = 0.
     non_wetting_saturation: float = 0.
     capillary_pressure: float = None
     # Temperature-derived capillary quantities (set by PorousLayer.update_state_at_temperature)
-    RT: float = None
-    diffusion_temp_and_pressure_correction: float = None
     breakthrough_pressure: float = None
     saturation_flow_resistance: float = None
     # Two-phase transport state (set by water saturation model)
@@ -62,6 +215,47 @@ class LayerState:
     downstream_capillary_pressure: float = None
     electrolyte_saturation: float = None
     gas_transport_resistance: dict = field(default_factory=dict)
+
+    def __post_init__(self, temperature, pressure):
+        if temperature is not None:
+            self.gas.temperature = temperature
+        if pressure is not None:
+            self.gas.pressure = pressure
+
+    @property
+    def RT(self) -> float:
+        return self.gas.RT
+
+    @property
+    def saturation_pressure(self) -> float:
+        return self.gas.saturation_pressure
+
+    @saturation_pressure.setter
+    def saturation_pressure(self, value) -> None:
+        self.gas.saturation_pressure = value
+
+    @property
+    def diffusion_temp_and_pressure_correction(self) -> float:
+        return self.gas.diffusion_temp_and_pressure_correction
+
+    @diffusion_temp_and_pressure_correction.setter
+    def diffusion_temp_and_pressure_correction(self, value) -> None:
+        self.gas.diffusion_temp_and_pressure_correction = value
+
+
+# `temperature`/`pressure` are declared as InitVar above (not real dataclass
+# fields) purely so LayerState(temperature=..., pressure=...) keeps working;
+# the actual get/set always goes through self.gas. Defined as properties here,
+# after the class body, because a same-named @property *inside* the class body
+# would shadow the InitVar default value that __init__ relies on.
+LayerState.temperature = property(
+    lambda self: self.gas.temperature,
+    lambda self, value: setattr(self.gas, 'temperature', value),
+)
+LayerState.pressure = property(
+    lambda self: self.gas.pressure,
+    lambda self, value: setattr(self.gas, 'pressure', value),
+)
 
 @dataclass
 class CatalystLayerState(LayerState):
@@ -121,9 +315,10 @@ class GasFlowState:
     (dry composition + relative humidity, with ``stoichiometry=0`` since the
     flow is already fully specified) so it can drive
     :class:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel`
-    directly. Exposing ``gas``/``temperature``/``pressure``/``RT`` lets a
-    :class:`GasFlowState` be passed directly to :class:`~marapendi.models.thermo.gas.GasModel`
-    methods, the same way a :class:`LayerState` or :class:`FlowChannelState` is.
+    directly. :attr:`gas` synthesizes a :class:`GasState` (composition, carrying
+    this object's own ``temperature``/``pressure``) on every access, so
+    correlations are available as ``flow_state.gas.some_method(...)``, the
+    same way as for a :class:`LayerState` or :class:`FlowChannelState`.
 
     A system model can specify only inlet ``GasFlowState`` objects, solve the
     cell, and derive the outlet ``GasFlowState`` from a mass balance
@@ -147,10 +342,10 @@ class GasFlowState:
     pressure: float
     gas_species_molar_flow_rates: np.ndarray = field(default_factory=lambda: np.array([1., 0., 0., 0.]))
     liquid_molar_flow_rate: float = 0.
-    saturation_pressure: float = field(default=None, init=False, repr=False)
 
-    def __post_init__(self):
-        self.RT = GAS_CONSTANT * self.temperature
+    @property
+    def RT(self) -> float:
+        return GAS_CONSTANT * self.temperature
 
     @property
     def gas_molar_flow_rate(self) -> float:
@@ -159,8 +354,11 @@ class GasFlowState:
 
     @property
     def gas(self) -> GasState:
-        """Gas composition as mole fractions."""
-        return GasState(X=self.gas_species_molar_flow_rates / self.gas_molar_flow_rate)
+        """Gas composition, carrying this object's own temperature/pressure."""
+        return GasState(
+            X=self.gas_species_molar_flow_rates / self.gas_molar_flow_rate,
+            temperature=self.temperature, pressure=self.pressure,
+        )
 
     def to_side_conditions(self) -> SideConditions:
         """Equivalent :class:`~marapendi.simulation.conditions.SideConditions`.
@@ -169,16 +367,17 @@ class GasFlowState:
         ``inlet_gas_flow_rate`` (a volumetric flow, m^3/s), so the solver
         does not also add a stoichiometric term on top of it.
         """
-        X = self.gas.X
+        gas = self.gas
+        X = gas.X
         dry_fraction = 1 - X[index_h2ov]
-        concentration = GasModel.concentration(self)
+        concentration = gas.concentration()
         return SideConditions(
             inlet_temperature=self.temperature,
             inlet_pressure=self.pressure,
             outlet_pressure=self.pressure,
             dry_o2_mole_fraction=X[index_o2] / dry_fraction,
             dry_h2_mole_fraction=X[index_h2] / dry_fraction,
-            inlet_relative_humidity=GasModel.relative_humidity(self),
+            inlet_relative_humidity=gas.relative_humidity(),
             stoichiometry=0.,
             inlet_gas_flow_rate=self.gas_molar_flow_rate / concentration,
             inlet_liquid_flow_rate=self.liquid_molar_flow_rate * water_molar_volume(self.temperature),
@@ -226,14 +425,13 @@ class GasFlowState:
         area : float
             Active cell area (m^2), i.e. ``cell.area``.
         """
-        composition_state = _SimpleNamespace(gas=GasState())
-        GasModel.set_composition(
-            composition_state,
+        gas = GasState()
+        gas.set_composition(
             side_conditions.dry_o2_mole_fraction, side_conditions.dry_h2_mole_fraction,
             side_conditions.inlet_relative_humidity,
             side_conditions.inlet_pressure, side_conditions.inlet_temperature,
         )
-        X = composition_state.gas.X
+        X = gas.X
 
         concentration = side_conditions.average_pressure / (GAS_CONSTANT * stack_temperature)
         total_volumetric_flow = (
@@ -279,17 +477,57 @@ class GasFlowState:
 
 @dataclass
 class FlowChannelState:
-    """State of a flow channel (anode or cathode)."""
+    """State of a flow channel (anode or cathode).
+
+    See :class:`LayerState` for why ``temperature``/``pressure``/``RT``/
+    ``saturation_pressure``/``diffusion_temp_and_pressure_correction`` are
+    pass-through properties onto :attr:`gas` rather than independent fields.
+    """
 
     gas: GasState = field(default_factory=GasState)
-    temperature: float = None
-    pressure: float = None
-    saturation_pressure: float = None
+    temperature: InitVar[float] = None
+    pressure: InitVar[float] = None
     inlet_gas_flow_rate: float = 1e-12
     inlet_liquid_flow_rate: float = None
     inlet_liquid_saturation: float = None
     inlet_stoichiometry: float = None
     gas_transport_resistance: dict = field(default_factory=dict)
+
+    def __post_init__(self, temperature, pressure):
+        if temperature is not None:
+            self.gas.temperature = temperature
+        if pressure is not None:
+            self.gas.pressure = pressure
+
+    @property
+    def RT(self) -> float:
+        return self.gas.RT
+
+    @property
+    def saturation_pressure(self) -> float:
+        return self.gas.saturation_pressure
+
+    @saturation_pressure.setter
+    def saturation_pressure(self, value) -> None:
+        self.gas.saturation_pressure = value
+
+    @property
+    def diffusion_temp_and_pressure_correction(self) -> float:
+        return self.gas.diffusion_temp_and_pressure_correction
+
+    @diffusion_temp_and_pressure_correction.setter
+    def diffusion_temp_and_pressure_correction(self, value) -> None:
+        self.gas.diffusion_temp_and_pressure_correction = value
+
+
+FlowChannelState.temperature = property(
+    lambda self: self.gas.temperature,
+    lambda self, value: setattr(self.gas, 'temperature', value),
+)
+FlowChannelState.pressure = property(
+    lambda self: self.gas.pressure,
+    lambda self, value: setattr(self.gas, 'pressure', value),
+)
 
 @dataclass
 class CellSideState:
