@@ -110,7 +110,7 @@ for side in cell.sides:
 # .. attention::
 #
 #    A :class:`~marapendi.components.porous_layers.porous_layers.MicroPorousLayer` can also be defined using the 
-#    :attr:`~marapendi.components.cell.cell.CellSide.mpl` attribute of :class:`~marapendi.components.cell.cell.CellSide.
+#    :attr:`~marapendi.components.cell.cell.CellSide.mpl` attribute of :class:`~marapendi.components.cell.cell.CellSide`.
 
 
 # %%
