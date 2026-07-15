@@ -119,6 +119,84 @@ for the full breakdown of each subpackage.
 
    api/index
 
+Acknowledgements
+-----------------
+
+.. grid:: 3 3 3 3
+   :gutter: 2 3 3 3
+   :class-container: index-ack-grid
+
+   .. grid-item::
+      :columns: 12 3 3 3
+
+      .. image:: /_static/LOGO_MINES_Horizontal_bleu_fond_vierge.png
+         :width: 100%
+         :alt: Mines Paris - PSL logo
+
+   .. grid-item::
+      :columns: 12 9 9 9
+
+      **Mines Paris - PSL**
+
+      The development of marapendi is supported through employee time by
+      Mines Paris - PSL University.
+
+   .. grid-item::
+      :columns: 12 3 3 3
+
+      .. image:: /_static/logo_france_2030.png
+         :width: 100%
+         :alt: France 2030 logo
+
+      .. image:: /_static/logo_pepr_h2.png
+         :width: 100%
+         :alt: PEPR H2 logo
+
+   .. grid-item::
+      :columns: 12 9 9 9
+
+      **PEPR H2 - France 2030**
+
+      The authors acknowledge support from the French National Research
+      Agency (ANR) under the France 2030 program, reference ANR-22-PEHY-0002
+      (project PEPRH2-DurasysPAC).
+
+      The `DuraSys-PAC <https://www.pepr-hydrogene.fr/projets/durasys-pac/>`_
+      project aims to improve the lifetime of PEM fuel cells for heavy-duty
+      mobility applications. marapendi is used in DuraSys-PAC to develop fast
+      0D physics-based models of PEMFC performance and degradation.
+
+   .. grid-item::
+      :columns: 12 3 3 3
+
+      .. image:: /_static/mariner_logo.png
+         :width: 100%
+         :alt: MARINER project logo
+
+      .. image:: /_static/chp_logo.png
+         :width: 100%
+         :alt: Clean Hydrogen Partnership logo
+
+      .. image:: /_static/eu_logo.png
+         :width: 100%
+         :alt: European Union logo
+
+   .. grid-item::
+      :columns: 12 9 9 9
+
+      **Clean Hydrogen Partnership**
+
+      marapendi benefits from developments carried out in the scope of the
+      MARINER project (Clean Hydrogen Partnership). It is used to
+      characterise the performance and degradation of PEMFC stacks for
+      maritime applications.
+
+      Co-funded by the European Union under Grant Agreement No. 101251528.
+      Views and opinions expressed are however those of the author(s) only
+      and do not necessarily reflect those of the European Union or the
+      Clean Hydrogen Partnership. Neither the European Union nor the
+      granting authority can be held responsible for them.
+
 Indices and tables
 ------------------
 
