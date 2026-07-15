@@ -1,5 +1,4 @@
 stages:
-  - build
   - test
   - deploy
 
@@ -11,27 +10,18 @@ variables:
   DOCKER_HOST: tcp://docker:2375
   DOCKER_TLS_CERTDIR: ""
 
-build:
-  stage: build
-  image: docker:latest
-  services:
-    - docker:dind
-  script:
-    - docker build -f ci/Dockerfile -t marapendi:ci .
-    - docker save marapendi:ci -o marapendi-ci.tar
-  artifacts:
-    paths:
-      - marapendi-ci.tar
-    expire_in: 1 hour
-
+# Build and test in one job: saving the built image (docker save) and passing
+# it to a separate job as a GitLab artifact hit the instance's artifact size
+# limit (413 Request Entity Too Large) since the image bundles a full conda
+# env. Keeping the image local to a single job's dind daemon avoids that
+# entirely, at the cost of not caching the built image between stages.
 test:
   stage: test
   image: docker:latest
   services:
     - docker:dind
-  needs: ["build"]
   script:
-    - docker load -i marapendi-ci.tar
+    - docker build -f ci/Dockerfile -t marapendi:ci .
     - docker run marapendi:ci python -c "import marapendi; print('OK')"
     - docker run marapendi:ci pytest --cov=marapendi
 
