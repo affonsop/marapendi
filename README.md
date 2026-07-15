@@ -27,7 +27,7 @@ conditions.
   classes, so overriding one correlation or swapping a whole sub-model is a
   matter of subclassing.
 - Multiple runnable examples demonstrating **marapendi**'s capabilities (see
-  [Example notebooks](#example-notebooks) below).
+  [Examples](#examples) below).
 - Detailed documentation and openly readable, commented code, designed for
   transparency and easy understanding.
 - A transient 0D model available as a MATLAB/Simulink S-function block (see
@@ -218,21 +218,23 @@ src/marapendi/
 └── interop/       # simulink_bridge.py — thin adapter for the MATLAB Simulink block
 ```
 
-## Example notebooks
+## Examples
 
-| Notebook | Description |
+Each example is a self-contained, runnable Python script under `examples/`,
+rendered with its output plots at `docs/auto_examples/` when the docs are
+built (see [Documentation](#documentation) below).
+
+| Script | Description |
 |---|---|
-| [examples/01_cell_assembly_and_polarization_curve.ipynb](examples/01_cell_assembly_and_polarization_curve.ipynb) | Assemble a cell, simulate a polarization curve, plot V–i and HFR |
-| [examples/02_quasi_steady_simulation_monocell.ipynb](examples/02_quasi_steady_simulation_monocell.ipynb) | Replay a test-bench log with a vectorised quasi-steady simulation; compare simulated and measured voltage over time |
-| [examples/03_implicit_vs_explicit_comparison.ipynb](examples/03_implicit_vs_explicit_comparison.ipynb) | Compare explicit and implicit steady-state models on voltage, MEA temperature, and HFR |
-| [examples/04_transient_vs_quasi_steady.ipynb](examples/04_transient_vs_quasi_steady.ipynb) | Compare transient and quasi-steady simulations: voltage, MEA temperature, membrane and CL water contents, liquid saturation, HFR |
-| [examples/05_multi_condition_comparison.ipynb](examples/05_multi_condition_comparison.ipynb) | Simulate and compare polarization curves across multiple experimental conditions |
-| [examples/06_picewise_linear_approximation_water_conent.ipynb](examples/06_picewise_linear_approximation_water_conent.ipynb) | Compare the piecewise-linear (standard) and paper-model (Affonso Nobrega et al. 2026) membrane water balance models |
-| [examples/07_parameter_estimation.ipynb](examples/07_parameter_estimation.ipynb) | Fit kinetic and transport parameters to multi-condition experimental data; k-fold cross-validation and complexity selection |
-
-The same workflows are also available as Sphinx-Gallery scripts
-(`examples/plot_01_polarization_curve.py` … `plot_09_membrane_correlations.py`),
-rendered with their output plots at `docs/auto_examples/` when the docs are built.
+| [examples/plot_01_polarization_curve.py](examples/plot_01_polarization_curve.py) | Assemble a cell, simulate a polarization curve, plot V–i and HFR |
+| [examples/plot_02_quasi_steady.py](examples/plot_02_quasi_steady.py) | Replay a test-bench log with a vectorised quasi-steady simulation; compare simulated and measured voltage over time |
+| [examples/plot_03_implicit_vs_explicit.py](examples/plot_03_implicit_vs_explicit.py) | Compare explicit and implicit steady-state models on voltage, MEA temperature, and HFR |
+| [examples/plot_04_transient.py](examples/plot_04_transient.py) | Transient simulation over an ID-FAST driving cycle; compare against the quasi-steady-state prediction |
+| [examples/plot_05_multi_condition.py](examples/plot_05_multi_condition.py) | Simulate and compare polarization curves across multiple experimental conditions |
+| [examples/plot_06_parameter_estimation.py](examples/plot_06_parameter_estimation.py) | Fit kinetic and transport parameters to multi-condition experimental data; k-fold cross-validation and complexity selection |
+| [examples/plot_07_pwl_membrane.py](examples/plot_07_pwl_membrane.py) | Compare the piecewise-linear (standard) and paper-model (Affonso Nobrega et al. 2026) membrane water balance models |
+| [examples/plot_08_water_balance.py](examples/plot_08_water_balance.py) | Water balance vs. cell temperature: theoretical water production against modelled inlet/outlet water flows |
+| [examples/plot_09_membrane_correlations.py](examples/plot_09_membrane_correlations.py) | Plot membrane/ionomer correlations (conductivity, isotherm, permeability, diffusivity) vs. water content at several temperatures |
 
 ## MATLAB / Simulink
 
