@@ -123,9 +123,27 @@ used by the components and models above.
 Estimation
 ----------
 :class:`~marapendi.estimation.polarization_curve_calibration.SteadyStatePolarizationCurveCalibration`
-fits kinetic and transport parameters to multi-condition polarization and HFR data
-using differential-evolution global optimisation, with k-fold cross-validation and
-automatic model-complexity selection via the 1-SE rule.
+fits model parameters parameters to multi-condition polarization and HFR data
+using differential-evolution global optimisation, with k-fold cross-validation. Includes
+methods for global sensitivity analysis and automatic parameter ranking and plotting functions. 
+
+.. code-block:: python
+
+    cal = SteadyStatePolarizationCurveCalibration(
+        conditions_dataset=conditions_df,       # one row per experimental condition
+        experimental_dataset=experimental_df,   # one row per (case, current density) point
+        cell_creator=cell_creator,              # function(dict of params) -> FuelCell
+        known_parameters=known,                 # list[Parameter], fixed values
+        unknown_parameters=unknown,             # list[UnknownParameter], fit by the optimiser
+    )
+    cal.compute_global_sensitivity()
+    mrpd.plot_global_sensitivity(cal)
+    mrpd.plot_colinearity_map(cal)
+    mrpd.plot_parameter_ranking(cal)
+    sol, p_opt = cal.estimate(case_list=cal.full_case_list)
+
+See :doc:`user_guide/calibration` for the full pipeline, including
+``cell_creator``, cross-validation and complexity selection.
 
 Interop
 -------

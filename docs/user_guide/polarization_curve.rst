@@ -8,7 +8,7 @@ inspecting every variable in the output state.
 .. seealso::
 
    The physics implemented by each model referenced here is documented in
-   :doc:`/science/index` — in particular :doc:`/science/water_balance` (membrane
+   :doc:`/science/index`, in particular :doc:`/science/water_balance` (membrane
    water transport), :doc:`/science/membrane_correlations` (ionomer
    correlations), :doc:`/science/two_phase_flow` and :doc:`/science/gas_transport`
    (liquid water and species transport), :doc:`/science/catalyst_layer`, and
@@ -20,9 +20,12 @@ inspecting every variable in the output state.
 Cell assembly
 -------------
 
-A :class:`~marapendi.components.cell.fuelcell.FuelCell` is a pure component tree — it
+A :class:`~marapendi.components.cell.fuelcell.FuelCell` is a pure component tree. It
 holds geometry and material parameters only; all physics lives in the model
 objects. Assemble the cell once and reuse it across many conditions.
+
+.. note:: 
+    All quantities are defined in SI units, except moles which are always in kmol.
 
 .. code-block:: python
 
@@ -33,8 +36,8 @@ objects. Assemble the cell once and reuse it across many conditions.
     ionomer = mrpd.PFSAIonomer(equivalent_weight=1100, dry_density=1980)
 
     cell = mrpd.FuelCell(
-        area=25e-4,                   # m²
-        electric_resistance=30e-7,  # Ω m²
+        area=25e-4,                
+        electric_resistance=30e-7,  
         ca=mrpd.FuelCellSide(
             cl=mrpd.PtCCatalystLayer(
                 ecsa=70e3, platinum_loading=0.4e-2, ionomer=ionomer,
@@ -80,21 +83,19 @@ Operating conditions
 
 .. code-block:: python
 
-    i_arr = np.linspace(500, 22000, 40)   # A/m²
-    T = 353.15                             # K
-
+    i = np.linspace(500, 22000, 40) # A/m2
     conditions = mrpd.CellConditions(
-        current_density=i_arr,
-        cell_temperature=T,
+        current_density=i, 
+        cell_temperature=353.15,
         ca=mrpd.SideConditions(
             inlet_temperature=T,
-            outlet_pressure=1.5e5,        # Pa
+            outlet_pressure=1.5e5,      
             dry_o2_mole_fraction=0.21,
             inlet_relative_humidity=0.5,
             stoichiometry=2.0,
         ),
         an=mrpd.SideConditions(
-            inlet_temperature=T,
+            inlet_temperature=353.15,
             outlet_pressure=1.5e5,
             dry_h2_mole_fraction=1.0,
             inlet_relative_humidity=0.5,
@@ -102,8 +103,8 @@ Operating conditions
         ),
     )
 
-Two-step solve
---------------
+Solving the steady-state model
+--------------------------------------
 
 .. code-block:: python
 
@@ -111,17 +112,23 @@ Two-step solve
     state = model.set_initial_conditions(cell, conditions)
     state = model.solve(cell, conditions, state)
 
-    # Polarization curve
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots()
-    ax.plot(i_arr * 1e-4, state.cell_voltage)
-    ax.set_xlabel("Current density (A cm⁻²)")
-    ax.set_ylabel("Cell voltage (V)")
 
 :meth:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel.set_initial_conditions`
 populates a :class:`~marapendi.simulation.state.CellState` with starting values (equilibrium
 water content at the inlet RH, analytical temperature estimate). ``solve`` updates it in
 place and returns the same object.
+
+Plotting the polarization curve
+--------------------------------------
+
+.. code-block:: python
+
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots()
+    ax.plot(i * 1e-4, state.cell_voltage)
+    ax.set_xlabel("Current density (A/cm$^2$)")
+    ax.set_ylabel("Cell voltage (V)")
+
 
 Implicit model
 --------------
@@ -131,70 +138,19 @@ MEA temperature and cell voltage to self-consistency.  The API is identical:
 
 .. code-block:: python
 
-    from marapendi.models.base.implicit_steady_state import ImplicitSteadyStateModel
-
-    imp = ImplicitSteadyStateModel()
+    imp = mrpd.ImplicitSteadyStateModel()
     state_imp = imp.solve(cell, conditions,
                           imp.set_initial_conditions(cell, conditions))
 
 The implicit model is more accurate at high current densities where the thermal
-feedback is significant.  The explicit model is faster and sufficient for
-calibration.
+feedback is significant.  See :doc:`/auto_examples/plot_03_implicit_vs_explicit` for 
+a comparison. 
 
 Accessing state variables
 --------------------------
 
-The :class:`~marapendi.simulation.state.CellState` mirrors the component tree.  After
-``solve`` every field is populated:
-
-.. code-block:: python
-
-    # --- Cell-level ---
-    state.cell_voltage            # V,   shape == i_arr.shape
-    state.E_rev                   # V,   Nernst (reversible) voltage
-    state.eta_act                 # V,   activation overpotential  (V = E_rev - eta_act - eta_ohm)
-    state.eta_ohm                 # V,   ohmic overpotential
-    state.mea_temperature         # K,   MEA temperature
-    state.mea_temperature_increase # K,  T_MEA - T_stack
-    state.current_density         # A/m²
-    state.crossover_current       # A/m², equivalent H₂ crossover current
-
-    # HFR is computed on demand (not stored automatically by the steady-state solver)
-    hfr = model.voltage_model.high_frequency_resistance(cell, state)  # Ω m²
-
-    # --- Cathode side ---
-    state.ca.cl.temperature       # K,   catalyst layer temperature
-    state.ca.cl.liquid_saturation # –,   liquid saturation
-    state.ca.cl.ionomer_water_content  # mol/mol
-    state.ca.cl.membrane_interface_water_content  # mol/mol
-    state.ca.cl.proton_resistance # Ω m², CL proton resistance
-    state.ca.cl.relative_humidity # –
-    state.ca.cl.pressure          # Pa
-    state.ca.cl.overpotential     # V
-
-    state.ca.gdl.liquid_saturation
-    state.ca.gdl.relative_humidity
-
-    state.ca.ch.gas.X             # mole fractions [O2, N2, H2, H2O]
-    state.ca.ch.pressure          # Pa
-    state.ca.ch.temperature       # K
-
-    state.ca.h2ov_transport_resistance   # m² s / mol, water vapour resistance
-    state.ca.reactant_transport_resistance  # m² s / mol
-
-    # --- Membrane ---
-    state.membrane.water_content          # mol/mol, mean λ
-    state.membrane.water_content_profile  # array, λ(ξ) through-plane profile
-    state.membrane.proton_resistance      # Ω m²
-    state.membrane.water_flux             # mol / (m² s)
-    state.membrane.eod_speed             # –, electroosmotic drag coefficient
-    state.membrane.diffusion_flux         # mol / (m² s)
-    state.membrane.eod_flux               # mol / (m² s)
-
-    # Anode side (same structure as cathode)
-    state.an.cl.liquid_saturation
-    state.an.cl.ionomer_water_content
-    # …
+The :class:`~marapendi.simulation.state.CellState` mirrors the component tree. 
+See :doc:`/user_guide/state_variables` for a complete list of quantities stored in `state`.
 
 .. note::
 
@@ -208,44 +164,3 @@ The :class:`~marapendi.simulation.state.CellState` mirrors the component tree.  
 
        for layer in state.layers:        # all porous layers + membrane
            print(layer.temperature)
-
-Overpotential breakdown
-------------------------
-
-The voltage balance is ``V = E_rev - η_act - η_ohm`` exactly:
-
-.. code-block:: python
-
-    fig, ax = plt.subplots()
-    ax.stackplot(
-        i_arr * 1e-4,
-        [np.abs(state.eta_act), np.abs(state.eta_ohm)],
-        labels=["Activation (η_act)", "Ohmic (η_ohm)"],
-        colors=["C3", "C2"], alpha=0.75,
-    )
-    ax.plot(i_arr * 1e-4, state.E_rev - state.cell_voltage, "k--", label="Total loss")
-    ax.set_xlabel("Current density (A cm⁻²)")
-    ax.set_ylabel("Overpotential (V)")
-    ax.legend()
-
-Swapping the membrane water-balance model
------------------------------------------
-
-Both steady-state models use
-:class:`~marapendi.models.water_balance.membrane_pwl.MembraneWaterBalanceModelPiecewise`
-by default — the piecewise-linear isotherm closure described in
-:doc:`/science/membrane_correlations`.  To use the first-order linear
-expansion from Affonso Nobrega et al. (2026) instead (see
-:doc:`/science/water_balance` for the derivation of both closures, and
-:doc:`/auto_examples/plot_07_pwl_membrane` for a side-by-side comparison):
-
-.. code-block:: python
-
-    from marapendi.models.water_balance.water_balance import WaterBalanceModel
-    from marapendi.models.water_balance.membrane import MembraneWaterBalanceModel
-
-    model = mrpd.ExplicitSteadyStateModel(
-        water_balance_model=WaterBalanceModel(
-            membrane_water_balance_model=MembraneWaterBalanceModel()
-        )
-    )

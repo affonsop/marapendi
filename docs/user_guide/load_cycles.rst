@@ -137,9 +137,8 @@ transcribe step tables yourself.
 ID-FAST
 ~~~~~~~
 
-:class:`~marapendi.simulation.load_cycles.idfast.IDFastCycle` implements the **Improved
-Dynamic Fuel-cell ASsessment Test** protocol (Colombo et al., *J. Power
-Sources* **553**, 232250, 2023): a 3925 s cycle made of a 2005 s low-power
+:class:`~marapendi.simulation.load_cycles.idfast.IDFastCycle` implements the
+ID-FAST driving cycle: a 3925 s cycle made of a 2005 s low-power
 cold section followed by a 1920 s high-power hot section, including a short
 idle-stop period where the cathode air flow is cut (modelled as a very low
 dry-O2 mole fraction) and current is drawn through an external resistance
@@ -176,8 +175,8 @@ other condition held constant.
 
 Both constructors expose the physically meaningful parameters (power-level
 current densities, cell temperature, pressures, humidities, stoichiometries)
-as keyword arguments with literature-typical defaults — see the API reference
-for the full parameter list.
+as keyword arguments with literature-typical defaults — see the
+:doc:`API reference </api/tools>` for the full parameter list.
 
 Driving a transient solve with a cycle
 -----------------------------------------
@@ -193,35 +192,24 @@ passed directly as the *conditions* argument of
 
     tr_model = TransientModel(n_memb_mesh=5)
     state0, x0 = tr_model.set_initial_conditions(cell, cycle(0))
-    sol = tr_model.solve(
+    state = tr_model.solve(
         cell, cycle, t_span=(0, cycle.duration),
         x0=x0, dense_output=True, method='BDF', max_step=10,
         compute_diagnostics=False,
     )
-    print(sol.status, len(sol.t))
 
-    # Diagnostics on a regular time grid, e.g. for plotting:
-    import numpy as np
-    t_eval = np.linspace(0, cycle.duration, 1000)
-    diag = tr_model.evaluate(cell, cycle, t_eval, x_eval=sol.sol(t_eval))
-    diag.cell_voltage       # cell voltage at each t_eval
-    diag.hfr                # high-frequency resistance at each t_eval
-
-See :doc:`time_series` for the full transient workflow (initial conditions,
-``dense_output``, ``evaluate`` versus the raw ODE state, comparison against a
-quasi-steady-state solve).
+See :doc:`time_series` for the full transient workflow.
 
 .. _load-cycles-breakpoints:
 
-Why kinks matter: ``discontinuity_times`` and ``breakpoints``
-------------------------------------------------------------------
+Why discontinuity matters: ``discontinuity_times`` and ``breakpoints``
+----------------------------------------------------------------------
 
 A ``'const'`` step change or the corner of a ``'ramp'`` is a genuine
-discontinuity in the derivative of the driving conditions. An adaptive ODE
+discontinuity in the derivative of the operating conditions. An adaptive ODE
 solver's local error estimate assumes the right-hand side is smooth over the
-step it just took; stepping across a kink invisibly can silently degrade
-accuracy right at the moments — start of a power step, start of an idle stop —
-that usually matter most.
+step it just took; stepping across a discontinuous derivative invisibly can silently degrade
+accuracy.
 
 Every :class:`~marapendi.simulation.load_cycles.PiecewiseProfile` field of a
 cycle records its own segment boundaries, and
@@ -231,16 +219,15 @@ conditions) into one sorted array of interior times.
 :meth:`TransientModel.solve` uses this automatically: unless you pass
 ``breakpoints=`` explicitly, it calls ``cycle.discontinuity_times()`` and
 restarts :func:`scipy.integrate.solve_ivp` at each one, stitching the
-per-segment solutions back into a single result (including a piecewise
-``dense_output`` interpolant, so ``sol.sol(t)`` still works transparently
-across breakpoints). This is why the ID-FAST and NEDC examples above need no
+per-segment solutions back into a single result. 
+This is why the ID-FAST and NEDC examples above need no
 special handling despite dozens of step changes — pass ``breakpoints=[]`` to
 ``solve`` if you want to disable it and let the solver step through freely.
 
 Importing a load cycle from CSV
 -----------------------------------
 
-Standardised cycles are convenient, but real dynamometer or field logs
+Standardised cycles are convenient, but real logs
 usually arrive as a CSV/Excel export with one row per sample and one column
 per channel. Because **marapendi** already depends on ``pandas``, the
 cleanest way to turn such a file into a :class:`LoadCycle` is to read it with

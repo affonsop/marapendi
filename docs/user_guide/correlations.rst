@@ -40,12 +40,11 @@ temperature:
 
     ax.set_xlabel("Water content λ (mol/mol)")
     ax.set_ylabel("Proton conductivity σ (S/m)")
-    ax.set_title("PFSA membrane conductivity (Springer et al. 1991 / Arrhenius)")
+    ax.set_title("PFSA membrane conductivity")
     ax.legend()
     ax.grid(True, alpha=0.3)
 
-To plot conductivity against **water volume fraction** f_v (the variable used
-in the empirical fit):
+To plot conductivity against **water volume fraction** :
 
 .. code-block:: python
 
@@ -113,44 +112,6 @@ polarization curve):
     axes[1].set_ylabel("PWL error (%)")
     fig.tight_layout()
 
-Membrane through-plane proton resistance
------------------------------------------
-
-:meth:`~marapendi.components.membrane.pem.PFSA.proton_resistance` integrates the local
-conductivity over a through-plane water-content profile read from a
-:class:`~marapendi.simulation.state.MembraneState`-like object (as populated
-by :doc:`/science/water_balance` during a solve). To verify the underlying
-conductivity correlation in isolation for a *uniform* water content, it is
-simpler to call
-:meth:`~marapendi.components.membrane.pem.PFSAIonomer.proton_conductivity` directly and
-divide the membrane thickness by it (see :doc:`/science/membrane_correlations`
-for the equation):
-
-.. code-block:: python
-
-    membrane = mrpd.PFSA(ionomer=ionomer, dry_thickness=25e-6)
-
-    lmbd_vals = np.linspace(3, 20, 50)
-    T = 353.15
-
-    sigma = ionomer.proton_conductivity(lmbd_vals, T)
-    R_proton = membrane.dry_thickness / sigma
-
-    fig, ax = plt.subplots(figsize=(6, 4))
-    ax.plot(lmbd_vals, R_proton * 1e4, "C1-")
-    ax.set_xlabel("Mean water content λ (mol/mol)")
-    ax.set_ylabel("Proton resistance (mΩ cm²)")
-    ax.set_title("Membrane proton resistance vs water content")
-    ax.grid(True, alpha=0.3)
-
-.. note::
-
-   ``proton_resistance`` itself takes a full state object exposing
-   ``water_content_profile``/``temperature`` (and optionally
-   ``water_saturation`` to blend in the liquid-equilibrated conductivity —
-   see the "Liquid-equilibrated water content" correlation in
-   :doc:`/science/membrane_correlations`); it is normally called by
-   :doc:`/science/water_balance`'s solve pipeline rather than directly.
 
 Capillary pressure vs saturation (GDL)
 ----------------------------------------

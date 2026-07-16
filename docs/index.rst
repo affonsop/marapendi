@@ -212,6 +212,16 @@ Acknowledgements
       Clean Hydrogen Partnership. Neither the European Union nor the
       granting authority can be held responsible for them.
 
+AI use 
+-------
+Claude Sonet 4.5 was used in the development of marapendi, specially for code refactoring, 
+comments, tests, examples and documentation creation and continuous integration configuration.
+
+A complete review of documentation and comments is currently ongoing, and significant mistakes might 
+still be present. In case you notice any, please contact
+`pedro.affonso_nobrega@minesparis.psl.eu <mailto:pedro.affonso_nobrega@minesparis.psl.eu>`_.
+
+
 Indices and tables
 ------------------
 

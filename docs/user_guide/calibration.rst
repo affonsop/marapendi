@@ -4,8 +4,7 @@ Model calibration pipeline
 :class:`~marapendi.estimation.polarization_curve_calibration.SteadyStatePolarizationCurveCalibration`
 fits kinetic and transport parameters to multi-condition polarization-curve and
 HFR data.  This guide walks through the full pipeline: defining data, choosing
-parameters, running the optimiser, cross-validating, and selecting model
-complexity with the 1-SE rule.
+parameters, running the optimiser, cross-validating, and inspecting results. 
 
 .. seealso::
 
@@ -95,8 +94,7 @@ Parameters
 optimisation with initial guess and bounds.
 
 ``is_linear=True`` applies linear [0, 1] normalisation; ``is_linear=False`` applies
-log scaling — use log for parameters that span orders of magnitude (exchange
-current density, permeabilities).
+log scaling — use log for parameters that span orders of magnitude.
 
 .. code-block:: python
 
@@ -261,25 +259,7 @@ and pick the simplest model within one standard error of the best CV RMSE:
         output_dir="results/",
     )
 
-    # Load results and compute 1-SE statistics
+    # Load results a
     cv_df = cal.load_cross_validation_results("complexity_sweep", dir="results/")
     stats_df = build_rmse_stats_df(cv_df)
-    n_opt = optimal_n_1se(stats_df["mean"], stats_df["std"])
-    print(f"Optimal complexity: {n_opt} parameters")
 
-Post-processing
----------------
-
-After selecting the optimal complexity, re-fit on all data and simulate:
-
-.. code-block:: python
-
-    cal.automatic_parameter_selection(n_opt)
-    _, p_final = cal.estimate(case_list=cal.full_case_list, maxiter=300)
-
-    cell_opt = cell_creator(dict(zip(cal.p_i_name, p_final)))
-    for case in cal.full_case_list:
-        V_sim, hfr_sim, state = cal.simulate_voltage_and_hfr(cell_opt, case)
-        ds = cal.get_case_dataset(case)
-        print(f"Case {case}  RMSE_V = "
-              f"{np.sqrt(np.mean((ds['voltage'] - V_sim)**2))*1e3:.1f} mV")

@@ -7,8 +7,7 @@ Two strategies are available for time-series data:
   steady-state point.  Appropriate when the MEA dynamics are fast compared to the
   load changes.
 * **Transient (ODE integration)** — coupled ODEs for MEA temperature and
-  through-plane membrane water-content profile.  Required when step responses,
-  warm-up transients, or dynamic HFR are of interest.
+  through-plane membrane water-content profile.  Required when dynamic responses are of interest.
 
 Both strategies accept conditions defined directly from an experimental CSV log.
 
@@ -18,15 +17,12 @@ Both strategies accept conditions defined directly from an experimental CSV log.
    the right tool when you already have one specific measured log to replay.
    If instead you want to *construct* a load profile from named steps, or
    drive the cell with one of the standardised ID-FAST / FC-DLC (NEDC) cycles,
-   see :doc:`load_cycles` — it covers
-   :class:`~marapendi.simulation.load_cycles.LoadCycle`, which does the same
-   job as the hand-written callables below with vectorised evaluation and
-   automatic ODE-solver breakpoints at every step change.
+   (see :doc:`load_cycles`).
 
 Loading conditions from a CSV file
 -----------------------------------
 
-Test-bench software typically exports a semicolon-delimited file with one row per
+Test-bench software typically exports a CSV file with one row per
 time step.  The columns you need — current, voltage, temperature, pressure, RH,
 and stoichiometry — must be extracted and unit-converted before building
 :class:`~marapendi.simulation.conditions.CellConditions`.
@@ -37,7 +33,7 @@ and stoichiometry — must be extracted and unit-converted before building
     import pandas as pd
     import marapendi as mrpd
 
-    CELL_AREA = 25e-4   # m²
+    CELL_AREA = 25e-4 
 
     raw = pd.read_csv("data/test_bench_log.csv", sep=";", decimal=".",
                       skiprows=6)   # skip the instrument header
@@ -45,19 +41,16 @@ and stoichiometry — must be extracted and unit-converted before building
     # Rename to convenient names and convert units
     df = pd.DataFrame({
         "t":    raw["Time(s)"].values,
-        "i":    raw["I_Pile(A)"].values / CELL_AREA,          # A → A/m²
+        "i":    raw["I_Pile(A)"].values / CELL_AREA,        
         "V":    raw["U_Pile(V)"].values,
-        "T_K":  raw["T_pile(°C)"].values + 273.15,            # °C → K
-        "p_ca": raw["P_Air_Out(bara)"].values * 1e5,          # bara → Pa
+        "T_K":  raw["T_pile(°C)"].values + 273.15,            
+        "p_ca": raw["P_Air_Out(bara)"].values * 1e5,       
         "p_an": raw["P_h2_out(bara)"].values * 1e5,
-        "rh_ca": raw["RH_Air_calc(%)"].values / 100.,         # % → fraction
+        "rh_ca": raw["RH_Air_calc(%)"].values / 100.,        
         "rh_an": raw["RH_h2_calc(%)"].values / 100.,
         "st_ca": raw["Stoeckio_air_calc"].values,
         "st_an": raw["Stoeckio_h2_calc"].values,
     })
-
-    # Drop transient start-up rows and rows with zero current
-    df = df[(df["i"] > 50)].reset_index(drop=True)
 
     conditions = mrpd.CellConditions(
         current_density=df["i"].values,
@@ -79,8 +72,8 @@ and stoichiometry — must be extracted and unit-converted before building
     )
 
 All fields in :class:`~marapendi.simulation.conditions.CellConditions` and
-:class:`~marapendi.simulation.conditions.SideConditions` accept numpy arrays; the
-solver evaluates all N time steps in a single vectorised call.
+:class:`~marapendi.simulation.conditions.SideConditions` accept numpy arrays, which must be the
+same size as `current_density`.
 
 Quasi-steady simulation
 ------------------------
@@ -113,11 +106,6 @@ independently — no ODE, no iteration between steps:
     axes[1].set_ylabel("HFR (mΩ cm²)")
     axes[1].set_xlabel("Time (h)")
 
-.. note::
-
-   For a quasi-steady simulation you need only one ``cell`` object; the cell
-   parameters are constant.  All time-varying information lives in
-   ``conditions``.
 
 Transient simulation — constant conditions
 -------------------------------------------
@@ -149,7 +137,7 @@ operation:
     )
 
     tr_model = TransientModel(n_memb_mesh=5)
-    _, x0 = tr_model.set_initial_conditions(cell, cond_0)
+    state0, x0 = tr_model.set_initial_conditions(cell, cond_0)
     state = tr_model.solve(cell, cond_0, t_span=(0, 600), x0=x0)
 
     # state is a CellState, matching ExplicitSteadyStateModel.solve(); e.g.
@@ -172,7 +160,7 @@ Pass a callable ``conditions(t)`` instead of a fixed
     I_HIGH = 20_000.  # A/m²  — after step
 
     def conditions(t):
-        i = I_LOW if t <= 0 else I_HIGH
+        i = I_LOW if t <= 100 else I_HIGH
         return mrpd.CellConditions(
             current_density=np.atleast_1d(i),
             cell_temperature=T,
@@ -188,21 +176,20 @@ Pass a callable ``conditions(t)`` instead of a fixed
             ),
         )
 
-    _, x0_lo = tr_model.set_initial_conditions(cell, conditions(0))
-    sol = tr_model.solve(cell, conditions, t_span=(0, 600), x0=x0_lo,
+    _, x0 = tr_model.set_initial_conditions(cell, conditions(0))
+    state = tr_model.solve(cell, conditions, t_span=(0, 600), x0=x0,
                          dense_output=True, compute_diagnostics=False)
 
-The callable is called at each ODE evaluation step, so any channel — current,
-temperature, pressure, RH — can vary continuously.
+The callable is called at each ODE evaluation step.
 
 .. note::
 
    A hand-written step function like the one above has a hard kink at
-   ``t = 0`` that the ODE solver cannot see coming. For a handful of steps
+   ``t = 100`` that the ODE solver cannot see coming. For a handful of steps
    this is usually harmless, but for a cycle with many step changes (a
    driving cycle, a multi-point test sequence) prefer
    :class:`~marapendi.simulation.load_cycles.LoadCycle` (:doc:`load_cycles`):
-   it reports its own kink locations via ``discontinuity_times()``, which
+   it reports its own discontinuity locations via ``discontinuity_times()``, which
    ``TransientModel.solve`` uses to restart the integration cleanly at each
    one instead of stepping over it.
 
@@ -232,33 +219,3 @@ set of ``np.interp`` wrappers:
                 stoichiometry=np.interp(t, t_log, df["st_an"]),
             ),
         )
-
-Dense output and diagnostics
------------------------------
-
-With ``dense_output=True``, ``sol.sol(t)`` returns the state vector interpolated
-at any time.  Use
-:meth:`~marapendi.models.base.transient.TransientModel.evaluate` to
-compute the full :class:`~marapendi.simulation.state.CellState` diagnostics on a
-fine grid:
-
-.. code-block:: python
-
-    t_eval = np.linspace(0, 600, 300)
-    diag = tr_model.evaluate(cell, conditions, t_eval,
-                              x_eval=sol.sol(t_eval))
-
-    # diag is a CellState; all fields are arrays of shape (300,)
-    diag.cell_voltage           # V
-    diag.hfr                    # Ω m²  (set by evaluate, unlike the SS solver)
-    diag.mea_temperature        # K
-    diag.membrane.water_content # mol/mol
-
-    # Through-plane water-content profile at each time step
-    # diag.membrane.water_content_profile  — shape (n_memb_mesh, 300)
-
-    fig, ax = plt.subplots()
-    t_min = t_eval / 60
-    ax.plot(t_min, diag.cell_voltage, label="Voltage")
-    ax2 = ax.twinx()
-    ax2.plot(t_min, diag.hfr * 1e4, "C2--", label="HFR")
