@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.abspath("../src"))
 project = "marapendi"
 copyright = "2024-2026, Pedro Affonso Nobrega"
 author = "Pedro Affonso Nobrega"
-release = "0.5.0"
+release = "0.5.1"
 
 # -- General configuration -----------------------------------------------------
 extensions = [
