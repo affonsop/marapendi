@@ -13,24 +13,24 @@ conditions.
 
 **marapendi** offers:
 
-- The basis for the implementation of 0D (and up to 1D) physics-based models of
-  PEM/AEM fuel cells and electrolyzers.
-- Very fast steady-state and transient 0D cell models — low enough computational
-  cost to make sensitivity analysis, parameter estimation and cross-validation
-  practical.
-- An easy-to-use API for defining, calibrating and simulating cell models in a
-  few lines of code (see the [Quick start](#quick-start) below).
-- Pre-defined correlations and sub-models for heat transfer, reaction kinetics,
+- **A basis for building fuel cell and electrolyzer models** — pre-defined
+  correlations and sub-models for heat transfer, reaction kinetics,
   two-phase transport, membrane water balance, ohmic losses, and more (see
-  [`docs/science/`](docs/science)).
-- Straightforward extension to new models: sub-models are ordinary Python
-  classes, so overriding one correlation or swapping a whole sub-model is a
-  matter of subclassing.
-- Multiple runnable examples demonstrating **marapendi**'s capabilities (see
-  [Examples](#examples) below).
-- Detailed documentation and openly readable, commented code, designed for
-  transparency and easy understanding.
-- A transient 0D model available as a MATLAB/Simulink S-function block (see
+  [`docs/science/`](docs/science)), with a focus on 0D PEM/AEM models.
+  Sub-models are ordinary Python classes, so overriding a single correlation
+  or swapping a whole sub-model is a matter of subclassing.
+- **Fast, practical calibration, validation and simulation** — ready-to-use,
+  fast steady-state and transient 0D cell models, low-cost enough to make
+  sensitivity analysis, parameter estimation and cross-validation
+  practical, through an easy-to-use API for defining, calibrating and
+  simulating cell models in a few lines of code (see the
+  [Quick start](#quick-start) below).
+- **Open, readable and well-documented code** — multiple runnable examples
+  demonstrating **marapendi**'s capabilities (see [Examples](#examples)
+  below), backed by detailed documentation and openly readable, commented
+  code designed for transparency and easy understanding.
+- **Cross-platform support** — a transient 0D model available as a
+  MATLAB/Simulink S-function block (see
   [MATLAB / Simulink](#matlab--simulink) below).
 
 ## Features
@@ -61,6 +61,16 @@ conditions.
 ## Installation
 
 Requires Python 3.10+.
+
+### From PyPI
+
+```bash
+pip install marapendi
+```
+
+The simplest way to install **marapendi** as a library. See
+[`docs/installation.rst`](docs/installation.rst) for installing straight
+from GitLab (no clone) or from a local clone for development.
 
 ### With conda (recommended)
 

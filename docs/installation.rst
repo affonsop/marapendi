@@ -1,11 +1,57 @@
 Getting started
 =============================
 
+**marapendi** is developed on GitLab at
+`git.persee.minesparis.psl.eu/matpro/marapendi
+<https://git.persee.minesparis.psl.eu/matpro/marapendi>`_.
+
 Requirements
 -------------------
 
 **marapendi** requires Python 3.10+ (tested on 3.10–3.13). Core dependencies
 (NumPy, SciPy, pandas) are pulled in automatically.
+
+From PyPI
+------------
+
+.. code-block:: bash
+
+   pip install marapendi
+
+This is the simplest way to install **marapendi** as a library — no GitLab
+access or cloning required.
+
+With pip, without cloning
+------------------------------
+
+To install the latest development version straight from the GitLab
+repository — e.g. to try an unreleased fix, or a specific branch/commit —
+pip can install directly from it without a manual clone. It clones the
+repository internally and discards the clone once the package is built, so
+nothing is left on disk beyond the installed package:
+
+.. code-block:: bash
+
+   pip install "git+https://git.persee.minesparis.psl.eu/matpro/marapendi.git"
+
+Pin a specific tag, branch, or commit by appending ``@<ref>`` to the URL,
+e.g. ``...marapendi.git@v0.1.0``. Since the repository is private, this
+requires GitLab credentials that ``git`` can use non-interactively — either
+an SSH remote (``git+ssh://git@git.persee.minesparis.psl.eu/...``) with a key
+already registered on your GitLab account, or an HTTPS URL with a
+`personal/project access token <https://docs.gitlab.com/user/profile/personal_access_tokens/>`_
+embedded, e.g. ``git+https://<user>:<token>@git.persee.minesparis.psl.eu/...``.
+
+From a local clone
+------------------------
+
+Clone the repository if you want to browse the source, run the examples or
+test suite, or edit the code:
+
+.. code-block:: bash
+
+   git clone https://git.persee.minesparis.psl.eu/matpro/marapendi.git
+   cd marapendi
 
 With conda (recommended)
 ---------------------------
