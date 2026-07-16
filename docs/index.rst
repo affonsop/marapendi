@@ -37,7 +37,7 @@ membrane (PEM) and anion-exchange membrane (AEM) electrochemical cells.
 - **Cross-platform support:**
   A transient 0D model is available as a MATLAB/Simulink S-function block
   (see :doc:`user_guide/simulink_block`). Linking with the 
-  `VirtualFCS <https://github.com/Virtual-FCS/VirtualFCS>`_` Modelica library is also
+  `VirtualFCS <https://github.com/Virtual-FCS/VirtualFCS>`_ Modelica library is also
   planned for a future release.
 
 **marapendi** is structured and written to make the implementation of models
