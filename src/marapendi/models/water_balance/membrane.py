@@ -106,9 +106,9 @@ class MembraneWaterBalanceModel:
 
         for side_state in state.sides:
             side_state.rh_at_cl_without_crossover = (
-                (side_state.ch.gas.vapor_concentration()
+                (side_state.ch.gas.vapor_concentration
                  + side_state.h2o_production * side_state.h2ov_transport_resistance)
-                / side_state.cl.gas.saturation_concentration()
+                / side_state.cl.gas.saturation_concentration
             )
             side_state.estimated_water_content = membrane.equilibrium_water_content(
                 side_state.rh_at_cl_without_crossover, membrane_temperature, side_state.s_relax,
@@ -142,7 +142,7 @@ class MembraneWaterBalanceModel:
         """Non-dimensional vapor resistance R_v* for one electrode side (Ferrara et al. 2018, eq. 13)."""
         return (
                 side_state.h2ov_transport_resistance
-                / (side_state.cl.gas.saturation_concentration() * memb_state.water_diffusion_resistance)
+                / (side_state.cl.gas.saturation_concentration * memb_state.water_diffusion_resistance)
                 * side_state.estimated_water_content_derivative
             )
 

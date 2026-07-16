@@ -32,7 +32,7 @@ concentration
     c_\mathrm{sat}(T) = \frac{p_\mathrm{sat}(T)}{RT},
 
 used throughout :doc:`water_balance` and :doc:`gas_transport` (e.g.
-:meth:`~marapendi.simulation.state.GasState.saturation_concentration`) to
+:attr:`~marapendi.simulation.state.GasState.saturation_concentration`) to
 detect liquid-water formation and to set the water-vapor driving
 concentration at the catalyst layer, and by :doc:`heat_transfer` to evaluate
 the MEA saturation pressure for the temperature increase calculation.

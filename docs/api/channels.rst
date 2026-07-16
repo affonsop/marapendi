@@ -6,14 +6,14 @@ Flow Channels
 participates in the same gas-transport pipeline as the GDL and MPL.  It holds
 channel geometry (width, height, length, number of parallel channels) and delegates
 gas-transport resistance to a pluggable
-:class:`~marapendi.components.channel.gas_transport_resistance.ChannelGasResistanceModel`.
+:class:`~marapendi.models.channel.ChannelGasResistanceModel`.
 
 Two resistance models are available:
 
-- :class:`~marapendi.components.channel.gas_transport_resistance.ChannelGasResistanceModel` —
+- :class:`~marapendi.models.channel.ChannelGasResistanceModel` —
   Sherwood-number approach (Kim et al. 2022) combining a diffusion sub-resistance
   and a convection sub-resistance.
-- :class:`~marapendi.components.channel.gas_transport_resistance.BakerChannelGasResistanceModel` —
+- :class:`~marapendi.models.channel.BakerChannelGasResistanceModel` —
   empirical correlations from Baker et al. (2009) for the sub-resistances.
 
 Component
@@ -26,10 +26,10 @@ Component
 Transport models
 ----------------
 
-.. autoclass:: marapendi.components.channel.gas_transport_resistance.ChannelGasResistanceModel
+.. autoclass:: marapendi.models.channel.ChannelGasResistanceModel
    :members:
    :show-inheritance:
 
-.. autoclass:: marapendi.components.channel.gas_transport_resistance.BakerChannelGasResistanceModel
+.. autoclass:: marapendi.models.channel.BakerChannelGasResistanceModel
    :members:
    :show-inheritance:

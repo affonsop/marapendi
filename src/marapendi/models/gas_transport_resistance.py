@@ -90,7 +90,7 @@ class GasTransportModel:
             side_state.h2ov_transport_resistance = self.gas_transport_resistance(
                 cell_side, side_state, 'h2o',
             )
-            gas_concentration = side_state.cl.gas.concentration()
+            gas_concentration = side_state.cl.gas.concentration
 
             side_state.cl.gas.X[..., species_indexes[reactant]] = np.maximum(
                 1e-12,
@@ -100,7 +100,7 @@ class GasTransportModel:
 
             side_state.cl.gas.X[..., species_indexes['h2o']] = np.where(
                 side_state.cl.liquid_saturation > 0,
-                side_state.cl.gas.saturation_concentration() / gas_concentration,
+                side_state.cl.gas.saturation_concentration / gas_concentration,
                 np.maximum(
                     1e-12,
                     side_state.ch.gas.species_concentration('h2o')
@@ -118,6 +118,6 @@ class GasTransportModel:
     def max_water_vapor_removal(self, cell_side, side_state):
         """Maximum water vapor removal rate for *cell_side* (kmol/m²/s)."""
         return (
-            (side_state.cl.gas.saturation_concentration() - side_state.ch.gas.vapor_concentration())
+            (side_state.cl.gas.saturation_concentration - side_state.ch.gas.vapor_concentration)
             / self.gas_transport_resistance(cell_side, side_state, 'h2o')
         )

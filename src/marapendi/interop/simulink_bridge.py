@@ -17,7 +17,7 @@ import numpy as np
 
 from ..components.cell.fuelcell import FuelCell
 from ..components.channel.flow_channels import FlowChannel
-from ..components.channel.gas_transport_resistance import ChannelGasResistanceModel
+from ..models.channel import ChannelGasResistanceModel
 from ..components.porous_layers.porous_layers import GasDiffusionLayer, MicroPorousLayer
 from ..components.porous_layers.catalyst_layers import PtCCatalystLayer
 from ..models.darcy import DarcyTransportModel

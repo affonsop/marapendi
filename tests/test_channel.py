@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 import marapendi as mrpd
 from marapendi.simulation.state import FlowChannelState
-from marapendi.components.channel.gas_transport_resistance import BakerChannelGasResistanceModel
+from marapendi.models.channel import BakerChannelGasResistanceModel
 
 
 def _channel_state(temperature=353.15, pressure=1e5, o2=0.21, rh=0., flow_rate=1e-6):

@@ -261,7 +261,7 @@ class ExplicitSteadyStateModel:
                 * cell.area
                 / (
                     side_state.ch.gas.X[..., species_indexes[cell_side.reactant]]
-                    * side_state.ch.gas.concentration()
+                    * side_state.ch.gas.concentration
                 )
                 + conditions.inlet_gas_flow_rate
             )

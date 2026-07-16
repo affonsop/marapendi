@@ -173,8 +173,8 @@ class PorousLayer():
             non_wetting_molecular_weight = water_molecular_weight
             non_wetting_surface_tension = water_surface_tension(temperature)
         elif self.non_wetting_phase == 'gas':
-            non_wetting_kinematic_viscosity = self.gas.mixture_kinematic_viscosity()
-            non_wetting_molecular_weight = self.gas.mixture_molecular_weight()
+            non_wetting_kinematic_viscosity = self.gas.mixture_kinematic_viscosity
+            non_wetting_molecular_weight = self.gas.mixture_molecular_weight
             non_wetting_surface_tension = (
                 water_surface_tension(temperature) if self.wetting_phase == 'water'
                 else electrolyte.surface_tension

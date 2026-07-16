@@ -51,8 +51,8 @@ Quick class summary
 .. autosummary::
 
    marapendi.components.channel.flow_channels.FlowChannel
-   marapendi.components.channel.gas_transport_resistance.ChannelGasResistanceModel
-   marapendi.components.channel.gas_transport_resistance.BakerChannelGasResistanceModel
+   marapendi.models.channel.ChannelGasResistanceModel
+   marapendi.models.channel.BakerChannelGasResistanceModel
 
 **Membrane and ionomer**
 

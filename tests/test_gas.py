@@ -46,14 +46,14 @@ def test_set_composition_with_humidity():
 def test_relative_humidity_round_trip():
     T, P, rh_in = 353.15, 1e5, 0.5
     state = _layer(T, P, rh=rh_in)
-    assert np.isclose(state.gas.relative_humidity(), rh_in, rtol=1e-4)
+    assert np.isclose(state.gas.relative_humidity, rh_in, rtol=1e-4)
 
 
 def test_vapor_pressure():
     T, P, rh = 353.15, 1e5, 0.5
     state = _layer(T, P, rh=rh)
     expected = rh * mrpd.water_saturation_pressure(T)
-    assert np.isclose(state.gas.vapor_pressure(), expected, rtol=1e-4)
+    assert np.isclose(state.gas.vapor_pressure, expected, rtol=1e-4)
 
 
 def test_species_partial_pressure():
@@ -66,7 +66,7 @@ def test_species_partial_pressure():
 def test_concentration_ideal_gas():
     T, P = 353.15, 1e5
     state = _layer(T, P)
-    c = state.gas.concentration()
+    c = state.gas.concentration
     assert np.isclose(c, P / (mrpd.GAS_CONSTANT * T), rtol=1e-6)
 
 
@@ -94,7 +94,7 @@ def test_diffusion_scales_inversely_with_pressure():
 
 def test_mixture_kinematic_viscosity_positive():
     state = _layer(temperature=353.15, pressure=1e5)
-    nu = state.gas.mixture_kinematic_viscosity()
+    nu = state.gas.mixture_kinematic_viscosity
     assert nu > 0
 
 

@@ -119,33 +119,40 @@ class GasState:
         """Concentration of ``species`` (kmol/m^3)."""
         return self.species_partial_pressure(species) / self.RT
 
+    @property
     def vapor_pressure(self) -> float:
         """Partial pressure of water vapor (Pa)."""
         return self.species_partial_pressure('h2o')
 
+    @property
     def vapor_concentration(self) -> float:
         """Concentration of water vapor (kmol/m^3)."""
         return self.species_concentration('h2o')
 
+    @property
     def saturation_concentration(self) -> float:
         """Saturation concentration of water vapor (kmol/m^3)."""
         return self.saturation_pressure / self.RT
 
+    @property
     def relative_humidity(self) -> float:
         """Relative humidity (0 to 1)."""
-        return self.vapor_pressure() / self.saturation_pressure
+        return self.vapor_pressure / self.saturation_pressure
 
+    @property
     def mixture_molecular_weight(self) -> float:
         """Mean molecular weight of the gas mixture (kg/kmol)."""
         return np.sum(molecular_weights * self.X, axis=-1)
 
+    @property
     def concentration(self) -> float:
         """Total molar concentration of the gas mixture (kmol/m^3)."""
         return self.pressure / self.RT
 
+    @property
     def density(self) -> float:
         """Mass density of the gas mixture (kg/m^3)."""
-        return self.concentration() * self.mixture_molecular_weight()
+        return self.concentration * self.mixture_molecular_weight
 
     def species_kinematic_viscosity(self, species: str) -> float:
         """Kinematic viscosity of pure ``species`` at ``self.temperature`` (m^2/s)."""
@@ -153,6 +160,7 @@ class GasState:
         v = _horner5(_viscosity_polynomials[species], log_temperature)
         return v * v * np.sqrt(self.temperature)
 
+    @property
     def mixture_kinematic_viscosity(self) -> float:
         """Kinematic viscosity of the gas mixture (m^2/s), as a mole-weighted average."""
         species_kinematic_viscosities = np.array(
@@ -160,7 +168,7 @@ class GasState:
         ).transpose()
         return (
             np.sum(self.X * species_kinematic_viscosities * molecular_weights, axis=-1)
-            / self.mixture_molecular_weight()
+            / self.mixture_molecular_weight
         )
 
     def species_diffusion_coefficient(self, species: str) -> float:
@@ -370,14 +378,14 @@ class GasFlowState:
         gas = self.gas
         X = gas.X
         dry_fraction = 1 - X[index_h2ov]
-        concentration = gas.concentration()
+        concentration = gas.concentration
         return SideConditions(
             inlet_temperature=self.temperature,
             inlet_pressure=self.pressure,
             outlet_pressure=self.pressure,
             dry_o2_mole_fraction=X[index_o2] / dry_fraction,
             dry_h2_mole_fraction=X[index_h2] / dry_fraction,
-            inlet_relative_humidity=gas.relative_humidity(),
+            inlet_relative_humidity=gas.relative_humidity,
             stoichiometry=0.,
             inlet_gas_flow_rate=self.gas_molar_flow_rate / concentration,
             inlet_liquid_flow_rate=self.liquid_molar_flow_rate * water_molar_volume(self.temperature),

@@ -6,7 +6,7 @@
    :alt: marapendi logo
 
 About marapendi
-===============
+---------------
 **marapendi** is a Python framework for physics-based modelling of proton-exchange
 membrane (PEM) and anion-exchange membrane (AEM) electrochemical cells. 
 
@@ -155,12 +155,12 @@ Acknowledgements
       :columns: 12 3 3 3
 
       .. image:: /_static/logo_france_2030.png
-         :height: 100px
+         :height: 90px
          :align: center
          :alt: France 2030 logo
 
       .. image:: /_static/logo_pepr_h2.png
-         :height: 120px
+         :height: 90px
          :align: center
          :alt: PEPR H2 logo
 

@@ -21,8 +21,7 @@ From PyPI
 
    pip install marapendi
 
-This is the simplest way to install **marapendi** as a library — no GitLab
-or GitHub access, and no cloning, required.
+This is the simplest way to install **marapendi** as a library.
 
 .. attention:: 
 
@@ -60,7 +59,7 @@ Then install marapendi with pip:
    pip install -e .
 
 This installs the package in editable mode, so changes to ``src/marapendi/``
-are picked up immediately without reinstalling — convenient both for
+are picked up immediately without reinstalling. This is convenient both for
 day-to-day development and because :doc:`user_guide/simulink_block` calls the
 live Python source directly from MATLAB.
 
@@ -84,7 +83,7 @@ Quick start
 --------------
 
 The snippet below assembles a minimal cell, runs a vectorised polarization
-curve, and inspects the result — the same cell used throughout
+curve, and inspects the result. This is the same cell used throughout
 :doc:`auto_examples/plot_01_polarization_curve` and the
 :doc:`user_guide/polarization_curve` guide, which walks through every step in
 more detail.
@@ -155,12 +154,14 @@ more detail.
 Where to go next
 --------------------
 
-- :doc:`user_guide/index` — task-oriented guides: a single polarization curve,
+- :doc:`architecture`: how marapendi is structured, and how components, state, models, correlations, and
+  estimation fit together.
+- :doc:`user_guide/index`: task-oriented guides, including a single polarization curve,
   transient/quasi-steady time series, load cycles, model calibration, and
   verifying individual correlations.
-- :doc:`science/index` — the governing equations and literature references
+- :doc:`science/index`: the governing equations and literature references
   behind every model and correlation.
-- :doc:`auto_examples/index` — runnable, plotted versions of the examples
+- :doc:`auto_examples/index`: runnable, plotted versions of the examples
   referenced throughout the guides.
-- :doc:`user_guide/simulink_block` — drive the transient model from a MATLAB
+- :doc:`user_guide/simulink_block`: drive the transient model from a MATLAB
   Simulink block, calling the live Python source at every solver step.

@@ -8,7 +8,7 @@ from .models.base.transient import *
 from .simulation.conditions import *
 from .components.membrane.membrane_base import *
 from .components.channel.flow_channels import *
-from .components.channel.gas_transport_resistance import *
+from .models.channel import *
 from .components.porous_layers.porous_layers import *
 from .models.darcy import *
 from .models.diffusion import *

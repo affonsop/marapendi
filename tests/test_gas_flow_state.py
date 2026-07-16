@@ -56,7 +56,7 @@ def _gas_flow_state_from_channel(ch_state, temperature) -> GasFlowState:
     """Build a GasFlowState carrying the same total inlet flow as an
     already-solved FlowChannelState (computed internally from a
     stoichiometry spec by ExplicitSteadyStateModel._set_flow_rates)."""
-    concentration = ch_state.gas.concentration()
+    concentration = ch_state.gas.concentration
     total_gas_molar_flow_rate = ch_state.inlet_gas_flow_rate * concentration
     return GasFlowState(
         temperature=temperature,

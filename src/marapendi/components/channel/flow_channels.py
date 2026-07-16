@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from ..porous_layers.porous_layers import PorousLayer
-from .gas_transport_resistance import ChannelGasResistanceModel  # noqa: F401
+from ...models.channel import ChannelGasResistanceModel  # noqa: F401
 
 
 @dataclass

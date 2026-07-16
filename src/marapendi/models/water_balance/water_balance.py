@@ -57,7 +57,7 @@ class WaterBalanceModel:
         channel (at the current saturation state of the CL).
         """
         side_state.max_vapor_removal_flux = (
-            (side_state.cl.gas.saturation_concentration() - side_state.ch.gas.vapor_concentration())
+            (side_state.cl.gas.saturation_concentration - side_state.ch.gas.vapor_concentration)
             / side_state.h2ov_transport_resistance
         )
 
