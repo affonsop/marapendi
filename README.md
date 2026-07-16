@@ -7,7 +7,8 @@ Developed on GitLab at
 [git.persee.minesparis.psl.eu/matpro/marapendi](https://git.persee.minesparis.psl.eu/matpro/marapendi),
 and mirrored to [github.com/affonsop/marapendi](https://github.com/affonsop/marapendi)
 for external contributions (issues, pull requests). Releases are published to
-[PyPI](https://pypi.org/project/marapendi/).
+[PyPI](https://pypi.org/project/marapendi/). Full documentation is at
+[pages.persee.minesparis.psl.eu/matpro/marapendi](https://pages.persee.minesparis.psl.eu/matpro/marapendi).
 
 The model is zero-dimensional (single operating point). Both steady-state and
 transient formulations are provided. The steady-state solver computes cell voltage
@@ -292,7 +293,10 @@ pytest
 
 ## Documentation
 
-Build the Sphinx docs from the `docs/` directory:
+The full built documentation is hosted at
+[pages.persee.minesparis.psl.eu/matpro/marapendi](https://pages.persee.minesparis.psl.eu/matpro/marapendi).
+
+To build it yourself from the `docs/` directory:
 
 ```bash
 cd docs

@@ -89,7 +89,7 @@ automotive-relevant transient validation:
 
 * **ID-FAST**
   (:class:`~marapendi.simulation.load_cycles.idfast.IDFastCycle`) — the
-  Improved Dynamic Fuel-cell ASsessment Test protocol of Colombo et al.
+  ID-FAST driving cycle of Colombo et al.
   (2023), derived from a real automotive fleet duty dataset: 3925 s total, a
   2005 s cold section followed by a 1920 s hot section, including a short
   idle-stop period (cathode air flow cut, modelled as a very low dry-O₂ mole
@@ -98,8 +98,7 @@ automotive-relevant transient validation:
 * **FC-DLC / NEDC**
   (:class:`~marapendi.simulation.load_cycles.nedc.NEDCCycle`) — the Fuel Cell
   Dynamic Load Cycle standardised by the JRC/FCH-JU, Tsotridis et al. (2015),
-  Appendix F, derived from the New European Driving Cycle: 1181 s, 35
-  piecewise-constant current steps.
+  Appendix F, derived from the New European Driving Cycle.
 
 See :doc:`../user_guide/load_cycles` for how to build and drive one of these
 (or a hand-built cycle) in practice.

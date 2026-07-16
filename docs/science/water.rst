@@ -22,7 +22,7 @@ The saturation vapor pressure follows the Buck equation
         \left(\frac{T_C}{257.14 + T_C}\right)
     \right] \quad [\mathrm{Pa}],
 
-with :math:`T_C = T - \SI{273.15}{K}`, accurate to better than 0.1 % against
+with :math:`T_C = T - 273.15\ \mathrm{K}`, accurate to better than 0.1 % against
 Cantera over 274–373 K. This is the basis for the ideal-gas saturation
 concentration
 (:func:`~marapendi.models.thermo.water.water_saturation_concentration`),

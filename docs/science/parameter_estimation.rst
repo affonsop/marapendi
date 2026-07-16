@@ -10,7 +10,7 @@ function combining both, following Affonso Nobrega et al. (2026):
 
     \mathrm{MSE} = \frac{1}{N_V + N_\mathrm{HFR}}\left[
         \sum_k \left(V_k - \hat V_k\right)^2
-        + \frac{N_V}{N_\mathrm{HFR}}\,\frac{\SI{1}{V}}{\SI{1}{\ohm\meter\squared}}
+        + \frac{N_V}{N_\mathrm{HFR}}\,\frac{1\ \mathrm{V}}{1\ \Omega\,\mathrm{m}^2}
         \sum_k \left(\mathrm{HFR}_k - \widehat{\mathrm{HFR}}_k\right)^2
     \right],
 
@@ -144,13 +144,13 @@ References
 
 Affonso Nobrega, P. et al. *J. Electrochem. Soc.* **173**, 114503 (2026).
 
-Goshtasbi, A., Chen, J., Waldecker, J. R., Hirano, S. & Ersal, T. *J.
+Goshtasbi, A. et al. *J.
 Electrochem. Soc.* **167**, 044504 (2020a).
 
-Goshtasbi, A., Chen, J., Waldecker, J. R., Hirano, S. & Ersal, T. *J.
+Goshtasbi, A. et al. *J.
 Electrochem. Soc.* **167**, 114513 (2020b).
 
 Lund, B. F. & Foss, B. A. *Comput. Chem. Eng.* **32**, 2338 (2008).
 
-Hastie, T., Tibshirani, R. & Friedman, J. *The Elements of Statistical
+Hastie, T. et al. *The Elements of Statistical
 Learning*, 2nd ed., Springer (2009).
