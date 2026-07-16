@@ -12,4 +12,5 @@ Practical how-to guides for the most common tasks in **marapendi**.
    extending_models
    calibration
    correlations
+   state_variables
    simulink_block

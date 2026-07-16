@@ -1,7 +1,7 @@
 """
-*************************************
+****************************************
 Quasi-steady simulation — FC-DLC profile
-*************************************
+****************************************
 
 The **Fuel Cell Dynamic Load Cycle** (FC-DLC) is the JRC/FCH-JU standard
 load profile for PEMFC endurance testing (Tsotridis et al., EUR 27632 EN,

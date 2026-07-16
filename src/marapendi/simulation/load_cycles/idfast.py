@@ -22,7 +22,7 @@ Usage
 ...                        'C3': 12730., 'C4': 17480.}
 ... )
 >>> # Use directly as the conditions callable for TransientModel:
->>> sol = tr_model.solve(cell, cycle, t_span=(0, cycle.duration))
+>>> state = tr_model.solve(cell, cycle, t_span=(0, cycle.duration))
 """
 from __future__ import annotations
 
@@ -153,7 +153,7 @@ class IDFastCycle(LoadCycle):
     ... )
     >>> cycle.duration      # 3925 s
     >>> cycle.low_duration  # 2005 s
-    >>> sol = tr_model.solve(cell, cycle, t_span=(0, cycle.duration))
+    >>> state = tr_model.solve(cell, cycle, t_span=(0, cycle.duration))
     """
 
     def __init__(

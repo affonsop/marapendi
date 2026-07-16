@@ -150,10 +150,15 @@ operation:
 
     tr_model = TransientModel(n_memb_mesh=5)
     _, x0 = tr_model.set_initial_conditions(cell, cond_0)
-    sol = tr_model.solve(cell, cond_0, t_span=(0, 600), x0=x0)
+    state = tr_model.solve(cell, cond_0, t_span=(0, 600), x0=x0)
 
-The state vector ``x`` is laid out as ``[T_MEA, λ_1, …, λ_n]`` where ``n =
-n_memb_mesh``.  ``sol.y`` follows the SciPy ``solve_ivp`` convention.
+    # state is a CellState, matching ExplicitSteadyStateModel.solve(); e.g.
+    state.cell_voltage      # V, array over the solver's internal time steps
+    state.mea_temperature   # K
+
+The raw ODE state vector ``x`` — laid out as ``[T_MEA, λ_1, …, λ_n]`` where
+``n = n_memb_mesh`` — is attached as ``state.ode_solution``;
+``state.ode_solution.y`` follows the SciPy ``solve_ivp`` convention.
 
 Transient simulation — time-varying conditions
 -----------------------------------------------
@@ -185,7 +190,7 @@ Pass a callable ``conditions(t)`` instead of a fixed
 
     _, x0_lo = tr_model.set_initial_conditions(cell, conditions(0))
     sol = tr_model.solve(cell, conditions, t_span=(0, 600), x0=x0_lo,
-                         dense_output=True)
+                         dense_output=True, compute_diagnostics=False)
 
 The callable is called at each ODE evaluation step, so any channel — current,
 temperature, pressure, RH — can vary continuously.

@@ -44,15 +44,19 @@ Transient model
 
 :class:`~marapendi.models.base.transient.TransientModel` integrates coupled ODEs for MEA
 temperature and membrane water-content profile (Ferrara et al., 2018) via
-:func:`scipy.integrate.solve_ivp`.  The ``solve()`` method auto-attaches a
-``diagnostics`` :class:`~marapendi.simulation.state.CellState` (voltage, HFR, water
-contents, liquid saturation) evaluated at each internal time step::
+:func:`scipy.integrate.solve_ivp`.  ``solve()`` returns a
+:class:`~marapendi.simulation.state.CellState` directly — matching
+:meth:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel.solve`
+— with array-valued fields (voltage, HFR, water contents, liquid saturation)
+evaluated at each internal time step, and the raw solver result attached as
+``state.ode_solution``::
 
     tr_model = TransientModel(n_memb_mesh=5)
-    sol = tr_model.solve(cell, conditions, t_span=(0, 3600))
-    # sol.diagnostics.cell_voltage  — voltage at each ODE time step
-    # sol.diagnostics.hfr           — HFR at each ODE time step
-    # sol.diagnostics.membrane.water_content_profile — shape (n_mesh, n_t)
+    state = tr_model.solve(cell, conditions, t_span=(0, 3600))
+    # state.cell_voltage  — voltage at each ODE time step
+    # state.hfr           — HFR at each ODE time step
+    # state.membrane.water_content_profile — shape (n_mesh, n_t)
+    # state.ode_solution.t/.y — raw solve_ivp time points/ODE state
 
     # Re-sample at arbitrary times using dense output:
     t_eval = np.linspace(0, 3600, 100)

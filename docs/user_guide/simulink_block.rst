@@ -222,8 +222,8 @@ wiring bug, not a physics difference. To check:
       ca_flow = dict(temperature=344.15, pressure=140000., o2=1.05e-7, n2=3.90e-7, h2=0., h2o=3.25e-8, liquid=0.)
       an_flow = dict(temperature=344.15, pressure=190000., o2=0., n2=0., h2=3.6e-7, h2o=3.8e-8, liquid=0.)
       cond = sb._cell_conditions_from_flows(ca_flow, an_flow, 10000., 344.15)
-      sol = model.solve(cell, cond, t_span=(0, 300), rtol=1e-3)
-      print(sol.diagnostics.cell_voltage[-1], sol.diagnostics.mea_temperature[-1], sol.y[:, -1])
+      state = model.solve(cell, cond, t_span=(0, 300), rtol=1e-3)
+      print(state.cell_voltage[-1], state.mea_temperature[-1], state.ode_solution.y[:, -1])
 
 2. In Simulink, load ``TransientPEMFC.slx``, replace the ``CaInlet``/
    ``AnInlet`` inports with ``Constant`` blocks carrying the same operating

@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**00:05.669** total execution time for 7 files **from all galleries**:
+**00:40.280** total execution time for 9 files **from all galleries**:
 
 .. container::
 
@@ -32,24 +32,30 @@ Computation times
    * - Example
      - Time
      - Mem (MB)
+   * - :ref:`sphx_glr_auto_examples_plot_06_parameter_estimation.py` (``../examples/plot_06_parameter_estimation.py``)
+     - 00:34.962
+     - 0.0
    * - :ref:`sphx_glr_auto_examples_plot_04_transient.py` (``../examples/plot_04_transient.py``)
-     - 00:05.486
+     - 00:03.882
      - 0.0
    * - :ref:`sphx_glr_auto_examples_plot_02_quasi_steady.py` (``../examples/plot_02_quasi_steady.py``)
-     - 00:00.183
-     - 0.0
-   * - :ref:`sphx_glr_auto_examples_plot_01_polarization_curve.py` (``../examples/plot_01_polarization_curve.py``)
-     - 00:00.000
+     - 00:00.355
      - 0.0
    * - :ref:`sphx_glr_auto_examples_plot_03_implicit_vs_explicit.py` (``../examples/plot_03_implicit_vs_explicit.py``)
-     - 00:00.000
+     - 00:00.277
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_plot_01_polarization_curve.py` (``../examples/plot_01_polarization_curve.py``)
+     - 00:00.273
      - 0.0
    * - :ref:`sphx_glr_auto_examples_plot_05_multi_condition.py` (``../examples/plot_05_multi_condition.py``)
-     - 00:00.000
+     - 00:00.174
      - 0.0
-   * - :ref:`sphx_glr_auto_examples_plot_06_pwl_membrane.py` (``../examples/plot_06_pwl_membrane.py``)
-     - 00:00.000
+   * - :ref:`sphx_glr_auto_examples_plot_07_pwl_membrane.py` (``../examples/plot_07_pwl_membrane.py``)
+     - 00:00.173
      - 0.0
-   * - :ref:`sphx_glr_auto_examples_plot_07_parameter_estimation.py` (``../examples/plot_07_parameter_estimation.py``)
-     - 00:00.000
+   * - :ref:`sphx_glr_auto_examples_plot_09_membrane_correlations.py` (``../examples/plot_09_membrane_correlations.py``)
+     - 00:00.135
+     - 0.0
+   * - :ref:`sphx_glr_auto_examples_plot_08_water_balance.py` (``../examples/plot_08_water_balance.py``)
+     - 00:00.048
      - 0.0

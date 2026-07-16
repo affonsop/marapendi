@@ -1,7 +1,7 @@
 """
-*************************************
+********************************************
 Transient simulation — ID-FAST driving cycle
-*************************************
+********************************************
 
 :class:`~marapendi.models.base.transient.TransientModel` integrates coupled ODEs for
 MEA temperature and the membrane water content
@@ -165,7 +165,8 @@ state, x0    = tr_model.set_initial_conditions(cell, conditions(0))
 
 _t0 = time.perf_counter()
 sol = tr_model.solve(cell, conditions, t_span=(0, conditions.duration),
-                     x0=x0, dense_output=True, method='BDF', max_step=10)
+                     x0=x0, dense_output=True, method='BDF', max_step=10,
+                     compute_diagnostics=False)
 tr_wall_time = time.perf_counter() - _t0
 print(f"ODE status: {sol.status}  ({sol.message})")
 print(f"Number of ODE steps: {len(sol.t)}")

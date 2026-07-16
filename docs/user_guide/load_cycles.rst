@@ -196,6 +196,7 @@ passed directly as the *conditions* argument of
     sol = tr_model.solve(
         cell, cycle, t_span=(0, cycle.duration),
         x0=x0, dense_output=True, method='BDF', max_step=10,
+        compute_diagnostics=False,
     )
     print(sol.status, len(sol.t))
 

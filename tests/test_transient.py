@@ -125,7 +125,8 @@ class TestTransientRHS:
         model = TransientModel(n_memb_mesh=3)
         _, x0 = model.set_initial_conditions(cell, _conditions())
         # Integrate 2 h from SS initial conditions
-        sol = model.solve(cell, _conditions(), t_span=(0, 7200))
+        state = model.solve(cell, _conditions(), t_span=(0, 7200))
+        sol = state.ode_solution
         assert sol.status == 0
         dxdt = model.f_transient(sol.t[-1], sol.y[:, -1], cell, _conditions())
         assert np.all(np.abs(dxdt) < 1e-6), f"|dx/dt| = {np.abs(dxdt)}"
@@ -142,7 +143,8 @@ class TestTransientRHS:
             [T_OP / model.norm_factors[0]],
             (8.0 / model.norm_factors[1]) * np.ones(3),
         ])
-        sol = model.solve(cell, _conditions(), t_span=(0, 3 * 7200), x0=x0_flat)
+        state = model.solve(cell, _conditions(), t_span=(0, 3 * 7200), x0=x0_flat)
+        sol = state.ode_solution
         assert sol.status == 0
 
         # After long integration T and λ should settle (small residual)
@@ -157,15 +159,15 @@ class TestTransientPhysics:
         """Higher current → more heat → higher steady-state MEA temperature."""
         cell = _make_cell()
         model = TransientModel(n_memb_mesh=3)
-        sol_lo = model.solve(cell, _conditions(i=5e3), t_span=(0, 7200))
-        sol_hi = model.solve(cell, _conditions(i=1.5e4), t_span=(0, 7200))
+        sol_lo = model.solve(cell, _conditions(i=5e3), t_span=(0, 7200)).ode_solution
+        sol_hi = model.solve(cell, _conditions(i=1.5e4), t_span=(0, 7200)).ode_solution
         assert sol_hi.y[0, -1] > sol_lo.y[0, -1]
 
     def test_water_profile_monotone_at_high_current(self):
         """At high current EOD dominates: lambda increases toward cathode (anode=0 → cathode=1)."""
         cell = _make_cell()
         model = TransientModel(n_memb_mesh=5)
-        sol = model.solve(cell, _conditions(i=2e4, rh=0.9), t_span=(0, 7200))
+        sol = model.solve(cell, _conditions(i=2e4, rh=0.9), t_span=(0, 7200)).ode_solution
         assert sol.status == 0
         lmbd_final = sol.y[1:, -1]
         assert np.all(np.diff(lmbd_final) > -0.5), (
@@ -185,7 +187,7 @@ class TestTransientPhysics:
         V_ss = np.asarray(ss_state.cell_voltage).item()
 
         # Transient asymptote (integrate 2 h)
-        sol = model.solve(cell, cond, t_span=(0, 7200))
+        sol = model.solve(cell, cond, t_span=(0, 7200)).ode_solution
         x_final = sol.y[:, -1]
         dxdt = model.f_transient(sol.t[-1], x_final, cell, cond)
         # Compute voltage at final state by calling f_transient (which sets cell voltage internally)
@@ -206,20 +208,19 @@ class TestTransientPhysics:
 
         # Step to high current and check T rises
         sol = model.solve(cell, _conditions(i=2e4), t_span=(0, 7200), x0=x0,
-                          dense_output=True)
+                          dense_output=True).ode_solution
         assert sol.status == 0
         T_low = float(x0[0])
         assert sol.y[0, -1] > T_low, "T should rise after step to higher current"
 
 
 class TestTransientEvaluate:
-    def test_diagnostics_attached_to_sol(self):
-        """solve() attaches sol.diagnostics (CellState) when compute_diagnostics=True."""
+    def test_diagnostics_returned_directly(self):
+        """solve() returns a CellState (with .ode_solution attached) when compute_diagnostics=True."""
         cell = _make_cell()
         model = TransientModel(n_memb_mesh=3)
-        sol = model.solve(cell, _conditions(), t_span=(0, 600))
-        assert hasattr(sol, 'diagnostics')
-        diag = sol.diagnostics
+        diag = model.solve(cell, _conditions(), t_span=(0, 600))
+        assert diag.ode_solution is not None
         assert hasattr(diag, 'cell_voltage')
         assert hasattr(diag, 'hfr')
         assert hasattr(diag.ca.cl, 'proton_resistance')
@@ -232,9 +233,8 @@ class TestTransientEvaluate:
         """Diagnostic arrays match the number of ODE time steps."""
         cell = _make_cell()
         model = TransientModel(n_memb_mesh=3)
-        sol = model.solve(cell, _conditions(), t_span=(0, 600))
-        n_t = len(sol.t)
-        diag = sol.diagnostics
+        diag = model.solve(cell, _conditions(), t_span=(0, 600))
+        n_t = len(diag.ode_solution.t)
         assert np.asarray(diag.cell_voltage).shape == (n_t,)
         assert np.asarray(diag.membrane.water_content_profile).shape == (3, n_t)
         assert np.asarray(diag.mea_temperature).shape == (n_t,)
@@ -243,8 +243,7 @@ class TestTransientEvaluate:
         """Diagnostic quantities are physically plausible at steady state."""
         cell = _make_cell()
         model = TransientModel(n_memb_mesh=3)
-        sol = model.solve(cell, _conditions(), t_span=(0, 7200))
-        diag = sol.diagnostics
+        diag = model.solve(cell, _conditions(), t_span=(0, 7200))
         # Voltage in (0, 1.3) V
         assert np.all(np.asarray(diag.cell_voltage) > 0)
         assert np.all(np.asarray(diag.cell_voltage) < 1.3)
@@ -259,12 +258,13 @@ class TestTransientEvaluate:
         assert np.all(np.asarray(diag.ca.cl.liquid_saturation) <= 1)
 
     def test_no_diagnostics_when_disabled(self):
-        """compute_diagnostics=False skips post-processing."""
+        """compute_diagnostics=False returns the raw OdeResult instead of a CellState."""
         cell = _make_cell()
         model = TransientModel(n_memb_mesh=3)
         sol = model.solve(cell, _conditions(), t_span=(0, 600),
                           compute_diagnostics=False)
-        assert not hasattr(sol, 'diagnostics')
+        assert not hasattr(sol, 'ode_solution')
+        assert hasattr(sol, 'y') and hasattr(sol, 't')
 
     def test_evaluate_at_custom_times(self):
         """evaluate() returns a CellState with correct array shapes for custom t_eval."""

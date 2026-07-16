@@ -617,6 +617,10 @@ class CellState:
     # Derived diagnostics (set by evaluate)
     hfr: float = None
 
+    # Raw scipy.integrate.OdeResult from TransientModel.solve() (None for
+    # steady-state solves, or when compute_diagnostics=False).
+    ode_solution: object = None
+
     @property
     def sides(self) -> tuple[CellSideState, CellSideState]:
         """``(ca, an)`` side states, for ``for side in state.sides: ...`` loops."""

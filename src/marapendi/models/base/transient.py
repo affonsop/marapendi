@@ -27,14 +27,16 @@ Usage
 ::
 
     model = TransientModel(n_memb_mesh=5)
-    state, x0 = model.set_initial_conditions(cell, conditions)
-    sol = model.solve(cell, conditions, t_span=(0, 3600))
-    # sol.y[0]           → MEA temperature (K)
-    # sol.y[1:]          → membrane water-content profile
-    # sol.diagnostics    → CellState with array-valued fields
+    _, x0 = model.set_initial_conditions(cell, conditions)
+    state = model.solve(cell, conditions, t_span=(0, 3600))
+    # state.cell_voltage           → cell voltage (V), array over ODE time steps
+    # state.mea_temperature        → MEA temperature (K)
+    # state.ode_solution.t         → raw solver time points (s)
+    # state.ode_solution.y[0]      → MEA temperature ODE state (normalised)
 
     # Or evaluate at custom time points from a dense-output solution:
-    diag = model.evaluate(cell, conditions, t_eval, x_eval=sol.sol(t_eval))
+    state = model.solve(cell, conditions, t_span=(0, 3600), dense_output=True)
+    diag = model.evaluate(cell, conditions, t_eval, x_eval=state.ode_solution.sol(t_eval))
 
 References
 ----------
@@ -330,10 +332,13 @@ class TransientModel:
             When omitted, a steady-state solve is run automatically.
         compute_diagnostics : bool, optional
             When ``True`` (default), :meth:`evaluate` is called at the
-            solver's internal time steps after the ODE integration completes
-            and the result is stored as ``sol.diagnostics``.  Set to ``False``
-            to skip the post-processing step (e.g. when only ODE trajectories
-            are needed).
+            solver's internal time steps after the ODE integration completes,
+            and the resulting :class:`~marapendi.simulation.state.CellState`
+            is returned directly — matching the API of
+            :meth:`~marapendi.models.base.explicit_steady_state.ExplicitSteadyStateModel.solve`.
+            Set to ``False`` to skip the post-processing step and get the raw
+            :func:`~scipy.integrate.solve_ivp` result instead (e.g. when only
+            ODE trajectories are needed).
         breakpoints : array_like, optional
             Interior times where *cell_conditions* is non-smooth (e.g. a
             load-cycle step change).  The solver's local error estimate is
@@ -350,15 +355,17 @@ class TransientModel:
 
         Returns
         -------
+        CellState
+            When ``compute_diagnostics=True`` (default): array-valued fields
+            of length ``len(state.ode_solution.t)``, from :meth:`evaluate` at
+            the solver's internal time steps. The raw
+            :func:`~scipy.integrate.solve_ivp` result is attached as
+            ``state.ode_solution`` (``.t`` time points, ``.y`` ODE state
+            ``[T_mea; λ_profile]``, ``.sol`` dense-output callable if
+            ``dense_output=True`` was passed, ``.status``/``.success``).
         scipy.integrate.OdeResult
-            Standard result object extended with:
-
-            * ``sol.t`` — time points (s)
-            * ``sol.y[0]`` — MEA temperature (K)
-            * ``sol.y[1:]`` — membrane water-content profile
-            * ``sol.diagnostics`` — :class:`~marapendi.simulation.state.CellState`
-              from :meth:`evaluate` at ``sol.t``
-              (only present when ``compute_diagnostics=True``).
+            When ``compute_diagnostics=False``: the raw solver result, with
+            no diagnostics computed.
         """
         from scipy.integrate import solve_ivp
 
@@ -390,10 +397,12 @@ class TransientModel:
 
         sol = segments[0] if len(segments) == 1 else _stitch_solutions(segments)
 
-        if compute_diagnostics:
-            sol.diagnostics = self.evaluate(cell, cell_conditions, sol.t, x_eval=sol.y)
+        if not compute_diagnostics:
+            return sol
 
-        return sol
+        state = self.evaluate(cell, cell_conditions, sol.t, x_eval=sol.y)
+        state.ode_solution = sol
+        return state
 
     # ------------------------------------------------------------------
     # Internal helpers
