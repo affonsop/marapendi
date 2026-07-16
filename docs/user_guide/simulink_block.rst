@@ -18,7 +18,8 @@ corresponding outlet ``GasFlowState``\ s (from a mass balance), heat release
 rate, and cell voltage.
 
 The block and the scripts that build it live under ``matlab/transient_pemfc/``
-in the repository.
+in the repository — they are not included in the PyPI package, so a local
+clone is required (see :doc:`../installation`).
 
 .. note::
 

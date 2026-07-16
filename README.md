@@ -3,6 +3,12 @@
 **marapendi** is a Python framework for physics-based modelling of proton-exchange
 membrane (PEM) fuel cells.
 
+Developed on GitLab at
+[git.persee.minesparis.psl.eu/matpro/marapendi](https://git.persee.minesparis.psl.eu/matpro/marapendi),
+and mirrored to [github.com/affonsop/marapendi](https://github.com/affonsop/marapendi)
+for external contributions (issues, pull requests). Releases are published to
+[PyPI](https://pypi.org/project/marapendi/).
+
 The model is zero-dimensional (single operating point). Both steady-state and
 transient formulations are provided. The steady-state solver computes cell voltage
 as a function of current density, accounting for activation, ohmic and
@@ -31,7 +37,9 @@ conditions.
   code designed for transparency and easy understanding.
 - **Cross-platform support** — a transient 0D model available as a
   MATLAB/Simulink S-function block (see
-  [MATLAB / Simulink](#matlab--simulink) below).
+  [MATLAB / Simulink](#matlab--simulink) below). Linking with the
+  [VirtualFCS](https://github.com/Virtual-FCS/VirtualFCS) Modelica library is
+  also planned for a future release.
 
 ## Features
 
@@ -68,23 +76,44 @@ Requires Python 3.10+.
 pip install marapendi
 ```
 
-The simplest way to install **marapendi** as a library. See
-[`docs/installation.rst`](docs/installation.rst) for installing straight
-from GitLab (no clone) or from a local clone for development.
+The simplest way to install **marapendi** as a library — no GitLab or GitHub
+access, and no cloning, required.
 
-### With conda (recommended)
+> **Note:** this does *not* include the [Simulink block](docs/user_guide/simulink_block.rst) —
+> the `matlab/` block files (`.m`/`.slx`) are not shipped in the PyPI
+> package, only the `marapendi.interop.simulink_bridge` Python module is.
+> Using the Simulink block requires a local clone (see below).
+
+### From a local clone
+
+Clone the repository if you want to browse the source, run the examples or
+test suite, or edit the code:
+
+```bash
+git clone https://git.persee.minesparis.psl.eu/matpro/marapendi.git
+cd marapendi
+```
+
+Then install it by creating a new environment with conda (optional but
+recommended) or in an existing environment using pip.
+
+To create a dedicated environment:
 
 ```bash
 conda env create -f ci/conda_env.yml
 conda activate marapendi
-pip install -e .
 ```
 
-### With pip
+Then install marapendi with pip:
 
 ```bash
 pip install -e .
 ```
+
+This installs the package in editable mode, so changes to `src/marapendi/`
+are picked up immediately without reinstalling — convenient both for
+day-to-day development and because the Simulink block calls the live Python
+source directly from MATLAB.
 
 ## Quick start
 
@@ -276,11 +305,6 @@ quick-start snippet, [`docs/user_guide/`](docs/user_guide) for task-oriented
 guides, and [`docs/science/`](docs/science) for the governing equations and
 literature references behind every model.
 
-## Reference
-
-Pedro Affonso Nobrega, Christophe Morin, Anass Chabani, Mathias Herlé,
-"A zero-dimensional PEM fuel cell model with self-consistent MEA temperature
-and membrane water balance", *J. Electrochem. Soc.* **173**, 114503 (2026).
 
 ## Author
 
