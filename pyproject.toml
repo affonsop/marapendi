@@ -1,6 +1,6 @@
 [project]
 name = "marapendi"
-version = "0.1.0"
+version = "0.5.1"
 description = "Framework for modelling anion and proton exchange membrane electrochemical cell devices, such as water electrolyzers and fuel cells. "
 authors = [
     { name = "Pedro Affonso Nobrega", email = "pedro.affonso_nobrega@minesparis.psl.eu" },
