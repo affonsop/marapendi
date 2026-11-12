@@ -28,7 +28,7 @@ class PAPIonomer(Ionomer):
     dry_density: float = 1220.
     equivalent_weight: float = 1000 / 2.35
     vapor_equilibrium_polynomial: list = field(default_factory=lambda: [14.41, -14.81, 13.13, 0.0])
-    reference_conductivity: float = 0.
+    reference_conductivity: float = 5.8
     conductivity_correction: float = 1.0
     reference_water_diffusivity: float = 4e-10
     reference_water_absorption_coefficient: float = 1e-6
@@ -50,8 +50,8 @@ class PAPIonomer(Ionomer):
         Luo, X. et al. J. Memb. Sci. 598, 117680 (2020)
         Khalid, H. et al. Membranes (Basel) 12, 989 (2022).
         """
-        return 5.8 * arrhenius_term(
-            activation_energy=22.5e6, temperature=temperature, reference_temperature=298.15,
+        return self.reference_conductivity * arrhenius_term(
+            activation_energy=self.conductivity_activation_energy, temperature=temperature, reference_temperature=self.reference_conductivity_temperature,
         )
 
 
