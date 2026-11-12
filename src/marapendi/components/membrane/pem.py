@@ -318,7 +318,7 @@ class PFSAIonomer(Ionomer):
         """Electroosmotic drag coefficient (n.d.) for a given ``water_content``."""
         return (0.02 * temperature - 3.86) / 22.5 * water_content
 
-    def proton_conductivity(self, water_content: float, temperature: float) -> float:
+    def proton_conductivity(self, water_content: float, temperature: float, electrolyte_concentration: float=None) -> float:
         """Proton conductivity from empirical fits (S/m)."""
         fv = self.water_vol_fraction(water_content, water_molar_volume(temperature))
         return (
