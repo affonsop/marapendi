@@ -3,6 +3,7 @@ Aqueous KOH electrolyte solution with empirical property correlations.
 """
 from dataclasses import dataclass, field
 import numpy as np
+from scipy.optimize import fsolve 
 from .electrolyte import ElectrolyteSolution
 
 
@@ -119,6 +120,11 @@ class KOH_solution(ElectrolyteSolution):
                 sigma += a[i, j] * (T ** j) * (xi ** i)
         return sigma * 1e-3
 
+
+def KOH_solution_from_molarity(molarity, temperature): 
+    def f(wt, molarity): 
+        return KOH_solution(temperature, weight_percent=wt).molarity - molarity
+    return KOH_solution(weight_percent = fsolve(f, 0, args=molarity)) 
 
 # Predefined solutions
 KOH_1M = KOH_solution(temperature=298.15, weight_percent=5.3732)
