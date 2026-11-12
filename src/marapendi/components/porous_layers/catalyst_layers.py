@@ -118,8 +118,8 @@ class CatalystLayer(PorousLayer):
         Neyerlin, K. C. et al. J. Electrochem. Soc. 154, B279 (2007).
         Goshtasbi, A. et al. J. Electrochem. Soc. 167, 024518 (2020).
         """
-        self.sheet_resistance = 1. / (1. / self.ionomer_sheet_charge_resistance(ionomer_water_content, temperature, charge) +
-                                      1. / self.electrolyte_sheet_resistance(temperature))
+        self.sheet_resistance = 1. / (1. / self.ionomer_sheet_charge_resistance(ionomer_water_content, temperature, self.electrolyte.molarity, charge) +
+                                      1. / self.electrolyte_sheet_resistance(temperature, water_saturation))
         nu = np.minimum(self.sheet_resistance * current_density / self.reaction.tafel_slope(temperature), 10)
         self.xi_neyerlin = nu * (-8.287e-3 * nu + 0.7184) - 2.072e-3
         return self.sheet_resistance / (3 + self.xi_neyerlin)

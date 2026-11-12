@@ -13,6 +13,7 @@ from .components.porous_layers.porous_layers import *
 from .models.darcy import *
 from .models.diffusion import *
 from .components.electrolyte.electrolyte import *
+from .components.electrolyte.koh import *
 from .components.membrane.ionomer_base import *
 from .components.membrane.pem import *
 from .components.membrane.aem import *

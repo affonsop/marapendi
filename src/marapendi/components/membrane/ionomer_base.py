@@ -53,17 +53,17 @@ class Ionomer:
     equivalent_weight: float 
     dry_density: float
     vapor_equilibrium_polynomial: np.ndarray
-    reference_conductivity: float
-    reference_water_diffusivity: float
-    reference_water_absorption_coefficient: float  
-    conductivity_exp: float
-    conductivity_fv_threshold: float
-    conductivity_activation_energy: float
-    water_diffusivity_activation_energy: float
-    water_absorption_activation_energy: float
-    reference_conductivity_temperature: float
-    reference_water_absorption_temperature: float
-    reference_water_diffusivity_temperature: float
+    reference_conductivity: float = 5
+    reference_water_diffusivity: float = 1e-10
+    reference_water_absorption_coefficient: float = 1e-6 
+    conductivity_exp: float = 0
+    conductivity_fv_threshold: float = 0
+    conductivity_activation_energy: float = 0
+    water_diffusivity_activation_energy: float = 0
+    water_absorption_activation_energy: float = 0
+    reference_conductivity_temperature: float = 298.15
+    reference_water_absorption_temperature: float = 298.15
+    reference_water_diffusivity_temperature: float = 298.15
     
 
     def __post_init__(self):
@@ -111,15 +111,15 @@ class Ionomer:
             * current_density / FARADAY_CONSTANT / self.dry_concentration
         )
 
-    def charge_conductivity(self, water_content: float, temperature: float, charge: str = 'proton') -> float:
+    def charge_conductivity(self, water_content: float, temperature: float, solution_concentration: float=0, charge: str = 'proton') -> float:
         """Charge conductivity (proton or hydroxide), in S/m.
 
         Dispatches to :meth:`proton_conductivity` or :meth:`hydroxide_conductivity`,
         which must be implemented by concrete subclasses.
         """
         if charge == 'proton':
-            return self.proton_conductivity(water_content, temperature)
+            return self.proton_conductivity(water_content, temperature, solution_concentration)
         elif charge == 'hydroxide':
-            return self.hydroxide_conductivity(water_content, temperature)
+            return self.hydroxide_conductivity(water_content, temperature, solution_concentration)
         raise ValueError(f"Unknown charge carrier: {charge!r}")
 
